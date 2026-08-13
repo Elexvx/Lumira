@@ -6,6 +6,7 @@ import { ErrorCode } from '@/enums/errorCode';
 
 const mocks = vi.hoisted(() => ({
   tokenGeneration: { value: 1 },
+  refreshAuthSession: vi.fn(),
 }));
 
 vi.mock('@/services/common/request', () => ({
@@ -16,6 +17,10 @@ vi.mock('@/auth/token', () => ({
   tokenManager: {
     getTokenGeneration: () => mocks.tokenGeneration.value,
   },
+}));
+
+vi.mock('@/auth/sessionLifecycle', () => ({
+  tryRefreshTokenOutcome: mocks.refreshAuthSession,
 }));
 
 const currentUser = (overrides: Partial<CurrentUser> = {}): CurrentUser => ({
@@ -42,6 +47,8 @@ describe('currentUserSync', () => {
   beforeEach(() => {
     vi.mocked(request).mockReset();
     mocks.tokenGeneration.value = 1;
+    mocks.refreshAuthSession.mockReset();
+    mocks.refreshAuthSession.mockResolvedValue('refreshed');
   });
 
   it('detects role and permission changes in a refreshed current-user snapshot', async () => {
@@ -108,6 +115,30 @@ describe('currentUserSync', () => {
     }));
     await expect(beforeMutation).resolves.toMatchObject({ permissionsVersion: 'permissions-1' });
     await expect(afterMutation).resolves.toMatchObject({ permissionsVersion: 'permissions-2' });
+  });
+
+  it('refreshes the access token before notifying current-user synchronization after a permission mutation', async () => {
+    const pollingRequest = Promise.withResolvers<CurrentUser>();
+    const mutationRequest = Promise.withResolvers<CurrentUser>();
+    vi.mocked(request)
+      .mockReturnValueOnce(pollingRequest.promise)
+      .mockReturnValueOnce(mutationRequest.promise);
+    mocks.refreshAuthSession.mockImplementation(async () => {
+      expect(request).toHaveBeenCalledTimes(1);
+      return 'refreshed';
+    });
+    const { loadCurrentUserSnapshot, refreshAuthSessionAndNotifyCurrentUserSync } = await import('@/auth/currentUserSync');
+
+    const previousRequest = loadCurrentUserSnapshot();
+    await expect(refreshAuthSessionAndNotifyCurrentUserSync()).resolves.toBe('refreshed');
+    const nextRequest = loadCurrentUserSnapshot();
+
+    expect(mocks.refreshAuthSession).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(2);
+    pollingRequest.resolve(currentUser());
+    mutationRequest.resolve(currentUser({ permissionsVersion: 'permissions-2' }));
+    await expect(previousRequest).resolves.toMatchObject({ permissionsVersion: 'permissions-1' });
+    await expect(nextRequest).resolves.toMatchObject({ permissionsVersion: 'permissions-2' });
   });
 
   it('never reuses an in-flight current-user request after the auth generation changes', async () => {

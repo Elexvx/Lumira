@@ -14,6 +14,8 @@ import { history } from '@umijs/max';
 import { Alert, Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal, Row, Select, Space, Steps, Table, Tag, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
+import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
@@ -24,18 +26,27 @@ import { useResponsive } from '@/hooks/useResponsive';
 import {
   archiveCertificateTemplate,
   createCertificateTemplate,
+  downloadCompetitionWorkspaceCertificate,
   downloadCertificate,
   duplicateCertificateTemplate,
+  generateCompetitionWorkspaceCertificates,
+  generateCompetitionWorkspaceCertificatesFromAwards,
   generateCertificatesFromAwards,
   generateCertificates,
+  grantCompetitionWorkspacePublishedAwards,
   grantPublishedAwards,
+  listCompetitionWorkspaceAwardGrants,
+  listCompetitionWorkspaceCertificateAwardSources,
+  listCompetitionWorkspaceCertificates,
   listAwardGrants,
   listCertificateAwardSources,
   listCertificateTemplateVersions,
   listCertificateTemplates,
   listCertificates,
   publishCertificateTemplate,
+  regenerateCompetitionWorkspaceCertificate,
   regenerateCertificate,
+  revokeCompetitionWorkspaceCertificate,
   revokeCertificate,
   updateCertificateTemplate,
 } from '@/services/certificates/api';
@@ -110,9 +121,11 @@ const sceneTypeText: Record<string, string> = {
   CUSTOM: '自定义',
 };
 
-const handleCertificateDownload = async (record: CertificateRecord) => {
+const handleCertificateDownload = async (record: CertificateRecord, competitionUuid?: string) => {
   try {
-    const blob = await downloadCertificate(record.id);
+    const blob = await (competitionUuid
+      ? downloadCompetitionWorkspaceCertificate(competitionUuid, record.id)
+      : downloadCertificate(record.id));
     saveBlobAsFile(blob, `${record.certificateNo}.png`);
   } catch (error) {
     showErrorMessage(error, '证书下载失败');
@@ -397,6 +410,8 @@ export const TemplatesManagementPage = () => {
 };
 
 export const GenerateManagementPage = () => {
+  const workspace = useOptionalCompetitionWorkspace();
+  const workspaceUuid = workspace?.competitionUuid;
   const responsive = useResponsive();
   const [templates, setTemplates] = useState<CertificateTemplateRecord[]>([]);
   const [versions, setVersions] = useState<CertificateTemplateVersionRecord[]>([]);
@@ -411,16 +426,20 @@ export const GenerateManagementPage = () => {
   const [templateForm] = Form.useForm();
   const [manualForm] = Form.useForm();
   const [awardForm] = Form.useForm();
-  const selectedCompetitionId = Form.useWatch('competitionId', awardForm);
+  const watchedCompetitionId = Form.useWatch('competitionId', awardForm);
+  const selectedCompetitionId = workspaceUuid ? awardSources[0]?.competitionId : watchedCompetitionId;
   const selectedStageId = Form.useWatch('stageId', awardForm);
   const selectedReviewBatchId = Form.useWatch('reviewBatchId', awardForm);
 
   useEffect(() => {
     void listCertificateTemplates({ status: 'PUBLISHED', pageSize: 100 }).then((res) => setTemplates(res.records || []));
-    void listCertificateAwardSources()
+    const sourcesRequest = workspaceUuid
+      ? listCompetitionWorkspaceCertificateAwardSources(workspaceUuid)
+      : listCertificateAwardSources();
+    void sourcesRequest
       .then((sources) => setAwardSources(sources || []))
       .finally(() => setAwardSourcesLoading(false));
-  }, []);
+  }, [awardForm, workspaceUuid]);
 
   const competitionOptions = useMemo(
     () => Array.from(new Map(awardSources.map((source) => [
@@ -459,14 +478,18 @@ export const GenerateManagementPage = () => {
   const loadAwardGrants = async (reviewBatchId: number) => {
     setAwardGrantsLoading(true);
     try {
-      setLoadedAwardGrants(await listAwardGrants(reviewBatchId));
+      setLoadedAwardGrants(workspaceUuid
+        ? await listCompetitionWorkspaceAwardGrants(workspaceUuid, reviewBatchId)
+        : await listAwardGrants(reviewBatchId));
     } finally {
       setAwardGrantsLoading(false);
     }
   };
 
   const refreshAwardSources = async () => {
-    setAwardSources(await listCertificateAwardSources());
+    setAwardSources(await (workspaceUuid
+      ? listCompetitionWorkspaceCertificateAwardSources(workspaceUuid)
+      : listCertificateAwardSources()));
   };
 
   const loadVersions = async (templateId: number) => {
@@ -506,7 +529,10 @@ export const GenerateManagementPage = () => {
   const submit = async () => {
     setGenerating(true);
     try {
-      const response = await generateCertificates(await buildSinglePayload());
+      const payload = await buildSinglePayload();
+      const response = await (workspaceUuid
+        ? generateCompetitionWorkspaceCertificates(workspaceUuid, payload)
+        : generateCertificates(payload));
       setResult(response.records || []);
       setBatchResult(response.batch);
       if (response.batch.failedCount > 0) {
@@ -525,10 +551,13 @@ export const GenerateManagementPage = () => {
     const existingIds = new Set(awardGrants.map((grant) => grant.id));
     setGenerating(true);
     try {
-      const grants = await grantPublishedAwards({
+      const payload = {
         reviewBatchId: values.reviewBatchId,
         rules: rules.map((rule) => ({ ...rule, awardName: rule.awardName.trim() })),
-      });
+      };
+      const grants = await (workspaceUuid
+        ? grantCompetitionWorkspacePublishedAwards(workspaceUuid, payload)
+        : grantPublishedAwards(payload));
       const grantsChanged = haveAwardGrantsChanged(awardGrants, grants);
       setLoadedAwardGrants(grants);
       await refreshAwardSources();
@@ -554,12 +583,15 @@ export const GenerateManagementPage = () => {
     }
     setGenerating(true);
     try {
-      const response = await generateCertificatesFromAwards({
+      const payload = {
         batchName: values.batchName,
         templateId: values.templateId,
         templateVersionId: values.templateVersionId,
         grantIds: selectedGrantIds,
-      });
+      };
+      const response = await (workspaceUuid
+        ? generateCompetitionWorkspaceCertificatesFromAwards(workspaceUuid, payload)
+        : generateCertificatesFromAwards(payload));
       setResult(response.records || []);
       setBatchResult(response.batch);
       if (response.batch.failedCount > 0) {
@@ -587,13 +619,16 @@ export const GenerateManagementPage = () => {
       }
       setGenerating(true);
       try {
-        const response = await generateCertificates({
+        const payload: CertificateGeneratePayload = {
           batchName: file.name,
           templateId: values.templateId,
           templateVersionId: values.templateVersionId,
           sourceType: 'IMPORT',
           records: rows,
-        });
+        };
+        const response = await (workspaceUuid
+          ? generateCompetitionWorkspaceCertificates(workspaceUuid, payload)
+          : generateCertificates(payload));
         setResult(response.records || []);
         setBatchResult(response.batch);
         if (response.batch.failedCount > 0) {
@@ -611,8 +646,12 @@ export const GenerateManagementPage = () => {
   };
 
   return (
-    <ManagementPage title="证书生成">
-      <ManagementPageBody className="certificate-generate-page">
+    <CompetitionWorkspacePageFrame
+      embeddedInWorkspace={Boolean(workspaceUuid)}
+      title={workspaceUuid ? '证书生成' : '跨赛事证书生成'}
+      bodyClassName="certificate-generate-page"
+      workspaceVariant="content"
+    >
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={6}>
             <Card className="certificate-side-card">
@@ -682,7 +721,12 @@ export const GenerateManagementPage = () => {
                 >
                   <Row gutter={16}>
                     <Col xs={24} md={8}>
-                      <Form.Item name="competitionId" label="赛事" rules={[{ required: true, message: '请选择赛事' }]}>
+                      <Form.Item
+                        name="competitionId"
+                        label="赛事"
+                        hidden={Boolean(workspaceUuid)}
+                        rules={workspaceUuid ? undefined : [{ required: true, message: '请选择赛事' }]}
+                      >
                         <Select
                           showSearch
                           optionFilterProp="label"
@@ -951,12 +995,13 @@ export const GenerateManagementPage = () => {
             </Space>
           </Col>
         </Row>
-      </ManagementPageBody>
-    </ManagementPage>
+    </CompetitionWorkspacePageFrame>
   );
 };
 
 export const RecordsManagementPage = () => {
+  const workspace = useOptionalCompetitionWorkspace();
+  const workspaceUuid = workspace?.competitionUuid;
   const actionRef = useRef<ActionType | null>(null);
   const responsive = useResponsive();
   const actionPermission = useActionPermission();
@@ -1061,7 +1106,7 @@ export const RecordsManagementPage = () => {
                 label: '下载',
                 icon: <DownloadOutlined />,
                 permission: 'aiadc:certificate:download',
-                onClick: () => handleCertificateDownload(record),
+                onClick: () => handleCertificateDownload(record, workspaceUuid),
               },
               {
                 key: 'copy',
@@ -1079,7 +1124,9 @@ export const RecordsManagementPage = () => {
                 icon: <FileDoneOutlined />,
                 permission: 'aiadc:certificate:regenerate',
                 onClick: async () => {
-                  await regenerateCertificate(record.id);
+                  await (workspaceUuid
+                    ? regenerateCompetitionWorkspaceCertificate(workspaceUuid, record.id)
+                    : regenerateCertificate(record.id));
                   message.success('证书已重新生成');
                   actionRef.current?.reload();
                 },
@@ -1096,7 +1143,9 @@ export const RecordsManagementPage = () => {
                     content: `撤销后「${record.certificateNo}」公开查询会显示已撤销。`,
                     okButtonProps: { danger: true },
                     onOk: async () => {
-                      await revokeCertificate(record.id, '管理员撤销');
+                      await (workspaceUuid
+                        ? revokeCompetitionWorkspaceCertificate(workspaceUuid, record.id, '管理员撤销')
+                        : revokeCertificate(record.id, '管理员撤销'));
                       message.success('证书已撤销');
                       actionRef.current?.reload();
                     },
@@ -1108,30 +1157,36 @@ export const RecordsManagementPage = () => {
         ),
       },
     ],
-    [actionPermission, responsive.isDesktop, responsive.isMobile],
+    [actionPermission, responsive.isDesktop, responsive.isMobile, workspaceUuid],
   );
 
   return (
-    <ManagementPage title="证书记录">
-      <ManagementPageBody className="certificate-management-page">
+    <CompetitionWorkspacePageFrame
+      embeddedInWorkspace={Boolean(workspaceUuid)}
+      title={workspaceUuid ? '证书' : '全局证书记录'}
+      bodyClassName="certificate-management-page"
+      workspaceVariant="table"
+    >
         <ManagementTable<CertificateRecord>
           actionRef={actionRef}
           rowKey="id"
           columns={columns}
           isMobile={responsive.isMobile}
           request={async (params) => {
-            const response = await listCertificates({
+            const query = {
               certificateNo: typeof params.certificateNo === 'string' ? params.certificateNo : undefined,
               recipientName: typeof params.recipientName === 'string' ? params.recipientName : undefined,
               status: typeof params.status === 'string' ? params.status : undefined,
               pageNo: params.current,
               pageSize: params.pageSize,
-            });
+            };
+            const response = await (workspaceUuid
+              ? listCompetitionWorkspaceCertificates(workspaceUuid, query)
+              : listCertificates(query));
             return { data: response.records, total: response.total, success: true };
           }}
           pagination={{ pageSize: 10, showSizeChanger: true }}
         />
-      </ManagementPageBody>
       <ManagementDrawer title="证书详情" open={Boolean(detail)} onClose={() => setDetail(null)}>
         {detail ? (
           <Space direction="vertical" size={16} className="certificate-detail">
@@ -1156,6 +1211,6 @@ export const RecordsManagementPage = () => {
           </Space>
         ) : null}
       </ManagementDrawer>
-    </ManagementPage>
+    </CompetitionWorkspacePageFrame>
   );
 };

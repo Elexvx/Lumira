@@ -10,7 +10,6 @@ const resolveFirstAccessiblePath = (
 
 export const resolveDataManagementLandingPath = (access: unknown) => resolveFirstAccessiblePath(access, [
   ['canVisitCompetitions', '/competitions/management'],
-  ['canVisitCompetitionRegistrations', '/competitions/registrations'],
   ['canVisitActivities', '/activities/management'],
   ['canVisitPaymentOrders', '/payments/management'],
   ['canVisitDownloadCenter', '/data-management/download-center'],

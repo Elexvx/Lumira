@@ -8,6 +8,7 @@ const RETIRED_MAIN_MENU_PATHS = new Set([
   '/projects/search',
   '/activities/search',
   '/payments/status',
+  '/experts/query',
 ]);
 const normalizeMenuPath = (path: string) => path.trim().replace(/\/+$/, '') || '/';
 

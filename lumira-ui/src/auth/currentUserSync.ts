@@ -113,3 +113,13 @@ export const notifyCurrentUserSync = () => {
     window.dispatchEvent(new Event(CURRENT_USER_SYNC_EVENT));
   }
 };
+
+export const refreshAuthSessionAndNotifyCurrentUserSync = async () => {
+  // Permission mutations invalidate the server-side permission snapshot
+  // version. Refresh the access token before any list/navigation request can
+  // reuse the old version and be mistaken for an expired session.
+  const { tryRefreshTokenOutcome } = await import('@/auth/sessionLifecycle');
+  const outcome = await tryRefreshTokenOutcome();
+  notifyCurrentUserSync();
+  return outcome;
+};

@@ -1,4 +1,6 @@
 -- Move expert status, application initial status, and approval lifecycle out of Java code.
+SET NAMES utf8mb4;
+
 INSERT INTO `sys_dict_type`
     (`dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
 VALUES
@@ -6,7 +8,7 @@ VALUES
     ('aiadc_expert_initial_status', '专家申请初始状态', 'ENABLED', 1, 'Initial status for expert applications', 0, 0, 0),
     ('aiadc_expert_approval_status', '专家审批状态', 'ENABLED', 1, 'Expert approval lifecycle and initial order', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
-    `status` = VALUES(`status`), `is_system` = VALUES(`is_system`),
+    `dict_name` = VALUES(`dict_name`), `status` = VALUES(`status`), `is_system` = VALUES(`is_system`),
     `remark` = VALUES(`remark`), `updated_by` = VALUES(`updated_by`), `deleted` = 0;
 
 INSERT INTO `sys_dict_item`

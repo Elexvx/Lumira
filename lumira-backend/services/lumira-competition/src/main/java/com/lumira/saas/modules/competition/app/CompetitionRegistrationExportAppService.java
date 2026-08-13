@@ -52,7 +52,6 @@ public class CompetitionRegistrationExportAppService {
     public static final String EXPORT_TYPE_MATERIAL_ZIP = "MATERIAL_ZIP";
 
     private static final Logger log = LoggerFactory.getLogger(CompetitionRegistrationExportAppService.class);
-    private static final String ASYNC_SESSION_PREFIX = "internal-registration-export-task-";
     private static final long EXPORT_PAGE_SIZE = 100L;
     private static final int MAX_SELECTED_REGISTRATIONS = 500;
     private static final long MAX_MATERIAL_FILE_BYTES = 100L * 1024L * 1024L;
@@ -153,7 +152,7 @@ public class CompetitionRegistrationExportAppService {
                 userId,
                 userUuid,
                 simulatedRoleId,
-                ASYNC_SESSION_PREFIX + taskId,
+                CompetitionAuthenticationTrust.asyncExportSessionId(taskId),
                 EXPORT_PERMISSION
         );
     }
@@ -180,7 +179,7 @@ public class CompetitionRegistrationExportAppService {
                     hasPermission(refreshedUser, SENSITIVE_EXPORT_PERMISSION)
             ));
         }
-        return excelExportService.export("报名团队资料", columns(), rows);
+        return excelExportService.export("报名与材料", columns(), rows);
     }
 
     byte[] exportMaterialPackageFromTrustedSnapshot(

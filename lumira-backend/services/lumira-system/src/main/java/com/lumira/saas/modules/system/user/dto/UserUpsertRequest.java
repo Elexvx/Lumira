@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 
 import java.util.List;
+import java.util.Map;
 
 public class UserUpsertRequest {
 
@@ -33,6 +34,7 @@ public class UserUpsertRequest {
     private List<@Positive(message = "部门ID必须为正整数") Long> deptIds;
     @Positive(message = "主部门ID必须为正整数")
     private Long primaryDeptId;
+    private Map<String, String> extraProfileValues;
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username == null ? null : username.trim(); }
@@ -66,4 +68,6 @@ public class UserUpsertRequest {
     public void setDeptIds(List<Long> deptIds) { this.deptIds = deptIds; }
     public Long getPrimaryDeptId() { return primaryDeptId; }
     public void setPrimaryDeptId(Long primaryDeptId) { this.primaryDeptId = primaryDeptId; }
+    public Map<String, String> getExtraProfileValues() { return extraProfileValues; }
+    public void setExtraProfileValues(Map<String, String> extraProfileValues) { this.extraProfileValues = extraProfileValues; }
 }

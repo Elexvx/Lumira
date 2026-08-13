@@ -633,6 +633,27 @@ public class CertificateAppService {
         return page(result.records(), result.total(), normalizedPageNo, normalizedPageSize);
     }
 
+    public PageResponse<CertificateVO.Batch> listBatches(
+            CurrentUser currentUser,
+            long pageNo,
+            long pageSize,
+            Long competitionId
+    ) {
+        requirePermission(currentUser, BATCH_VIEW);
+        requirePositiveId(competitionId, "Competition id is required");
+        long normalizedPageNo = normalizePageNo(pageNo);
+        long normalizedPageSize = normalizePageSize(pageSize);
+        Ownership owner = ownership(currentUser);
+        CertificateRecordRepository.BatchPage result = recordRepository.findBatchesForCompetition(
+                owner.userId(),
+                owner.userUuid(),
+                competitionId,
+                (normalizedPageNo - 1) * normalizedPageSize,
+                normalizedPageSize
+        );
+        return page(result.records(), result.total(), normalizedPageNo, normalizedPageSize);
+    }
+
     public CertificateVO.Batch getBatch(CurrentUser currentUser, Long id) {
         requirePermission(currentUser, BATCH_VIEW);
         requirePositiveId(id, "Certificate batch id is required");
@@ -663,6 +684,37 @@ public class CertificateAppService {
         CertificateRecordRepository.RecordPage result = recordRepository.findRecords(
                 normalizedCertificateNo, normalizedRecipientName, normalizedStatus, owner.userId(), owner.userUuid(),
                 (normalizedPageNo - 1) * normalizedPageSize, normalizedPageSize);
+        return page(result.records(), result.total(), normalizedPageNo, normalizedPageSize);
+    }
+
+    public PageResponse<CertificateVO.Record> listRecords(
+            CurrentUser currentUser,
+            String certificateNo,
+            String recipientName,
+            String status,
+            long pageNo,
+            long pageSize,
+            Long competitionId
+    ) {
+        requirePermission(currentUser, CERTIFICATE_VIEW);
+        requirePositiveId(competitionId, "Competition id is required");
+        long normalizedPageNo = normalizePageNo(pageNo);
+        long normalizedPageSize = normalizePageSize(pageSize);
+        String normalizedCertificateNo = normalizeSearchText(certificateNo, "Certificate no is too large");
+        String normalizedRecipientName = normalizeSearchText(recipientName, "Recipient name is too large");
+        String normalizedStatus = StringUtils.hasText(status)
+                ? normalizeEnum(status, RECORD_STATUSES, "Invalid certificate status") : null;
+        Ownership owner = ownership(currentUser);
+        CertificateRecordRepository.RecordPage result = recordRepository.findRecordsForCompetition(
+                normalizedCertificateNo,
+                normalizedRecipientName,
+                normalizedStatus,
+                owner.userId(),
+                owner.userUuid(),
+                competitionId,
+                (normalizedPageNo - 1) * normalizedPageSize,
+                normalizedPageSize
+        );
         return page(result.records(), result.total(), normalizedPageNo, normalizedPageSize);
     }
 

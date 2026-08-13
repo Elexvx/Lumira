@@ -84,12 +84,6 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitProjects = isLogin && hasPermission(permissions, 'aiadc:project:view');
   const canVisitActivities = isLogin && hasPermission(permissions, 'aiadc:activity:view');
   const canVisitCompetitions = isLogin && hasPermission(permissions, 'aiadc:competition:view');
-  const canVisitCompetitionRegistrations =
-    canVisitCompetitions && hasAnyPermission(permissions, [
-      'aiadc:registration:view',
-      'registration:dataset:view',
-      'registration:dataset:export',
-    ]);
   const canExportCompetitionRegistrations =
     isLogin && hasPermission(permissions, 'registration:dataset:export');
   const canViewSensitiveCompetitionRegistrations =
@@ -120,12 +114,14 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitDataManagement =
     [
       canVisitCompetitions,
-      canVisitCompetitionRegistrations,
       canVisitActivities,
       canVisitPaymentOrders,
       canVisitDownloadCenter,
     ].some(Boolean);
-  const canVisitSystemSettings =
+  // Settings are a separate route group. The group gate is intentionally
+  // independent from the main business-route permissions; each settings page
+  // still applies its own access key below.
+  const canVisitSettings =
     isLogin &&
     (isSettingsAdmin ||
       hasPermission(permissions, 'system:view') ||
@@ -163,7 +159,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
       isLogin &&
       USER_CENTER_MANAGEMENT_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitDataManagement,
-    canVisitSystemManagement: canVisitSystemSettings,
+    canVisitSystemManagement: canVisitSettings,
     canVisitSystemMonitoring,
     canVisitSystemMonitoringService,
     canVisitSystemMonitoringRedis,
@@ -188,7 +184,6 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitActivitiesRoot: canVisitActivities,
     canVisitActivities,
     canVisitCompetitions,
-    canVisitCompetitionRegistrations,
     canExportCompetitionRegistrations,
     canViewSensitiveCompetitionRegistrations,
     canExportSensitiveCompetitionRegistrations,
@@ -217,7 +212,9 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitSystemAllFiles,
     canVisitLocalization,
     canVisitAudit,
-    canVisitSystemSettings,
+    canVisitSettings,
+    // Backward-compatible alias for callers that still use the old name.
+    canVisitSystemSettings: canVisitSettings,
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins,
     canVisitSensitiveWordsPlugin,

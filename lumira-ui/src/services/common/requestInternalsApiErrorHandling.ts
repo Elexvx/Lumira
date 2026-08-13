@@ -119,9 +119,9 @@ export const handleApiError = (
   if (
     (!authSnapshot.hasAuthToken &&
       (options.allowUnauthorizedWithoutRedirect === true || options.autoRedirectOnUnauthorized === false)) ||
-    context.authenticatedRefreshSucceeded === true ||
     context.refreshSuperseded === true ||
     context.refreshTemporarilyUnavailable === true ||
+    (context.authenticatedRefreshSucceeded === true && options.forceSessionLogoutOnUnauthorized !== true) ||
     shouldSuppressUnauthorizedSideEffects(authSnapshot, buildUnauthorizedRuntimeState())
   ) {
     if (!options.silent && (context.authenticatedRefreshSucceeded || context.refreshTemporarilyUnavailable)) {
@@ -131,7 +131,7 @@ export const handleApiError = (
   }
 
   triggerForcedSessionLogout(authSnapshot, () => {
-    if (!options.silent) {
+    if (!options.silent || options.notifyOnUnauthorized === true) {
       notify();
     }
   });

@@ -1,9 +1,6 @@
-import type { CompetitionRegistrationExportRequest } from '@/services/competition/types';
-
 export const MAX_SELECTED_REGISTRATION_COUNT = 500;
 
 export type RegistrationExportQuery = {
-  competitionId?: number;
   status?: string;
   keyword?: string;
 };
@@ -55,33 +52,7 @@ export const resolveRegistrationExportScope = ({
   };
 };
 
-const normalizeRegistrationIds = (registrationIds: number[]) => Array.from(new Set(
-  registrationIds.filter((registrationId) => Number.isInteger(registrationId) && registrationId > 0),
-));
-
-export const buildCompetitionRegistrationExportRequest = (
-  query: RegistrationExportQuery,
-  registrationIds: number[],
-): CompetitionRegistrationExportRequest | undefined => {
-  if (!query.competitionId) return undefined;
-
-  const normalizedRegistrationIds = normalizeRegistrationIds(registrationIds);
-  if (normalizedRegistrationIds.length) {
-    return {
-      competitionId: query.competitionId,
-      registrationIds: normalizedRegistrationIds,
-    };
-  }
-
-  return {
-    competitionId: query.competitionId,
-    status: query.status,
-    keyword: query.keyword,
-  };
-};
-
 export const buildRegistrationQuerySignature = (query: RegistrationExportQuery) => JSON.stringify([
-  query.competitionId ?? null,
   query.status ?? null,
   query.keyword ?? null,
 ]);

@@ -22,7 +22,7 @@ import { request } from '@/services/common/request';
 import type { PagedResult } from '@/types/api';
 import { APP_SPACING } from '@/theme/spacing';
 
-import { notifyCurrentUserSync } from '@/auth/currentUserSync';
+import { refreshAuthSessionAndNotifyCurrentUserSync } from '@/auth/currentUserSync';
 import { databaseMessage } from '@/i18n/databaseMessage';
 
 const t = databaseMessage;
@@ -961,7 +961,7 @@ export const useRoleManagementPageData = () => {
           data: { permissionKeys },
           ...API_OPTS.NO_REDIRECT,
         });
-        notifyCurrentUserSync();
+        await refreshAuthSessionAndNotifyCurrentUserSync();
         message.success(t('ui.system.roles.userolemanagementpagedata.rolePermissionsUpdated'));
         closeEditorDrawer();
         roleCrud.reloadTable();
@@ -986,7 +986,7 @@ export const useRoleManagementPageData = () => {
         });
         message.success(t('ui.system.roles.userolemanagementpagedata.roleCreated'));
       }
-      notifyCurrentUserSync();
+      await refreshAuthSessionAndNotifyCurrentUserSync();
       closeEditorDrawer();
       roleCrud.reloadTable();
     } finally {
@@ -1005,7 +1005,7 @@ export const useRoleManagementPageData = () => {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
-          notifyCurrentUserSync();
+          await refreshAuthSessionAndNotifyCurrentUserSync();
           message.success(t('ui.system.roles.userolemanagementpagedata.roleDeleted'));
           roleCrud.reloadTable();
         },

@@ -7,10 +7,16 @@ import com.lumira.saas.modules.competition.app.CompetitionManagementAppService;
 import com.lumira.saas.modules.competition.app.CompetitionRegistrationAppService;
 import com.lumira.saas.modules.competition.app.CompetitionRegistrationExportAppService;
 import com.lumira.saas.modules.competition.app.CompetitionRegistrationExportTaskWorkerService;
+import com.lumira.saas.modules.competition.app.CompetitionWorkspaceAccessPolicy;
+import com.lumira.saas.modules.competition.app.CompetitionWorkspaceAppService;
 import com.lumira.saas.modules.competition.controller.CertificateV2Controller;
-import com.lumira.saas.modules.competition.controller.CompetitionRegistrationExportController;
 import com.lumira.saas.modules.competition.controller.CompetitionRegistrationV2Controller;
 import com.lumira.saas.modules.competition.controller.CompetitionV2Controller;
+import com.lumira.saas.modules.competition.controller.CompetitionWorkspaceAuditController;
+import com.lumira.saas.modules.competition.controller.CompetitionWorkspaceCertificateController;
+import com.lumira.saas.modules.competition.controller.CompetitionWorkspaceController;
+import com.lumira.saas.modules.competition.controller.CompetitionWorkspaceExportController;
+import com.lumira.saas.modules.competition.controller.CompetitionWorkspaceRegistrationController;
 import com.lumira.saas.modules.competition.controller.internal.InternalRegistrationExportJobController;
 import com.lumira.saas.modules.competition.controller.internal.InternalReviewJobController;
 import com.lumira.saas.modules.competition.controller.internal.CompetitionPaymentEventInternalController;
@@ -21,10 +27,12 @@ import com.lumira.saas.modules.competition.infrastructure.CompetitionRegistratio
 import com.lumira.saas.modules.competition.integration.CompetitionCatalogSourceSnapshotAdapter;
 import com.lumira.saas.modules.competition.infrastructure.JdbcCertificateRecordRepository;
 import com.lumira.saas.modules.competition.infrastructure.JdbcCertificateTemplateRepository;
+import com.lumira.saas.modules.competition.infrastructure.JdbcCompetitionAuditRepository;
 import com.lumira.saas.modules.competition.infrastructure.JdbcRegistrationDatasetRepository;
 import com.lumira.saas.modules.competition.infrastructure.RegistrationReviewInternalApiAdapter;
 import com.lumira.saas.modules.competition.infrastructure.persistence.CompetitionSqlOperations;
 import com.lumira.saas.modules.review.app.ReviewAppService;
+import com.lumira.saas.modules.review.controller.CompetitionWorkspaceReviewController;
 import com.lumira.saas.modules.review.controller.ReviewV2Controller;
 import com.lumira.saas.modules.review.infrastructure.JdbcReviewRepository;
 import org.springframework.context.annotation.Configuration;
@@ -43,6 +51,7 @@ import org.springframework.context.annotation.Import;
         CompetitionCatalogSourceSnapshotAdapter.class,
         JdbcCertificateRecordRepository.class,
         JdbcCertificateTemplateRepository.class,
+        JdbcCompetitionAuditRepository.class,
         JdbcRegistrationDatasetRepository.class,
         JdbcReviewRepository.class,
         RegistrationReviewInternalApiAdapter.class,
@@ -53,12 +62,19 @@ import org.springframework.context.annotation.Import;
         CompetitionRegistrationAppService.class,
         CompetitionRegistrationExportAppService.class,
         CompetitionRegistrationExportTaskWorkerService.class,
+        CompetitionWorkspaceAccessPolicy.class,
+        CompetitionWorkspaceAppService.class,
         ReviewAppService.class,
         CompetitionPaymentEventHandler.class,
         CertificateV2Controller.class,
-        CompetitionRegistrationExportController.class,
         CompetitionRegistrationV2Controller.class,
         CompetitionV2Controller.class,
+        CompetitionWorkspaceAuditController.class,
+        CompetitionWorkspaceCertificateController.class,
+        CompetitionWorkspaceController.class,
+        CompetitionWorkspaceExportController.class,
+        CompetitionWorkspaceRegistrationController.class,
+        CompetitionWorkspaceReviewController.class,
         ReviewV2Controller.class,
         InternalRegistrationExportJobController.class,
         InternalReviewJobController.class,

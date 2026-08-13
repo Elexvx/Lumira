@@ -5,7 +5,6 @@ import type {
   CompetitionQueryParams,
   CompetitionRecord,
   CompetitionRegistrationRecord,
-  CompetitionRegistrationExportRequest,
   CompetitionRegistrationExportStartRecord,
   CompetitionRegistrationExportTaskRecord,
   CompetitionConfigItem,
@@ -18,12 +17,111 @@ import type {
   CompetitionStageReviewCandidateRecord,
   CompetitionStageReviewDecisionPayload,
   CompetitionUpsertPayload,
+  CompetitionWorkspaceQueryParams,
+  CompetitionWorkspacePaymentQuery,
+  CompetitionWorkspaceRegistrationQuery,
+  CompetitionWorkspaceExportRequest,
+  CompetitionWorkspaceRecord,
+  CompetitionAuditRecord,
   PageResponse,
   ProjectRecord,
   ProjectUpsertPayload,
 } from './types';
+import type { RegistrationPaymentRecord } from '@/services/payment/types';
 
 const COMPETITION_API = '/v2/aiadc/competitions';
+const COMPETITION_WORKSPACE_API = '/v2/aiadc/competition-workspaces';
+const competitionWorkspaceApi = (competitionUuid: string) =>
+  `${COMPETITION_API}/${encodeURIComponent(competitionUuid)}`;
+
+export const listCompetitionWorkspaces = (params: CompetitionWorkspaceQueryParams = {}, options: RequestOptions = {}) =>
+  request<PageResponse<CompetitionWorkspaceRecord>>(COMPETITION_WORKSPACE_API, {
+    ...options,
+    method: 'GET',
+    params: { ...params },
+  });
+
+export const getCompetitionWorkspace = (competitionUuid: string, options: RequestOptions = {}) =>
+  request<CompetitionWorkspaceRecord>(`${COMPETITION_API}/${encodeURIComponent(competitionUuid)}/workspace`, {
+    ...options,
+    method: 'GET',
+  });
+
+export const listCompetitionWorkspaceRegistrations = (
+  competitionUuid: string,
+  params: CompetitionWorkspaceRegistrationQuery = {},
+  options: RequestOptions = {},
+) => request<PageResponse<CompetitionRegistrationRecord>>(`${competitionWorkspaceApi(competitionUuid)}/registrations`, {
+  ...options,
+  method: 'GET',
+  params: { ...params },
+});
+
+export const getCompetitionWorkspaceRegistration = (
+  competitionUuid: string,
+  registrationId: number,
+  options: RequestOptions = {},
+) => request<CompetitionRegistrationRecord>(`${competitionWorkspaceApi(competitionUuid)}/registrations/${registrationId}`, {
+  ...options,
+  method: 'GET',
+});
+
+export const listCompetitionWorkspaceRegistrationMaterials = (
+  competitionUuid: string,
+  registrationId: number,
+  options: RequestOptions = {},
+) => request<CompetitionMaterialSubmissionRecord[]>(`${competitionWorkspaceApi(competitionUuid)}/registrations/${registrationId}/materials`, {
+  ...options,
+  method: 'GET',
+});
+
+export const listCompetitionWorkspaceStages = (
+  competitionUuid: string,
+  options: RequestOptions = {},
+) => request<CompetitionStageRecord[]>(`${competitionWorkspaceApi(competitionUuid)}/workspace/stages`, {
+  ...options,
+  method: 'GET',
+});
+
+export const listCompetitionWorkspacePayments = (
+  competitionUuid: string,
+  params: CompetitionWorkspacePaymentQuery = {},
+  options: RequestOptions = {},
+) => request<PageResponse<RegistrationPaymentRecord>>(`${competitionWorkspaceApi(competitionUuid)}/payments`, {
+  ...options,
+  method: 'GET',
+  params: { ...params },
+});
+
+export const startCompetitionWorkspaceRegistrationExport = (
+  competitionUuid: string,
+  data: CompetitionWorkspaceExportRequest,
+) => request<CompetitionRegistrationExportStartRecord>(`${competitionWorkspaceApi(competitionUuid)}/registration-exports`, {
+  method: 'POST',
+  data,
+});
+
+export const startCompetitionWorkspaceMaterialPackage = (
+  competitionUuid: string,
+  data: CompetitionWorkspaceExportRequest,
+) => request<CompetitionRegistrationExportStartRecord>(`${competitionWorkspaceApi(competitionUuid)}/registration-exports/materials-package`, {
+  method: 'POST',
+  data,
+});
+
+export const getCompetitionWorkspaceExportTask = (competitionUuid: string, taskId: number) =>
+  request<CompetitionRegistrationExportTaskRecord>(`${competitionWorkspaceApi(competitionUuid)}/registration-exports/${taskId}`, {
+    method: 'GET',
+    silent: true,
+  });
+
+export const listCompetitionWorkspaceAudit = (
+  competitionUuid: string,
+  params: { module?: string; pageNo?: number; pageSize?: number } = {},
+) => request<PageResponse<CompetitionAuditRecord>>(`${competitionWorkspaceApi(competitionUuid)}/audit`, {
+  method: 'GET',
+  params,
+});
 
 export const listCompetitions = (params: CompetitionQueryParams) =>
   request<PageResponse<CompetitionRecord>>(COMPETITION_API, {
@@ -270,24 +368,4 @@ export const listRegistrationPaymentOptions = (registrationId: number, clientTyp
 export const getRegistrationPaymentStatus = (registrationId: number) =>
   request<CompetitionPaymentOrderRecord>(`/v2/aiadc/registrations/${registrationId}/payment-status`, {
     method: 'GET',
-  });
-
-export const startCompetitionRegistrationExport = (
-  data: CompetitionRegistrationExportRequest,
-) => request<CompetitionRegistrationExportStartRecord>('/v2/aiadc/registration-exports', {
-  method: 'POST',
-  data,
-});
-
-export const startCompetitionRegistrationMaterialPackage = (
-  data: CompetitionRegistrationExportRequest,
-) => request<CompetitionRegistrationExportStartRecord>('/v2/aiadc/registration-exports/materials-package', {
-  method: 'POST',
-  data,
-});
-
-export const getCompetitionRegistrationExportTask = (taskId: number) =>
-  request<CompetitionRegistrationExportTaskRecord>(`/v2/aiadc/registration-exports/${taskId}`, {
-    method: 'GET',
-    silent: true,
   });

@@ -130,6 +130,80 @@ export interface CompetitionQueryParams {
   pageSize?: number;
 }
 
+export type CompetitionWorkspaceCapability =
+  | 'workspace.view'
+  | 'registration.read'
+  | 'registration.manage'
+  | 'review.read'
+  | 'review.manage'
+  | 'payment.read'
+  | 'certificate.read'
+  | 'certificate.manage'
+  | 'settings.manage'
+  | 'audit.read';
+
+export type CompetitionWorkspaceModule =
+  | 'overview'
+  | 'registrations'
+  | 'reviews'
+  | 'payments'
+  | 'certificates'
+  | 'settings'
+  | 'audit';
+
+export interface CompetitionWorkspaceRecord {
+  competitionUuid: string;
+  competitionNo?: string | null;
+  code?: string | null;
+  title: string;
+  status: CompetitionStatus;
+  activeRegistrationCount?: number;
+  capabilities: CompetitionWorkspaceCapability[];
+  allowedModules: CompetitionWorkspaceModule[];
+}
+
+export interface CompetitionWorkspaceQueryParams {
+  keyword?: string;
+  status?: CompetitionStatus;
+  module?: CompetitionWorkspaceModule;
+  pageNo?: number;
+  pageSize?: number;
+}
+
+export interface CompetitionWorkspaceRegistrationQuery {
+  pageNo?: number;
+  pageSize?: number;
+  status?: string;
+  keyword?: string;
+  includeSnapshots?: boolean;
+}
+
+export interface CompetitionWorkspacePaymentQuery {
+  pageNo?: number;
+  pageSize?: number;
+  keyword?: string;
+  paymentStatus?: string;
+  registrationStatus?: string;
+  providerCode?: string;
+}
+
+export interface CompetitionWorkspaceExportRequest {
+  status?: string;
+  keyword?: string;
+  registrationIds?: number[];
+}
+
+export interface CompetitionAuditRecord {
+  id: number;
+  competitionUuid: string;
+  operatorUserId?: number;
+  operatorUserUuid?: string;
+  action: string;
+  module: string;
+  detailMessage?: string;
+  createdAt?: string;
+}
+
 export interface PageResponse<T> {
   records: T[];
   total: number;
@@ -311,13 +385,6 @@ export interface CompetitionMaterialSubmissionRecord {
   submittedAt?: string | null;
   lockedAt?: string | null;
   values: CompetitionMaterialValueRecord[];
-}
-
-export interface CompetitionRegistrationExportRequest {
-  competitionId: number;
-  status?: string;
-  keyword?: string;
-  registrationIds?: number[];
 }
 
 export interface CompetitionRegistrationExportStartRecord {

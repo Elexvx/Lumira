@@ -13,13 +13,24 @@ export const buildTimeoutError = (timeoutMs: number) => {
   return new DOMException(`Request timed out after ${timeoutMs}ms`, 'TimeoutError');
 };
 
-export const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutOverrideMs?: number) => {
+export const fetchWithTimeout = async (
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutOverrideMs?: number,
+  externalSignal?: AbortSignal,
+) => {
   const timeoutMs = timeoutOverrideMs ?? resolveRequestTimeoutMs();
   if (!timeoutMs || timeoutMs <= 0) {
-    return fetch(input, init);
+    return fetch(input, { ...init, signal: externalSignal ?? init.signal });
   }
 
   const controller = new AbortController();
+  const abortFromExternalSignal = () => controller.abort(externalSignal?.reason);
+  if (externalSignal?.aborted) {
+    abortFromExternalSignal();
+  } else {
+    externalSignal?.addEventListener('abort', abortFromExternalSignal, { once: true });
+  }
   const timeoutId = window.setTimeout(() => controller.abort(buildTimeoutError(timeoutMs)), timeoutMs);
 
   try {
@@ -29,5 +40,6 @@ export const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestIn
     });
   } finally {
     window.clearTimeout(timeoutId);
+    externalSignal?.removeEventListener('abort', abortFromExternalSignal);
   }
 };

@@ -1665,6 +1665,7 @@ export interface UserDetail extends UserRecord {
   roleIds?: number[];
   deptIds?: number[];
   primaryDeptId?: number | null;
+  extraProfileValues?: Record<string, string> | null;
 }
 
 export interface OnlineSessionRecord {

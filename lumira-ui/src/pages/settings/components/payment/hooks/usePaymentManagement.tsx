@@ -9,6 +9,7 @@ import type { PaymentProviderSettings } from '@/types/api';
 import { requestPaymentApi } from '../paymentAuthenticatedRequest';
 import { paymentConnectivityStatusDisplayName } from '../paymentMessage';
 import { paymentEnvironmentDisplayName, paymentProviderDisplayName } from '../paymentDisplay';
+import { PAYMENT_PROVIDER_SETTINGS_QUERY_KEY } from '../paymentQueryKeys';
 import { databaseMessage } from '@/i18n/databaseMessage';
 
 const t = databaseMessage;
@@ -41,7 +42,7 @@ export type UsePaymentManagementParams = {
 
 export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMobile }: UsePaymentManagementParams) => {
   const paymentSettingsQuery = useQuery({
-    queryKey: ['payment-provider-settings'],
+    queryKey: PAYMENT_PROVIDER_SETTINGS_QUERY_KEY,
     queryFn: async () =>
       requestPaymentApi<PaymentProviderSettings[]>('/v1/payment/providers', {
         method: 'GET',

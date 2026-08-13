@@ -11,6 +11,8 @@ import { history, useLocation, useModel, useParams } from '@umijs/max';
 import { formatMessage } from '@/i18n/formatMessage';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { XMarkdown } from '@ant-design/x-markdown';
+import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
+import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
@@ -7001,6 +7003,7 @@ CompetitionStageAndMaterialPanel.displayName = 'CompetitionStageAndMaterialPanel
 const CompetitionSettingsPage = () => {
   const params = useParams<{ competitionUuid: string }>();
   const location = useLocation();
+  const workspace = useOptionalCompetitionWorkspace();
   const competitionUuid = params.competitionUuid || '';
   const initialNavigation = parseCompetitionSettingsNavigation(location.search);
   const [settings, setSettings] = useState<CompetitionSettingsRecord>();
@@ -7149,11 +7152,6 @@ const CompetitionSettingsPage = () => {
     ? competitionSettingsModules.find((item) => item.key === activeConfigModuleKey)
     : undefined;
 
-  const handleBack = useCallback(async () => {
-    const previousPanel = activePanelRef.current;
-    await transitionFromPanel(previousPanel, () => history.push('/competitions/management'));
-  }, [transitionFromPanel]);
-
   const handleSave = useCallback(async () => {
     if (!activePanelRef.current) {
       return;
@@ -7217,34 +7215,16 @@ const CompetitionSettingsPage = () => {
   }, [stageDetail, transitionFromPanel, updateNavigationUrl]);
 
   return (
-    <ManagementPage
-      title={formatMessage({ id: 'page.competition.settings.title', defaultMessage: '赛事配置' })}
-      extra={
-        <Space>
-          <Button disabled={transitioning} onClick={() => void handleBack()}>
-            {formatMessage({ id: 'page.competition.settings.back', defaultMessage: '返回' })}
-          </Button>
-          <Button type="primary" loading={saving} disabled={loading || transitioning || !settings} onClick={() => void handleSave()}>
-            保存
-          </Button>
-        </Space>
-      }
+    <CompetitionWorkspacePageFrame
+      embeddedInWorkspace={Boolean(workspace)}
+      title={null}
+      workspaceVariant="flush"
     >
-      <ManagementPageBody>
         {loading ? (
           <Card loading />
         ) : settings ? (
           <div className="competition-settings-layout">
             <aside className="competition-settings-sidebar">
-              <Typography.Title level={5} ellipsis={{ tooltip: settings.competition.title }}>
-                {settings.competition.title}
-              </Typography.Title>
-              <Typography.Text type="secondary">
-                {formatMessage(
-                  { id: 'page.competition.settings.no', defaultMessage: '编号 {competitionNo}' },
-                  { competitionNo: settings.competition.competitionNo || settings.competition.code },
-                )}
-              </Typography.Text>
               <Menu
                 mode="inline"
                 selectedKeys={[activeKey]}
@@ -7339,13 +7319,22 @@ const CompetitionSettingsPage = () => {
                   onSettingsSaved={setSettings}
                 />
               ) : null}
+              <div className="competition-settings-content__footer">
+                <Button
+                  type="primary"
+                  loading={saving}
+                  disabled={loading || transitioning || !settings}
+                  onClick={() => void handleSave()}
+                >
+                  保存
+                </Button>
+              </div>
             </main>
           </div>
         ) : (
           <Alert type="error" showIcon title={formatMessage({ id: 'page.competition.settings.notFound', defaultMessage: '未找到赛事配置' })} />
         )}
-      </ManagementPageBody>
-    </ManagementPage>
+    </CompetitionWorkspacePageFrame>
   );
 };
 

@@ -18,6 +18,7 @@ const LOWERCASE = 'abcdefghijkmnopqrstuvwxyz';
 const DIGITS = '23456789';
 const SPECIAL = '!@#$%*-_=+?';
 const ALL_CHARACTERS = `${UPPERCASE}${LOWERCASE}${DIGITS}${SPECIAL}`;
+export const LOCAL_DEFAULT_ADMIN_PASSWORD = '123456';
 const BOOTSTRAP_REQUIRED_MESSAGE = 'Built-in administrator is pending initialization';
 const OUTCOME_PATTERN = /Administrator credential bootstrap outcome: (INITIALIZED|ALREADY_INITIALIZED|ADOPTED_EXISTING_CREDENTIAL)/;
 
@@ -214,9 +215,13 @@ export function ensureLocalAdminCredential({
     }
     assertSafeSecretFile(secretPath);
   } else {
-    const secret = ensureLocalAdminSecret(secretPath, passwordFactory);
+    const useLocalDefault = passwordFactory === undefined;
+    const secret = ensureLocalAdminSecret(
+      secretPath,
+      passwordFactory ?? (() => LOCAL_DEFAULT_ADMIN_PASSWORD),
+    );
     createdThisRun = secret.createdThisRun;
-    initializationSource = 'LOCAL_RANDOM';
+    initializationSource = useLocalDefault ? 'LOCAL_DEFAULT' : 'LOCAL_RANDOM';
   }
 
   const initialized = runBootstrap({ passwordFile: secretPath, initializationSource });

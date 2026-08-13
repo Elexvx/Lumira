@@ -775,12 +775,14 @@ public class SystemProfileSettingsAppService {
         }
         return switch (fieldKey) {
             case "avatarUrl" -> StringUtils.hasText(currentUser.getAvatarUrl());
+            case "nickname" -> StringUtils.hasText(currentUser.getNickname());
             case "realName" -> StringUtils.hasText(currentUser.getRealName());
             case "mobile" -> StringUtils.hasText(currentUser.getMobile());
             case "email" -> StringUtils.hasText(currentUser.getEmail());
             case "birthMonth" -> StringUtils.hasText(currentUser.getBirthMonth());
             case "gender" -> StringUtils.hasText(currentUser.getGender());
             case "region" -> StringUtils.hasText(currentUser.getRegion());
+            case "availableTime" -> StringUtils.hasText(currentUser.getAvailableTime());
             case "idCardNumber" -> StringUtils.hasText(currentUser.getIdCardNumber());
             default -> currentUser.getExtraProfileValues() != null
                     && StringUtils.hasText(currentUser.getExtraProfileValues().get(fieldKey));
@@ -793,12 +795,14 @@ public class SystemProfileSettingsAppService {
         }
         return switch (fieldKey) {
             case "avatarUrl" -> completed ? "Uploaded" : "Not uploaded";
+            case "nickname" -> defaultIfBlank(currentUser.getNickname(), "-");
             case "realName" -> defaultIfBlank(currentUser.getRealName(), "-");
             case "mobile" -> maskMobile(currentUser.getMobile());
             case "email" -> maskEmail(currentUser.getEmail());
             case "birthMonth" -> defaultIfBlank(currentUser.getBirthMonth(), "-");
             case "gender" -> defaultIfBlank(currentUser.getGender(), "-");
             case "region" -> defaultIfBlank(currentUser.getRegion(), "-");
+            case "availableTime" -> defaultIfBlank(currentUser.getAvailableTime(), "-");
             case "idCardNumber" -> maskIdCardNumber(currentUser.getIdCardNumber());
             default -> currentUser.getExtraProfileValues() == null
                     ? "-"

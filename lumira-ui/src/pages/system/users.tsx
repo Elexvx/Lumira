@@ -5,13 +5,13 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { ProDescriptions } from '@ant-design/pro-components';
 import { ApartmentOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Checkbox, DatePicker, Empty, Form, Input, Modal, Select, Space, Spin, Transfer, Tree, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, DatePicker, Empty, Form, Input, Modal, Select, Space, Spin, Tabs, Transfer, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useEffect, useMemo, useState } from 'react';
 import { useUserManagement } from './users/hooks/useUserManagement';
 import './users.css';
 import { useDictOptions, type DictOption } from '@/hooks/useDictOptions';
-import type { DepartmentRecord, UserDetail } from '@/types/api';
+import type { DepartmentRecord, ProfileFieldSetting, UserDetail } from '@/types/api';
 import { maskEmail, maskIdCardNumber, maskMobile } from '@/utils/sensitive';
 import type { FormProps } from 'antd';
 import type { Rule } from 'antd/es/form';
@@ -21,6 +21,7 @@ import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } 
 import { protectedUserStatusOptions } from './users/options';
 import { databaseMessage } from '@/i18n/databaseMessage';
 import { resolveRuntimeLocale } from '@/i18n/locale';
+import { formatMessage } from '@/i18n/formatMessage';
 import { UserAvatar } from '@/components/UserAvatar';
 
 const t = databaseMessage;
@@ -280,7 +281,77 @@ const buildPasswordPolicyHint = (securitySettings: SecuritySettings) => {
   return parts.join('，');
 };
 
-const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, protectedAdminSelected, securitySettings, genderOptions, userStatusOptions }: {
+const profileFieldName = (field: ProfileFieldSetting) =>
+  field.custom ? ['extraProfileValues', field.fieldKey] : field.fieldKey;
+
+const isDateProfileField = (field: ProfileFieldSetting) =>
+  ['DATE', 'MONTH'].includes((field.fieldType || '').toUpperCase());
+
+const renderProfileFieldInput = (field: ProfileFieldSetting, genderOptions: DictOption[]) => {
+  const fieldType = (field.fieldType || 'TEXT').toUpperCase();
+  const placeholder = field.placeholder || field.fieldLabel || undefined;
+
+  if (field.fieldKey === 'birthMonth' || fieldType === 'MONTH') {
+    return (
+      <DatePicker
+        picker="month"
+        placeholder={placeholder}
+        format={resolveRuntimeLocale() === 'en-US' ? 'YYYY-MM' : 'YYYY年M月'}
+        style={{ width: '100%' }}
+      />
+    );
+  }
+  if (fieldType === 'DATE') {
+    return (
+      <DatePicker
+        placeholder={placeholder}
+        format={resolveRuntimeLocale() === 'en-US' ? 'YYYY-MM-DD' : 'YYYY年M月D日'}
+        style={{ width: '100%' }}
+      />
+    );
+  }
+  if (field.fieldKey === 'gender' && genderOptions.length > 0) {
+    return <Select allowClear options={genderOptions} placeholder={placeholder} />;
+  }
+  if (field.fieldKey === 'availableTime' || fieldType === 'TEXTAREA') {
+    return <Input.TextArea rows={4} maxLength={1000} placeholder={placeholder} />;
+  }
+  if (fieldType === 'NUMBER') {
+    return <Input type="number" placeholder={placeholder} />;
+  }
+  if (fieldType === 'EMAIL' || field.fieldKey === 'email') {
+    return <Input type="email" maxLength={320} placeholder={placeholder} />;
+  }
+  if (fieldType === 'MOBILE' || field.fieldKey === 'mobile') {
+    return <Input type="tel" maxLength={32} placeholder={placeholder} />;
+  }
+  return <Input maxLength={1000} placeholder={placeholder} />;
+};
+
+const profileFieldRules = (field: ProfileFieldSetting): Rule[] | undefined => {
+  const rules: Rule[] = [];
+  if (field.required) {
+    rules.push({
+      required: true,
+      message: formatMessage(
+        { id: 'ui.system.users.customFieldRequired', defaultMessage: 'Please enter {fieldLabel}' },
+        { fieldLabel: field.fieldLabel },
+      ),
+    });
+  }
+  if (field.fieldKey === 'mobile') {
+    rules.push({ validator: validateOptionalChinaMobile });
+  }
+  if (field.fieldKey === 'idCardNumber') {
+    rules.push({ validator: validateOptionalChinaIdCard });
+  }
+  if (field.fieldKey === 'email' || (field.fieldType || '').toUpperCase() === 'EMAIL') {
+    rules.push({ type: 'email', message: t('ui.system.users.pleaseEnterAValidEmailAddress') });
+  }
+  return rules.length > 0 ? rules : undefined;
+};
+
+const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, protectedAdminSelected, securitySettings, genderOptions, userStatusOptions, profileFields }: {
   formProps: FormProps;
   editingId: number | null;
   roleOptions: { label: string; value: number }[];
@@ -289,9 +360,19 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
   securitySettings: SecuritySettings;
   genderOptions: DictOption[];
   userStatusOptions: DictOption[];
+  profileFields: ProfileFieldSetting[];
 }) => (
   <Form {...formProps}>
-    <Form.Item
+    <Tabs
+      defaultActiveKey="system"
+      destroyOnHidden={false}
+      items={[
+        {
+          key: 'system',
+          label: formatMessage({ id: 'ui.system.users.systemFields', defaultMessage: 'System information' }),
+          children: (
+            <>
+              <Form.Item
       name="username"
       label={t('ui.system.users.username')}
       rules={[
@@ -302,9 +383,9 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
         },
       ]}
       normalize={trimString}
-    >
-      <Input autoComplete="username" placeholder={t('ui.system.users.eGZhangsan')} />
-    </Form.Item>
+              >
+                <Input autoComplete="username" placeholder={t('ui.system.users.eGZhangsan')} />
+              </Form.Item>
     <Form.Item name="roleIds" label={t('ui.system.users.roles')} rules={[{ required: true, message: t('ui.system.users.pleaseSelectRoles') }]} extra={t('ui.system.users.youCanAssignOneOrMoreRolesTo')}>
       <Select mode="multiple" allowClear options={roleOptions} placeholder={t('ui.system.users.selectRoles')} />
     </Form.Item>
@@ -349,36 +430,42 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
     <Form.Item name="status" label={t('ui.system.users.status')} rules={[{ required: true, message: t('ui.system.users.pleaseSelectAStatus') }]}>
       <Select disabled={protectedAdminSelected} options={protectedUserStatusOptions(userStatusOptions, protectedAdminSelected)} />
     </Form.Item>
-    <Form.Item name="mobile" label={t('ui.system.users.mobileNumber')} rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
-      <Input />
-    </Form.Item>
-    <Form.Item name="idCardNumber" label={t('ui.system.users.idCardNumber')} rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
-      <Input />
-    </Form.Item>
-    <Form.Item name="nickname" label={t('ui.system.users.nickname')} normalize={trimString}>
-      <Input />
-    </Form.Item>
-    <Form.Item name="realName" label={t('ui.system.users.fullName')} normalize={trimString}>
-      <Input />
-    </Form.Item>
-    <Form.Item name="email" label={t('ui.system.users.email')} rules={[{ type: 'email', message: t('ui.system.users.pleaseEnterAValidEmailAddress') }]} normalize={trimString}>
-      <Input />
-    </Form.Item>
-    <Form.Item name="avatarUrl" label={t('ui.system.users.avatarUrl')} normalize={trimString}>
-      <Input />
-    </Form.Item>
-    <Form.Item name="birthMonth" label={t('ui.system.users.birthMonth')}>
-      <DatePicker picker="month" placeholder={t('ui.system.users.selectBirthMonth')} format={resolveRuntimeLocale() === 'en-US' ? 'YYYY-MM' : 'YYYY年MM月'} style={{ width: '100%' }} />
-    </Form.Item>
-    <Form.Item name="gender" label={t('ui.system.users.gender')}>
-      <Select allowClear options={genderOptions} placeholder={t('ui.system.users.selectGender')} />
-    </Form.Item>
-    <Form.Item name="region" label={t('ui.system.users.region')} normalize={trimString}>
-      <Input />
-    </Form.Item>
-    <Form.Item name="availableTime" label={t('ui.system.users.availableTime')} normalize={trimString}>
-      <Input.TextArea rows={2} placeholder={t('ui.system.users.enterAvailableTimeEGMonFri09')} />
-    </Form.Item>
+            </>
+          ),
+        },
+        {
+          key: 'custom',
+          label: formatMessage({ id: 'ui.system.users.customFields', defaultMessage: 'Personal information' }),
+          children: profileFields.length ? (
+            <>
+              <Alert
+                type="info"
+                showIcon
+                message={formatMessage({ id: 'ui.system.users.customFieldsHint', defaultMessage: 'Personal profile fields are managed in Profile field settings.' })}
+                style={{ marginBottom: 'var(--saas-spacing-100)' }}
+              />
+              {profileFields.map((field) => (
+                <Form.Item
+                  key={field.fieldKey}
+                  name={profileFieldName(field)}
+                  label={field.fieldLabel}
+                  extra={field.fieldDescription || undefined}
+                  normalize={isDateProfileField(field) || field.fieldKey === 'birthMonth' ? undefined : trimString}
+                  rules={profileFieldRules(field)}
+                >
+                  {renderProfileFieldInput(field, genderOptions)}
+                </Form.Item>
+              ))}
+            </>
+          ) : (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={formatMessage({ id: 'ui.system.users.noCustomFields', defaultMessage: 'No enabled personal profile fields' })}
+            />
+          ),
+        },
+      ]}
+    />
   </Form>
 );
 
@@ -403,6 +490,7 @@ const UserManagementPage = () => {
     securitySettings,
     roleOptions,
     departmentOptions,
+    profileFields,
     departments,
     departmentLoading,
     selectedDepartmentId,
@@ -495,6 +583,7 @@ const UserManagementPage = () => {
           securitySettings={securitySettings}
           genderOptions={genderOptions}
           userStatusOptions={userStatusOptions}
+          profileFields={profileFields}
         />
       </ManagementDrawer>
 

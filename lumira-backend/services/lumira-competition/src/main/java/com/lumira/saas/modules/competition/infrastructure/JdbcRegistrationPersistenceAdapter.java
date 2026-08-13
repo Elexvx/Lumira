@@ -142,6 +142,10 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
             params.add(search.ownerUserId());
             params.add(search.ownerUserUuid());
         }
+        if (search.competitionId() != null) {
+            where.append(" and cr.competition_id = ?");
+            params.add(search.competitionId());
+        }
         if (StringUtils.hasText(search.keyword())) {
             where.append("""
                      and (

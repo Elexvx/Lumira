@@ -5,10 +5,37 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.TrustedCurrentUserResolver;
+import org.springframework.util.StringUtils;
 
 /** Shared trusted-request refresh policy for the Competition bounded context. */
 public final class CompetitionAuthenticationTrust {
+    static final String ASYNC_EXPORT_SESSION_PREFIX = "internal-registration-export-task-";
+
     private CompetitionAuthenticationTrust() {
+    }
+
+    /**
+     * Creates the session marker used by the registration export snapshot.
+     * This is deliberately not a real web session and must not be sent to Redis
+     * session authentication.
+     */
+    static String asyncExportSessionId(Long taskId) {
+        if (taskId == null || taskId <= 0) {
+            throw new IllegalArgumentException("Async export task id must be positive");
+        }
+        return ASYNC_EXPORT_SESSION_PREFIX + taskId;
+    }
+
+    static boolean isAsyncExportSession(CurrentUser currentUser) {
+        if (currentUser == null || !StringUtils.hasText(currentUser.getSessionId())) {
+            return false;
+        }
+        String sessionId = currentUser.getSessionId().trim();
+        if (!sessionId.startsWith(ASYNC_EXPORT_SESSION_PREFIX)) {
+            return false;
+        }
+        String taskId = sessionId.substring(ASYNC_EXPORT_SESSION_PREFIX.length());
+        return !taskId.isEmpty() && taskId.chars().allMatch(Character::isDigit);
     }
 
     public static void refresh(
@@ -16,7 +43,12 @@ public final class CompetitionAuthenticationTrust {
             TrustedCurrentUserResolver trustedCurrentUserResolver,
             boolean enforceTrustedUserResolution
     ) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)
+                || isAsyncExportSession(currentUser)) {
+            // Export workers rebuild this user with TrustedUserSnapshotResolver
+            // before each business operation. The ephemeral marker intentionally
+            // has no Redis session ticket, so resolving it here would report a
+            // false SESSION_EXPIRED failure.
             return;
         }
         if (trustedCurrentUserResolver == null) {

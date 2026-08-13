@@ -55,7 +55,7 @@ test('native local startup generates unconfigured runtime secrets without shippi
   assert.match(startLocal, /DB_PASSWORD:\s*configuredDbPassword \?\? ''/);
   assert.match(startLocal, /DB_PASSWORD must be explicitly configured/);
 
-  for (const key of runtimeSecretKeys) {
+  for (const key of runtimeSecretKeys.filter((key) => key !== 'FIELD_SECRET')) {
     assert.match(
       startLocal,
       new RegExp(`${key}:\\s*localRuntimeSecret\\(process\\.env\\.${key}, fileEnv\\.${key}\\)`),
@@ -63,6 +63,10 @@ test('native local startup generates unconfigured runtime secrets without shippi
     );
     assert.equal(envTemplateValue(key), '', `${key} must not have a usable value in the committed local template`);
   }
+
+  assert.match(startLocal, /persistentLocalRuntimeSecret\(\s*localFieldSecretPath/);
+  assert.match(startLocal, /writeFileSync\(secretPath, `\$\{generated\}\\n`, \{ encoding: 'utf8', flag: 'wx', mode: 0o600 \}\)/);
+  assert.equal(envTemplateValue('FIELD_SECRET'), '', 'FIELD_SECRET must not have a usable value in the committed local template');
 
   assert.equal(envTemplateValue('DB_PASSWORD'), '', 'the committed template must not ship a database password');
   assert.equal(envTemplateValue('REDIS_PASSWORD'), '', 'passwordless local Redis should use an explicit empty value');

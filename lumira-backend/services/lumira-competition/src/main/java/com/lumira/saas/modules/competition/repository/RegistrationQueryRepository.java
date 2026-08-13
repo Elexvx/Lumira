@@ -73,6 +73,7 @@ public interface RegistrationQueryRepository {
     record PaymentRecordSearch(
             Long ownerUserId,
             String ownerUserUuid,
+            Long competitionId,
             String keyword,
             String paymentStatus,
             String registrationStatus,

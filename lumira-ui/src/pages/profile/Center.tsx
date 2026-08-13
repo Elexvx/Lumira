@@ -29,10 +29,17 @@ const GENDER_OPTIONS = [
 
 const renderCustomProfileInput = (field: ProfileFieldSetting) => {
   const placeholder = field.placeholder || t('ui.profile.center.enter', { fieldLabel: field.fieldLabel });
-  if (field.fieldType === 'TEXTAREA') {
+  const fieldType = (field.fieldType || 'TEXT').toUpperCase();
+  if (fieldType === 'MONTH') {
+    return <DatePicker picker="month" format="YYYY年M月" placeholder={placeholder} style={{ width: '100%' }} />;
+  }
+  if (fieldType === 'DATE') {
+    return <DatePicker format="YYYY年M月D日" placeholder={placeholder} style={{ width: '100%' }} />;
+  }
+  if (fieldType === 'TEXTAREA') {
     return <Input.TextArea rows={4} maxLength={1000} placeholder={placeholder} />;
   }
-  if (field.fieldType === 'NUMBER') {
+  if (fieldType === 'NUMBER') {
     return <Input type="number" placeholder={placeholder} />;
   }
   return <Input maxLength={1000} placeholder={placeholder} />;
@@ -762,11 +769,13 @@ const ProfileBasicEditDrawer = ({
               <Input value={currentUser?.username || '-'} disabled />
             </Form.Item>
           </Col>
-          <Col xs={24}>
-            <Form.Item name="nickname" label={t('ui.profile.center.nickname')}>
-              <Input placeholder={t('ui.profile.center.enterANickname')} />
-            </Form.Item>
-          </Col>
+          {visibleProfileFields.has('nickname') ? (
+            <Col xs={24}>
+              <Form.Item name="nickname" label={t('ui.profile.center.nickname')}>
+                <Input placeholder={t('ui.profile.center.enterANickname')} />
+              </Form.Item>
+            </Col>
+          ) : null}
           {visibleProfileFields.has('realName') ? (
             <Col xs={24}>
               <Form.Item name="realName" label={t('ui.profile.center.fullName')}>
@@ -795,6 +804,13 @@ const ProfileBasicEditDrawer = ({
               </Form.Item>
             </Col>
           ) : null}
+          {visibleProfileFields.has('availableTime') ? (
+            <Col xs={24}>
+              <Form.Item name="availableTime" label={t('ui.system.users.availableTime')}>
+                <Input.TextArea rows={4} placeholder={t('ui.system.users.enterAvailableTimeEGMonFri09')} />
+              </Form.Item>
+            </Col>
+          ) : null}
           {visibleProfileFields.has('idCardNumber') ? (
             <Col xs={24}>
               <Form.Item name="idCardNumber" label={t('ui.profile.center.idCardNumber')} rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
@@ -807,7 +823,7 @@ const ProfileBasicEditDrawer = ({
               <Form.Item
                 name={['extraProfileValues', field.fieldKey]}
                 label={field.fieldLabel}
-                normalize={trimString}
+                normalize={['DATE', 'MONTH'].includes((field.fieldType || '').toUpperCase()) ? undefined : trimString}
                 rules={field.required ? [{ required: true, message: t('ui.profile.center.pleaseEnter.a5d392a3', { fieldLabel: field.fieldLabel }) }] : undefined}
               >
                 {renderCustomProfileInput(field)}
@@ -953,6 +969,7 @@ const ProfileCenterOverviewSection = ({
                 ...(visibleProfileFields.has('birthMonth') ? [{ key: 'birthMonth', label: t('ui.profile.center.birthMonth'), children: currentUser?.birthMonth || '-' }] : []),
                 ...(visibleProfileFields.has('gender') ? [{ key: 'gender', label: t('ui.profile.center.gender'), children: GENDER_OPTIONS.find((item) => item.value === currentUser?.gender)?.label || '-' }] : []),
                 ...(visibleProfileFields.has('region') ? [{ key: 'region', label: t('ui.profile.center.region'), children: currentUser?.region || '-' }] : []),
+                ...(visibleProfileFields.has('availableTime') ? [{ key: 'availableTime', label: t('ui.system.users.availableTime'), children: currentUser?.availableTime || '-' }] : []),
                 ...(visibleProfileFields.has('idCardNumber') ? [{ key: 'idCardNumber', label: t('ui.profile.center.idCardNumber'), children: currentUser?.idCardNumber || '-' }] : []),
                 ...visibleCustomProfileFields.map((field) => ({
                   key: field.fieldKey,

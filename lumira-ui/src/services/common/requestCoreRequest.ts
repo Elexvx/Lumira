@@ -33,6 +33,7 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
           credentials: options.credentials,
         },
         options.timeoutMs,
+        options.signal,
       );
       const responseData = await parseResponseData(response);
       const httpStatus = response.status;

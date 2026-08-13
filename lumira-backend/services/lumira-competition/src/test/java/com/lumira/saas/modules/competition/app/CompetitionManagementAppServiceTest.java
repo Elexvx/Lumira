@@ -491,7 +491,8 @@ class CompetitionManagementAppServiceTest {
         assertThatThrownBy(() -> service.deleteCompetition(admin(), 11L))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
-                    assertThat(exception.getUserMessage()).contains("cannot be deleted");
+                    assertThat(exception.getMessage()).isEqualTo("Competition has registrations and cannot be deleted");
+                    assertThat(exception.getUserMessage()).isEqualTo("赛事已有报名，无法删除");
                 });
         verify(jdbcTemplate, never()).update(contains("update aiadc_competition"), any());
     }

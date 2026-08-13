@@ -405,6 +405,43 @@ class PaymentManagementAppServiceTest {
     }
 
     @Test
+    void providerSettingsShouldFallbackWhenStoredDisplayNameWasReplacedByQuestionMarks() {
+        PaymentProviderConfigRow row = new PaymentProviderConfigRow();
+        row.setId(61L);
+        row.setProviderCode("builtin_mock");
+        row.setProviderName("??????");
+        row.setEnabled(1);
+        row.setConfigured(1);
+        row.setEnvironment("SANDBOX");
+        row.setEncryptedConfigJson("encrypted-mock");
+
+        PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
+        PaymentProviderSettingsDTO stored = new PaymentProviderSettingsDTO();
+        stored.setProviderCode("builtin_mock");
+        stored.setDisplayName("??????");
+        stored.setEnabledScenes(List.of("QR_CODE"));
+        stored.setCurrency("CNY");
+        doReturn(stored).when(cryptoService).decryptJson("encrypted-mock", PaymentProviderSettingsDTO.class);
+
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                new ExistingSuccessJdbcTemplate(row),
+                new ObjectMapper(),
+                cryptoService,
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi())
+        );
+        BuiltinMockPaymentAvailability availability = mock(BuiltinMockPaymentAvailability.class);
+        when(availability.isEnabled()).thenReturn(true);
+        service.setBuiltinMockPaymentAvailability(availability);
+
+        PaymentProviderSettingsDTO result = service.paymentProviderSettings(currentUser(), "builtin_mock");
+
+        assertThat(result.getProviderName()).isEqualTo("内置模拟支付");
+        assertThat(result.getDisplayName()).isEqualTo("内置模拟支付");
+    }
+
+    @Test
     void builtinMockUpdateShouldOnlyPersistPresentationFields() {
         PaymentProviderConfigRow row = new PaymentProviderConfigRow();
         row.setId(61L);

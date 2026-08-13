@@ -327,6 +327,22 @@ public class ExportTaskService implements ExportTaskPort {
         );
     }
 
+    @Override
+    public String getTaskRequestPayload(CurrentUser currentUser, Long taskId, String requiredPermission) {
+        CurrentUser trustedUser = resolveInteractiveUser(currentUser, requiredPermission);
+        requirePositiveId(taskId, "Export task id");
+        ExportTaskEntity entity = exportTaskMapper.selectOne(new LambdaQueryWrapper<ExportTaskEntity>()
+                .select(ExportTaskEntity::getRequestPayload)
+                .eq(ExportTaskEntity::getId, taskId)
+                .eq(ExportTaskEntity::getCreatedBy, trustedUser.getUserId())
+                .eq(ExportTaskEntity::getCreatedByUuid, trustedUser.getUserUuid())
+                .eq(ExportTaskEntity::getDeleted, 0));
+        if (entity == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Export task does not exist");
+        }
+        return entity.getRequestPayload();
+    }
+
     private LambdaUpdateWrapper<ExportTaskEntity> ownerScopedUpdate(CurrentUser trustedUser, Long taskId) {
         return new LambdaUpdateWrapper<ExportTaskEntity>()
                 .eq(ExportTaskEntity::getId, taskId)

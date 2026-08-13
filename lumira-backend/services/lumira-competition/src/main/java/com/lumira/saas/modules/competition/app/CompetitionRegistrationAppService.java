@@ -244,9 +244,34 @@ public class CompetitionRegistrationAppService {
             String registrationStatus,
             String providerCode
     ) {
+        return listPaymentRecords(
+                currentUser,
+                pageNo,
+                pageSize,
+                null,
+                keyword,
+                paymentStatus,
+                registrationStatus,
+                providerCode
+        );
+    }
+
+    public PageResponse<CompetitionRegistrationVO.PaymentRecord> listPaymentRecords(
+            CurrentUser currentUser,
+            long pageNo,
+            long pageSize,
+            Long competitionId,
+            String keyword,
+            String paymentStatus,
+            String registrationStatus,
+            String providerCode
+    ) {
         requirePaymentOrderViewPermission(currentUser);
         long safePageNo = Math.max(1L, pageNo);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
+        if (competitionId != null) {
+            requirePositiveId(competitionId, "Competition id must be positive");
+        }
         Long ownerUserId = null;
         String ownerUserUuid = null;
         if (!canViewAllPaymentRecords(currentUser)) {
@@ -261,6 +286,7 @@ public class CompetitionRegistrationAppService {
                 new RegistrationQueryRepository.PaymentRecordSearch(
                         ownerUserId,
                         ownerUserUuid,
+                        competitionId,
                         normalizedKeyword,
                         normalizedPaymentStatus == null ? null : normalizedPaymentStatus.toUpperCase(Locale.ROOT),
                         normalizedRegistrationStatus == null ? null : normalizedRegistrationStatus.toUpperCase(Locale.ROOT),
@@ -1212,7 +1238,11 @@ public class CompetitionRegistrationAppService {
             throw biz(ErrorCode.UNAUTHORIZED, "Payment owner username is required");
         }
         if (!StringUtils.hasText(owner.status()) || !"ENABLED".equalsIgnoreCase(owner.status().trim())) {
-            throw biz(ErrorCode.UNAUTHORIZED, "Payment owner is disabled");
+            throw new BizException(
+                    ErrorCode.UNAUTHORIZED,
+                    "Payment owner is disabled",
+                    "支付所属用户已被禁用"
+            );
         }
         return owner.userUuid().trim();
     }

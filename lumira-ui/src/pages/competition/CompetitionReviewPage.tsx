@@ -32,9 +32,9 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ManagementPage } from '@/features/management/ManagementPage';
-import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
 import {
+  listCompetitionWorkspaceStages,
   listCompetitions,
   listCompetitionStages,
 } from '@/services/competition/api';
@@ -75,6 +75,30 @@ import {
   startReviewBatch,
   confirmReviewAssignments,
   submitReviewSheet,
+  aggregateWorkspaceReviewBatch,
+  assignWorkspaceReviewExperts,
+  activateWorkspaceReviewPlan,
+  autoAssignWorkspaceReviewExperts,
+  confirmWorkspaceReviewAssignments,
+  createWorkspaceReviewBatch,
+  createWorkspaceReviewPlan,
+  decideWorkspaceReviewCandidate,
+  finalizeWorkspaceReviewBatch,
+  freezeWorkspaceReviewBatch,
+  listWorkspaceReviewAggregates,
+  listWorkspaceReviewAppeals,
+  listWorkspaceReviewAssignments,
+  listWorkspaceReviewBatches,
+  listWorkspaceReviewCandidates,
+  listWorkspaceReviewPlans,
+  listWorkspaceReviewRoster,
+  publishWorkspaceReviewBatch,
+  reopenWorkspaceReviewBatchForCorrection,
+  resolveWorkspaceReviewAppeal,
+  saveWorkspaceReviewRoster,
+  scanWorkspaceReviewCheckIn,
+  sendWorkspaceReviewInvitations,
+  startWorkspaceReviewBatch,
 } from '@/services/review/api';
 import type {
   ReviewAdminAssignment,
@@ -92,6 +116,7 @@ import type {
 } from '@/services/review/types';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
+import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
 
 type PlanFormValues = Omit<ReviewPlanCreatePayload, 'competitionId' | 'stageId'>;
 type BatchFormValues = {
@@ -276,6 +301,82 @@ const ReviewAdminWorkbench = () => {
   const [scannerActive, setScannerActive] = useState(false);
   const [scannerError, setScannerError] = useState('');
   const scannerVideoRef = useRef<HTMLVideoElement>(null);
+  const workspaceContext = useOptionalCompetitionWorkspace();
+  const workspaceUuid = workspaceContext?.competitionUuid;
+  const reviewApi = useMemo(() => ({
+    listPlans: (nextCompetitionId?: number, nextStageId?: number) => workspaceUuid
+      ? listWorkspaceReviewPlans(workspaceUuid, { stageId: nextStageId })
+      : listReviewPlans({ competitionId: nextCompetitionId, stageId: nextStageId }),
+    createPlan: (data: ReviewPlanCreatePayload) => workspaceUuid
+      ? createWorkspaceReviewPlan(workspaceUuid, data)
+      : createReviewPlan(data),
+    activatePlan: (nextPlanId: number) => workspaceUuid
+      ? activateWorkspaceReviewPlan(workspaceUuid, nextPlanId)
+      : activateReviewPlan(nextPlanId),
+    listBatches: (nextPlanId?: number) => workspaceUuid
+      ? listWorkspaceReviewBatches(workspaceUuid, { planId: nextPlanId })
+      : listReviewBatches({ planId: nextPlanId }),
+    createBatch: (data: Parameters<typeof createReviewBatch>[0]) => workspaceUuid
+      ? createWorkspaceReviewBatch(workspaceUuid, data)
+      : createReviewBatch(data),
+    freezeBatch: (nextBatchId: number, registrationIds?: number[]) => workspaceUuid
+      ? freezeWorkspaceReviewBatch(workspaceUuid, nextBatchId, registrationIds)
+      : freezeReviewBatch(nextBatchId, registrationIds),
+    listCandidates: (nextBatchId: number) => workspaceUuid
+      ? listWorkspaceReviewCandidates(workspaceUuid, nextBatchId)
+      : listReviewCandidates(nextBatchId),
+    listAssignments: (nextBatchId: number) => workspaceUuid
+      ? listWorkspaceReviewAssignments(workspaceUuid, nextBatchId)
+      : listReviewAssignments(nextBatchId),
+    listRoster: (nextBatchId: number) => workspaceUuid
+      ? listWorkspaceReviewRoster(workspaceUuid, nextBatchId)
+      : listReviewRoster(nextBatchId),
+    saveRoster: (nextBatchId: number, expertIds: number[]) => workspaceUuid
+      ? saveWorkspaceReviewRoster(workspaceUuid, nextBatchId, expertIds)
+      : saveReviewRoster(nextBatchId, expertIds),
+    confirmAssignments: (nextBatchId: number) => workspaceUuid
+      ? confirmWorkspaceReviewAssignments(workspaceUuid, nextBatchId)
+      : confirmReviewAssignments(nextBatchId),
+    sendInvitations: (nextBatchId: number) => workspaceUuid
+      ? sendWorkspaceReviewInvitations(workspaceUuid, nextBatchId)
+      : sendReviewInvitations(nextBatchId),
+    scanCheckIn: (nextBatchId: number, qrToken: string) => workspaceUuid
+      ? scanWorkspaceReviewCheckIn(workspaceUuid, nextBatchId, qrToken)
+      : scanReviewCheckIn(nextBatchId, qrToken),
+    assignExperts: (nextBatchId: number, data: Parameters<typeof assignReviewExperts>[1]) => workspaceUuid
+      ? assignWorkspaceReviewExperts(workspaceUuid, nextBatchId, data)
+      : assignReviewExperts(nextBatchId, data),
+    autoAssign: (nextBatchId: number, data: Parameters<typeof autoAssignReviewExperts>[1]) => workspaceUuid
+      ? autoAssignWorkspaceReviewExperts(workspaceUuid, nextBatchId, data)
+      : autoAssignReviewExperts(nextBatchId, data),
+    startBatch: (nextBatchId: number) => workspaceUuid
+      ? startWorkspaceReviewBatch(workspaceUuid, nextBatchId)
+      : startReviewBatch(nextBatchId),
+    listAggregates: (nextBatchId: number) => workspaceUuid
+      ? listWorkspaceReviewAggregates(workspaceUuid, nextBatchId)
+      : listReviewAggregates(nextBatchId),
+    aggregateBatch: (nextBatchId: number) => workspaceUuid
+      ? aggregateWorkspaceReviewBatch(workspaceUuid, nextBatchId)
+      : aggregateReviewBatch(nextBatchId),
+    decideCandidate: (nextBatchId: number, candidateId: number, decision: ReviewDecision, reason?: string) => workspaceUuid
+      ? decideWorkspaceReviewCandidate(workspaceUuid, nextBatchId, candidateId, decision, reason)
+      : decideReviewCandidate(nextBatchId, candidateId, decision, reason),
+    finalizeBatch: (nextBatchId: number) => workspaceUuid
+      ? finalizeWorkspaceReviewBatch(workspaceUuid, nextBatchId)
+      : finalizeReviewBatch(nextBatchId),
+    publishBatch: (nextBatchId: number) => workspaceUuid
+      ? publishWorkspaceReviewBatch(workspaceUuid, nextBatchId)
+      : publishReviewBatch(nextBatchId),
+    reopenBatch: (nextBatchId: number, reason: string) => workspaceUuid
+      ? reopenWorkspaceReviewBatchForCorrection(workspaceUuid, nextBatchId, reason)
+      : reopenReviewBatchForCorrection(nextBatchId, reason),
+    listAppeals: (params: { batchId?: number; status?: string } = {}) => workspaceUuid
+      ? listWorkspaceReviewAppeals(workspaceUuid, params)
+      : listReviewAppeals(params),
+    resolveAppeal: (appealId: number, decision: 'ACCEPTED' | 'REJECTED', resolution: string) => workspaceUuid
+      ? resolveWorkspaceReviewAppeal(workspaceUuid, appealId, decision, resolution)
+      : resolveReviewAppeal(appealId, decision, resolution),
+  }), [workspaceUuid]);
 
   const canManagePlans = access.hasPermission('review:plan:manage');
   const canManageBatches = access.hasPermission('review:batch:create');
@@ -298,15 +399,15 @@ const ReviewAdminWorkbench = () => {
   );
 
   const loadPlans = useCallback(async (nextCompetitionId?: number, nextStageId?: number) => {
-    if (!canManagePlans || !nextCompetitionId || !nextStageId) {
+    if (!canManagePlans || (!workspaceUuid && !nextCompetitionId) || !nextStageId) {
       setPlans([]);
       setPlanId(undefined);
       return;
     }
-    const result = await listReviewPlans({ competitionId: nextCompetitionId, stageId: nextStageId });
+    const result = await reviewApi.listPlans(nextCompetitionId, nextStageId);
     setPlans(result || []);
     setPlanId((current) => result.some((item) => item.id === current) ? current : result[0]?.id);
-  }, [canManagePlans]);
+  }, [canManagePlans, reviewApi, workspaceUuid]);
 
   const loadBatches = useCallback(async (nextPlanId?: number) => {
     if (!canManageBatches || !nextPlanId) {
@@ -314,10 +415,10 @@ const ReviewAdminWorkbench = () => {
       setBatchId(undefined);
       return;
     }
-    const result = await listReviewBatches({ planId: nextPlanId });
+    const result = await reviewApi.listBatches(nextPlanId);
     setBatches(result || []);
     setBatchId((current) => result.some((item) => item.id === current) ? current : result[0]?.id);
-  }, [canManageBatches]);
+  }, [canManageBatches, reviewApi]);
 
   const loadBatchDetails = useCallback(async (nextBatchId?: number) => {
     if (!nextBatchId) {
@@ -329,11 +430,11 @@ const ReviewAdminWorkbench = () => {
       return;
     }
     const [nextCandidates, nextAssignments, nextRoster, nextAggregates, nextAppeals] = await Promise.all([
-      canManageAssignments ? listReviewCandidates(nextBatchId) : Promise.resolve([]),
-      canManageAssignments ? listReviewAssignments(nextBatchId) : Promise.resolve([]),
-      canManageRoster ? listReviewRoster(nextBatchId) : Promise.resolve([]),
-      canAggregate ? listReviewAggregates(nextBatchId) : Promise.resolve([]),
-      canManageAppeals ? listReviewAppeals({ batchId: nextBatchId }) : Promise.resolve([]),
+      canManageAssignments ? reviewApi.listCandidates(nextBatchId) : Promise.resolve([]),
+      canManageAssignments ? reviewApi.listAssignments(nextBatchId) : Promise.resolve([]),
+      canManageRoster ? reviewApi.listRoster(nextBatchId) : Promise.resolve([]),
+      canAggregate ? reviewApi.listAggregates(nextBatchId) : Promise.resolve([]),
+      canManageAppeals ? reviewApi.listAppeals({ batchId: nextBatchId }) : Promise.resolve([]),
     ]);
     setCandidates(nextCandidates || []);
     setAssignments(nextAssignments || []);
@@ -341,7 +442,7 @@ const ReviewAdminWorkbench = () => {
     setSelectedRosterExpertIds((nextRoster || []).map((item) => item.expertId));
     setAggregates(nextAggregates || []);
     setAppeals(nextAppeals || []);
-  }, [canAggregate, canManageAppeals, canManageAssignments, canManageRoster]);
+  }, [canAggregate, canManageAppeals, canManageAssignments, canManageRoster, reviewApi]);
 
   const refreshWorkbench = useCallback(async () => {
     setLoading(true);
@@ -358,7 +459,7 @@ const ReviewAdminWorkbench = () => {
 
   useEffect(() => {
     let active = true;
-    void listCompetitions({ pageNo: 1, pageSize: 100 })
+    if (!workspaceUuid) void listCompetitions({ pageNo: 1, pageSize: 100 })
       .then((result) => {
         if (!active) return;
         const records = result.records || [];
@@ -366,22 +467,29 @@ const ReviewAdminWorkbench = () => {
         setCompetitionId(records[0]?.id);
       })
       .catch((error) => showErrorMessage(error, '赛事列表加载失败'));
+    if (workspaceUuid) {
+      setCompetitions([]);
+      setCompetitionId(undefined);
+    }
     if (canManageAssignments || canManageRoster) {
       void listExperts({ pageNo: 1, pageSize: 200, status: 'active', approvalStatus: 'APPROVED' })
         .then((result) => { if (active) setExperts(result.records || []); })
         .catch((error) => showErrorMessage(error, '专家列表加载失败'));
     }
     return () => { active = false; };
-  }, [canManageAssignments, canManageRoster]);
+  }, [canManageAssignments, canManageRoster, workspaceUuid]);
 
   useEffect(() => {
-    if (!competitionId) {
+    if (!workspaceUuid && !competitionId) {
       setStages([]);
       setStageId(undefined);
       return;
     }
     let active = true;
-    void listCompetitionStages(competitionId)
+    const stageRequest = workspaceUuid
+      ? listCompetitionWorkspaceStages(workspaceUuid)
+      : listCompetitionStages(competitionId!);
+    void stageRequest
       .then((result) => {
         if (!active) return;
         setStages(result || []);
@@ -389,7 +497,7 @@ const ReviewAdminWorkbench = () => {
       })
       .catch((error) => showErrorMessage(error, '评审阶段加载失败'));
     return () => { active = false; };
-  }, [competitionId]);
+  }, [competitionId, workspaceUuid]);
 
   useEffect(() => {
     void loadPlans(competitionId, stageId)
@@ -482,13 +590,13 @@ const ReviewAdminWorkbench = () => {
       await action();
       message.success(success);
       const nextPlans = competitionId && stageId && canManagePlans
-        ? await listReviewPlans({ competitionId, stageId })
+        ? await reviewApi.listPlans(competitionId, stageId)
         : plans;
       setPlans(nextPlans);
       const nextPlanId = planId || nextPlans[0]?.id;
       setPlanId(nextPlanId);
       const nextBatches = nextPlanId && canManageBatches
-        ? await listReviewBatches({ planId: nextPlanId })
+        ? await reviewApi.listBatches(nextPlanId)
         : batches;
       setBatches(nextBatches);
       const nextBatchId = batchId || nextBatches[0]?.id;
@@ -503,7 +611,7 @@ const ReviewAdminWorkbench = () => {
   };
 
   const submitPlan = async () => {
-    if (!competitionId || !stageId) return;
+    if ((!workspaceUuid && !competitionId) || !stageId) return;
     const values = await planForm.validateFields();
     const weight = values.criteria.reduce((total, item) => total + Number(item.weight || 0), 0);
     if (Math.abs(weight - 1) > 0.000001) {
@@ -512,7 +620,7 @@ const ReviewAdminWorkbench = () => {
     }
     await runAction(
       'create-plan',
-      () => createReviewPlan({ ...values, competitionId, stageId }),
+      () => reviewApi.createPlan({ ...values, competitionId: competitionId || 0, stageId }),
       '评审方案创建成功',
     );
     setPlanModalOpen(false);
@@ -523,7 +631,7 @@ const ReviewAdminWorkbench = () => {
     const values = await batchForm.validateFields();
     await runAction(
       'create-batch',
-      () => createReviewBatch({
+      () => reviewApi.createBatch({
         planId,
         batchName: values.batchName,
         assignmentStrategy: 'MANUAL',
@@ -550,7 +658,7 @@ const ReviewAdminWorkbench = () => {
     }
     await runAction(
       'assign',
-      () => assignReviewExperts(batchId, { assignments: pairs }),
+      () => reviewApi.assignExperts(batchId, { assignments: pairs }),
       '专家任务分配成功',
     );
     setAssignmentModalOpen(false);
@@ -563,7 +671,7 @@ const ReviewAdminWorkbench = () => {
     }
     await runAction(
       'save-roster',
-      () => saveReviewRoster(batchId, selectedRosterExpertIds),
+      () => reviewApi.saveRoster(batchId, selectedRosterExpertIds),
       '评审专家名单保存成功',
     );
     setRosterModalOpen(false);
@@ -573,7 +681,7 @@ const ReviewAdminWorkbench = () => {
     if (!batchId) return;
     await runAction(
       'send-invitations',
-      () => sendReviewInvitations(batchId),
+      () => reviewApi.sendInvitations(batchId),
       '评审邀请发送完成，请查看投递状态',
     );
   };
@@ -582,7 +690,7 @@ const ReviewAdminWorkbench = () => {
     if (!batchId) return;
     await runAction(
       'confirm-assignments',
-      () => confirmReviewAssignments(batchId),
+      () => reviewApi.confirmAssignments(batchId),
       '项目与专家分配已确认并锁定快照',
     );
   };
@@ -594,7 +702,7 @@ const ReviewAdminWorkbench = () => {
     }
     await runAction(
       'check-in',
-      () => scanReviewCheckIn(batchId, checkinToken.trim()),
+      () => reviewApi.scanCheckIn(batchId, checkinToken.trim()),
       '专家签到成功',
     );
     setCheckinToken('');
@@ -610,7 +718,7 @@ const ReviewAdminWorkbench = () => {
     const { record, decision } = decisionDraft;
     setActionLoading(`decision-${record.candidateId}`);
     try {
-      const saved = await decideReviewCandidate(
+      const saved = await reviewApi.decideCandidate(
         batchId,
         record.candidateId,
         decision,
@@ -634,7 +742,7 @@ const ReviewAdminWorkbench = () => {
     }
     setActionLoading(`appeal-${appealToResolve.id}`);
     try {
-      const saved = await resolveReviewAppeal(
+      const saved = await reviewApi.resolveAppeal(
         appealToResolve.id,
         decision,
         appealResolution.trim(),
@@ -680,7 +788,7 @@ const ReviewAdminWorkbench = () => {
     }
     await runAction(
       'correction',
-      () => reopenReviewBatchForCorrection(batchId, correctionReason.trim()),
+      () => reviewApi.reopenBatch(batchId, correctionReason.trim()),
       '已撤回当前发布版本并进入更正流程',
     );
     setCorrectionModalOpen(false);
@@ -793,7 +901,7 @@ const ReviewAdminWorkbench = () => {
           <Select
             showSearch
             optionFilterProp="label"
-            style={{ width: 300 }}
+            style={{ width: 300, display: workspaceUuid ? 'none' : undefined }}
             value={competitionId}
             options={competitions.map((item) => ({ label: item.title, value: item.id }))}
             onChange={setCompetitionId}
@@ -819,7 +927,7 @@ const ReviewAdminWorkbench = () => {
               <Button
                 type="primary"
                 icon={<SettingOutlined />}
-                disabled={!competitionId || !stageId || plans.length > 0}
+                disabled={(!workspaceUuid && !competitionId) || !stageId || plans.length > 0}
                 onClick={() => {
                   planForm.setFieldsValue({
                     planName: `${stages.find((item) => item.id === stageId)?.stageName || '阶段'}评审方案`,
@@ -869,7 +977,7 @@ const ReviewAdminWorkbench = () => {
                   title="启用后将锁定评分标准，确认启用？"
                   onConfirm={() => runAction(
                     'activate-plan',
-                    () => activateReviewPlan(selectedPlan.id),
+                    () => reviewApi.activatePlan(selectedPlan.id),
                     '评审方案启用成功',
                   )}
                 >
@@ -929,7 +1037,7 @@ const ReviewAdminWorkbench = () => {
                   title="将当前符合条件的报名全部冻结为候选快照，确认继续？"
                   onConfirm={() => runAction(
                     'freeze',
-                    () => freezeReviewBatch(selectedBatch.id),
+                    () => reviewApi.freezeBatch(selectedBatch.id),
                     '候选团队冻结成功',
                   )}
                 >
@@ -965,7 +1073,7 @@ const ReviewAdminWorkbench = () => {
                     title="系统将按当前未完成任务量均衡分配，并自动跳过身份冲突，确认执行？"
                     onConfirm={() => runAction(
                       'auto-assign',
-                      () => autoAssignReviewExperts(selectedBatch.id),
+                      () => reviewApi.autoAssign(selectedBatch.id, {}),
                       '专家自动分配成功',
                     )}
                   >
@@ -994,7 +1102,7 @@ const ReviewAdminWorkbench = () => {
                   title="确认所有候选团队已达到最低专家数后开始评审？"
                   onConfirm={() => runAction(
                     'start',
-                    () => startReviewBatch(selectedBatch.id),
+                    () => reviewApi.startBatch(selectedBatch.id),
                     '评审已开始',
                   )}
                 >
@@ -1128,7 +1236,7 @@ const ReviewAdminWorkbench = () => {
                   title="只有全部候选达到最低提交数才能汇总，确认执行？"
                   onConfirm={() => runAction(
                     'aggregate',
-                    () => aggregateReviewBatch(selectedBatch.id),
+                    () => reviewApi.aggregateBatch(selectedBatch.id),
                     '评审结果汇总成功',
                   )}
                 >
@@ -1140,7 +1248,7 @@ const ReviewAdminWorkbench = () => {
                   title="终审后结果将锁定，确认所有候选均已填写结论？"
                   onConfirm={() => runAction(
                     'finalize',
-                    () => finalizeReviewBatch(selectedBatch.id),
+                    () => reviewApi.finalizeBatch(selectedBatch.id),
                     '评审结果终审成功',
                   )}
                 >
@@ -1154,7 +1262,7 @@ const ReviewAdminWorkbench = () => {
                   title="发布会生成不可变结果版本并同步晋级结果，确认发布？"
                   onConfirm={() => runAction(
                     'publish',
-                    () => publishReviewBatch(selectedBatch.id),
+                    () => reviewApi.publishBatch(selectedBatch.id),
                     '评审结果发布成功',
                   )}
                 >
@@ -1472,7 +1580,7 @@ const ReviewAdminWorkbench = () => {
               ref={scannerVideoRef}
               muted
               playsInline
-              style={{ width: '100%', maxHeight: 320, borderRadius: 8, background: '#111' }}
+              style={{ width: '100%', maxHeight: 320, borderRadius: 'var(--saas-card-radius)', background: '#111' }}
             />
           )}
           {scannerError ? <Alert type="error" showIcon message={scannerError} /> : null}
@@ -1884,6 +1992,7 @@ const ExpertTaskWorkbench = () => {
 
 const CompetitionReviewPage = () => {
   const access = useAccess();
+  const workspace = useOptionalCompetitionWorkspace();
   const canAdmin = REVIEW_ADMIN_PERMISSIONS.some((permission) => access.hasPermission(permission));
   const canViewTasks = access.hasPermission('review:task:view');
   const items = [
@@ -1900,13 +2009,15 @@ const CompetitionReviewPage = () => {
   ];
 
   return (
-    <ManagementPage title="评审工作台">
-      <ManagementPageBody>
-        {items.length
-          ? <Tabs items={items} />
-          : <Empty description="当前角色没有评审操作权限，请联系管理员配置角色权限。" />}
-      </ManagementPageBody>
-    </ManagementPage>
+    <CompetitionWorkspacePageFrame
+      embeddedInWorkspace={Boolean(workspace)}
+      title={workspace ? '评审' : '跨赛事评审工作台'}
+      workspaceVariant="content"
+    >
+      {items.length
+        ? <Tabs items={items} />
+        : <Empty description="当前角色没有评审操作权限，请联系管理员配置角色权限。" />}
+    </CompetitionWorkspacePageFrame>
   );
 };
 

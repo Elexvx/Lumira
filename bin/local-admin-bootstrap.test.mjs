@@ -8,6 +8,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  LOCAL_DEFAULT_ADMIN_PASSWORD,
   ensureLocalAdminCredential,
   ensureLocalAdminSecret,
   formatLocalAdminNotice,
@@ -109,6 +110,25 @@ test('pending administrator is initialized from a generated stable secret', () =
   assert.equal(readFileSync(result.secretPath, 'utf8'), generatedPassword);
   assert.equal(calls.length, 2);
   assert.equal(calls[1].env.LUMIRA_BOOTSTRAP_ADMIN_INITIALIZATION_SOURCE, 'LOCAL_RANDOM');
+});
+
+test('pending local administrator uses the documented default password', () => {
+  const repoRoot = mkdtempSync(path.join(os.tmpdir(), 'lumira-admin-bootstrap-'));
+  const calls = [];
+  const result = ensureLocalAdminCredential({
+    repoRoot,
+    jarPath: '/tmp/bootstrap.jar',
+    databaseEnv: { DB_URL: 'jdbc:mysql://127.0.0.1/lumira', DB_USERNAME: 'lumira', DB_PASSWORD: generatedDatabasePassword() },
+    commandRunner: (_command, _args, options) => {
+      calls.push(options);
+      return options.env.LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE
+        ? { status: 0, stdout: 'Administrator credential bootstrap outcome: INITIALIZED', stderr: '' }
+        : { status: 1, stdout: '', stderr: 'Built-in administrator is pending initialization' };
+    },
+  });
+
+  assert.equal(readFileSync(result.secretPath, 'utf8'), LOCAL_DEFAULT_ADMIN_PASSWORD);
+  assert.equal(calls[1].env.LUMIRA_BOOTSTRAP_ADMIN_INITIALIZATION_SOURCE, 'LOCAL_DEFAULT');
 });
 
 test('an initialized administrator does not generate or reveal another password', () => {

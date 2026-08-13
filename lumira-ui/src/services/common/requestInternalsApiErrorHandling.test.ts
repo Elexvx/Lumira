@@ -395,6 +395,28 @@ describe('handleApiError', () => {
     expect(mocks.performLogout).not.toHaveBeenCalled();
   });
 
+  it('forces logout for an authoritative session probe after token refresh', async () => {
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-after-refresh',
+    });
+
+    handleApiError(sessionExpiredError(), {
+      silent: true,
+      forceSessionLogoutOnUnauthorized: true,
+      notifyOnUnauthorized: true,
+    }, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-after-refresh',
+      hasAuthToken: true,
+    }, { authenticatedRefreshSucceeded: true });
+
+    await vi.waitFor(() => {
+      expect(mocks.messageInfo).toHaveBeenCalledWith('session expired');
+      expect(mocks.performLogout).toHaveBeenCalledWith({ reason: 'forced_expired' });
+    });
+  });
+
   it('does not destroy the platform session when refresh is temporarily unavailable', () => {
     handleApiError(sessionExpiredError(), {}, {
       ...baseAuthSnapshot,
