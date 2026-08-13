@@ -24,10 +24,6 @@ export type ExpertFormValues = Omit<ExpertUpsertPayload, 'expertise' | 'tags'> &
   expertise?: string[];
   tags?: string[];
 };
-type ExpertPageMode = 'management' | 'query';
-
-const isExpertQueryRoute = (pathname: string) => pathname === '/experts/query';
-
 const statusOptions: Array<{ label: string; value: ExpertStatus }> = [
   { label: '启用', value: 'active' },
   { label: '停用', value: 'inactive' },
@@ -272,8 +268,7 @@ export const ExpertForm = ({
   );
 };
 
-const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }) => {
-  const isQueryMode = mode === 'query';
+const ExpertManagementView = () => {
   const responsive = useResponsive();
   const actionPermission = useActionPermission();
   const actionRef = useRef<ActionType | undefined>(undefined);
@@ -474,10 +469,6 @@ const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }
       },
     ];
 
-    if (isQueryMode) {
-      return baseColumns;
-    }
-
     return [
       ...baseColumns,
       {
@@ -522,10 +513,10 @@ const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }
         ),
       },
     ];
-  }, [actionPermission, isQueryMode, openEditDrawer, responsive.isDesktop, responsive.isMobile]);
+  }, [actionPermission, openEditDrawer, responsive.isDesktop, responsive.isMobile]);
 
   return (
-    <ManagementPage title={isQueryMode ? '专家查询' : '专家库'}>
+    <ManagementPage title="专家管理">
       <ManagementPageBody className="expert-page">
         <ManagementTable<ExpertRecord>
           actionRef={actionRef}
@@ -553,44 +544,39 @@ const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }
             };
           }}
           pagination={{ pageSize: 10, showSizeChanger: true }}
-          toolBarRender={
-            isQueryMode
-              ? false
-              : () =>
-                  actionPermission.buildToolbarActions([
-                    {
-                      permission: 'expert:create',
-                      value: (
-                        <Button key="create" type="primary" icon={<PlusOutlined />} onClick={openCreateDrawer}>
-                          新增专家
-                        </Button>
-                      ),
-                    },
-                  ])
+          toolBarRender={() =>
+            actionPermission.buildToolbarActions([
+              {
+                permission: 'expert:create',
+                value: (
+                  <Button key="create" type="primary" icon={<PlusOutlined />} onClick={openCreateDrawer}>
+                    新增专家
+                  </Button>
+                ),
+              },
+            ])
           }
         />
       </ManagementPageBody>
 
-      {isQueryMode ? null : (
-        <ManagementDrawer
-          title={editingRecord ? '编辑专家' : '新增专家'}
-          open={drawerOpen}
-          onClose={closeDrawer}
-          destroyOnHidden
-          footerActions={[
-            { key: 'cancel', label: '取消', onClick: closeDrawer },
-            {
-              key: 'save',
-              label: '保存',
-              type: 'primary',
-              loading: saving,
-              onClick: () => void saveExpert(),
-            },
-          ]}
-        >
-          <ExpertForm form={form} uploadingAvatar={uploadingAvatar} onAvatarUpload={handleAvatarUpload} />
-        </ManagementDrawer>
-      )}
+      <ManagementDrawer
+        title={editingRecord ? '编辑专家' : '新增专家'}
+        open={drawerOpen}
+        onClose={closeDrawer}
+        destroyOnHidden
+        footerActions={[
+          { key: 'cancel', label: '取消', onClick: closeDrawer },
+          {
+            key: 'save',
+            label: '保存',
+            type: 'primary',
+            loading: saving,
+            onClick: () => void saveExpert(),
+          },
+        ]}
+      >
+        <ExpertForm form={form} uploadingAvatar={uploadingAvatar} onAvatarUpload={handleAvatarUpload} />
+      </ManagementDrawer>
     </ManagementPage>
   );
 };
@@ -604,7 +590,7 @@ const ExpertPage = () => {
     }
   }, [location.pathname]);
 
-  return <ExpertManagementView mode={isExpertQueryRoute(location.pathname) ? 'query' : 'management'} />;
+  return <ExpertManagementView />;
 };
 
 export default ExpertPage;

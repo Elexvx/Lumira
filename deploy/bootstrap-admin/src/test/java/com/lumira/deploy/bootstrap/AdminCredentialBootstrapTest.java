@@ -15,6 +15,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -71,6 +72,58 @@ class AdminCredentialBootstrapTest {
             assertEquals(AdminCredentialBootstrap.Outcome.INITIALIZED, outcome);
             assertEquals("LOCAL_RANDOM", value(connection,
                     "select initialization_source from platform_bootstrap_credential where principal_key = 'BUILTIN_ADMIN'"));
+        }
+    }
+
+    @Test
+    void localDefaultInitializationRequiresLoopbackMysql() {
+        assertDoesNotThrow(() -> BootstrapAdminCommand.validateInitializationBoundary(
+                "jdbc:mysql://127.0.0.1:3306/lumira?useSSL=false",
+                "LOCAL_DEFAULT"
+        ));
+        assertDoesNotThrow(() -> BootstrapAdminCommand.validateInitializationBoundary(
+                "jdbc:mysql://[::1]:3306/lumira",
+                "LOCAL_DEFAULT"
+        ));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> BootstrapAdminCommand.validateInitializationBoundary(
+                        "jdbc:mysql://mysql:3306/saas",
+                        "LOCAL_DEFAULT"
+                )
+        );
+        assertDoesNotThrow(() -> BootstrapAdminCommand.validateInitializationBoundary(
+                "jdbc:mysql://mysql:3306/saas",
+                "DOCKER_SECRET"
+        ));
+    }
+
+    @Test
+    void acceptsDocumentedWeakPasswordOnlyForLocalDefaultInitialization() throws Exception {
+        char[] localDefaultPassword = {'1', '2', '3', '4', '5', '6'};
+        try (Connection connection = database()) {
+            AdminCredentialBootstrap.Outcome outcome = new AdminCredentialBootstrap().execute(
+                    connection,
+                    localDefaultPassword,
+                    "LOCAL_DEFAULT"
+            );
+
+            assertEquals(AdminCredentialBootstrap.Outcome.INITIALIZED, outcome);
+            assertTrue(new BCryptPasswordEncoder().matches(
+                    CharBuffer.wrap(localDefaultPassword),
+                    value(connection, "select password_hash from sys_user where id = 1001")
+            ));
+            assertEquals("1", value(connection,
+                    "select password_change_required from iam_user_credential where user_id = 1001"));
+            assertEquals("LOCAL_DEFAULT", value(connection,
+                    "select initialization_source from platform_bootstrap_credential where principal_key = 'BUILTIN_ADMIN'"));
+        }
+
+        try (Connection connection = database()) {
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> new AdminCredentialBootstrap().execute(connection, localDefaultPassword)
+            );
         }
     }
 

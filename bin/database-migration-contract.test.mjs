@@ -26,6 +26,19 @@ test('fresh bootstrap and online migration both contain activity persistence', (
   }
 });
 
+test('upgraded databases receive and backfill the event catalog projection', () => {
+  const bootstrap = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608120001__repair_event_catalog_projection.sql');
+
+  assert.match(bootstrap, /CREATE TABLE `event_catalog_item`/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS `event_catalog_item`/);
+  assert.match(migration, /FROM `aiadc_activity` a/);
+  assert.match(migration, /FROM `aiadc_competition` c/);
+  assert.match(migration, /platform_event_outbox/);
+  assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+  assert.doesNotMatch(migration, /\bTRUNCATE\b/i);
+});
+
 test('competition homepage is absent from the fresh schema and has an explicit legacy cleanup', () => {
   const baseline = read('lumira-backend/sql/saas.sql');
   const cleanup = read('lumira-backend/sql/upgrade-competition-remove-homepage-content-v1.sql');
@@ -262,6 +275,33 @@ test('sensitive-word policy dictionaries stay aligned across every database life
   assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
 
+test('expert status dictionary localization repairs corrupted legacy labels', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const manualUpgrade = read('lumira-backend/sql/upgrade-expert-status-dictionary-persistence-v1.sql');
+  const migration = read('deploy/migrations/V202608130001__repair_expert_status_dictionary_localization.sql');
+  const dictionaryNames = [
+    ['aiadc_expert_status', '专家状态'],
+    ['aiadc_expert_initial_status', '专家申请初始状态'],
+    ['aiadc_expert_approval_status', '专家审批状态'],
+  ];
+
+  for (const source of [baseline, manualUpgrade]) {
+    for (const [dictionaryCode, dictionaryName] of dictionaryNames) {
+      assert.match(source, new RegExp(`'${dictionaryCode}', '${dictionaryName}'`));
+    }
+  }
+
+  assert.match(manualUpgrade, /SET NAMES utf8mb4;/);
+  assert.match(manualUpgrade, /`dict_name`\s*=\s*VALUES\(`dict_name`\)/);
+  assert.match(migration, /SET NAMES utf8mb4;/);
+  assert.match(migration, /REPEAT\('\?',\s*CHAR_LENGTH\(`dict_name`\)\)/);
+  assert.match(migration, /REPEAT\('\?',\s*CHAR_LENGTH\(item\.`item_label`\)\)/);
+  assert.match(migration, /'PENDING'.*'待处理'/s);
+  assert.match(migration, /'REJECTED'.*'已拒绝'/s);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+});
+
 test('certificate template migration preserves runtime canvas placeholders', () => {
   const migration = read('deploy/migrations/V202607300003__harden_certificate_generation_and_template_defaults.sql');
   const migrationConfig = read('deploy/migrations/V202607300003__harden_certificate_generation_and_template_defaults.sql.conf');
@@ -345,6 +385,29 @@ test('fresh databases baseline at the complete saas snapshot version', () => {
   assert.match(entrypoint, /database_baseline_version=\$\(tr -d .* < "\$baseline_version_file"\)/);
   assert.match(entrypoint, /-baselineVersion="\$database_baseline_version"/);
   assert.doesNotMatch(entrypoint, /-baselineVersion=202607140000/);
+});
+
+test('retired expert query navigation is removed from fresh and upgraded databases', () => {
+  const bootstrap = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608130003__retire_expert_query_navigation.sql');
+
+  assert.doesNotMatch(bootstrap, /'expert\.query',\s*'专家查询'/);
+  assert.match(migration, /`menu_code`\s*=\s*'expert\.query'/);
+  assert.match(migration, /`message_key`\s*=\s*'nav\.experts\.query'/);
+  assert.match(migration, /`deleted`\s*=\s*1/);
+});
+
+test('expert navigation is consolidated under the expert review catalog', () => {
+  const bootstrap = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608130004__consolidate_expert_navigation.sql');
+
+  assert.match(bootstrap, /\(-1060,\s*0,\s*'expert\.root'.*'DISABLED',\s*0,\s*0,\s*1\)/);
+  assert.match(bootstrap, /\(-1061,\s*-1068,\s*'expert\.management'/);
+  assert.match(bootstrap, /\(-1078,\s*-1068,\s*'expert\.review\.tasks'.*?,\s*2,\s*'review:workbench:view'/);
+  assert.match(bootstrap, /\(-1077,\s*-1068,\s*'expert\.application'.*?,\s*3,\s*NULL/);
+  assert.match(migration, /JOIN `sys_menu` AS review_root/);
+  assert.match(migration, /`menu_code` = 'expert\.root'/);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
 });
 
 test('regular deployments run migrations before application containers', () => {

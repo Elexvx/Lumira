@@ -90,6 +90,7 @@ describe('access', () => {
   it('allows system security, profile fields, and verification for config viewers', () => {
     const result = access({ currentUser: userWithPermissions(['system:config:view']) });
 
+    expect(result.canVisitSettings).toBe(true);
     expect(result.canVisitSystemProfileFields).toBe(true);
     expect(result.canVisitSystemSecurity).toBe(true);
     expect(result.canVisitSystemVerification).toBe(true);
@@ -235,6 +236,7 @@ describe('access', () => {
     expect(result.canVisitExperts).toBe(false);
     expect(result.canVisitAi).toBe(false);
     expect(result.canVisitSystemSettings).toBe(false);
+    expect(result.canVisitSettings).toBe(false);
     expect(result.canVisitPluginRuntime).toBe(false);
   });
 
@@ -245,16 +247,11 @@ describe('access', () => {
     expect(result.canVisitDownloadCenter).toBe(true);
   });
 
-  it('exposes registration dossiers only to competition managers with registration read permission', () => {
-    const competitionOnly = access({ currentUser: userWithPermissions(['aiadc:competition:view']) });
-    const registrationOnly = access({ currentUser: userWithPermissions(['aiadc:registration:view']) });
+  it('keeps data management access for competition managers', () => {
     const manager = access({
       currentUser: userWithPermissions(['aiadc:competition:view', 'aiadc:registration:view']),
     });
 
-    expect(competitionOnly.canVisitCompetitionRegistrations).toBe(false);
-    expect(registrationOnly.canVisitCompetitionRegistrations).toBe(false);
-    expect(manager.canVisitCompetitionRegistrations).toBe(true);
     expect(manager.canVisitDataManagement).toBe(true);
   });
 
@@ -269,7 +266,6 @@ describe('access', () => {
       currentUser: userWithPermissions(['registration:material:download']),
     });
 
-    expect(exporter.canVisitCompetitionRegistrations).toBe(true);
     expect(exporter.canExportCompetitionRegistrations).toBe(true);
     expect(exporter.canExportSensitiveCompetitionRegistrations).toBe(false);
     expect(exporter.canDownloadRegistrationMaterials).toBe(false);

@@ -871,7 +871,11 @@ public class CompetitionManagementAppService {
         requirePositiveId(id, "Competition id is required");
         long registrationCount = competitionManagementRepository.countActiveRegistrations(id);
         if (registrationCount > 0) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Competition has registrations and cannot be deleted");
+            throw new BizException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "Competition has registrations and cannot be deleted",
+                    "赛事已有报名，无法删除"
+            );
         }
         CompetitionVO.Competition competition = findCompetition(id);
         if (competition == null) {

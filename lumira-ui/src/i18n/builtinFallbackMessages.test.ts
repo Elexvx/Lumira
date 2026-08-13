@@ -20,6 +20,14 @@ describe('resolveBuiltinFallbackMessage', () => {
     expect(resolveBuiltinFallbackMessage('nav.user.role.exitSuccess', 'en-US')).toBe('Exited role simulation');
   });
 
+  it('provides localized user-menu copy when the runtime catalog is unavailable', () => {
+    expect(resolveBuiltinFallbackMessage('nav.user.profile', 'zh-CN')).toBe('个人资料');
+    expect(resolveBuiltinFallbackMessage('nav.user.changePassword', 'zh-CN')).toBe('修改密码');
+    expect(resolveBuiltinFallbackMessage('nav.user.switchRole', 'zh-CN')).toBe('切换角色');
+    expect(resolveBuiltinFallbackMessage('auth.logout', 'zh-CN')).toBe('退出登录');
+    expect(resolveBuiltinFallbackMessage('nav.user.profile', 'en-US')).toBe('Profile');
+  });
+
   it('does not override unrelated message ids', () => {
     expect(resolveBuiltinFallbackMessage('common.confirm', 'zh-CN')).toBeUndefined();
   });

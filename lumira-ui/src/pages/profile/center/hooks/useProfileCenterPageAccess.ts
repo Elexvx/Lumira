@@ -32,12 +32,36 @@ interface ProfileBasicInfoPayload {
   avatarUrl?: string;
   nickname?: string;
   realName?: string;
+  availableTime?: string;
   birthMonth?: string;
   gender?: string;
   region?: string;
   idCardNumber?: string;
   extraProfileValues?: Record<string, string>;
 }
+
+const isDateProfileField = (field: { fieldType?: string | null }) =>
+  ['DATE', 'MONTH'].includes((field.fieldType || '').toUpperCase());
+
+const profileFieldDateFormat = (field: { fieldType?: string | null }) =>
+  (field.fieldType || '').toUpperCase() === 'MONTH' ? 'YYYY-MM' : 'YYYY-MM-DD';
+
+const profileFieldFormValue = (field: { fieldType?: string | null }, value?: string | null) => {
+  if (!isDateProfileField(field)) {
+    return value || '';
+  }
+  return value ? dayjs(value, profileFieldDateFormat(field)) : null;
+};
+
+const profileFieldPayloadValue = (field: { fieldType?: string | null }, value: unknown) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (isDateProfileField(field) && dayjs.isDayjs(value)) {
+    return value.format(profileFieldDateFormat(field));
+  }
+  return String(value);
+};
 
 export interface LoginMethodItem {
   key: string;
@@ -929,12 +953,16 @@ export const useProfileCenterPageAccess = () => {
       avatarUrl: currentUser.avatarUrl || '',
       nickname: currentUser.nickname || '',
       realName: currentUser.realName || '',
+      availableTime: currentUser.availableTime || '',
       birthMonth: currentUser.birthMonth ? dayjs(currentUser.birthMonth, 'YYYY-MM') : null,
       gender: currentUser.gender || undefined,
       region: currentUser.region || '',
       idCardNumber: currentUser.idCardNumber || '',
       extraProfileValues: Object.fromEntries(
-        visibleCustomProfileFields.map((item) => [item.fieldKey, currentUser.extraProfileValues?.[item.fieldKey] || '']),
+        visibleCustomProfileFields.map((item) => [
+          item.fieldKey,
+          profileFieldFormValue(item, currentUser.extraProfileValues?.[item.fieldKey]),
+        ]),
       ),
     });
     setAvatarPreviewUrl(undefined);
@@ -957,6 +985,7 @@ export const useProfileCenterPageAccess = () => {
           avatarUrl: values.avatarUrl ?? currentUser?.avatarUrl ?? '',
           nickname: values.nickname ?? currentUser?.nickname ?? '',
           realName: values.realName ?? currentUser?.realName ?? '',
+          availableTime: values.availableTime ?? currentUser?.availableTime ?? '',
           birthMonth: values.birthMonth === undefined
             ? currentUser?.birthMonth || ''
             : values.birthMonth
@@ -968,7 +997,10 @@ export const useProfileCenterPageAccess = () => {
           extraProfileValues: Object.fromEntries(
             visibleCustomProfileFields.map((item) => [
               item.fieldKey,
-              values.extraProfileValues?.[item.fieldKey] ?? currentUser?.extraProfileValues?.[item.fieldKey] ?? '',
+              profileFieldPayloadValue(
+                item,
+                values.extraProfileValues?.[item.fieldKey] ?? currentUser?.extraProfileValues?.[item.fieldKey] ?? '',
+              ),
             ]),
           ),
         } satisfies ProfileBasicInfoPayload,

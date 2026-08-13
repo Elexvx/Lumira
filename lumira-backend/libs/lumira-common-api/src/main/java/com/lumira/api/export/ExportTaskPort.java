@@ -101,6 +101,16 @@ public interface ExportTaskPort {
 
     ExportTaskView getTask(CurrentUser currentUser, Long taskId, String requiredPermission);
 
+    /**
+     * Returns the persisted request payload for a task owned by the caller.
+     * Bounded contexts use this only to re-check their own resource scope;
+     * implementations may return {@code null} when the backing store does not
+     * expose task payloads.
+     */
+    default String getTaskRequestPayload(CurrentUser currentUser, Long taskId, String requiredPermission) {
+        return null;
+    }
+
     default ExportVO.ExportTaskVO getTaskVo(CurrentUser currentUser, Long taskId, String requiredPermission) {
         ExportTaskView task = getTask(currentUser, taskId, requiredPermission);
         ExportVO.ExportTaskVO response = new ExportVO.ExportTaskVO();

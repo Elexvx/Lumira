@@ -1746,8 +1746,8 @@
       "sourceType": "ROUTE",
       "sourceRef": "src/locales/zh-CN/nav.ts",
       "translations": {
-        "zh-CN": "证书生成",
-        "en-US": "Certificate Generation"
+        "zh-CN": "跨赛事证书生成",
+        "en-US": "Cross-competition Certificate Generation"
       }
     },
     {
@@ -1768,8 +1768,8 @@
       "sourceType": "ROUTE",
       "sourceRef": "src/locales/zh-CN/nav.ts",
       "translations": {
-        "zh-CN": "证书记录",
-        "en-US": "Certificate Records"
+        "zh-CN": "全局证书记录",
+        "en-US": "Global Certificate Records"
       }
     },
     {
@@ -1779,8 +1779,8 @@
       "sourceType": "ROUTE",
       "sourceRef": "src/locales/zh-CN/nav.ts",
       "translations": {
-        "zh-CN": "证书管理",
-        "en-US": "Certificate Management"
+        "zh-CN": "证书中心",
+        "en-US": "Certificate Center"
       }
     },
     {
@@ -1872,17 +1872,6 @@
       }
     },
     {
-      "messageKey": "nav.competitions.registrations",
-      "namespaceCode": "nav",
-      "sourceLocale": "zh-CN",
-      "sourceType": "ROUTE",
-      "sourceRef": "src/locales/zh-CN/nav.ts",
-      "translations": {
-        "zh-CN": "报名团队资料",
-        "en-US": "Registration Dossiers"
-      }
-    },
-    {
       "messageKey": "nav.competitions.reviewResults",
       "namespaceCode": "nav",
       "sourceLocale": "zh-CN",
@@ -1966,8 +1955,8 @@
       "sourceType": "ROUTE",
       "sourceRef": "src/locales/zh-CN/nav.ts",
       "translations": {
-        "zh-CN": "评审与晋级",
-        "en-US": "Review & Advancement"
+        "zh-CN": "跨赛事评审工作台",
+        "en-US": "Cross-competition Review Workbench"
       }
     },
     {
@@ -1990,17 +1979,6 @@
       "translations": {
         "zh-CN": "专家管理",
         "en-US": "Expert Management"
-      }
-    },
-    {
-      "messageKey": "nav.experts.query",
-      "namespaceCode": "nav",
-      "sourceLocale": "zh-CN",
-      "sourceType": "ROUTE",
-      "sourceRef": "src/locales/zh-CN/nav.ts",
-      "translations": {
-        "zh-CN": "专家查询",
-        "en-US": "Expert Search"
       }
     },
     {
@@ -2076,8 +2054,8 @@
       "sourceType": "ROUTE",
       "sourceRef": "src/locales/zh-CN/nav.ts",
       "translations": {
-        "zh-CN": "支付管理",
-        "en-US": "Payment Management"
+        "zh-CN": "全局支付流水",
+        "en-US": "Global Payment Ledger"
       }
     },
     {

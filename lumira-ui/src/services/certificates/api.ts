@@ -2,6 +2,7 @@ import { request, requestFile } from '@/services/common/request';
 import type {
   CertificateGeneratePayload,
   CertificateGenerateResult,
+  CertificateBatchRecord,
   CertificateAwardGrant,
   CertificateAwardSource,
   AwardGrantPayload,
@@ -14,6 +15,7 @@ import type {
 } from './types';
 
 const API = '/v2/aiadc';
+const workspaceApi = (competitionUuid: string) => `${API}/competitions/${encodeURIComponent(competitionUuid)}`;
 
 export const listCertificateTemplates = (params: Record<string, unknown> = {}) =>
   request<PageResponse<CertificateTemplateRecord>>(`${API}/certificate-templates`, { method: 'GET', params });
@@ -92,6 +94,50 @@ export const regenerateCertificate = (id: number) =>
 
 export const revokeCertificate = (id: number, reason?: string) =>
   request<CertificateRecord>(`${API}/certificates/${id}/revoke`, { method: 'POST', data: { reason } });
+
+export const listCompetitionWorkspaceCertificateAwardSources = (competitionUuid: string) =>
+  request<CertificateAwardSource[]>(`${workspaceApi(competitionUuid)}/certificate-award-sources`, { method: 'GET' });
+
+export const grantCompetitionWorkspacePublishedAwards = (competitionUuid: string, data: AwardGrantPayload) =>
+  request<CertificateAwardGrant[]>(`${workspaceApi(competitionUuid)}/certificate-awards/grant`, { method: 'POST', data });
+
+export const listCompetitionWorkspaceAwardGrants = (competitionUuid: string, reviewBatchId: number) =>
+  request<CertificateAwardGrant[]>(`${workspaceApi(competitionUuid)}/certificate-awards`, {
+    method: 'GET',
+    params: { reviewBatchId },
+  });
+
+export const generateCompetitionWorkspaceCertificates = (competitionUuid: string, data: CertificateGeneratePayload) =>
+  request<CertificateGenerateResult>(`${workspaceApi(competitionUuid)}/certificate-batches`, { method: 'POST', data });
+
+export const generateCompetitionWorkspaceCertificatesFromAwards = (
+  competitionUuid: string,
+  data: AwardCertificateGeneratePayload,
+) => request<CertificateGenerateResult>(`${workspaceApi(competitionUuid)}/certificate-batches/from-awards`, { method: 'POST', data });
+
+export const listCompetitionWorkspaceCertificateBatches = (competitionUuid: string, params: Record<string, unknown> = {}) =>
+  request<PageResponse<CertificateBatchRecord>>(`${workspaceApi(competitionUuid)}/certificate-batches`, { method: 'GET', params });
+
+export const getCompetitionWorkspaceCertificateBatch = (competitionUuid: string, id: number) =>
+  request<CertificateBatchRecord>(`${workspaceApi(competitionUuid)}/certificate-batches/${id}`, { method: 'GET' });
+
+export const listCompetitionWorkspaceCertificates = (competitionUuid: string, params: Record<string, unknown> = {}) =>
+  request<PageResponse<CertificateRecord>>(`${workspaceApi(competitionUuid)}/certificates`, { method: 'GET', params });
+
+export const getCompetitionWorkspaceCertificate = (competitionUuid: string, id: number) =>
+  request<CertificateRecord>(`${workspaceApi(competitionUuid)}/certificates/${id}`, { method: 'GET' });
+
+export const downloadCompetitionWorkspaceCertificate = (competitionUuid: string, id: number) =>
+  requestFile(`${workspaceApi(competitionUuid)}/certificates/${id}/download`, { method: 'GET' });
+
+export const regenerateCompetitionWorkspaceCertificate = (competitionUuid: string, id: number) =>
+  request<CertificateRecord>(`${workspaceApi(competitionUuid)}/certificates/${id}/regenerate`, { method: 'POST' });
+
+export const revokeCompetitionWorkspaceCertificate = (competitionUuid: string, id: number, reason?: string) =>
+  request<CertificateRecord>(`${workspaceApi(competitionUuid)}/certificates/${id}/revoke`, {
+    method: 'POST',
+    data: { reason },
+  });
 
 export const verifyCertificateByNo = (certificateNo: string, verificationCode: string) =>
   request<CertificatePublicVerifyResult>('/public/certificates/verify', {

@@ -6,6 +6,8 @@ describe('filterRetiredMainMenuNodes', () => {
   it('recognizes retired paths before canonical redirects can replace active menu labels', () => {
     expect(isRetiredMainMenuPath('/data-management/query-center')).toBe(true);
     expect(isRetiredMainMenuPath('/data-management/query-center/')).toBe(true);
+    expect(isRetiredMainMenuPath('/experts/query')).toBe(true);
+    expect(isRetiredMainMenuPath('/experts/query/')).toBe(true);
     expect(isRetiredMainMenuPath('/dashboard/home')).toBe(false);
   });
 
@@ -52,6 +54,27 @@ describe('filterRetiredMainMenuNodes', () => {
 
     expect(filterRetiredMainMenuNodes(menuTree, 'competition.root')).toEqual([
       { menuCode: 'competition.management', path: '/competitions/management' },
+    ]);
+  });
+
+  it('removes the retired standalone expert query from persisted menu trees', () => {
+    const menuTree = [
+      {
+        menuCode: 'expert.root',
+        path: '/experts',
+        children: [
+          { menuCode: 'expert.management', path: '/experts/management' },
+          { menuCode: 'expert.query', path: '/experts/query' },
+        ],
+      },
+    ] as MenuNode[];
+
+    expect(filterRetiredMainMenuNodes(menuTree)).toEqual([
+      {
+        menuCode: 'expert.root',
+        path: '/experts',
+        children: [{ menuCode: 'expert.management', path: '/experts/management' }],
+      },
     ]);
   });
 });

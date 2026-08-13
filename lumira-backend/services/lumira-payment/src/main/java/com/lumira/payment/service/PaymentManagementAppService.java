@@ -258,7 +258,7 @@ public class PaymentManagementAppService {
         PaymentProviderSettingsDTO response = new PaymentProviderSettingsDTO();
         response.setProviderCode(definition.providerCode());
         response.setProviderName(definition.providerName());
-        response.setDisplayName(resolveText(stored.getDisplayName(), definition.providerName()));
+        response.setDisplayName(resolveProviderDisplayName(stored.getDisplayName(), definition.providerName()));
         response.setSortOrder(stored.getSortOrder() == null ? 100 : stored.getSortOrder());
         response.setSupportedScenes(providerCatalog.supportedScenes(definition.providerCode()));
         response.setEnabledScenes(normalizeEnabledScenes(definition.providerCode(), stored.getEnabledScenes()));
@@ -288,7 +288,7 @@ public class PaymentManagementAppService {
                 : providerCatalog.createBlankSettings(definition.providerCode());
         managed.setProviderCode(definition.providerCode());
         managed.setProviderName(definition.providerName());
-        managed.setDisplayName(resolveText(managed.getDisplayName(), definition.providerName()));
+        managed.setDisplayName(resolveProviderDisplayName(managed.getDisplayName(), definition.providerName()));
         managed.setSortOrder(managed.getSortOrder() == null ? 900 : managed.getSortOrder());
         managed.setSupportedScenes(providerCatalog.supportedScenes(definition.providerCode()));
         managed.setEnabledScenes(normalizeEnabledScenes(definition.providerCode(), managed.getEnabledScenes()));
@@ -413,7 +413,10 @@ public class PaymentManagementAppService {
         PaymentProviderSettingsDTO merged = new PaymentProviderSettingsDTO();
         merged.setProviderCode(definition.providerCode());
         merged.setProviderName(definition.providerName());
-        merged.setDisplayName(resolveText(request == null ? null : request.getDisplayName(), resolveText(current.getDisplayName(), definition.providerName())));
+        merged.setDisplayName(resolveProviderDisplayName(
+                request == null ? null : request.getDisplayName(),
+                resolveProviderDisplayName(current.getDisplayName(), definition.providerName())
+        ));
         merged.setSortOrder(request == null || request.getSortOrder() == null ? (current.getSortOrder() == null ? 100 : current.getSortOrder()) : Math.max(0, request.getSortOrder()));
         merged.setSupportedScenes(providerCatalog.supportedScenes(definition.providerCode()));
         merged.setEnabledScenes(normalizeEnabledScenes(definition.providerCode(), request == null ? current.getEnabledScenes() : request.getEnabledScenes()));
@@ -562,7 +565,7 @@ public class PaymentManagementAppService {
                 .filter(item -> item.getEnabledScenes() != null && !item.getEnabledScenes().isEmpty())
                 .map(item -> new PaymentCheckoutOptionDTO(
                         item.getProviderCode(),
-                        resolveText(item.getDisplayName(), item.getProviderName()),
+                        resolveProviderDisplayName(item.getDisplayName(), item.getProviderName()),
                         item.getSortOrder(),
                         item.getCurrency(),
                         List.copyOf(item.getEnabledScenes())
@@ -903,6 +906,18 @@ public class PaymentManagementAppService {
         }
         String normalized = candidate.trim();
         return SECRET_PLACEHOLDER.equals(normalized) ? fallback : normalized;
+    }
+
+    private String resolveProviderDisplayName(String candidate, String fallback) {
+        if (!StringUtils.hasText(candidate)) {
+            return fallback;
+        }
+        String normalized = candidate.trim();
+        return isReplacementPlaceholder(normalized) ? fallback : normalized;
+    }
+
+    private boolean isReplacementPlaceholder(String value) {
+        return !value.isEmpty() && value.codePoints().allMatch(codePoint -> codePoint == '?' || codePoint == '\uFFFD');
     }
 
     private Boolean resolveBoolean(Boolean candidate, Boolean fallback) {

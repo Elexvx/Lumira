@@ -1820,3 +1820,40 @@ html[data-theme='dark'] .ant-layout-header {
     margin: 8px;
   }
 }
+
+/*
+ * A collapsed ProLayout sider is only 64px wide. Its default 8px horizontal
+ * padding leaves too little room for the icon menu and makes the native menu
+ * scrollbar look like a second vertical rail. Let the collapsed menu use the
+ * whole sider and keep its scrollbar compact and theme-aware.
+ */
+.ant-pro-layout .ant-pro-sider.ant-layout-sider-collapsed .ant-layout-sider-children {
+  margin: 0;
+  padding-inline: 0;
+}
+
+.ant-pro-sider.ant-layout-sider-collapsed {
+  .ant-layout-sider-children > div[style*='overflow-y'] {
+    scrollbar-color: var(--ant-color-text-tertiary) transparent;
+    scrollbar-width: thin;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: var(--ant-color-text-tertiary);
+      background-clip: padding-box;
+    }
+
+    &::-webkit-scrollbar-button {
+      display: none;
+    }
+  }
+}

@@ -17,7 +17,7 @@ class SystemRouteCatalogTest {
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/activities/search")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/management")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/registrations")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/registrations")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/review-results")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/expert-review/reviews")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/create")).isTrue();
@@ -33,7 +33,7 @@ class SystemRouteCatalogTest {
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/certificates/mine")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/experts")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/experts/management")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/experts/query")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/experts/query")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/workflows")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/workflows/tasks")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/workflows/config")).isTrue();

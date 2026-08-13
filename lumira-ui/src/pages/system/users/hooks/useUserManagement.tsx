@@ -17,11 +17,11 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
-import type { DepartmentRecord, PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/api';
+import type { DepartmentRecord, PagedResult, ProfileFieldSetting, RoleRecord, UserDetail, UserRecord } from '@/types/api';
 import { maskEmail, maskMobile } from '@/utils/sensitive';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { UserAvatar } from '@/components/UserAvatar';
-import { buildUserEditorPayload } from '@/pages/system/users/userEditorPayload';
+import { buildUserEditorPayload, normalizeExtraProfileValuesForEditor } from '@/pages/system/users/userEditorPayload';
 
 import { databaseMessage } from '@/i18n/databaseMessage';
 
@@ -361,6 +361,8 @@ export const useUserManagement = () => {
   const [departmentLoading, setDepartmentLoading] = useState(false);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
   const selectedDepartmentInitializedRef = useRef(false);
+  const [profileFields, setProfileFields] = useState<ProfileFieldSetting[]>([]);
+  const [profileFieldsLoaded, setProfileFieldsLoaded] = useState(false);
   const [editorForm] = Form.useForm();
   const [selectedUserDetail, setSelectedUserDetail] = useState<UserDetail | null>(null);
   const [saving, setSaving] = useState(false);
@@ -411,6 +413,30 @@ export const useUserManagement = () => {
     }
     await loadDepartments();
   }, [departmentOptionsLoaded, loadDepartments]);
+
+  const ensureProfileFieldsLoaded = useCallback(async (): Promise<ProfileFieldSetting[]> => {
+    if (profileFieldsLoaded) {
+      return profileFields;
+    }
+    try {
+      const result = await request<ProfileFieldSetting[]>('/v1/system/profile-field-settings?pageKey=PROFILE', {
+        method: 'GET',
+        ...API_OPTS.NO_REDIRECT,
+      });
+      const nextFields = (result || [])
+        .filter((item) => item.visible !== false)
+        .sort((left, right) => (left.sortNo ?? 1000) - (right.sortNo ?? 1000));
+      setProfileFields(nextFields);
+      setProfileFieldsLoaded(true);
+      return nextFields;
+    } catch {
+      // Users who can manage accounts may not have configuration-view permission.
+      // Keep the account fields usable and show an empty profile tab in that case.
+      setProfileFields([]);
+      setProfileFieldsLoaded(true);
+      return [];
+    }
+  }, [profileFields, profileFieldsLoaded]);
 
   useEffect(() => {
     void loadDepartments();
@@ -466,26 +492,28 @@ export const useUserManagement = () => {
       roleIds: [],
       deptIds: selectedDepartmentId ? [selectedDepartmentId] : [],
       primaryDeptId: selectedDepartmentId || null,
+      extraProfileValues: {},
     });
     try {
-      await Promise.all([ensureRoleOptionsLoaded(), ensureDepartmentOptionsLoaded()]);
+      await Promise.all([ensureRoleOptionsLoaded(), ensureDepartmentOptionsLoaded(), ensureProfileFieldsLoaded()]);
     } catch {
       drawer.reset();
     }
-  }, [drawer, editorForm, ensureDepartmentOptionsLoaded, ensureRoleOptionsLoaded, selectedDepartmentId]);
+  }, [drawer, editorForm, ensureDepartmentOptionsLoaded, ensureProfileFieldsLoaded, ensureRoleOptionsLoaded, selectedDepartmentId]);
 
   const openEdit = useCallback(
     async (record: UserRecord) => {
       editorForm.resetFields();
       drawer.openEdit(record, record.id);
       try {
-        const [detailResult] = await Promise.all([
+        const [detailResult, , , loadedProfileFields] = await Promise.all([
           request<UserDetail>(`/v1/system/users/${record.id}`, {
             method: 'GET',
             ...API_OPTS.NO_REDIRECT,
           }),
           ensureRoleOptionsLoaded(),
           ensureDepartmentOptionsLoaded(),
+          ensureProfileFieldsLoaded(),
         ]);
         editorForm.setFieldsValue({
           ...detailResult,
@@ -495,12 +523,13 @@ export const useUserManagement = () => {
           roleIds: detailResult.roleIds || [],
           deptIds: detailResult.deptIds || [],
           primaryDeptId: detailResult.primaryDeptId || null,
+          extraProfileValues: normalizeExtraProfileValuesForEditor(loadedProfileFields, detailResult.extraProfileValues || {}),
         });
       } catch {
         drawer.reset();
       }
     },
-    [drawer, editorForm, ensureDepartmentOptionsLoaded, ensureRoleOptionsLoaded],
+    [drawer, editorForm, ensureDepartmentOptionsLoaded, ensureProfileFieldsLoaded, ensureRoleOptionsLoaded],
   );
 
   const openDetail = useCallback(
@@ -530,6 +559,7 @@ export const useUserManagement = () => {
       const isCreating = !drawer.editingId;
       const payload = buildUserEditorPayload(values, {
         editing: !isCreating,
+        profileFields,
       });
 
       if (drawer.editingId) {
@@ -559,7 +589,7 @@ export const useUserManagement = () => {
     } finally {
       setSaving(false);
     }
-  }, [drawer, editorForm, loadDepartments, reloadTable, selectedDepartmentId, setSelectedDepartmentId]);
+  }, [drawer, editorForm, loadDepartments, profileFields, reloadTable, selectedDepartmentId, setSelectedDepartmentId]);
 
   const handleStatusToggle = useCallback(
     async (record: UserRecord) => {
@@ -728,6 +758,7 @@ export const useUserManagement = () => {
     securitySettings,
     roleOptions,
     departmentOptions,
+    profileFields,
     departments,
     departmentLoading,
     selectedDepartmentId,

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildCompetitionRegistrationExportRequest,
   buildRegistrationQuerySignature,
   resolveRegistrationExportScope,
 } from './registrationExportScope';
@@ -49,50 +48,18 @@ describe('resolveRegistrationExportScope', () => {
   });
 });
 
-describe('buildCompetitionRegistrationExportRequest', () => {
-  it('uses current filters when nothing is selected', () => {
-    expect(buildCompetitionRegistrationExportRequest({
-      competitionId: 88,
-      status: 'CONFIRMED',
-      keyword: 'alpha',
-    }, [])).toEqual({
-      competitionId: 88,
-      status: 'CONFIRMED',
-      keyword: 'alpha',
-    });
-  });
-
-  it('uses only unique selected ids when a selection exists', () => {
-    expect(buildCompetitionRegistrationExportRequest({
-      competitionId: 88,
-      status: 'CONFIRMED',
-      keyword: 'alpha',
-    }, [101, 101, 102, -1])).toEqual({
-      competitionId: 88,
-      registrationIds: [101, 102],
-    });
-  });
-
-  it('does not build an export request without a competition', () => {
-    expect(buildCompetitionRegistrationExportRequest({}, [101])).toBeUndefined();
-  });
-});
-
 describe('buildRegistrationQuerySignature', () => {
   it('changes only when an applied filter changes', () => {
     const current = buildRegistrationQuerySignature({
-      competitionId: 88,
       status: 'CONFIRMED',
       keyword: 'alpha',
     });
 
     expect(buildRegistrationQuerySignature({
-      competitionId: 88,
       status: 'CONFIRMED',
       keyword: 'alpha',
     })).toBe(current);
     expect(buildRegistrationQuerySignature({
-      competitionId: 88,
       status: 'PAID',
       keyword: 'alpha',
     })).not.toBe(current);

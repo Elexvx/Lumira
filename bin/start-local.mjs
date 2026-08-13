@@ -2,7 +2,13 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, watch } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  watch,
+  writeFileSync,
+} from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import process from 'node:process';
@@ -21,6 +27,8 @@ const backendRoot = path.join(repoRoot, 'lumira-backend');
 const frontendRoot = path.join(repoRoot, 'lumira-ui');
 const bootstrapAdminRoot = path.join(repoRoot, 'deploy', 'bootstrap-admin');
 const bootstrapAdminJar = path.join(bootstrapAdminRoot, 'target', 'lumira-bootstrap-admin.jar');
+const runtimeSecretsRoot = path.join(repoRoot, 'runtime-secrets');
+const localFieldSecretPath = path.join(runtimeSecretsRoot, 'local-field-secret');
 const defaultEnvPath = path.join(backendRoot, '.env');
 const rawArgs = process.argv.slice(2);
 
@@ -72,6 +80,42 @@ function localRuntimeSecret(...configuredValues) {
     (value) => typeof value === 'string' && value.trim().length > 0,
   );
   return configured ?? randomBytes(32).toString('base64url');
+}
+
+function persistentLocalRuntimeSecret(secretPath, ...configuredValues) {
+  const configured = configuredValues.find(
+    (value) => typeof value === 'string' && value.trim().length > 0,
+  );
+  if (configured) {
+    return configured;
+  }
+
+  try {
+    const persisted = readFileSync(secretPath, 'utf8').trim();
+    if (persisted) {
+      return persisted;
+    }
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      throw new Error(`Unable to read the local field-encryption secret: ${error.message}`);
+    }
+  }
+
+  const generated = randomBytes(32).toString('base64url');
+  mkdirSync(path.dirname(secretPath), { recursive: true });
+  try {
+    writeFileSync(secretPath, `${generated}\n`, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+    return generated;
+  } catch (error) {
+    if (error?.code !== 'EEXIST') {
+      throw new Error(`Unable to persist the local field-encryption secret: ${error.message}`);
+    }
+    const persisted = readFileSync(secretPath, 'utf8').trim();
+    if (!persisted) {
+      throw new Error('The local field-encryption secret file is empty. Remove it and restart local mode.');
+    }
+    return persisted;
+  }
 }
 
 function isLoopback(host) {
@@ -278,7 +322,11 @@ const localEnv = {
   REDIS_PORT: process.env.LUMIRA_LOCAL_REDIS_PORT || fileEnv.REDIS_PORT || '6379',
   REDIS_PASSWORD: process.env.LUMIRA_LOCAL_REDIS_PASSWORD ?? fileEnv.REDIS_PASSWORD ?? '',
   JWT_SECRET: localRuntimeSecret(process.env.JWT_SECRET, fileEnv.JWT_SECRET),
-  FIELD_SECRET: localRuntimeSecret(process.env.FIELD_SECRET, fileEnv.FIELD_SECRET),
+  FIELD_SECRET: persistentLocalRuntimeSecret(
+    localFieldSecretPath,
+    process.env.FIELD_SECRET,
+    fileEnv.FIELD_SECRET,
+  ),
   PLUGIN_SIGNATURE_SECRET: localRuntimeSecret(process.env.PLUGIN_SIGNATURE_SECRET, fileEnv.PLUGIN_SIGNATURE_SECRET),
   SPRING_SECURITY_USER_PASSWORD: localRuntimeSecret(process.env.SPRING_SECURITY_USER_PASSWORD, fileEnv.SPRING_SECURITY_USER_PASSWORD),
   PLATFORM_UPDATE_CHECK_INITIAL_DELAY_MS: fileEnv.PLATFORM_UPDATE_CHECK_INITIAL_DELAY_MS || '86400000',

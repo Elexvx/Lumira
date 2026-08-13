@@ -1,5 +1,8 @@
 package com.lumira.saas.modules.system.user.app;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -19,7 +22,10 @@ import com.lumira.saas.modules.iam.service.IamUserAccount;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
+import com.lumira.saas.modules.system.app.SystemProfileSettingsAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.profile.repository.SystemCurrentUserProfileRepository;
+import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.lumira.saas.modules.system.user.infrastructure.SystemUserManagementPersistenceAdapters;
 import com.lumira.saas.modules.system.user.repository.SystemUserManagementRepository;
 import com.lumira.saas.modules.system.user.support.UserUidGenerator;
@@ -38,9 +44,11 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -51,8 +59,11 @@ public class SystemUserManagementAppService {
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String ASYNC_EXPORT_SESSION_PREFIX = "internal-export-task-";
     private static final String STATUS_ENABLED = "ENABLED";
+    private static final String EXTRA_PROFILE_VALUES_KEY = "customProfileValues";
+    private static final int CUSTOM_PROFILE_VALUE_MAX_LENGTH = 1000;
     private static final String RESOURCE_SYSTEM_USER = "system:user";
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final SystemUserManagementRepository userRepository;
     private final UserDomainService userDomainService;
@@ -64,6 +75,8 @@ public class SystemUserManagementAppService {
     private final OperationAuditService operationAuditService;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
+    private final SystemCurrentUserProfileRepository currentUserProfileRepository;
+    private final SystemProfileSettingsAppService systemProfileSettingsAppService;
     private final boolean enforceTrustedUserResolution;
 
     public SystemUserManagementAppService(
@@ -87,6 +100,8 @@ public class SystemUserManagementAppService {
                 operationAuditService,
                 passwordEncoder,
                 passwordPolicyService,
+                null,
+                null,
                 false
         );
     }
@@ -102,7 +117,9 @@ public class SystemUserManagementAppService {
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             OperationAuditService operationAuditService,
             PasswordEncoder passwordEncoder,
-            PasswordPolicyService passwordPolicyService
+            PasswordPolicyService passwordPolicyService,
+            SystemCurrentUserProfileRepository currentUserProfileRepository,
+            SystemProfileSettingsAppService systemProfileSettingsAppService
     ) {
         this(
                 userRepository,
@@ -115,6 +132,8 @@ public class SystemUserManagementAppService {
                 operationAuditService,
                 passwordEncoder,
                 passwordPolicyService,
+                currentUserProfileRepository,
+                systemProfileSettingsAppService,
                 true
         );
     }
@@ -143,6 +162,8 @@ public class SystemUserManagementAppService {
                 operationAuditService,
                 passwordEncoder,
                 passwordPolicyService,
+                null,
+                null,
                 true
         );
     }
@@ -158,6 +179,8 @@ public class SystemUserManagementAppService {
             OperationAuditService operationAuditService,
             PasswordEncoder passwordEncoder,
             PasswordPolicyService passwordPolicyService,
+            SystemCurrentUserProfileRepository currentUserProfileRepository,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
             boolean enforceTrustedUserResolution
     ) {
         this.userRepository = userRepository;
@@ -170,6 +193,8 @@ public class SystemUserManagementAppService {
         this.operationAuditService = operationAuditService;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
+        this.currentUserProfileRepository = currentUserProfileRepository;
+        this.systemProfileSettingsAppService = systemProfileSettingsAppService;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
@@ -337,6 +362,7 @@ public class SystemUserManagementAppService {
         SystemVO.UserDetailVO detail = new SystemVO.UserDetailVO();
         copyUser(detail, user);
         String userUuid = user.getUserUuid();
+        detail.setExtraProfileValues(loadExtraProfileValues(userId, userUuid));
         detail.setRoleIds(userRepository.findActiveUserRoleIds(userId, userUuid));
         List<Long> deptIds = userRepository.findActiveUserDepartmentIds(userId, userUuid);
         detail.setDeptIds(deptIds);
@@ -379,6 +405,7 @@ public class SystemUserManagementAppService {
         String userUuid = requireUserUuid(userId);
         replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), true);
+        updateExtraProfileValues(currentUser, userId, userUuid, request.getExtraProfileValues());
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
         return buildUserDetail(currentUser, userId);
@@ -395,6 +422,7 @@ public class SystemUserManagementAppService {
         insertOrUpdateUser(userId, userUuid, request, currentUser.getUserId(), currentUser.getUserUuid());
         replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), false);
+        updateExtraProfileValues(currentUser, userId, userUuid, request.getExtraProfileValues());
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
         return buildUserDetail(currentUser, userId);
@@ -832,6 +860,74 @@ public class SystemUserManagementAppService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "用户状态只能是 ENABLED 或 DISABLED");
         }
         return normalized;
+    }
+
+    private void updateExtraProfileValues(
+            CurrentUser currentUser,
+            Long userId,
+            String userUuid,
+            Map<String, String> requestedValues
+    ) {
+        if (requestedValues == null || requestedValues.isEmpty()
+                || currentUserProfileRepository == null || systemProfileSettingsAppService == null) {
+            return;
+        }
+        Set<String> allowedKeys = systemProfileSettingsAppService.getProfileFieldSettings(currentUser).stream()
+                .filter(item -> Boolean.TRUE.equals(item.getCustom()))
+                .map(ProfileFieldSettingVO::getFieldKey)
+                .filter(StringUtils::hasText)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (allowedKeys.isEmpty()) {
+            return;
+        }
+
+        Map<String, String> sanitizedValues = new LinkedHashMap<>();
+        requestedValues.forEach((fieldKey, value) -> {
+            if (!allowedKeys.contains(fieldKey)) {
+                return;
+            }
+            String normalized = normalizeNullableText(value);
+            sanitizedValues.put(fieldKey, normalized == null
+                    ? null
+                    : normalized.substring(0, Math.min(normalized.length(), CUSTOM_PROFILE_VALUE_MAX_LENGTH)));
+        });
+        if (sanitizedValues.isEmpty()) {
+            return;
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put(EXTRA_PROFILE_VALUES_KEY, sanitizedValues);
+        try {
+            currentUserProfileRepository.mergeExtraProfileJson(userId, userUuid, OBJECT_MAPPER.writeValueAsString(payload));
+        } catch (JsonProcessingException ex) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "Failed to serialize extra profile values");
+        }
+    }
+
+    private Map<String, String> loadExtraProfileValues(Long userId, String userUuid) {
+        if (currentUserProfileRepository == null) {
+            return Map.of();
+        }
+        String extraJson = currentUserProfileRepository.findExtraProfileJson(userId, userUuid);
+        if (!StringUtils.hasText(extraJson)) {
+            return Map.of();
+        }
+        try {
+            Map<String, Object> payload = OBJECT_MAPPER.readValue(extraJson, new TypeReference<>() {});
+            Object rawValues = payload.get(EXTRA_PROFILE_VALUES_KEY);
+            if (!(rawValues instanceof Map<?, ?> rawMap)) {
+                return Map.of();
+            }
+            Map<String, String> values = new LinkedHashMap<>();
+            rawMap.forEach((key, value) -> {
+                if (key instanceof String fieldKey && value instanceof String fieldValue && StringUtils.hasText(fieldValue)) {
+                    values.put(fieldKey, fieldValue);
+                }
+            });
+            return values;
+        } catch (JsonProcessingException ex) {
+            return Map.of();
+        }
     }
 
     private String normalizeNullableText(String value) {

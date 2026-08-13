@@ -15,6 +15,7 @@ import { TableActionBar } from '@/features/table/TableActionBar';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 import { request } from '@/services/common/request';
+import { queryClient } from '@/query/queryClient';
 import type { MenuNode, PluginDefinition, PluginVersion, PluginAvailability } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
@@ -22,6 +23,7 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { localizeBuiltinPluginDefinition, localizePluginValue } from './pluginPresentation';
 import { refreshPluginMutationSession } from './pluginMutationSession';
 import { PluginCardsGrid } from './PluginCardsGrid';
+import { invalidatePaymentProviderSettingsQuery } from '../components/payment/paymentQueryKeys';
 
 const pluginMessage = (id: string, defaultMessage: string) => formatMessage({ id, defaultMessage });
 const pluginValue = (value?: string | null) => localizePluginValue(value, pluginMessage);
@@ -283,6 +285,7 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
         }),
       );
     }
+    await invalidatePaymentProviderSettingsQuery(queryClient);
   }, [loadOverview, refreshBootstrap]);
 
   const confirmMutation = useCallback(

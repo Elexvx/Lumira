@@ -41,6 +41,7 @@ import {
 import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
 import { backendRouteMeta, isCanonicalRealPageRoutePath, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
+import { shouldFallbackToLegacyEndpoint } from '@/services/common/legacyEndpointFallback';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
@@ -62,7 +63,6 @@ const STABLE_MAIN_ROUTE_PATHS = [
   '/data-management',
   '/registration',
   '/certificates',
-  '/experts',
   '/expert-review',
   '/workflows',
   '/user-center',
@@ -76,7 +76,6 @@ const PERSONAL_CENTER_CHILD_PATHS = ['/user-center/personal-center/profile', '/u
 const DATA_MANAGEMENT_GROUP_PATH = '/data-management';
 const DATA_MANAGEMENT_DIRECT_CHILD_PATHS = [
   '/competitions/management',
-  '/competitions/registrations',
   '/activities/management',
   '/payments/management',
   '/data-management/download-center',
@@ -92,7 +91,6 @@ const ACTIVE_MAIN_MENU_PATH_BY_ROUTE: Array<[RegExp, string]> = [
 const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
   '/registration': 'main:registration',
   '/certificates': 'main:certificates',
-  '/experts': 'main:experts',
   '/expert-review': 'main:expert-review',
   '/workflows': 'main:workflows',
   [USER_CENTER_GROUP_PATH]: 'main:user-center',
@@ -101,7 +99,8 @@ const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
 };
 const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
 const MOUSE_MOVE_THROTTLE_MS = 1000;
-const KEEPALIVE_THROTTLE_MS = 60_000;
+const KEEPALIVE_THROTTLE_MS = 15_000;
+const KEEPALIVE_INTERVAL_MS = 15_000;
 const TOKEN_REFRESH_RETRY_MS = 5_000;
 const KEEPALIVE_ENDPOINTS = {
   v2: '/v2/auth/session/keepalive',
@@ -252,6 +251,9 @@ const useSessionActivityController = ({ securitySettings }: { securitySettings: 
   const keepaliveInFlightRef = useRef(false);
 
   const pingSession = useCallback(async () => {
+    if (!tokenManager.hasToken()) {
+      return;
+    }
     if (keepaliveInFlightRef.current) {
       return;
     }
@@ -263,20 +265,22 @@ const useSessionActivityController = ({ securitySettings }: { securitySettings: 
 
     keepaliveInFlightRef.current = true;
     lastKeepaliveRef.current = now;
+    const keepaliveOptions = {
+      method: 'POST' as const,
+      autoRedirectOnUnauthorized: false,
+      forceSessionLogoutOnUnauthorized: true,
+      notifyOnUnauthorized: true,
+      silent: true,
+    };
     try {
-      await request(KEEPALIVE_ENDPOINTS.v2, {
-        method: 'POST',
-        autoRedirectOnUnauthorized: false,
-        allowUnauthorizedWithoutRedirect: true,
-        silent: true,
-      }).catch(() =>
-        request(KEEPALIVE_ENDPOINTS.v1, {
-          method: 'POST',
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-      );
+      try {
+        await request(KEEPALIVE_ENDPOINTS.v2, keepaliveOptions);
+      } catch (error) {
+        if (!shouldFallbackToLegacyEndpoint(error)) {
+          throw error;
+        }
+        await request(KEEPALIVE_ENDPOINTS.v1, keepaliveOptions);
+      }
     } catch {
       lastKeepaliveRef.current = 0;
     } finally {
@@ -320,12 +324,13 @@ const useSessionActivityController = ({ securitySettings }: { securitySettings: 
   return useMemo(
     () => ({
       ...timers,
+      pingSession,
       recordActivity,
       applyExternalActivityAt,
       primeStoredActivity,
       getLastActivityAt: timers.getLastActivityAt,
     }),
-    [applyExternalActivityAt, primeStoredActivity, recordActivity, timers],
+    [applyExternalActivityAt, pingSession, primeStoredActivity, recordActivity, timers],
   );
 };
 
@@ -480,6 +485,7 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
       if (document.visibilityState !== 'visible') {
         return;
       }
+      void controller.pingSession();
       const elapsedMs = Date.now() - controller.getLastActivityAt();
       if (elapsedMs >= securitySettings.idleTimeoutSeconds * 1000) {
         controller.forceLogout();
@@ -490,6 +496,7 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const handleFocus = () => {
+      void controller.pingSession();
       const elapsedMs = Date.now() - controller.getLastActivityAt();
       if (elapsedMs >= securitySettings.idleTimeoutSeconds * 1000) {
         controller.forceLogout();
@@ -498,10 +505,17 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
       controller.scheduleTimeout(controller.getLastActivityAt());
     };
     window.addEventListener('focus', handleFocus);
+    const keepaliveInterval = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') {
+        return;
+      }
+      void controller.pingSession();
+    }, KEEPALIVE_INTERVAL_MS);
 
     return () => {
       controller.clearTimer();
       controller.clearTokenExpireTimer();
+      window.clearInterval(keepaliveInterval);
       activityEvents.forEach((eventName) => {
         window.removeEventListener(eventName, handleUserActivity);
       });
@@ -1547,6 +1561,11 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     fixedHeader: false,
     fixSiderbar: true,
     siderWidth: LAYOUT_SIDER_WIDTH,
+    // ProLayout collapses automatically at its `md` breakpoint, while the
+    // application treats that range as tablet/desktop and keeps the full
+    // navigation width. Keep the two responsive contracts aligned; only a
+    // genuinely mobile viewport should start with a collapsed sider.
+    defaultCollapsed: isMobile,
     layout: 'mix',
     token: {
       header: {

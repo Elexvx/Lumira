@@ -1,15 +1,24 @@
 package com.lumira.deploy.bootstrap;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
 
 public final class BootstrapAdminCommand {
 
     private static final int MAX_SECRET_BYTES = 4096;
+    private static final Set<String> LOOPBACK_DATABASE_HOSTS = Set.of(
+            "localhost",
+            "127.0.0.1",
+            "::1",
+            "0:0:0:0:0:0:0:1"
+    );
 
     private BootstrapAdminCommand() {
     }
@@ -31,6 +40,7 @@ public final class BootstrapAdminCommand {
                 "LUMIRA_BOOTSTRAP_ADMIN_INITIALIZATION_SOURCE",
                 AdminCredentialBootstrap.DEFAULT_INITIALIZATION_SOURCE
         );
+        validateInitializationBoundary(databaseUrl, initializationSource);
         char[] bootstrapPassword = readSecret(environment.get("LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE"));
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
@@ -83,6 +93,35 @@ public final class BootstrapAdminCommand {
             if (decoded != null) {
                 Arrays.fill(decoded, '\0');
             }
+        }
+    }
+
+    static void validateInitializationBoundary(String databaseUrl, String initializationSource) {
+        if (!"LOCAL_DEFAULT".equals(initializationSource)) {
+            return;
+        }
+        try {
+            URI endpoint = URI.create(databaseUrl.substring("jdbc:".length()));
+            String host = endpoint.getHost();
+            String normalizedHost = host == null
+                    ? null
+                    : host.replaceAll("^\\[|\\]$", "").toLowerCase(Locale.ROOT);
+            if (!"mysql".equalsIgnoreCase(endpoint.getScheme())
+                    || normalizedHost == null
+                    || !LOOPBACK_DATABASE_HOSTS.contains(normalizedHost)) {
+                throw new IllegalArgumentException(
+                        "LOCAL_DEFAULT administrator initialization requires loopback MySQL"
+                );
+            }
+        } catch (RuntimeException exception) {
+            if (exception instanceof IllegalArgumentException
+                    && "LOCAL_DEFAULT administrator initialization requires loopback MySQL".equals(exception.getMessage())) {
+                throw exception;
+            }
+            throw new IllegalArgumentException(
+                    "LOCAL_DEFAULT administrator initialization requires loopback MySQL",
+                    exception
+            );
         }
     }
 

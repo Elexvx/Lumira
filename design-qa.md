@@ -1,3 +1,93 @@
+# Design QA — Competition workspace registration and materials layout (2026-08-13)
+
+## Source and implementation evidence
+
+- Source visual truth: Browser Comment 1 on `/competitions/9af5fde3-1078-4509-91b8-11a77ed4756f/registrations`, selecting the complete workspace content region at a `1696 × 991` viewport and reporting that the page layout was broken.
+- Before implementation capture: in-app browser capture taken during this task at the same `1681 × 991` CSS content viewport after the browser scrollbar gutter; the inner registration page container started at `x=224`, occupied the full `1457px` main width, and removed the workspace frame's normal inset.
+- Final implementation capture: in-app browser capture taken during this task at the same `1681 × 991` CSS content viewport; the workspace frame and embedded registration/material table both start at `x=264` and measure `1377px` wide.
+- State: authenticated Administrator role simulation, dark theme, test competition `9af5fde3-1078-4509-91b8-11a77ed4756f`, empty registration dataset, both `registrations` and `materials` tabs exercised.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain in the annotated layout region.
+
+- Layout rhythm: the embedded registration/material page no longer mounts a second `PageContainer`. The workspace restores the same `40px` inline inset used by its audit screen, and the event header, module navigation, search card, toolbar, and table align to one `1377px` content grid.
+- Typography and copy: existing Ant Design typography, labels, placeholders, empty state, and table copy are unchanged by the layout fix.
+- Colors and tokens: existing dark-theme surfaces, borders, primary actions, status colors, and spacing tokens are preserved.
+- Image and icon fidelity: no image or icon asset was added, replaced, or approximated.
+- Responsive boundary: the standalone `/competitions/registrations` route still renders its original full `PageContainer` with title and breadcrumb; only pages embedded in a competition workspace use the flat frame.
+- Interaction: registration and materials tabs render without a nested page container or `系统异常`; the standalone data page remains reachable and intact.
+
+## Comparison history
+
+1. The annotated source showed the workspace content flush to the main area's left and right edges because `CompetitionRegistrationDataPage` nested a full management `PageContainer` inside `CompetitionWorkspaceLayout`.
+2. Removed only the duplicate page frame for workspace rendering and retained the standalone page frame through `CompetitionRegistrationDataPageFrame`.
+3. Post-fix browser measurements report `pageContainers=0` in both workspace tabs and identical outer/inner grid coordinates (`x=264`, width `1377px`). The standalone route reports `pageContainers=1` and retains its title and breadcrumb.
+
+## Validation
+
+- Targeted Vitest: 3 files / 11 tests passed.
+- TypeScript typecheck: passed.
+- `git diff --check`: passed for the edited files.
+- Browser-rendered layout and tab interaction: passed; no change-related console or runtime error was observed.
+
+## Final result
+
+final result: passed
+
+---
+
+# Design QA — Competition workspace shared layout (2026-08-13)
+
+## Source and implementation evidence
+
+- Source visual truth: Browser Comment 1 on `/competitions/9af5fde3-1078-4509-91b8-11a77ed4756f/reviews`, selecting the complete competition workspace and requesting consistent page composition with reusable styles.
+- Source capture: `artifacts/competition-workspace-unified-layout/before-reviews.png` (`1618 × 982` output pixels; source browser viewport `1633 × 991`, DPR `2`).
+- Browser-rendered implementation: `artifacts/competition-workspace-unified-layout/after-reviews.png` (`1681 × 982` output pixels; verification viewport `1696 × 991`, DPR `2`).
+- State: authenticated Administrator session, Chinese locale, dark theme, published test competition, review-management tab selected, empty review scheme and batch state.
+- Full-view comparison: the complete selected workspace region was compared because the defect concerned relationships among the event header, module navigation, page heading, filters, and result panels.
+- Focused-region comparison: no separate crop was required; the source selection already isolates the full competition workspace while retaining every affected alignment edge.
+
+## Findings
+
+No actionable P0, P1, or P2 difference remains for the requested unification.
+
+- Structure: all eight competition modules now render inside one shared outer workspace card. Nested page containers and duplicate module headings were removed from embedded routes.
+- Reuse: `CompetitionWorkspacePageFrame` supplies the shared embedded/standalone skeleton and the `content`, `table`, and `flush` variants; review, payment, certificate, settings, overview, audit, registration, and material pages use the same layout contract.
+- Alignment and spacing: the event title, competition selector, tab navigation, module toolbar, filters, tables, and empty states share the outer card grid. Table variants have a `0px` inter-section gap, while content variants retain the standard card padding.
+- Typography and copy: existing Ant Design typography, hierarchy, Chinese labels, statuses, tab names, button copy, and empty-state copy remain unchanged; duplicate `赛事 / 评审工作台` copy is no longer rendered in workspace mode.
+- Colors and assets: existing dark-theme tokens, borders, foreground hierarchy, icons, and empty-state illustration remain unchanged. No raster or vector asset was replaced.
+- Responsive behavior: the competition selector uses a bounded responsive width; the header wraps without overlap, content cards stack at narrow widths, and settings changes from row to column layout at its breakpoint.
+
+## Interaction and runtime checks
+
+- Clicked all workspace tabs: `概览`, `报名数据`, `材料`, `评审`, `支付`, `证书`, `赛事设置`, and `审计`; every route rendered one workspace card and one module frame with no nested workspace page container.
+- Exercised the review secondary tabs, material query action, certificate generate route, and settings layout. No `系统异常` or `资源不存在` state appeared.
+- Verified standalone routes `/expert-review/reviews`, `/payments/management`, `/certificates/records`, and `/competitions/registrations`; each retains its standalone management-page shell.
+- At `1024px`, `900px`, `768px`, and `600px` widths, document horizontal overflow remained `0px`. At `768px`, the review panels stack; at `600px`, the title and selector stack cleanly.
+- A clean browser tab produced no change-related console error; only pre-existing Ant Design deprecation warnings for `Spin.tip` and `Space.direction` remain.
+
+## Validation
+
+- Targeted Vitest: 4 files / 14 tests passed.
+- TypeScript typecheck: passed.
+- Stylelint: passed.
+- Frontend lint: passed with 0 errors; 3 pre-existing unrelated unused-variable warnings remain.
+- `git diff --check`: passed for the edited workspace files.
+- Production build safeguard intentionally left the active local preview running instead of invalidating its loaded chunks; browser regression used the current development runtime.
+
+## Comparison history
+
+1. The source showed a separate workspace header/navigation block, duplicate review page title area, filter block, and two review cards with inconsistent vertical rhythm.
+2. Introduced the shared embedded/standalone page frame and moved every competition module under one reusable outer-card contract.
+3. Desktop review verification confirmed one card, one module frame, no duplicate heading, aligned content, and no page overflow across all eight modules.
+4. A P2 responsive pass found the event selector crowding the title at `768px`; bounded selector width and header wrapping removed the overlap, with a measured `0px` overlap and clean stacking at `600px`.
+5. Standalone-route and clean-console regression confirmed that reuse did not collapse non-workspace pages or introduce runtime errors.
+
+## Final result
+
+final result: passed
+
 # Design QA — Monitoring layout fixes
 
 ## Update source card
@@ -770,6 +860,147 @@ No actionable P0, P1, or P2 differences remain for the requested layout.
 1. The captured source showed three-column overview rows and two-column snapshot rows, creating the layout called out by the annotation.
 2. Changed both description configurations to one column without altering data, cards, tables, icons, or drawer behavior.
 3. The same-state combined comparison confirmed one label/value pair per row across all targeted sections with no P0/P1/P2 visual regression.
+
+## Final result
+
+final result: passed
+# Design QA — Competition workspace single-card layout (2026-08-13)
+
+## Source and implementation evidence
+
+- Source visual truth: Browser Comment 1 on `/competitions/9af5fde3-1078-4509-91b8-11a77ed4756f/materials`, selecting the full workspace content and requesting that the header/navigation, filters, and table be presented as one block instead of three.
+- Before implementation: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/competition-workspace-single-card/before.png`.
+- Final implementation: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/competition-workspace-single-card/after.png`.
+- State: authenticated Administrator role simulation, dark theme, published test competition `9af5fde3-1078-4509-91b8-11a77ed4756f`, empty registration dataset, material and registration tabs both exercised.
+
+## Findings
+
+No actionable P0, P1, or P2 difference remains in the requested region.
+
+- Structure: the workspace header/navigation, filters, toolbar, and table now share one outer card. The two ProTable sections have no independent border or radius, and their flex gap is `0px`.
+- Separation: thin horizontal dividers preserve hierarchy between navigation, filters, and results without recreating separate cards.
+- Alignment: all sections use the same outer card grid (`x=264`, width `1314px` in the final captured viewport).
+- Typography, colors, and controls: existing Ant Design dark-theme tokens, labels, button hierarchy, table columns, and empty state are unchanged.
+- Scope: the unified treatment is limited to the workspace `registrations` and `materials` modules. The standalone `/competitions/registrations` page retains its original two-card ProTable layout with a `16px` section gap and independent borders.
+- Interaction: both workspace tabs were clicked, the selected tab and route updated correctly, and the material-page query action completed without `系统异常` or `资源不存在`.
+
+## Comparison history
+
+1. The before capture showed three rounded bordered blocks separated by large vertical gaps.
+2. The workspace outlet was moved inside the event card only for registration data views.
+3. The nested search and list cards were flattened into sections, with the outer workspace card becoming the single visual container.
+4. The after capture confirms one outer border, zero inner section gap, square inner section edges, and preserved content padding.
+
+## Validation
+
+- Targeted Vitest: 3 files / 12 tests passed.
+- TypeScript typecheck: passed.
+- Stylelint: passed.
+- Frontend lint: passed with 0 errors; 3 pre-existing unrelated unused-variable warnings remain.
+- `git diff --check`: passed for the edited workspace files.
+- Browser checks: material tab, registration tab, query action, standalone registration page, and before/after visual comparison passed.
+- Browser console: no change-related runtime error; only existing Ant Design deprecation warnings remain after a clean reload.
+
+## Final result
+
+final result: passed
+
+---
+
+# Design QA — Competition workspace overview refinement (2026-08-13)
+
+## Source and implementation evidence
+
+- Source visual truth: Browser Comments 1–4 on `/competitions/9af5fde3-1078-4509-91b8-11a77ed4756f/overview`, requesting the `概览` title, an added competition-name field before competition code, localized status text, left-aligned module actions, and removal of module-header arrows.
+- Browser-captured source state: `artifacts/competition-workspace-overview-refinement/before-1633x991.png`.
+- Browser-rendered implementation: `artifacts/competition-workspace-overview-refinement/after-1633x991.png`.
+- Viewport and density: both captures use a `1633 × 991` CSS viewport, `devicePixelRatio: 1`, and produce `1618 × 991` output pixels after the browser scrollbar gutter; no density normalization was required.
+- State: authenticated Administrator session, Chinese locale, dark theme, published test competition `9af5fde3-1078-4509-91b8-11a77ed4756f`, overview module selected.
+- Full-view comparison: both captures were opened together in the same comparison input to evaluate page hierarchy, information-grid rhythm, module-card structure, and unchanged workspace chrome.
+- Focused comparison: the four source browser annotations isolate the title, description grid, module body/action, and module header. Post-fix DOM measurements verify those regions directly: title `概览`; labels ordered as `赛事编号 / 赛事名称 / 赛事代码 / 外部身份 / 当前状态 / 有效报名数`; status `已发布`; arrow count `0`; and action-text offset from paragraph left edge `1px` instead of `16px`.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain for the requested refinements.
+
+- Fonts and typography: the existing Ant Design font stack, weights, sizes, line heights, and hierarchy are preserved. Only the requested Chinese title/status copy changed.
+- Spacing and layout rhythm: the information card remains a responsive three-column description grid on desktop, now with the competition name immediately before competition code. The module action uses the shared card body edge and aligns with its paragraph without changing card padding.
+- Colors and visual tokens: existing dark-theme surfaces, borders, secondary text, link blue, and semantic success tag color remain unchanged.
+- Image quality and asset fidelity: no raster asset changed. The removed right-arrow icon was an existing Ant Design UI icon specifically called out for removal; no substitute asset was introduced.
+- Copy and content: `赛事工作空间` is replaced by `概览`; `赛事名称` is populated from the workspace title; raw `published` is replaced by shared Chinese status metadata `已发布`; all other competition values and module descriptions remain intact.
+- Responsive behavior: at `768px` the six description items form two rows, at `600px` they form three rows, and document horizontal overflow remains `0px` at both widths.
+
+## Interaction and runtime checks
+
+- All eight `进入模块` controls remain rendered. Clicking the second control navigated to the current competition's `/registrations` module without a business or resource error, then the browser returned to overview.
+- The final overview DOM reports one-pixel text-edge variance between the module paragraph and action label, zero arrow icons, zero document overflow, and no `系统异常` or `资源不存在` state.
+- Browser runtime logs contain only the pre-existing Ant Design deprecation warnings for `Spin.tip` and `Space.direction`; no change-related error was introduced.
+
+## Validation
+
+- Targeted Vitest: 3 files / 7 tests passed.
+- TypeScript typecheck: passed.
+- Stylelint: passed.
+- Frontend lint: passed with 0 errors; 3 pre-existing unrelated unused-variable warnings remain.
+- `git diff --check`: passed for the edited tracked workspace files.
+
+## Comparison history
+
+1. The source showed four P2 consistency issues: a generic `赛事工作空间` card title, missing competition name and raw English status, a `16px` indented action label, and repeated arrow icons in module headers.
+2. Reused shared workspace status metadata in both the shell and overview, inserted the existing workspace title into the description grid, removed the module-header extras, and applied one reusable action-alignment class to every module card.
+3. The same-viewport post-fix capture and focused DOM measurements confirm all four annotations are resolved with no new overflow, visual-token drift, or interaction regression.
+
+## Final result
+
+final result: passed
+
+---
+
+# Design QA — Competition registration left-edge alignment (2026-08-13)
+
+## Source and implementation evidence
+
+- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-a540da20-83e5-427c-bcf4-f2fa36747b3d.png`, the user's annotated registration-page screenshot highlighting the intended common left edge across the workspace navigation, query row, and result table.
+- Browser-captured original state: `artifacts/competition-workspace-registration-alignment/before-1633x991.jpg`.
+- Browser-rendered implementation: `artifacts/competition-workspace-registration-alignment/after-1633x991.jpg`.
+- Viewport and density: the implementation was rendered at a `1633 × 991` CSS viewport with `devicePixelRatio: 1`; the in-app browser capture is `1618 × 982` JPEG pixels after its scrollbar/capture gutter. The source image is `2740 × 1266` PNG pixels.
+- Normalization: the source and implementation use different capture sizes, so the selected content region was compared visually and the left edge was verified with CSS-pixel DOM coordinates instead of treating raw image pixels as equivalent.
+- State: authenticated Administrator session, Chinese locale, dark theme, published test competition `9af5fde3-1078-4509-91b8-11a77ed4756f`, registration module selected, empty table state.
+- Full-view comparison: the annotated source and final implementation screenshot were opened together in one comparison input. The workspace hierarchy, dark-theme surfaces, filter layout, table columns, toolbar, and empty state remain visually unchanged outside the requested alignment correction.
+- Focused comparison: a focused measurement was required because the mismatch concerned three small leading controls. Before the fix, the navigation icon, query label, and table checkbox were at `x=305`, `x=314`, and `x=297` respectively (`17px` spread). After the fix, all three are at `x=305` (`0px` spread) at the target viewport.
+
+## Findings
+
+No actionable P0, P1, or P2 difference remains in the requested region.
+
+- Fonts and typography: the existing Ant Design font family, sizes, weights, line heights, and label copy are unchanged. The query label now uses start alignment rather than inherited right alignment, without changing its typography.
+- Spacing and layout rhythm: the visible leading controls now share one optical baseline. The rule reuses `--saas-card-padding` and `--saas-spacing-xs`, is scoped to the embedded competition workspace, and therefore applies consistently to both registration and material data pages without changing the standalone management page.
+- Colors and visual tokens: dark-theme backgrounds, borders, primary blue, disabled states, and semantic colors are unchanged.
+- Image quality and asset fidelity: no image, logo, illustration, or icon asset was added, removed, or replaced.
+- Copy and content: all app-specific text and live competition values are unchanged.
+- Icons and controls: existing Ant Design icons and controls remain intact; only the query-label alignment and selection-cell padding/alignment were normalized.
+- Responsive behavior: the visible-edge spread is `0px` at `1633px`, `2048px`, and the `768px` breakpoint, with `0px` document overflow. At `767px`, the native mobile layout remains active, has `0px` overflow, and retains only a non-actionable `2px` optical variance caused by the responsive checkbox width.
+
+## Interaction and runtime checks
+
+- Clicking `查询` completed without a resource or system error.
+- Clicking `材料` navigated to the current competition's `/materials` route and produced the same `x=305` three-point alignment; clicking `报名数据` returned to `/registrations` normally.
+- The final page contains no `资源不存在` or `系统异常` state.
+- Browser logs contain only the pre-existing Ant Design `Spin.tip` deprecation warning; no change-related runtime error was introduced.
+
+## Validation
+
+- Targeted Vitest: 2 files / 5 tests passed.
+- TypeScript typecheck: passed.
+- Stylelint: passed.
+- Frontend lint: passed with 0 errors; 3 pre-existing unrelated unused-variable warnings remain.
+- `git diff --check`: passed for `CompetitionRegistrationDataPage.css`.
+
+## Comparison history
+
+1. The source exposed one P2 alignment inconsistency: Ant Menu, QueryFilter, and the table selection column each supplied different internal padding/alignment, so their containers aligned while their visible content did not.
+2. The workspace-scoped shared rule changed the query label to start alignment and derived both label and selection-cell leading padding from existing spacing tokens. The selection cell also uses start alignment so Ant Table does not re-center the checkbox inside the asymmetric padding.
+3. Same-input source/final visual comparison and post-fix DOM measurements confirm the requested desktop baseline is exact, the shared material page inherits the correction, and no responsive overflow or interaction regression was introduced.
 
 ## Final result
 

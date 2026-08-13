@@ -23,6 +23,7 @@ final class AdminCredentialBootstrap {
     static final String DEFAULT_INITIALIZATION_SOURCE = "DOCKER_SECRET";
     private static final Set<String> ALLOWED_INITIALIZATION_SOURCES = Set.of(
             DEFAULT_INITIALIZATION_SOURCE,
+            "LOCAL_DEFAULT",
             "LOCAL_RANDOM",
             "LOCAL_SECRET_FILE"
     );
@@ -86,7 +87,7 @@ final class AdminCredentialBootstrap {
 
             char[] trustedPassword = bootstrapPassword.clone();
             try {
-                PasswordRules.validate(trustedPassword);
+                PasswordRules.validate(trustedPassword, initializationSource);
                 String passwordHash = new BCryptPasswordEncoder(12).encode(CharBuffer.wrap(trustedPassword));
                 initializeCredential(connection, admin.userUuid(), passwordHash);
                 insertMarker(connection, admin.userUuid(), initializationSource, true);

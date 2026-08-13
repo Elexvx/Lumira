@@ -15,6 +15,8 @@ import com.lumira.api.export.ExportTaskPort;
 import com.lumira.api.export.ExportTaskQueuePort;
 import com.lumira.api.export.ExportTaskQueuePort.ExportTaskClaim;
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.competition.dto.CompetitionRegistrationDTO;
 import java.time.LocalDateTime;
@@ -106,6 +108,50 @@ class CompetitionRegistrationExportTaskWorkerServiceTest {
         assertThat(processed).isZero();
         verify(taskQueue).markFailed(any(), anyString(), any());
         verify(exportAppService, never()).buildQueuedAsyncUser(any(), anyString(), any(), any());
+        verifyNoInteractions(exportTaskService);
+    }
+
+    @Test
+    void executionFailurePersistsTheBusinessReason() throws Exception {
+        ExportTaskQueuePort taskQueue = mock(ExportTaskQueuePort.class);
+        CompetitionRegistrationExportAppService exportAppService =
+                mock(CompetitionRegistrationExportAppService.class);
+        ExportTaskPort exportTaskService = mock(ExportTaskPort.class);
+        CompetitionRegistrationExportTaskWorkerService worker =
+                new CompetitionRegistrationExportTaskWorkerService(
+                        taskQueue,
+                        new ObjectMapper(),
+                        exportAppService,
+                        exportTaskService
+                );
+        CompetitionRegistrationExportAppService.AsyncTaskPayload payload =
+                new CompetitionRegistrationExportAppService.AsyncTaskPayload();
+        CompetitionRegistrationDTO.RegistrationExportRequest request =
+                new CompetitionRegistrationDTO.RegistrationExportRequest();
+        request.setCompetitionId(88L);
+        payload.setRequest(request);
+        payload.setFileName("competition-88.xlsx");
+        ObjectMapper objectMapper = new ObjectMapper();
+        when(taskQueue.claim(
+                eq(CompetitionRegistrationExportAppService.MODULE_KEY),
+                any(Integer.class),
+                anyString(),
+                anyString(),
+                any(),
+                any()
+        )).thenReturn(List.of(claim(objectMapper.writeValueAsString(payload))));
+        when(exportAppService.buildQueuedAsyncUser(1001L, "user-uuid-1001", null, 9001L))
+                .thenThrow(new BizException(ErrorCode.FORBIDDEN, "Missing permission: registration:dataset:export"));
+        when(taskQueue.markFailed(any(), eq("Missing permission: registration:dataset:export"), any())).thenReturn(1);
+
+        int processed = worker.processPendingTasks(10);
+
+        assertThat(processed).isZero();
+        verify(taskQueue).markFailed(
+                any(),
+                eq("Missing permission: registration:dataset:export"),
+                any()
+        );
         verifyNoInteractions(exportTaskService);
     }
 

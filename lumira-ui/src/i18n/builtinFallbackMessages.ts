@@ -126,6 +126,50 @@ const ROLE_SIMULATION_FALLBACK_MESSAGES = {
   },
 } as const;
 
+const USER_MENU_FALLBACK_MESSAGES = {
+  'zh-CN': {
+    'nav.user.menu': '用户菜单',
+    'nav.user.profile': '个人资料',
+    'nav.user.changePassword': '修改密码',
+    'nav.user.switchRole': '切换角色',
+    'nav.user.role.currentTag': '当前',
+    'nav.user.role.exitSimulation': '退出角色模拟',
+    'nav.user.role.exitSuccess': '已退出角色模拟',
+    'nav.user.role.switchSuccess': '角色切换成功',
+    'nav.user.role.switchSuccessWithName': '已切换至 {roleName}',
+    'auth.logout': '退出登录',
+  },
+  'en-US': {
+    'nav.user.menu': 'User menu',
+    'nav.user.profile': 'Profile',
+    'nav.user.changePassword': 'Change password',
+    'nav.user.switchRole': 'Switch role',
+    'nav.user.role.currentTag': 'Current',
+    'nav.user.role.exitSimulation': 'Exit role simulation',
+    'nav.user.role.exitSuccess': 'Exited role simulation',
+    'nav.user.role.switchSuccess': 'Role switched',
+    'nav.user.role.switchSuccessWithName': 'Switched to {roleName}',
+    'auth.logout': 'Log out',
+  },
+} as const;
+
+const USER_EDITOR_FALLBACK_MESSAGES = {
+  'zh-CN': {
+    'ui.system.users.systemFields': '系统信息',
+    'ui.system.users.customFields': '个人资料',
+    'ui.system.users.noCustomFields': '暂无启用的个人资料字段',
+    'ui.system.users.customFieldsHint': '个人资料字段可在字段管理中增加、修改或停用。',
+    'ui.system.users.customFieldRequired': '请输入{fieldLabel}',
+  },
+  'en-US': {
+    'ui.system.users.systemFields': 'System information',
+    'ui.system.users.customFields': 'Personal information',
+    'ui.system.users.noCustomFields': 'No enabled personal profile fields',
+    'ui.system.users.customFieldsHint': 'Personal profile fields are managed in Profile field settings.',
+    'ui.system.users.customFieldRequired': 'Please enter {fieldLabel}',
+  },
+} as const;
+
 type LoginFallbackLocale = keyof typeof LOGIN_FALLBACK_MESSAGES;
 
 const currentLocale = () => {
@@ -141,7 +185,9 @@ export const resolveBuiltinFallbackMessage = (id?: string | null, localeCode = c
   }
   const locale: LoginFallbackLocale = normalizeLocale(localeCode).startsWith('zh') ? 'zh-CN' : 'en-US';
   return LOGIN_FALLBACK_MESSAGES[locale][id as keyof (typeof LOGIN_FALLBACK_MESSAGES)[typeof locale]]
-    || ROLE_SIMULATION_FALLBACK_MESSAGES[locale][id as keyof (typeof ROLE_SIMULATION_FALLBACK_MESSAGES)[typeof locale]];
+    || ROLE_SIMULATION_FALLBACK_MESSAGES[locale][id as keyof (typeof ROLE_SIMULATION_FALLBACK_MESSAGES)[typeof locale]]
+    || USER_MENU_FALLBACK_MESSAGES[locale][id as keyof (typeof USER_MENU_FALLBACK_MESSAGES)[typeof locale]]
+    || USER_EDITOR_FALLBACK_MESSAGES[locale][id as keyof (typeof USER_EDITOR_FALLBACK_MESSAGES)[typeof locale]];
 };
 
 const containsCjk = (value: string) => /[\u3400-\u9fff]/.test(value);

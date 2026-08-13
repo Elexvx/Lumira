@@ -170,7 +170,18 @@ public class CompetitionRegistrationExportTaskWorkerService {
     }
 
     private String errorMessage(RuntimeException exception) {
-        String message = exception == null ? null : exception.getMessage();
+        String message = null;
+        Throwable current = exception;
+        while (current != null) {
+            if (current instanceof BizException && StringUtils.hasText(current.getMessage())) {
+                message = current.getMessage();
+                break;
+            }
+            if (!StringUtils.hasText(message) && StringUtils.hasText(current.getMessage())) {
+                message = current.getMessage();
+            }
+            current = current.getCause();
+        }
         if (!StringUtils.hasText(message)) {
             message = exception == null ? "Registration export failed" : exception.getClass().getSimpleName();
         }

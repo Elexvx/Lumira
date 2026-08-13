@@ -21,6 +21,7 @@ import {
 } from '@/auth/roleSwitch';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeLocale } from '@/i18n/locale';
+import { formatMessage } from '@/i18n/formatMessage';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useCurrentUserRealtimeSync } from '@/hooks/useCurrentUserRealtimeSync';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -200,12 +201,12 @@ export const TopActions = () => {
   };
   const githubLink = brandingSettings.githubLinkEnabled ? resolveExternalLink(brandingSettings.githubLinkUrl) : '';
   const helpLink = brandingSettings.helpLinkEnabled ? resolveExternalLink(brandingSettings.helpLinkUrl) : '';
-  const userName = currentUser?.nickname || currentUser?.realName || currentUser?.username || intl.formatMessage({ id: 'nav.user.menu', defaultMessage: 'User menu' });
+  const userName = currentUser?.nickname || currentUser?.realName || currentUser?.username || formatMessage({ id: 'nav.user.menu', defaultMessage: 'User menu' });
   const userAvatarUrl = currentUser?.avatarUrl || '';
   const currentLocale = normalizeLocale(currentUser?.locale || getLocale());
   const availableRoles = useMemo(() => currentUser?.availableRoles || [], [currentUser?.availableRoles]);
   const simulatedRoleId = currentUser?.simulatedRoleId ?? null;
-  const currentRoleTag = intl.formatMessage({
+  const currentRoleTag = formatMessage({
     id: 'nav.user.role.currentTag',
     defaultMessage: 'Current',
   });
@@ -218,7 +219,7 @@ export const TopActions = () => {
   const roleSimulationHint =
     simulatedRoleId == null
       ? ''
-      : intl.formatMessage(
+      : formatMessage(
           { id: 'nav.user.role.simulationHint', defaultMessage: 'Currently simulating {roleName}' },
           { roleName: selectedRoleLabel },
         );
@@ -331,13 +332,13 @@ export const TopActions = () => {
             );
             message.success(
               nextRoleId == null
-                ? intl.formatMessage({ id: 'nav.user.role.exitSuccess', defaultMessage: 'Exited role simulation' })
-                : intl.formatMessage(
+                ? formatMessage({ id: 'nav.user.role.exitSuccess', defaultMessage: 'Exited role simulation' })
+                : formatMessage(
                     { id: 'nav.user.role.switchSuccessWithName', defaultMessage: 'Switched to {roleName}' },
                     {
                       roleName:
                         roleSwitchOptions.find((option) => option.roleId === nextRoleId)?.label ||
-                        intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: 'Role switched' }),
+                        formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: 'Role switched' }),
                     },
                   ),
             );
@@ -353,7 +354,7 @@ export const TopActions = () => {
       setSwitchingRole(false);
     }
   };
-  const canVisitSystemSettings = Boolean(access.canVisitSystemSettings);
+  const canVisitSettings = Boolean(access.canVisitSettings);
   const settingsMenuItems = useMemo(
     () => buildSettingsDropdownItems(initialState?.menuTree, (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]), initialState?.availablePlugins),
     [access, initialState?.availablePlugins, initialState?.menuTree],
@@ -419,7 +420,7 @@ export const TopActions = () => {
         key: ROLE_SIMULATION_EXIT_KEY,
         danger: true,
         icon: <RollbackOutlined />,
-        label: intl.formatMessage({ id: 'nav.user.role.exitSimulation', defaultMessage: 'Exit role simulation' }),
+        label: formatMessage({ id: 'nav.user.role.exitSimulation', defaultMessage: 'Exit role simulation' }),
       });
       if (roleSwitchOptions.length > 0) {
         items.push({ type: 'divider' });
@@ -429,7 +430,7 @@ export const TopActions = () => {
       items.push({
         key: 'role-switch',
         icon: <SwapOutlined />,
-        label: intl.formatMessage({ id: 'nav.user.switchRole', defaultMessage: 'Switch role' }),
+        label: formatMessage({ id: 'nav.user.switchRole', defaultMessage: 'Switch role' }),
         children: roleSwitchOptions.map((option) => ({
           key: option.key,
           label: (
@@ -444,18 +445,18 @@ export const TopActions = () => {
       });
     }
     return items;
-  }, [availableRoles, currentRoleTag, currentUser?.requiresPasswordChange, intl, roleSwitchOptions, simulatedRoleId]);
+  }, [availableRoles, currentRoleTag, currentUser?.requiresPasswordChange, roleSwitchOptions, simulatedRoleId]);
   const userMenuItems: MenuProps['items'] = useMemo(
     () => [
       {
         key: 'profile',
         icon: <ProfileOutlined />,
-        label: intl.formatMessage({ id: 'nav.user.profile', defaultMessage: 'Profile' }),
+        label: formatMessage({ id: 'nav.user.profile', defaultMessage: 'Profile' }),
       },
       {
         key: 'password',
         icon: <LockOutlined />,
-        label: intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: 'Change password' }),
+        label: formatMessage({ id: 'nav.user.changePassword', defaultMessage: 'Change password' }),
       },
       ...(roleMenuItems.length
         ? [
@@ -468,10 +469,10 @@ export const TopActions = () => {
         key: 'logout',
         danger: true,
         icon: <LogoutOutlined />,
-        label: intl.formatMessage({ id: 'auth.logout', defaultMessage: 'Log out' }),
+        label: formatMessage({ id: 'auth.logout', defaultMessage: 'Log out' }),
       },
     ],
-    [intl, roleMenuItems],
+    [roleMenuItems],
   );
   const handleOpenPasswordDrawer = () => {
     setPasswordDrawerOpen(true);
@@ -545,7 +546,7 @@ export const TopActions = () => {
     themeMenuItems,
     localeMenuItems,
     userMenuItems,
-    canVisitSystemSettings,
+    canVisitSettings,
     settingsMenuItems,
     settingsMenuSelectedKeys,
     themeButtonIcon,
@@ -625,7 +626,7 @@ export const TopActions = () => {
             }}
           />
         ) : null}
-        {model.canVisitSystemSettings && model.settingsMenuItems?.length ? (
+        {model.canVisitSettings && model.settingsMenuItems?.length ? (
           <Dropdown
             trigger={['click']}
             placement="bottomRight"

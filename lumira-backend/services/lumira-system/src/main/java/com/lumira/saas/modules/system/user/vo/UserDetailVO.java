@@ -2,12 +2,14 @@ package com.lumira.saas.modules.system.user.vo;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public class UserDetailVO extends UserVO {
 
     private List<Long> roleIds;
     private List<Long> deptIds;
     private Long primaryDeptId;
+    private Map<String, String> extraProfileValues;
     private List<UserIdentityVO> identities;
     private List<UserDeviceVO> recentDevices;
     private UserSecuritySettingVO securitySetting;
@@ -18,6 +20,8 @@ public class UserDetailVO extends UserVO {
     public void setDeptIds(List<Long> deptIds) { this.deptIds = deptIds; }
     public Long getPrimaryDeptId() { return primaryDeptId; }
     public void setPrimaryDeptId(Long primaryDeptId) { this.primaryDeptId = primaryDeptId; }
+    public Map<String, String> getExtraProfileValues() { return extraProfileValues; }
+    public void setExtraProfileValues(Map<String, String> extraProfileValues) { this.extraProfileValues = extraProfileValues; }
     public List<UserIdentityVO> getIdentities() { return identities; }
     public void setIdentities(List<UserIdentityVO> identities) { this.identities = identities; }
     public List<UserDeviceVO> getRecentDevices() { return recentDevices; }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import dayjs from 'dayjs';
 import { buildUserEditorPayload } from '@/pages/system/users/userEditorPayload';
 
 describe('buildUserEditorPayload', () => {
@@ -37,5 +38,40 @@ describe('buildUserEditorPayload', () => {
     );
 
     expect(payload.password).toBeUndefined();
+  });
+
+  it('preserves custom profile values in the admin user payload', () => {
+    const payload = buildUserEditorPayload(
+      {
+        username: 'admin',
+        roleIds: [1],
+        extraProfileValues: { employeeCode: 'A-100', note: '' },
+      },
+      { editing: true },
+    );
+
+    expect(payload.extraProfileValues).toEqual({ employeeCode: 'A-100', note: '' });
+  });
+
+  it('serializes date-based custom profile values using their configured format', () => {
+    const payload = buildUserEditorPayload(
+      {
+        username: 'admin',
+        roleIds: [1],
+        extraProfileValues: {
+          joiningDate: dayjs('2026-08-12'),
+          birthMonth: '2026-08',
+        },
+      },
+      {
+        editing: true,
+        profileFields: [
+          { fieldKey: 'joiningDate', fieldLabel: 'Joining date', fieldType: 'DATE', visible: true },
+          { fieldKey: 'birthMonth', fieldLabel: 'Birth month', fieldType: 'MONTH', visible: true },
+        ],
+      },
+    );
+
+    expect(payload.extraProfileValues).toEqual({ joiningDate: '2026-08-12', birthMonth: '2026-08' });
   });
 });

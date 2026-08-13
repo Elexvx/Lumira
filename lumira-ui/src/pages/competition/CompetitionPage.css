@@ -716,16 +716,8 @@
   background: transparent;
 }
 
-.competition-settings-sidebar h5.ant-typography {
-  margin: 0 0 8px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .competition-settings-sidebar .ant-menu {
-  margin-top: 20px;
+  margin-top: 0;
   border-inline-end: 0;
 }
 
@@ -735,6 +727,11 @@
   flex: 1;
   flex-direction: column;
   padding: 24px;
+}
+
+.competition-settings-content__footer {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .competition-settings-section-header {

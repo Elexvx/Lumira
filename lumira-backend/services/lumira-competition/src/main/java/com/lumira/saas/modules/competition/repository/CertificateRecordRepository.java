@@ -10,9 +10,13 @@ public interface CertificateRecordRepository {
     int completeBatch(Long batchId, int success, int failed, String status, String errorMessage,
                       Long userId, String userUuid, LocalDateTime updatedAt);
     BatchPage findBatches(Long ownerId, String ownerUuid, long offset, long limit);
+    BatchPage findBatchesForCompetition(Long ownerId, String ownerUuid, Long competitionId, long offset, long limit);
     CertificateVO.Batch findBatch(Long id, Long ownerId, String ownerUuid);
     RecordPage findRecords(String certificateNo, String recipientName, String status,
                            Long ownerId, String ownerUuid, long offset, long limit);
+    RecordPage findRecordsForCompetition(String certificateNo, String recipientName, String status,
+                                         Long ownerId, String ownerUuid, Long competitionId,
+                                         long offset, long limit);
     CertificateVO.Record findRecord(Long id);
     CertificateVO.Record findRecord(Long id, Long ownerId, String ownerUuid);
     CertificateVO.Record findByPublicToken(String token);

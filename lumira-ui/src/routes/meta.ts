@@ -68,7 +68,7 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/experts': '/experts/management',
   '/experts/': '/experts/management',
   '/experts/management/': '/experts/management',
-  '/experts/query/': '/experts/query',
+  '/experts/query': '/experts/management',
   '/workflows': '/workflows/tasks',
   '/workflows/': '/workflows/tasks',
   '/workflows/tasks/': '/workflows/tasks',
@@ -96,7 +96,7 @@ export const resolveCanonicalRoutePath = (path: string) => {
 };
 
 export const systemRouteMeta: BackendRouteMeta[] = [
-  { path: '/settings', name: 'nav.settings.root', icon: 'SettingOutlined', hideInMenu: true },
+  { path: '/settings', name: 'nav.settings.root', icon: 'SettingOutlined', access: 'canVisitSettings', hideInMenu: true },
   { path: '/settings/monitoring', name: 'nav.system.monitoring.root', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
   { path: '/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
   { path: '/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
@@ -151,6 +151,7 @@ export const systemRoutes: BackendRouteRecord[] = [
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.settings.root',
     icon: 'SettingOutlined',
+    access: 'canVisitSettings',
     routes: [
       { path: '/settings/overview', redirect: '/settings' },
       { path: '/settings/menus', component: '@/pages/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
@@ -296,14 +297,25 @@ const activityRoutes: BackendRouteRecord[] = [
 const competitionRouteMeta: BackendRouteMeta[] = [
   { path: '/competitions', name: 'nav.competitions.root', icon: 'TrophyOutlined', access: 'isLogin' },
   { path: '/competitions/management', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
-  { path: '/competitions/registrations', name: 'nav.competitions.registrations', icon: 'TeamOutlined', access: 'canVisitCompetitionRegistrations' },
   { path: '/competitions/review-results', name: 'nav.competitions.reviewResults', icon: 'FileSearchOutlined', access: 'canVisitCompetitionReviewResults' },
   { path: '/competitions/register', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
   { path: '/competitions/register/payment-result', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
   { path: '/competitions/activity-register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
-  { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
   { path: '/competitions/create', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
   { path: '/competitions/:competitionUuid/settings', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+];
+
+const competitionWorkspaceRouteMeta: BackendRouteMeta[] = [
+  { path: '/competitions/:competitionUuid/overview', name: '赛事工作空间概览', icon: 'AppstoreOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/registrations', name: '赛事工作空间报名与材料', icon: 'TeamOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/reviews', name: '赛事工作空间评审', icon: 'AuditOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/payments', name: '赛事工作空间支付', icon: 'CreditCardOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/certificates', name: '赛事工作空间证书', icon: 'SafetyCertificateOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/certificates/generate', name: '赛事工作空间证书生成', icon: 'FileDoneOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/certificates/batches', name: '赛事工作空间证书批次', icon: 'FileProtectOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/certificates/records', name: '赛事工作空间证书记录', icon: 'SafetyCertificateOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/settings', name: '赛事工作空间设置', icon: 'SettingOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/audit', name: '赛事工作空间审计', icon: 'AuditOutlined', access: 'isLogin', hideInMenu: true },
 ];
 
 const projectRouteMeta: BackendRouteMeta[] = [
@@ -335,14 +347,32 @@ const competitionRoutes: BackendRouteRecord[] = [
     routes: [
       { path: '/competitions', redirect: '/competitions/register', hideInMenu: true },
       { path: '/competitions/management', component: '@/pages/competition', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
-      { path: '/competitions/registrations', component: '@/pages/competition/CompetitionRegistrationDataPage', name: 'nav.competitions.registrations', icon: 'TeamOutlined', access: 'canVisitCompetitionRegistrations' },
       { path: '/competitions/review-results', component: '@/pages/competition/CompetitionReviewResultsPage', name: 'nav.competitions.reviewResults', icon: 'FileSearchOutlined', access: 'canVisitCompetitionReviewResults' },
       { path: '/competitions/register/payment-result', component: '@/pages/competition', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
       { path: '/competitions/register', component: '@/pages/competition', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
       { path: '/competitions/activity-register', redirect: '/activities/register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
       { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
       { path: '/competitions/create', component: '@/pages/competition', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
-      { path: '/competitions/:competitionUuid/settings', component: '@/pages/competition', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+      {
+        path: '/competitions/:competitionUuid',
+        component: '@/features/competition-workspace/CompetitionWorkspaceLayout',
+        name: '赛事工作空间',
+        access: 'isLogin',
+        hideInMenu: true,
+        routes: [
+          { path: '/competitions/:competitionUuid', redirect: '/competitions/:competitionUuid/overview', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/overview', component: '@/pages/competition/workspace/OverviewPage', name: '赛事工作空间概览', access: 'isLogin', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/registrations', component: '@/pages/competition/CompetitionRegistrationDataPage', name: '赛事工作空间报名与材料', access: 'isLogin', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/reviews', component: '@/pages/competition/CompetitionReviewPage', name: '赛事工作空间评审', access: 'isLogin', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/payments', component: '@/pages/payment', name: '赛事工作空间支付', access: 'isLogin', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/certificates', redirect: '/competitions/:competitionUuid/certificates/records', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/certificates/generate', component: '@/pages/certificates/GeneratePage', name: '赛事工作空间证书生成', access: 'isLogin', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/certificates/batches', component: '@/pages/certificates/RecordsPage', name: '赛事工作空间证书批次', access: 'isLogin', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/certificates/records', component: '@/pages/certificates/RecordsPage', name: '赛事工作空间证书记录', access: 'isLogin', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/settings', component: '@/pages/competition', name: '赛事工作空间设置', access: 'isLogin', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/audit', component: '@/pages/competition/workspace/AuditPage', name: '赛事工作空间审计', access: 'isLogin', hideInMenu: true },
+        ],
+      },
     ],
   },
 ];
@@ -399,9 +429,8 @@ const certificateRoutes: BackendRouteRecord[] = [
 const expertRouteMeta: BackendRouteMeta[] = [
   { path: '/expert-review', name: 'nav.expertReview.root', icon: 'SolutionOutlined', access: 'canVisitExpertReview' },
   { path: '/expert-review/reviews', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitReviewWorkbench' },
-  { path: '/experts', name: 'nav.experts.root', icon: 'SolutionOutlined', access: 'canVisitExperts' },
   { path: '/experts/management', name: 'nav.experts.management', icon: 'SolutionOutlined', access: 'canVisitExperts' },
-  { path: '/experts/query', name: 'nav.experts.query', icon: 'SearchOutlined', access: 'canVisitExperts' },
+  { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
 ];
 
 const expertRoutes: BackendRouteRecord[] = [
@@ -422,10 +451,11 @@ const expertRoutes: BackendRouteRecord[] = [
     name: 'nav.experts.root',
     icon: 'SolutionOutlined',
     access: 'canVisitExperts',
+    hideInMenu: true,
     routes: [
       { path: '/experts', redirect: '/experts/management', hideInMenu: true },
       { path: '/experts/management', component: '@/pages/expert', name: 'nav.experts.management', icon: 'SolutionOutlined', access: 'canVisitExperts' },
-      { path: '/experts/query', component: '@/pages/expert', name: 'nav.experts.query', icon: 'SearchOutlined', access: 'canVisitExperts' },
+      { path: '/experts/query', redirect: '/experts/management', hideInMenu: true },
     ],
   },
 ];
@@ -454,6 +484,7 @@ const dataManagementRouteMeta: BackendRouteMeta[] = [
   { path: '/data-management', name: 'nav.data.management', icon: 'DatabaseOutlined', access: 'canVisitDataManagement' },
   { path: '/registration', name: 'nav.registration.root', icon: 'FormOutlined', access: 'isLogin' },
   ...competitionRouteMeta,
+  ...competitionWorkspaceRouteMeta,
   ...activityRouteMeta.map((item) => item.path === '/activities' ? { ...item, hideInMenu: true } : item),
   ...projectRouteMeta,
   ...teamRouteMeta.map((item) => item.path === '/team' ? { ...item, hideInMenu: true } : item),

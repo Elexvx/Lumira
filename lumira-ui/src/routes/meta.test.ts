@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCanonicalRealPageRoutePath, realPageRouteMetaMap, resolveCanonicalRoutePath, systemRoutes } from './meta';
+import { backendRouteMeta, backendRoutes, isCanonicalRealPageRoutePath, realPageRouteMetaMap, resolveCanonicalRoutePath, systemRouteMeta, systemRoutes } from './meta';
 
 describe('route meta', () => {
   it('keeps personal file center under the personal center route group', () => {
@@ -31,10 +31,10 @@ describe('route meta', () => {
     expect(realPageRouteMetaMap.has('/payments/status')).toBe(false);
   });
 
-  it('registers the competition registration dossier as a real management page', () => {
-    expect(resolveCanonicalRoutePath('/competitions/registrations')).toBe('/competitions/registrations');
-    expect(realPageRouteMetaMap.get('/competitions/registrations')?.access)
-      .toBe('canVisitCompetitionRegistrations');
+  it('removes the retired standalone registration dossier and materials alias', () => {
+    expect(realPageRouteMetaMap.has('/competitions/registrations')).toBe(false);
+    expect(realPageRouteMetaMap.has('/competitions/:competitionUuid/materials')).toBe(false);
+    expect(realPageRouteMetaMap.has('/competitions/:competitionUuid/registrations')).toBe(true);
   });
 
   it('registers participant review results separately from the expert workbench', () => {
@@ -56,9 +56,38 @@ describe('route meta', () => {
       .toBe('canVisitReviewWorkbench');
   });
 
+  it('keeps expert management and expert application in the unified review navigation', () => {
+    expect(backendRouteMeta.find((item) => item.path === '/experts')).toBeUndefined();
+    expect(backendRouteMeta.find((item) => item.path === '/experts/management')?.name)
+      .toBe('nav.experts.management');
+    expect(backendRouteMeta.find((item) => item.path === '/competitions/expert-apply')?.name)
+      .toBe('nav.competitions.expertApply');
+    expect(backendRoutes.find((route) => route.path === '/experts'))
+      .toMatchObject({ hideInMenu: true });
+  });
+
+  it('redirects the retired standalone expert query page to expert management', () => {
+    expect(resolveCanonicalRoutePath('/experts/query')).toBe('/experts/management');
+    expect(resolveCanonicalRoutePath('/experts/query/')).toBe('/experts/management');
+    expect(realPageRouteMetaMap.has('/experts/query')).toBe(false);
+    expect(backendRoutes.find((route) => route.path === '/experts')?.routes?.find((route) => route.path === '/experts/query'))
+      .toMatchObject({ redirect: '/experts/management', hideInMenu: true });
+  });
+
   it('keeps workflow configuration in system settings with a legacy redirect', () => {
     expect(resolveCanonicalRoutePath('/workflows/config')).toBe('/settings/workflows');
     expect(realPageRouteMetaMap.get('/settings/workflows')?.access).toBe('canVisitWorkflowConfig');
+  });
+
+  it('keeps settings as a guarded route group with page-level access keys', () => {
+    expect(systemRouteMeta.find((item) => item.path === '/settings')?.access).toBe('canVisitSettings');
+
+    const settingsRoute = systemRoutes.find((item) => item.path === '/settings');
+    expect(settingsRoute?.access).toBe('canVisitSettings');
+    expect(settingsRoute?.routes?.find((item) => item.path === '/settings/dicts')?.access)
+      .toBe('canVisitSystemDicts');
+    expect(settingsRoute?.routes?.find((item) => item.path === '/settings/payment')?.access)
+      .toBe('canVisitSystemPayment');
   });
 
   it.each([

@@ -863,6 +863,48 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void disabledPaymentOwnerUsesChineseUserMessage() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", "REG-1-ABCD", 8_800L);
+        PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(new SystemUserSnapshotDTO(
+                1001L,
+                "user-uuid-1001",
+                "student",
+                null,
+                "DISABLED",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        CompetitionRegistrationAppService service = service(
+                sql,
+                teamApiWithMembers(1001L, 1),
+                paymentInternalApi,
+                null,
+                null,
+                systemInternalApi
+        );
+
+        assertThatThrownBy(() -> service.getPaymentStatus(student(), 1L))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).isEqualTo("Payment owner is disabled");
+                    assertThat(exception.getUserMessage()).isEqualTo("支付所属用户已被禁用");
+                });
+        verifyNoInteractions(paymentInternalApi);
+    }
+
+    @Test
     void listPaymentRecordsShouldRequirePaymentViewPermissionBeforeDatabaseAccess() {
         CompetitionSqlOperations sql = mock(CompetitionSqlOperations.class);
         CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));

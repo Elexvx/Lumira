@@ -20,6 +20,127 @@ import type {
 } from './types';
 
 const REVIEW_API = '/v2/reviews';
+const competitionWorkspaceReviewApi = (competitionUuid: string, suffix: string) =>
+  `/v2/aiadc/competitions/${encodeURIComponent(competitionUuid)}/reviews${suffix}`;
+
+export const listWorkspaceReviewPlans = (competitionUuid: string, params: { stageId?: number } = {}) =>
+  request<ReviewPlan[]>(competitionWorkspaceReviewApi(competitionUuid, '/plans'), { method: 'GET', params });
+
+export const createWorkspaceReviewPlan = (
+  competitionUuid: string,
+  data: Omit<ReviewPlanCreatePayload, 'competitionId'> & { competitionId?: number },
+) => request<ReviewPlan>(competitionWorkspaceReviewApi(competitionUuid, '/plans'), {
+  method: 'POST',
+  data,
+});
+
+export const activateWorkspaceReviewPlan = (competitionUuid: string, planId: number) =>
+  request<ReviewPlan>(competitionWorkspaceReviewApi(competitionUuid, `/plans/${planId}/activate`), { method: 'POST' });
+
+export const listWorkspaceReviewBatches = (competitionUuid: string, params: { planId?: number } = {}) =>
+  request<ReviewBatch[]>(competitionWorkspaceReviewApi(competitionUuid, '/batches'), { method: 'GET', params });
+
+export const createWorkspaceReviewBatch = (competitionUuid: string, data: ReviewBatchCreatePayload) =>
+  request<ReviewBatch>(competitionWorkspaceReviewApi(competitionUuid, '/batches'), { method: 'POST', data });
+
+export const freezeWorkspaceReviewBatch = (competitionUuid: string, batchId: number, registrationIds?: number[]) =>
+  request<ReviewBatch>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/freeze`), {
+    method: 'POST',
+    data: registrationIds?.length ? { registrationIds } : {},
+  });
+
+export const listWorkspaceReviewCandidates = (competitionUuid: string, batchId: number) =>
+  request<ReviewCandidate[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/candidates`), { method: 'GET' });
+
+export const listWorkspaceReviewAssignments = (competitionUuid: string, batchId: number) =>
+  request<ReviewAdminAssignment[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/assignments`), { method: 'GET' });
+
+export const listWorkspaceReviewRoster = (competitionUuid: string, batchId: number) =>
+  request<ReviewRosterExpert[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/roster`), { method: 'GET' });
+
+export const saveWorkspaceReviewRoster = (competitionUuid: string, batchId: number, expertIds: number[]) =>
+  request<ReviewRosterExpert[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/roster`), {
+    method: 'PUT',
+    data: { expertIds },
+  });
+
+export const confirmWorkspaceReviewAssignments = (competitionUuid: string, batchId: number) =>
+  request<ReviewBatch>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/assignments/confirm`), { method: 'POST' });
+
+export const listWorkspaceReviewInvitations = (competitionUuid: string, batchId: number) =>
+  request<ReviewRosterExpert[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/invitations`), { method: 'GET' });
+
+export const sendWorkspaceReviewInvitations = (competitionUuid: string, batchId: number) =>
+  request<ReviewRosterExpert[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/invitations`), { method: 'POST' });
+
+export const scanWorkspaceReviewCheckIn = (competitionUuid: string, batchId: number, qrToken: string) =>
+  request<ReviewInvitation>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/check-ins`), {
+    method: 'POST',
+    data: { qrToken },
+  });
+
+export const assignWorkspaceReviewExperts = (
+  competitionUuid: string,
+  batchId: number,
+  data: { assignments: Array<{ candidateId: number; expertId: number; reviewerWeight?: number }>; dueAt?: string },
+) => request<ReviewAssignmentResult>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/assignments`), {
+  method: 'POST',
+  data,
+});
+
+export const autoAssignWorkspaceReviewExperts = (
+  competitionUuid: string,
+  batchId: number,
+  data: { expertIds?: number[]; dueAt?: string; reviewerWeight?: number } = {},
+) => request<ReviewAssignmentResult>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/auto-assign`), {
+  method: 'POST',
+  data,
+});
+
+export const startWorkspaceReviewBatch = (competitionUuid: string, batchId: number) =>
+  request<ReviewBatch>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/start`), { method: 'POST' });
+
+export const listWorkspaceReviewAggregates = (competitionUuid: string, batchId: number) =>
+  request<ReviewAggregate[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/aggregates`), { method: 'GET' });
+
+export const aggregateWorkspaceReviewBatch = (competitionUuid: string, batchId: number) =>
+  request<ReviewAggregate[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/aggregate`), { method: 'POST' });
+
+export const decideWorkspaceReviewCandidate = (
+  competitionUuid: string,
+  batchId: number,
+  candidateId: number,
+  decision: ReviewDecision,
+  reason?: string,
+) => request<ReviewAggregate>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/candidates/${candidateId}/decision`), {
+  method: 'PUT',
+  data: { decision, reason },
+});
+
+export const finalizeWorkspaceReviewBatch = (competitionUuid: string, batchId: number) =>
+  request<ReviewBatch>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/finalize`), { method: 'POST' });
+
+export const publishWorkspaceReviewBatch = (competitionUuid: string, batchId: number) =>
+  request<ReviewPublication>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/publish`), { method: 'POST' });
+
+export const reopenWorkspaceReviewBatchForCorrection = (competitionUuid: string, batchId: number, reason: string) =>
+  request<ReviewBatch>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/correction`), {
+    method: 'POST',
+    data: { reason },
+  });
+
+export const listWorkspaceReviewAppeals = (competitionUuid: string, params: { batchId?: number; status?: string } = {}) =>
+  request<ReviewAppeal[]>(competitionWorkspaceReviewApi(competitionUuid, '/appeals'), { method: 'GET', params });
+
+export const resolveWorkspaceReviewAppeal = (
+  competitionUuid: string,
+  appealId: number,
+  decision: 'ACCEPTED' | 'REJECTED',
+  resolution: string,
+) => request<ReviewAppeal>(competitionWorkspaceReviewApi(competitionUuid, `/appeals/${appealId}/resolution`), {
+  method: 'PUT',
+  data: { decision, resolution },
+});
 
 export const listReviewPlans = (params: { competitionId?: number; stageId?: number } = {}) =>
   request<ReviewPlan[]>(`${REVIEW_API}/plans`, { method: 'GET', params });

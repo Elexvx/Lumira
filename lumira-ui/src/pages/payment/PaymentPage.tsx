@@ -3,8 +3,8 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Button, Descriptions, Modal, Space, Tag, Typography } from 'antd';
 import { useLocation } from '@umijs/max';
 import { useMemo, useRef, useState } from 'react';
-import { ManagementPage } from '@/features/management/ManagementPage';
-import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
+import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useResponsive } from '@/hooks/useResponsive';
 import {
@@ -12,6 +12,7 @@ import {
   registrationStatusValueEnum,
 } from '@/pages/competition/utils/registrationStatus';
 import { listRegistrationPayments } from '@/services/payment/api';
+import { listCompetitionWorkspacePayments } from '@/services/competition/api';
 import type { RegistrationPaymentRecord } from '@/services/payment/types';
 import './PaymentPage.css';
 
@@ -121,10 +122,13 @@ const PaymentDetailModal = ({
 
 const PaymentPage = () => {
   const location = useLocation();
+  const workspace = useOptionalCompetitionWorkspace();
   const responsive = useResponsive();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const [detailRecord, setDetailRecord] = useState<RegistrationPaymentRecord>();
   const isStatusQuery = location.pathname === '/payments/status';
+  const workspaceUuid = workspace?.competitionUuid;
+  const workspaceTitle = workspace?.workspace?.title;
 
   const columns = useMemo<ProColumns<RegistrationPaymentRecord>[]>(
     () => [
@@ -178,7 +182,7 @@ const PaymentPage = () => {
         search: false,
         width: 140,
         ellipsis: true,
-        render: (_, record) => record.competitionTitle || record.competitionCode || '-',
+        render: (_, record) => record.competitionTitle || record.competitionCode || workspaceTitle || '-',
       },
       {
         title: '团队',
@@ -234,7 +238,7 @@ const PaymentPage = () => {
         ),
       },
     ],
-    [responsive.isDesktop],
+    [responsive.isDesktop, workspaceTitle],
   );
 
   const tableColumns = useMemo(
@@ -243,9 +247,12 @@ const PaymentPage = () => {
   );
 
   return (
-    <ManagementPage title={isStatusQuery ? '支付状态查询' : '支付管理'}>
-      <ManagementPageBody>
-        <ManagementTable<RegistrationPaymentRecord>
+    <CompetitionWorkspacePageFrame
+      embeddedInWorkspace={Boolean(workspaceUuid)}
+      title={workspaceUuid ? '支付' : isStatusQuery ? '支付状态查询' : '全局支付流水'}
+      workspaceVariant="table"
+    >
+      <ManagementTable<RegistrationPaymentRecord>
           actionRef={actionRef}
           rowKey="registrationId"
           columns={tableColumns}
@@ -254,14 +261,17 @@ const PaymentPage = () => {
           scroll={{ x: 960 }}
           tableLayout="fixed"
           request={async (params) => {
-            const response = await listRegistrationPayments({
+            const query = {
               keyword: typeof params.keyword === 'string' ? params.keyword : undefined,
               paymentStatus: typeof params.paymentStatus === 'string' ? params.paymentStatus : undefined,
               registrationStatus: typeof params.registrationStatus === 'string' ? params.registrationStatus : undefined,
               providerCode: typeof params.providerCode === 'string' ? params.providerCode : undefined,
               pageNo: params.current,
               pageSize: params.pageSize,
-            });
+            };
+            const response = workspaceUuid
+              ? await listCompetitionWorkspacePayments(workspaceUuid, query)
+              : await listRegistrationPayments(query);
             return {
               data: response.records,
               total: response.total,
@@ -274,10 +284,9 @@ const PaymentPage = () => {
               刷新
             </Button>,
           ]}
-        />
-      </ManagementPageBody>
+      />
       <PaymentDetailModal record={detailRecord} onClose={() => setDetailRecord(undefined)} />
-    </ManagementPage>
+    </CompetitionWorkspacePageFrame>
   );
 };
 
