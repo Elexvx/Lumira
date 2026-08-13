@@ -31,7 +31,7 @@ describe("CompetitionRegistrationDataPageFrame", () => {
 
     expect(markup).toContain("saas-management-page-body");
     expect(markup).toContain("competition-registration-data-page--workspace");
+    expect(markup).not.toContain("competition-workspace-module-page__toolbar");
     expect(markup).not.toContain("data-management-page");
   });
-
 });

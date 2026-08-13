@@ -35,6 +35,7 @@ public class ExportTaskService implements ExportTaskPort {
     public static final String PERMISSION_USER_EXPORT = "system:user:export";
 
     private static final String XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    private static final String ZIP_CONTENT_TYPE = "application/zip";
     private static final int MAX_MODULE_KEY_LENGTH = 64;
     private static final int MAX_SELECTED_FIELDS = 100;
     private static final int MAX_SELECTED_FIELD_LENGTH = 64;
@@ -179,7 +180,7 @@ public class ExportTaskService implements ExportTaskPort {
 
     private void doMarkSuccess(CurrentUser trustedUser, Long taskId, FileObjectDTO file, String fileName) {
         requirePositiveId(taskId, "Export task id");
-        String normalizedFileName = requireSafeXlsxFileName(fileName);
+        String normalizedFileName = requireSafeExportFileName(fileName);
         Long fileId = requireTrustedUploadedFile(file, trustedUser.getUserId(), trustedUser.getUserUuid());
         ExportTaskEntity update = new ExportTaskEntity();
         update.setStatus(STATUS_SUCCESS);
@@ -278,12 +279,17 @@ public class ExportTaskService implements ExportTaskPort {
         if (content == null || content.length == 0) {
             throw new BizException(ErrorCode.BAD_REQUEST, "Export file content is required");
         }
-        String normalizedFileName = requireSafeXlsxFileName(fileName);
+        String normalizedFileName = requireSafeExportFileName(fileName);
         String normalizedCategory = requireOptionalText(category, "Export file category", MAX_CATEGORY_LENGTH);
         String normalizedTags = requireOptionalText(tags, "Export file tags", MAX_TAGS_LENGTH);
         String normalizedRemark = requireOptionalText(remark, "Export file remark", MAX_REMARK_LENGTH);
-        ByteArrayMultipartFile file = new ByteArrayMultipartFile(content, "file", normalizedFileName, XLSX_CONTENT_TYPE);
-        return fileInternalApi.uploadDocumentForUser(
+        ByteArrayMultipartFile file = new ByteArrayMultipartFile(
+                content,
+                "file",
+                normalizedFileName,
+                exportContentType(normalizedFileName)
+        );
+        FileObjectDTO uploaded = fileInternalApi.uploadDocumentForUser(
                 file,
                 normalizedCategory,
                 normalizedTags,
@@ -294,6 +300,23 @@ public class ExportTaskService implements ExportTaskPort {
                 trustedUser.getUsername(),
                 trustedUser.getSimulatedRoleId()
         );
+        if (uploaded == null) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "Export file upload returned no file");
+        }
+        if (requiresSecurityScan(uploaded.status())) {
+            return fileInternalApi.ensureFileContentReadyForUser(
+                    uploaded.id(),
+                    trustedUser.getUserId(),
+                    trustedUser.getUserUuid(),
+                    trustedUser.getUsername(),
+                    trustedUser.getSimulatedRoleId()
+            );
+        }
+        return uploaded;
+    }
+
+    private boolean requiresSecurityScan(String status) {
+        return "PENDING_SCAN".equalsIgnoreCase(status) || "FAILED".equalsIgnoreCase(status);
     }
 
     public ExportTaskView getTask(CurrentUser currentUser, Long taskId) {
@@ -452,14 +475,15 @@ public class ExportTaskService implements ExportTaskPort {
         return normalized;
     }
 
-    private String requireSafeXlsxFileName(String fileName) {
+    private String requireSafeExportFileName(String fileName) {
         requireText(fileName, "Export file name");
         String normalized = fileName.trim();
+        String lowercase = normalized.toLowerCase(java.util.Locale.ROOT);
         if (normalized.length() > MAX_FILE_NAME_LENGTH
                 || normalized.contains("/")
-                || normalized.contains("\\\\")
+                || normalized.contains("\\")
                 || normalized.contains("..")
-                || !normalized.toLowerCase(java.util.Locale.ROOT).endsWith(".xlsx")) {
+                || (!lowercase.endsWith(".xlsx") && !lowercase.endsWith(".zip"))) {
             throw new BizException(ErrorCode.BAD_REQUEST, "Export file name is invalid");
         }
         for (int index = 0; index < normalized.length(); index += 1) {
@@ -476,6 +500,12 @@ public class ExportTaskService implements ExportTaskPort {
             }
         }
         return normalized;
+    }
+
+    private String exportContentType(String normalizedFileName) {
+        return normalizedFileName.toLowerCase(java.util.Locale.ROOT).endsWith(".zip")
+                ? ZIP_CONTENT_TYPE
+                : XLSX_CONTENT_TYPE;
     }
 
     private void requirePositiveId(Long id, String name) {

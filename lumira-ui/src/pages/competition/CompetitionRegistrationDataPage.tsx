@@ -19,6 +19,7 @@ import {
 } from "antd";
 import {
   type Key,
+  type ReactNode,
   useCallback,
   useMemo,
   useRef,
@@ -62,6 +63,24 @@ import "./CompetitionRegistrationDataPage.css";
 
 type JsonRecord = Record<string, unknown>;
 
+const SNAPSHOT_FIELD_LABELS: Record<string, string> = {
+  teamId: "团队 ID",
+  teamName: "团队名称",
+  title: "项目名称",
+  category: "项目类别",
+  intellectualProperties: "知识产权信息",
+  intellectualPropertyType: "知识产权类型",
+  intellectualPropertyName: "知识产权名称",
+  rightsHolder: "权利人",
+  distributionRegions: "分布区域",
+};
+
+const isJsonRecord = (value: unknown): value is JsonRecord =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const snapshotFieldLabel = (key: string, custom = false) =>
+  SNAPSHOT_FIELD_LABELS[key] || (custom ? `自定义-${key}` : key);
+
 const statusColor: Record<string, string> = {
   DRAFT: "default",
   PENDING_PAYMENT: "orange",
@@ -94,6 +113,60 @@ const valueText = (value: unknown) => {
   return JSON.stringify(value);
 };
 
+const SnapshotValue = ({ value }: { value: unknown }) => {
+  if (Array.isArray(value)) {
+    if (!value.length) return <Typography.Text type="secondary">-</Typography.Text>;
+    if (value.every((item) => !isJsonRecord(item))) {
+      return (
+        <Space size={[4, 4]} wrap>
+          {value.map((item, index) => (
+            <Tag key={`${valueText(item)}-${index}`}>{valueText(item)}</Tag>
+          ))}
+        </Space>
+      );
+    }
+  }
+
+  return (
+    <Typography.Text copyable={typeof value === "string"}>
+      {valueText(value)}
+    </Typography.Text>
+  );
+};
+
+const SnapshotValueTable = ({ values }: { values: JsonRecord[] }) => {
+  const columns = Array.from(
+    new Set(values.flatMap((value) => Object.keys(value))),
+  );
+
+  if (!columns.length) return <Typography.Text type="secondary">-</Typography.Text>;
+
+  return (
+    <Table<JsonRecord>
+      rowKey={(_, index) => String(index)}
+      size="small"
+      bordered
+      pagination={false}
+      tableLayout="fixed"
+      scroll={columns.length > 3 ? { x: columns.length * 140 } : undefined}
+      dataSource={values}
+      columns={columns.map((key) => ({
+        title: snapshotFieldLabel(key),
+        dataIndex: key,
+        width: columns.length > 3 ? 140 : undefined,
+        render: (value: unknown) => <SnapshotValue value={value} />,
+      }))}
+    />
+  );
+};
+
+const renderSnapshotValue = (value: unknown): ReactNode => {
+  if (Array.isArray(value) && value.every(isJsonRecord)) {
+    return <SnapshotValueTable values={value} />;
+  }
+  return <SnapshotValue value={value} />;
+};
+
 const SnapshotCard = ({
   title,
   values,
@@ -111,8 +184,12 @@ const SnapshotCard = ({
       ? Object.entries(values.extraValues as JsonRecord)
       : [];
   const items = [
-    ...entries,
-    ...extras.map(([key, value]) => [`自定义-${key}`, value] as const),
+    ...entries.map(([key, value]) => ({ key, label: snapshotFieldLabel(key), value })),
+    ...extras.map(([key, value]) => ({
+      key: `custom-${key}`,
+      label: snapshotFieldLabel(key, true),
+      value,
+    })),
   ];
   return (
     <Card size="small" title={title}>
@@ -121,14 +198,10 @@ const SnapshotCard = ({
           bordered
           size="small"
           column={1}
-          items={items.map(([key, value]) => ({
+          items={items.map(({ key, label, value }) => ({
             key,
-            label: key,
-            children: (
-              <Typography.Text copyable={typeof value === "string"}>
-                {valueText(value)}
-              </Typography.Text>
-            ),
+            label,
+            children: renderSnapshotValue(value),
           }))}
         />
       ) : (

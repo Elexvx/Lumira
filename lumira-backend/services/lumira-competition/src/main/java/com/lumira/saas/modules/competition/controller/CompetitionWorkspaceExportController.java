@@ -92,7 +92,7 @@ public class CompetitionWorkspaceExportController {
                 taskId,
                 CompetitionRegistrationExportAppService.EXPORT_PERMISSION
         );
-        if (!belongsToCompetition(payload, competition.id())) {
+        if (!belongsToCompetition(payload, competition.id(), objectMapper)) {
             throw new BizException(ErrorCode.NOT_FOUND, "Export task does not exist");
         }
         return ApiResponse.success(
@@ -133,11 +133,11 @@ public class CompetitionWorkspaceExportController {
         return exportRequest;
     }
 
-    private boolean belongsToCompetition(String payload, Long competitionId) {
+    static boolean belongsToCompetition(String payload, Long competitionId, ObjectMapper objectMapper) {
         if (payload == null || competitionId == null) return false;
         try {
             JsonNode root = objectMapper.readTree(payload);
-            return root.path("competitionId").asLong(-1L) == competitionId;
+            return root.path("request").path("competitionId").asLong(-1L) == competitionId;
         } catch (Exception ignored) {
             return false;
         }

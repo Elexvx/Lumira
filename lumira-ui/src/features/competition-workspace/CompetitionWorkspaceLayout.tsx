@@ -60,7 +60,7 @@ const WorkspaceFrame = () => {
   })), [availableWorkspaces]);
 
   if (loading) {
-    return <ManagementPageBody className="competition-workspace"><Card><Spin tip="正在加载赛事工作空间…" /></Card></ManagementPageBody>;
+    return <ManagementPageBody className="competition-workspace"><Card><Spin description="正在加载赛事工作空间…" /></Card></ManagementPageBody>;
   }
 
   if (error || !workspace || !competitionUuid) {
@@ -69,7 +69,7 @@ const WorkspaceFrame = () => {
         <Alert
           type="error"
           showIcon
-          message="赛事工作空间不可用"
+          title="赛事工作空间不可用"
           description={error?.message || '赛事不存在、已删除或当前账号无权访问。'}
           action={<Button onClick={refresh}>重新加载</Button>}
         />

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { downloadCertificate, downloadMyCertificate } from './api';
+import { downloadCertificate, downloadMyCertificate, listCompetitionWorkspaceCertificateBatches } from './api';
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
@@ -31,5 +31,14 @@ describe('certificate download API', () => {
     expect(mocks.requestFile).toHaveBeenCalledWith('/v2/aiadc/certificates/mine/43/download', {
       method: 'GET',
     });
+  });
+
+  it('lists generation batches through the selected competition workspace endpoint', () => {
+    listCompetitionWorkspaceCertificateBatches('competition uuid', { pageNo: 2, pageSize: 20 });
+
+    expect(mocks.request).toHaveBeenCalledWith(
+      '/v2/aiadc/competitions/competition%20uuid/certificate-batches',
+      { method: 'GET', params: { pageNo: 2, pageSize: 20 } },
+    );
   });
 });

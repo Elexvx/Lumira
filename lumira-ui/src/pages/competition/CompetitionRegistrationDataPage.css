@@ -17,6 +17,27 @@
   margin-top: 12px;
 }
 
+.competition-registration-data-page--workspace > .saas-table-wrap {
+  overflow: hidden;
+  border: 1px solid var(--saas-color-border);
+  border-radius: var(--saas-card-radius);
+  background: var(--ant-color-bg-container);
+}
+
+.competition-registration-data-page--workspace > .saas-table-wrap > .ant-pro-table {
+  gap: 0;
+}
+
+.competition-registration-data-page--workspace > .saas-table-wrap > .ant-pro-table > .ant-pro-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.competition-registration-data-page--workspace > .saas-table-wrap > .ant-pro-table > .ant-pro-card + .ant-pro-card {
+  border-top: 1px solid var(--saas-color-border);
+}
+
 @media (min-width: 768px) {
   .competition-registration-data-page--workspace .ant-pro-table-search .ant-form-item-label {
     box-sizing: border-box;

@@ -44,6 +44,18 @@ describe('route meta', () => {
       .toBe('canVisitCompetitionReviewResults');
   });
 
+  it('keeps certificate generation, batches, and records as distinct competition workspace pages', () => {
+    const competitionGroup = backendRoutes.find((route) => route.path === '/competitions');
+    const workspaceGroup = competitionGroup?.routes?.find((route) => route.path === '/competitions/:competitionUuid');
+
+    expect(workspaceGroup?.routes?.find((route) => route.path.endsWith('/certificates/generate'))?.component)
+      .toBe('@/pages/certificates/GeneratePage');
+    expect(workspaceGroup?.routes?.find((route) => route.path.endsWith('/certificates/batches'))?.component)
+      .toBe('@/pages/certificates/BatchesPage');
+    expect(workspaceGroup?.routes?.find((route) => route.path.endsWith('/certificates/records'))?.component)
+      .toBe('@/pages/certificates/RecordsPage');
+  });
+
   it('registers the built-in mock checkout as a hidden guarded page', () => {
     expect(realPageRouteMetaMap.get('/mock-payment/checkout')).toMatchObject({
       access: 'canUseBuiltinMockPayment',

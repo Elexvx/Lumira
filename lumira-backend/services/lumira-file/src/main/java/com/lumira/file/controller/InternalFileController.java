@@ -103,6 +103,18 @@ public class InternalFileController {
         return fileInternalApiService.readFileContentForUser(fileId, userId, userUuid, username, sharedScope, simulatedRoleId);
     }
 
+    @PostMapping("/ensure-content-ready")
+    public FileObjectDTO ensureFileContentReadyForUser(
+            @RequestParam("fileId") Long fileId,
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid,
+            @RequestParam("username") String username,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
+    ) {
+        requireInternalServicePrincipal();
+        return fileInternalApiService.ensureFileContentReadyForUser(fileId, userId, userUuid, username, simulatedRoleId);
+    }
+
     @GetMapping("/business-reference-content")
     public FileContentDTO readFileContentForAuthorizedBusinessReference(
             @RequestParam("fileId") Long fileId,

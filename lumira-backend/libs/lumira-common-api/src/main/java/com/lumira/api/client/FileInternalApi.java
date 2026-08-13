@@ -130,6 +130,19 @@ public interface FileInternalApi {
         throw new UnsupportedOperationException("readFileContentForUser is not implemented");
     }
 
+    /**
+     * Ensures that a trusted generated file has passed the file security scan before it is published.
+     */
+    default FileObjectDTO ensureFileContentReadyForUser(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            Long simulatedRoleId
+    ) {
+        throw new UnsupportedOperationException("ensureFileContentReadyForUser is not implemented");
+    }
+
     default FileContentDTO readFileContentForAuthorizedBusinessReference(
             Long fileId,
             Long userId,

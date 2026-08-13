@@ -286,6 +286,11 @@
   margin: 0 auto;
 }
 
+.competition-create-shell .competition-create-step .ant-form-item-control {
+  width: 100%;
+  max-width: 100%;
+}
+
 .competition-create-terms {
   display: flex;
   flex-direction: column;

@@ -55,6 +55,16 @@ export const listWorkspaceReviewCandidates = (competitionUuid: string, batchId: 
 export const listWorkspaceReviewAssignments = (competitionUuid: string, batchId: number) =>
   request<ReviewAdminAssignment[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/assignments`), { method: 'GET' });
 
+export const revokeWorkspaceReviewAssignment = (
+  competitionUuid: string,
+  batchId: number,
+  assignmentId: number,
+  reason: string,
+) => request<ReviewAdminAssignment>(
+  competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/assignments/${assignmentId}/revoke`),
+  { method: 'POST', data: { reason } },
+);
+
 export const listWorkspaceReviewRoster = (competitionUuid: string, batchId: number) =>
   request<ReviewRosterExpert[]>(competitionWorkspaceReviewApi(competitionUuid, `/batches/${batchId}/roster`), { method: 'GET' });
 

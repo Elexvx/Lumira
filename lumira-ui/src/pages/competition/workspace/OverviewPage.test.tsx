@@ -46,6 +46,7 @@ describe('Competition workspace overview', () => {
     const markup = renderToStaticMarkup(<OverviewPage />);
 
     expect(markup).toContain('competition-workspace-overview__module-action');
+    expect(markup).toContain('competition-workspace-overview__module-card');
     expect(markup).toContain('进入模块');
     expect(markup).not.toContain('anticon-arrow-right');
   });

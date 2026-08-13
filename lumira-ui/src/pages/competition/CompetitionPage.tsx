@@ -1022,7 +1022,7 @@ const parseFeaturedFilter = (value: unknown) => {
   return undefined;
 };
 
-const CompetitionSharedBasicFields = ({
+const _CompetitionSharedBasicFields = ({
   categoryOptions,
   levelOptions,
   onListChange,

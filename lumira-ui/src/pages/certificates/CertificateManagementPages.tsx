@@ -37,6 +37,7 @@ import {
   grantPublishedAwards,
   listCompetitionWorkspaceAwardGrants,
   listCompetitionWorkspaceCertificateAwardSources,
+  listCompetitionWorkspaceCertificateBatches,
   listCompetitionWorkspaceCertificates,
   listAwardGrants,
   listCertificateAwardSources,
@@ -71,6 +72,10 @@ import {
   summarizeAwardGrants,
   validateCertificateAwardRules,
 } from './certificateAwardRules';
+import {
+  certificateWorkspaceSectionPath,
+  type CertificateWorkspaceSection,
+} from './certificateWorkspaceNavigation';
 import './certificate.css';
 
 const templateStatusColor: Record<string, string> = {
@@ -103,6 +108,22 @@ const certificateStatusText: Record<string, string> = {
   EXPIRED: '已过期',
 };
 
+const certificateBatchStatusText: Record<string, string> = {
+  PENDING: '待生成',
+  PROCESSING: '生成中',
+  COMPLETED: '已完成',
+  PARTIAL_FAILED: '部分失败',
+  FAILED: '失败',
+};
+
+const certificateBatchStatusColor: Record<string, string> = {
+  PENDING: 'default',
+  PROCESSING: 'processing',
+  COMPLETED: 'success',
+  PARTIAL_FAILED: 'warning',
+  FAILED: 'error',
+};
+
 const awardGrantStatusText: Record<string, string> = {
   GRANTED: '待制证',
   ISSUED: '已制证',
@@ -120,6 +141,30 @@ const sceneTypeText: Record<string, string> = {
   PARTICIPATION: '参与证明',
   CUSTOM: '自定义',
 };
+
+const CertificateWorkspaceNavigation = ({
+  competitionUuid,
+  active,
+}: {
+  competitionUuid: string;
+  active: CertificateWorkspaceSection;
+}) => (
+  <Space wrap>
+    {([
+      ['generate', '生成证书'],
+      ['batches', '生成批次'],
+      ['records', '证书记录'],
+    ] as Array<[CertificateWorkspaceSection, string]>).map(([section, label]) => (
+      <Button
+        key={section}
+        type={active === section ? 'primary' : 'default'}
+        onClick={() => history.push(certificateWorkspaceSectionPath(competitionUuid, section))}
+      >
+        {label}
+      </Button>
+    ))}
+  </Space>
+);
 
 const handleCertificateDownload = async (record: CertificateRecord, competitionUuid?: string) => {
   try {
@@ -241,7 +286,7 @@ export const TemplatesManagementPage = () => {
         dataIndex: 'templateName',
         search: false,
         render: (_, record) => (
-          <Space direction="vertical" size={0}>
+          <Space orientation="vertical" size={0}>
             <Typography.Text strong>{record.templateName}</Typography.Text>
             <Typography.Text type="secondary" className="certificate-table-meta">
               {record.templateCode}
@@ -649,6 +694,7 @@ export const GenerateManagementPage = () => {
     <CompetitionWorkspacePageFrame
       embeddedInWorkspace={Boolean(workspaceUuid)}
       title={workspaceUuid ? '证书生成' : '跨赛事证书生成'}
+      extra={workspaceUuid ? <CertificateWorkspaceNavigation competitionUuid={workspaceUuid} active="generate" /> : undefined}
       bodyClassName="certificate-generate-page"
       workspaceVariant="content"
     >
@@ -656,23 +702,23 @@ export const GenerateManagementPage = () => {
           <Col xs={24} lg={6}>
             <Card className="certificate-side-card">
               <Steps
-                direction={responsive.isMobile ? 'horizontal' : 'vertical'}
+                orientation={responsive.isMobile ? 'horizontal' : 'vertical'}
                 current={result.length ? 3 : 1}
                 items={[
-                  { title: '选择模板', description: '绑定发布版本' },
-                  { title: '录入数据', description: '手动或 CSV' },
-                  { title: '预览确认', description: '核对变量字段' },
-                  { title: '生成结果', description: '下载或查验' },
+                  { title: '选择模板', content: '绑定发布版本' },
+                  { title: '录入数据', content: '手动或 CSV' },
+                  { title: '预览确认', content: '核对变量字段' },
+                  { title: '生成结果', content: '下载或查验' },
                 ]}
               />
             </Card>
           </Col>
           <Col xs={24} lg={18}>
-            <Space direction="vertical" size={16} className="certificate-workbench-stack">
+            <Space orientation="vertical" size={16} className="certificate-workbench-stack">
               <Alert
                 type="info"
                 showIcon
-                message="生成规则"
+                title="生成规则"
                 description="第一阶段支持手动录入单张证书和 CSV 批量导入。生成时会绑定具体模板版本，后续模板修改不会影响已生成证书。"
               />
               <Card title="模板与批次" className="certificate-section-card">
@@ -705,7 +751,7 @@ export const GenerateManagementPage = () => {
                 <Alert
                   type="info"
                   showIcon
-                  message="先确认授奖，再从授奖记录生成证书；每条发布结果只能生成一张有效证书。"
+                  title="先确认授奖，再从授奖记录生成证书；每条发布结果只能生成一张有效证书。"
                   style={{ marginBottom: 16 }}
                 />
                 <Form
@@ -779,7 +825,7 @@ export const GenerateManagementPage = () => {
                     <Alert
                       type="warning"
                       showIcon
-                      message="暂无可授奖的发布结果"
+                      title="暂无可授奖的发布结果"
                       description="请先在评审管理中完成结果发布，再返回此处授奖。"
                       style={{ marginBottom: 16 }}
                     />
@@ -798,8 +844,8 @@ export const GenerateManagementPage = () => {
                   >
                     {(fields, { add, remove }, { errors }) => (
                       <>
-                        {fields.map((field) => (
-                          <Row gutter={12} align="middle" key={field.key}>
+                        {fields.map(({ key, ...field }) => (
+                          <Row gutter={12} align="middle" key={key}>
                             <Col xs={24} md={9}>
                               <Form.Item
                                 {...field}
@@ -864,7 +910,7 @@ export const GenerateManagementPage = () => {
                   <Alert
                     type={awardGrantSummary.total === 0 ? 'info' : awardGrantSummary.pending > 0 ? 'warning' : 'success'}
                     showIcon
-                    message={`授奖记录 ${awardGrantSummary.total} 条：待制证 ${awardGrantSummary.pending} 条，已制证 ${awardGrantSummary.issued} 条，已取消 ${awardGrantSummary.revoked} 条`}
+                    title={`授奖记录 ${awardGrantSummary.total} 条：待制证 ${awardGrantSummary.pending} 条，已制证 ${awardGrantSummary.issued} 条，已取消 ${awardGrantSummary.revoked} 条`}
                     description="重复应用相同规则不会重复建档；已制证记录不会被后续规则覆盖。"
                     style={{ marginBottom: 16 }}
                   />
@@ -958,7 +1004,7 @@ export const GenerateManagementPage = () => {
                   <Alert
                     showIcon
                     type={batchResult.successCount ? 'warning' : 'error'}
-                    message={`批次 ${batchResult.batchNo}：成功 ${batchResult.successCount}，失败 ${batchResult.failedCount}`}
+                    title={`批次 ${batchResult.batchNo}：成功 ${batchResult.successCount}，失败 ${batchResult.failedCount}`}
                     description={batchResult.errorMessage || '证书生成未全部完成'}
                     style={{ marginBottom: 16 }}
                   />
@@ -980,7 +1026,7 @@ export const GenerateManagementPage = () => {
                       width: 180,
                       render: (_, record) => (
                         <Space>
-                          <Button size="small" onClick={() => void handleCertificateDownload(record)} icon={<DownloadOutlined />}>
+                          <Button size="small" onClick={() => void handleCertificateDownload(record, workspaceUuid)} icon={<DownloadOutlined />}>
                             下载
                           </Button>
                           <Button size="small" onClick={() => navigator.clipboard.writeText(`${location.origin}/certificate/verify/${record.publicToken}`)}>
@@ -1015,7 +1061,7 @@ export const RecordsManagementPage = () => {
         width: 180,
         fieldProps: { placeholder: '输入证书编号' },
         render: (_, record) => (
-          <Space direction="vertical" size={0}>
+          <Space orientation="vertical" size={0}>
             <Typography.Text strong>{record.certificateNo}</Typography.Text>
             <Typography.Text type="secondary" className="certificate-table-meta">
               {record.verificationCode}
@@ -1163,7 +1209,8 @@ export const RecordsManagementPage = () => {
   return (
     <CompetitionWorkspacePageFrame
       embeddedInWorkspace={Boolean(workspaceUuid)}
-      title={workspaceUuid ? '证书' : '全局证书记录'}
+      title={workspaceUuid ? '证书记录' : '全局证书记录'}
+      extra={workspaceUuid ? <CertificateWorkspaceNavigation competitionUuid={workspaceUuid} active="records" /> : undefined}
       bodyClassName="certificate-management-page"
       workspaceVariant="table"
     >
@@ -1189,7 +1236,7 @@ export const RecordsManagementPage = () => {
         />
       <ManagementDrawer title="证书详情" open={Boolean(detail)} onClose={() => setDetail(null)}>
         {detail ? (
-          <Space direction="vertical" size={16} className="certificate-detail">
+          <Space orientation="vertical" size={16} className="certificate-detail">
             <Descriptions
               column={2}
               bordered
@@ -1211,6 +1258,82 @@ export const RecordsManagementPage = () => {
           </Space>
         ) : null}
       </ManagementDrawer>
+    </CompetitionWorkspacePageFrame>
+  );
+};
+
+export const BatchesManagementPage = () => {
+  const workspace = useOptionalCompetitionWorkspace();
+  const workspaceUuid = workspace?.competitionUuid;
+  const responsive = useResponsive();
+  const actionRef = useRef<ActionType | null>(null);
+  const columns = useMemo<ProColumns<CertificateBatchRecord>[]>(() => [
+    {
+      title: '批次编号',
+      dataIndex: 'batchNo',
+      width: 180,
+      search: false,
+      render: (_, record) => <Typography.Text strong>{record.batchNo}</Typography.Text>,
+    },
+    {
+      title: '批次名称',
+      dataIndex: 'batchName',
+      search: false,
+      ellipsis: true,
+      render: (value) => value || '-',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      valueType: 'select',
+      valueEnum: Object.fromEntries(
+        Object.entries(certificateBatchStatusText).map(([status, text]) => [status, { text }]),
+      ),
+      width: 120,
+      render: (_, record) => (
+        <Tag color={certificateBatchStatusColor[record.status] || 'default'}>
+          {certificateBatchStatusText[record.status] || record.status}
+        </Tag>
+      ),
+    },
+    { title: '总数', dataIndex: 'totalCount', search: false, width: 88 },
+    { title: '成功', dataIndex: 'successCount', search: false, width: 88 },
+    { title: '失败', dataIndex: 'failedCount', search: false, width: 88 },
+    {
+      title: '失败原因',
+      dataIndex: 'errorMessage',
+      search: false,
+      ellipsis: true,
+      render: (value) => value || '-',
+    },
+    { title: '创建时间', dataIndex: 'createdAt', search: false, width: 176, render: (value) => value || '-' },
+  ], []);
+
+  return (
+    <CompetitionWorkspacePageFrame
+      embeddedInWorkspace={Boolean(workspaceUuid)}
+      title="证书批次"
+      extra={workspaceUuid ? <CertificateWorkspaceNavigation competitionUuid={workspaceUuid} active="batches" /> : undefined}
+      bodyClassName="certificate-management-page"
+      workspaceVariant="table"
+    >
+      {workspaceUuid ? (
+        <ManagementTable<CertificateBatchRecord>
+          actionRef={actionRef}
+          rowKey="id"
+          columns={columns}
+          isMobile={responsive.isMobile}
+          request={async (params) => {
+            const response = await listCompetitionWorkspaceCertificateBatches(workspaceUuid, {
+              status: typeof params.status === 'string' ? params.status : undefined,
+              pageNo: params.current,
+              pageSize: params.pageSize,
+            });
+            return { data: response.records, total: response.total, success: true };
+          }}
+          pagination={{ pageSize: 10, showSizeChanger: true }}
+        />
+      ) : <Alert showIcon type="warning" title="请从赛事工作空间进入证书批次。" />}
     </CompetitionWorkspacePageFrame>
   );
 };

@@ -839,6 +839,44 @@ public class FileManagementAppService {
         return readFileContent(file);
     }
 
+    /**
+     * Makes a trusted generated file readable before an async export task is completed.
+     * The same security scanner used by the background file processor is used here; no
+     * file is made readable by changing its status without a scan result.
+     */
+    public FileObjectDTO ensureFileContentReady(CurrentUser currentUser, Long fileId) {
+        TrustedCurrentUser actor = requirePermission(currentUser, "system:file:upload");
+        if (fileId == null || fileId <= 0) {
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "fileId must be a positive number");
+        }
+        FileObjectEntity entity = fileObjectRepository.findById(fileId);
+        if (entity == null
+                || Integer.valueOf(1).equals(entity.getDeleted())
+                || !actor.userId().equals(entity.getUploadedBy())
+                || !actor.userUuid().equals(entity.getUploadedByUuid())) {
+            throw new BizException(ErrorCode.NOT_FOUND, "File not found");
+        }
+        FileObjectDTO file = mapFileObject(entity);
+        if (FileObjectSecurityStatus.isContentAccessible(file.status())) {
+            return enrich(file);
+        }
+        FileSecurityScanProcessor processor = securityScanProcessorProvider == null
+                ? null
+                : securityScanProcessorProvider.getIfAvailable();
+        if (processor == null) {
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "File security scanner is unavailable");
+        }
+        FileSecurityScanProcessor.SecurityScanResult result = processor.scan(
+                fileId,
+                actor.userId(),
+                actor.userUuid()
+        );
+        if (!FileSecurityScanProcessor.VERDICT_CLEAN.equalsIgnoreCase(result.verdict())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "File failed its security scan");
+        }
+        return getInsertedFile(fileId);
+    }
+
     public FileContentDTO readAuthorizedBusinessFileContent(
             CurrentUser currentUser,
             Long fileId,

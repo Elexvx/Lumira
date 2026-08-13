@@ -94,6 +94,7 @@ import {
   listWorkspaceReviewRoster,
   publishWorkspaceReviewBatch,
   reopenWorkspaceReviewBatchForCorrection,
+  revokeWorkspaceReviewAssignment,
   resolveWorkspaceReviewAppeal,
   saveWorkspaceReviewRoster,
   scanWorkspaceReviewCheckIn,
@@ -114,6 +115,7 @@ import type {
   ReviewRosterExpert,
   ReviewSheetPayload,
 } from '@/services/review/types';
+import { shouldReloadReviewPlans, shouldShowGlobalExpertTasks } from './reviewWorkspaceBehavior';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
@@ -376,6 +378,9 @@ const ReviewAdminWorkbench = () => {
     resolveAppeal: (appealId: number, decision: 'ACCEPTED' | 'REJECTED', resolution: string) => workspaceUuid
       ? resolveWorkspaceReviewAppeal(workspaceUuid, appealId, decision, resolution)
       : resolveReviewAppeal(appealId, decision, resolution),
+    revokeAssignment: (nextBatchId: number, assignmentId: number, reason: string) => workspaceUuid
+      ? revokeWorkspaceReviewAssignment(workspaceUuid, nextBatchId, assignmentId, reason)
+      : revokeReviewAssignment(nextBatchId, assignmentId, reason),
   }), [workspaceUuid]);
 
   const canManagePlans = access.hasPermission('review:plan:manage');
@@ -589,7 +594,7 @@ const ReviewAdminWorkbench = () => {
     try {
       await action();
       message.success(success);
-      const nextPlans = competitionId && stageId && canManagePlans
+      const nextPlans = shouldReloadReviewPlans({ canManagePlans, workspaceUuid, competitionId, stageId })
         ? await reviewApi.listPlans(competitionId, stageId)
         : plans;
       setPlans(nextPlans);
@@ -765,7 +770,7 @@ const ReviewAdminWorkbench = () => {
     }
     setActionLoading(`revoke-${assignmentToRevoke.id}`);
     try {
-      const saved = await revokeReviewAssignment(
+      const saved = await reviewApi.revokeAssignment(
         batchId,
         assignmentToRevoke.id,
         assignmentRevokeReason.trim(),
@@ -894,7 +899,7 @@ const ReviewAdminWorkbench = () => {
   ];
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
       <Card>
         <Space wrap>
           <Typography.Text>赛事</Typography.Text>
@@ -947,7 +952,7 @@ const ReviewAdminWorkbench = () => {
               </Button>
             )}
           >
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space orientation="vertical" style={{ width: '100%' }}>
               <Select
                 style={{ width: '100%' }}
                 placeholder="选择评审方案"
@@ -1009,7 +1014,7 @@ const ReviewAdminWorkbench = () => {
               </Button>
             )}
           >
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space orientation="vertical" style={{ width: '100%' }}>
               <Select
                 style={{ width: '100%' }}
                 placeholder="选择评审批次"
@@ -1144,7 +1149,7 @@ const ReviewAdminWorkbench = () => {
             <Col xs={12} md={6}><Statistic title="汇总结果" value={aggregates.length} /></Col>
           </Row>
           <Card size="small" title="本批次评审人员、通知与签到" style={{ marginBottom: 16 }}>
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space orientation="vertical" style={{ width: '100%' }}>
               <Space wrap>
                 <Typography.Text>已选专家：{roster.length}</Typography.Text>
                 <Typography.Text>已签到：{roster.filter((item) => item.checkedInAt).length}</Typography.Text>
@@ -1305,7 +1310,7 @@ const ReviewAdminWorkbench = () => {
           <Alert
             type="info"
             showIcon
-            message="处理申诉不会覆盖专家原始评分和已发布结果快照"
+            title="处理申诉不会覆盖专家原始评分和已发布结果快照"
             description="申诉成立后，应通过更正批次和新发布版本修正结果，保留完整审计链。"
             style={{ marginBottom: 16 }}
           />
@@ -1411,7 +1416,7 @@ const ReviewAdminWorkbench = () => {
           <Typography.Title level={5}>评分标准（权重总和必须为 1）</Typography.Title>
           <Form.List name="criteria">
             {(fields) => (
-              <Space direction="vertical" style={{ width: '100%' }}>
+              <Space orientation="vertical" style={{ width: '100%' }}>
                 {fields.map((field) => (
                   <Card key={field.key} size="small">
                     <Row gutter={12}>
@@ -1478,7 +1483,7 @@ const ReviewAdminWorkbench = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Alert type="info" showIcon message="默认每个项目 3 名专家，每位专家最少 5 个、目标 6 个、最多 6 个项目，可按本批次调整。" />
+          <Alert type="info" showIcon title="默认每个项目 3 名专家，每位专家最少 5 个、目标 6 个、最多 6 个项目，可按本批次调整。" />
         </Form>
       </Modal>
 
@@ -1513,7 +1518,7 @@ const ReviewAdminWorkbench = () => {
           <Alert
             type="warning"
             showIcon
-            message="系统会为每个所选候选团队分配全部所选专家，并自动跳过已存在的组合。"
+            title="系统会为每个所选候选团队分配全部所选专家，并自动跳过已存在的组合。"
           />
         </Form>
       </Modal>
@@ -1530,7 +1535,7 @@ const ReviewAdminWorkbench = () => {
         <Alert
           type="info"
           showIcon
-          message="只有已审批、启用且已绑定账号和邮箱的专家可以被保存到名单。"
+          title="只有已审批、启用且已绑定账号和邮箱的专家可以被保存到名单。"
           description="名单保存后，自动分配默认只使用这些专家；若要替换已分配专家，请先以原因撤回原任务。"
           style={{ marginBottom: 16 }}
         />
@@ -1560,11 +1565,11 @@ const ReviewAdminWorkbench = () => {
         <Alert
           type="warning"
           showIcon
-          message="请使用摄像头或扫码枪扫描专家签到二维码"
+          title="请使用摄像头或扫码枪扫描专家签到二维码"
           description="服务端会校验评审批次、有效期和一次性使用状态；摄像头不可用时可直接粘贴扫码结果。"
           style={{ marginBottom: 16 }}
         />
-        <Space direction="vertical" style={{ width: '100%', marginBottom: 12 }}>
+        <Space orientation="vertical" style={{ width: '100%', marginBottom: 12 }}>
           <Button
             icon={<QrcodeOutlined />}
             onClick={() => {
@@ -1583,7 +1588,7 @@ const ReviewAdminWorkbench = () => {
               style={{ width: '100%', maxHeight: 320, borderRadius: 'var(--saas-card-radius)', background: '#111' }}
             />
           )}
-          {scannerError ? <Alert type="error" showIcon message={scannerError} /> : null}
+          {scannerError ? <Alert type="error" showIcon title={scannerError} /> : null}
         </Space>
         <Input.TextArea
           rows={4}
@@ -1620,7 +1625,7 @@ const ReviewAdminWorkbench = () => {
         destroyOnHidden
       >
         {appealToResolve && (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
             <Descriptions
               bordered
               size="small"
@@ -1632,7 +1637,7 @@ const ReviewAdminWorkbench = () => {
                 { key: 'rank', label: '原始名次', children: appealToResolve.rankNo ?? '-' },
               ]}
             />
-            <Alert type="warning" showIcon message={appealToResolve.appealReason} />
+            <Alert type="warning" showIcon title={appealToResolve.appealReason} />
             <Input.TextArea
               value={appealResolution}
               onChange={(event) => setAppealResolution(event.target.value)}
@@ -1660,7 +1665,7 @@ const ReviewAdminWorkbench = () => {
         <Alert
           type="warning"
           showIcon
-          message="撤回后该任务不能继续评分，已保存的草稿仍保留在审计记录中。"
+          title="撤回后该任务不能继续评分，已保存的草稿仍保留在审计记录中。"
           style={{ marginBottom: 16 }}
         />
         <Input.TextArea
@@ -1686,7 +1691,7 @@ const ReviewAdminWorkbench = () => {
         <Alert
           type="warning"
           showIcon
-          message="当前发布版本将标记为已撤回，不会被删除"
+          title="当前发布版本将标记为已撤回，不会被删除"
           description="系统会保留原发布快照与哈希，批次返回终审阶段。修正结论并再次发布时会生成新的发布版本。"
           style={{ marginBottom: 16 }}
         />
@@ -1730,7 +1735,7 @@ const ReviewAdminWorkbench = () => {
         <Alert
           type="warning"
           showIcon
-          message={`拟设置结论：${decisionOptions.find((item) => item.value === decisionDraft?.decision)?.label || '-'}`}
+          title={`拟设置结论：${decisionOptions.find((item) => item.value === decisionDraft?.decision)?.label || '-'}`}
           description="该说明会与处理人、处理时间一起保存；专家原始评分不会被覆盖。"
           style={{ marginBottom: 16 }}
         />
@@ -1898,7 +1903,7 @@ const ExpertTaskWorkbench = () => {
   ];
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
       <Card
         title="我的评审任务"
         extra={<Button icon={<ReloadOutlined />} loading={loading} onClick={() => void loadTasks()}>刷新</Button>}
@@ -2001,7 +2006,7 @@ const CompetitionReviewPage = () => {
       label: '评审管理',
       children: <ReviewAdminWorkbench />,
     }] : []),
-    ...(canViewTasks ? [{
+    ...(shouldShowGlobalExpertTasks(canViewTasks, Boolean(workspace)) ? [{
       key: 'mine',
       label: '我的评审任务',
       children: <ExpertTaskWorkbench />,

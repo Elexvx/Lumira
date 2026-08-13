@@ -14,7 +14,6 @@ import {
   handleRoleSwitchStorageEvent,
   notifyOtherTabsOfRoleSwitch,
   resolveRoleSwitchRequestTarget,
-  resolveRoleSwitchTarget,
   transitionRoleScopedClientState,
 } from './roleSwitch';
 

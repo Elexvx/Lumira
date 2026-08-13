@@ -162,6 +162,26 @@ public class FileInternalClientConfiguration {
         }
 
         @Override
+        public FileObjectDTO ensureFileContentReadyForUser(
+                Long fileId,
+                Long userId,
+                String userUuid,
+                String username,
+                Long simulatedRoleId
+        ) {
+            return restClient.post()
+                    .uri(uriBuilder -> uriBuilder.path("/internal/files/ensure-content-ready")
+                            .queryParam("fileId", fileId)
+                            .queryParam("userId", userId)
+                            .queryParam("userUuid", userUuid)
+                            .queryParam("username", username)
+                            .queryParamIfPresent("simulatedRoleId", java.util.Optional.ofNullable(simulatedRoleId))
+                            .build())
+                    .retrieve()
+                    .body(FileObjectDTO.class);
+        }
+
+        @Override
         public FileContentDTO readFileContentForAuthorizedBusinessReference(
                 Long fileId,
                 Long userId,

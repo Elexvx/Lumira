@@ -1,11 +1,12 @@
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Descriptions, Modal, Space, Tag, Typography } from 'antd';
+import { Button, Descriptions, Space, Tag, Typography } from 'antd';
 import { useLocation } from '@umijs/max';
 import { useMemo, useRef, useState } from 'react';
 import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
 import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
 import { ManagementTable } from '@/features/management/ManagementTable';
+import { StandardDrawer } from '@/features/management/StandardDrawer';
 import { useResponsive } from '@/hooks/useResponsive';
 import {
   getRegistrationStatusLabel,
@@ -86,16 +87,25 @@ const renderRegistrationStatus = (status?: string | null) => {
   return <Tag color={registrationStatusColor[normalized] || 'default'}>{getRegistrationStatusLabel(normalized, 'DRAFT')}</Tag>;
 };
 
-const PaymentDetailModal = ({
+const PaymentDetailDrawer = ({
   record,
   onClose,
 }: {
   record?: RegistrationPaymentRecord;
   onClose: () => void;
-}) => (
-  <Modal title="支付记录详情" open={Boolean(record)} onCancel={onClose} footer={null} width={820} destroyOnHidden>
-    {record ? (
-      <Descriptions className="payment-detail-descriptions" column={{ xs: 1, sm: 1, md: 2 }} bordered size="small">
+}) => {
+  const responsive = useResponsive();
+
+  return (
+    <StandardDrawer
+      className="payment-detail-drawer"
+      title="支付记录详情"
+      open={Boolean(record)}
+      onClose={onClose}
+      destroyOnHidden
+    >
+      {record ? (
+        <Descriptions className="payment-detail-descriptions" column={responsive.isMobile ? 1 : 2} bordered size="small">
         <Descriptions.Item label="报名编号">{record.registrationNo}</Descriptions.Item>
         <Descriptions.Item label="参赛编号">{record.participantNo || '-'}</Descriptions.Item>
         <Descriptions.Item label="订单号">{record.orderNo || '-'}</Descriptions.Item>
@@ -115,10 +125,11 @@ const PaymentDetailModal = ({
         <Descriptions.Item label="失败原因" span={2}>
           {record.failureMessage || record.failureCode || '-'}
         </Descriptions.Item>
-      </Descriptions>
-    ) : null}
-  </Modal>
-);
+        </Descriptions>
+      ) : null}
+    </StandardDrawer>
+  );
+};
 
 const PaymentPage = () => {
   const location = useLocation();
@@ -285,7 +296,7 @@ const PaymentPage = () => {
             </Button>,
           ]}
       />
-      <PaymentDetailModal record={detailRecord} onClose={() => setDetailRecord(undefined)} />
+      <PaymentDetailDrawer record={detailRecord} onClose={() => setDetailRecord(undefined)} />
     </CompetitionWorkspacePageFrame>
   );
 };

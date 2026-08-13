@@ -367,7 +367,7 @@ const competitionRoutes: BackendRouteRecord[] = [
           { path: '/competitions/:competitionUuid/payments', component: '@/pages/payment', name: '赛事工作空间支付', access: 'isLogin', hideInMenu: true },
           { path: '/competitions/:competitionUuid/certificates', redirect: '/competitions/:competitionUuid/certificates/records', hideInMenu: true },
           { path: '/competitions/:competitionUuid/certificates/generate', component: '@/pages/certificates/GeneratePage', name: '赛事工作空间证书生成', access: 'isLogin', hideInMenu: true },
-          { path: '/competitions/:competitionUuid/certificates/batches', component: '@/pages/certificates/RecordsPage', name: '赛事工作空间证书批次', access: 'isLogin', hideInMenu: true },
+          { path: '/competitions/:competitionUuid/certificates/batches', component: '@/pages/certificates/BatchesPage', name: '赛事工作空间证书批次', access: 'isLogin', hideInMenu: true },
           { path: '/competitions/:competitionUuid/certificates/records', component: '@/pages/certificates/RecordsPage', name: '赛事工作空间证书记录', access: 'isLogin', hideInMenu: true },
           { path: '/competitions/:competitionUuid/settings', component: '@/pages/competition', name: '赛事工作空间设置', access: 'isLogin', hideInMenu: true },
           { path: '/competitions/:competitionUuid/audit', component: '@/pages/competition/workspace/AuditPage', name: '赛事工作空间审计', access: 'isLogin', hideInMenu: true },

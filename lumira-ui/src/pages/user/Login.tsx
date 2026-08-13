@@ -568,10 +568,10 @@ const Login = () => {
         open={loginFlow.viewState.forcedPasswordChangeOpen}
         title={formatMessage({ id: 'page.login.initialPasswordChange.title', defaultMessage: '修改初始密码' })}
         closable={false}
-        maskClosable={false}
+        mask={{ closable: false }}
         keyboard={false}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form<ForcedPasswordChangeFormValues>
           form={loginFlow.forcedPasswordChangeForm}

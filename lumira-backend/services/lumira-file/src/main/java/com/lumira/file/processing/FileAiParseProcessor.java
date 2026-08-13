@@ -107,13 +107,13 @@ public class FileAiParseProcessor {
                           and fo.deleted = 0
                           and fo.status in ('ENABLED', 'CLEAN')
                         on duplicate key update
-                            task_type = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(task_type) else task_type end,
-                            content_text = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(content_text) else content_text end,
-                            content_length = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(content_length) else content_length end,
-                            deleted = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then 0 else deleted end,
-                            updated_at = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then current_timestamp else updated_at end,
-                            updated_by = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(updated_by) else updated_by end,
-                            updated_by_uuid = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(updated_by_uuid) else updated_by_uuid end
+                            task_type = case when file_processing_artifact.created_by = values(created_by) and file_processing_artifact.created_by_uuid = values(created_by_uuid) then values(task_type) else file_processing_artifact.task_type end,
+                            content_text = case when file_processing_artifact.created_by = values(created_by) and file_processing_artifact.created_by_uuid = values(created_by_uuid) then values(content_text) else file_processing_artifact.content_text end,
+                            content_length = case when file_processing_artifact.created_by = values(created_by) and file_processing_artifact.created_by_uuid = values(created_by_uuid) then values(content_length) else file_processing_artifact.content_length end,
+                            deleted = case when file_processing_artifact.created_by = values(created_by) and file_processing_artifact.created_by_uuid = values(created_by_uuid) then 0 else file_processing_artifact.deleted end,
+                            updated_at = case when file_processing_artifact.created_by = values(created_by) and file_processing_artifact.created_by_uuid = values(created_by_uuid) then current_timestamp else file_processing_artifact.updated_at end,
+                            updated_by = case when file_processing_artifact.created_by = values(created_by) and file_processing_artifact.created_by_uuid = values(created_by_uuid) then values(updated_by) else file_processing_artifact.updated_by end,
+                            updated_by_uuid = case when file_processing_artifact.created_by = values(created_by) and file_processing_artifact.created_by_uuid = values(created_by_uuid) then values(updated_by_uuid) else file_processing_artifact.updated_by_uuid end
                         """,
                 fileId,
                 FileProcessingTaskService.TASK_AI_PARSE,

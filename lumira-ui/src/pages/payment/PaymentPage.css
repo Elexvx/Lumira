@@ -10,3 +10,16 @@
 .payment-detail-descriptions .ant-descriptions-item-label {
   white-space: nowrap;
 }
+
+.payment-detail-drawer .ant-drawer-body {
+  padding: var(--saas-spacing-24);
+}
+
+.payment-detail-descriptions {
+  width: 100%;
+}
+
+.payment-detail-descriptions .ant-descriptions-item-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

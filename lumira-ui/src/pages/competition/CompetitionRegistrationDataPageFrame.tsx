@@ -10,7 +10,6 @@ export const CompetitionRegistrationDataPageFrame = ({
     <CompetitionWorkspacePageFrame
       embeddedInWorkspace
       title="报名与材料"
-      description="当前赛事的报名团队与材料提交情况"
       breadcrumb={{
         items: [
           {

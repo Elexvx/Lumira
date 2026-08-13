@@ -30,7 +30,11 @@ const OverviewPage = () => {
             <Row gutter={[16, 16]}>
               {modules.map((module) => (
                 <Col xs={24} sm={12} lg={8} key={module.key}>
-                  <Card size="small" title={module.label}>
+                  <Card
+                    className="competition-workspace-overview__module-card"
+                    size="small"
+                    title={module.label}
+                  >
                     <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }}>
                       所有数据请求都绑定当前赛事 UUID，并由服务端重新校验访问范围。
                     </Typography.Paragraph>

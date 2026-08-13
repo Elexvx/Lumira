@@ -157,6 +157,19 @@ public class CompetitionWorkspaceReviewController {
         return success(reviewAppService.listAssignments(user, batchId));
     }
 
+    @PostMapping("/batches/{batchId}/assignments/{assignmentId}/revoke")
+    public ApiResponse<ReviewVO.AdminAssignment> revokeAssignment(
+            @PathVariable String competitionUuid,
+            @PathVariable Long batchId,
+            @PathVariable Long assignmentId,
+            @Valid @RequestBody ReviewDTO.AssignmentRevokeRequest request
+    ) {
+        CurrentUser user = requireWriteUser(competitionUuid);
+        CompetitionRef competition = competition(user, competitionUuid, CompetitionCapability.REVIEW_MANAGE);
+        requireBatch(batchId, competition.id());
+        return success(reviewAppService.revokeAssignment(user, batchId, assignmentId, request));
+    }
+
     @GetMapping("/batches/{batchId}/roster")
     public ApiResponse<List<ReviewVO.RosterExpert>> roster(@PathVariable String competitionUuid, @PathVariable Long batchId) {
         CurrentUser user = requireReadUser(competitionUuid);

@@ -137,6 +137,21 @@ public class FileInternalApiService implements FileInternalApi {
     }
 
     @Override
+    public FileObjectDTO ensureFileContentReadyForUser(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            Long simulatedRoleId
+    ) {
+        requirePositiveId(fileId, "fileId");
+        return fileManagementAppService.ensureFileContentReady(
+                asInternalUser(userId, userUuid, username, simulatedRoleId),
+                fileId
+        );
+    }
+
+    @Override
     public FileContentDTO readFileContentForAuthorizedBusinessReference(
             Long fileId,
             Long userId,
