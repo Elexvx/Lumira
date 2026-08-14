@@ -151,6 +151,10 @@ const deliveryLogs = (params: MessageLogQuery = {}) =>
     silent: true,
   });
 
+const deliveryLogTableRequest = buildTableRequest((params, sorter) =>
+  adaptDeliveryLogResult(params as MessageLogQuery, sorter),
+);
+
 const NotificationInboxInfo = ({ descriptionsProps }: { descriptionsProps: Parameters<typeof Descriptions>[0] }) => (
   <Descriptions {...descriptionsProps} bordered column={1}>
     <Descriptions.Item label={t('ui.settings.notifications.notifications.notificationKey')}>inbox_notice</Descriptions.Item>
@@ -590,7 +594,7 @@ const NotificationsPage = () => {
           isMobile={responsive.isMobile}
           pagination={{ showSizeChanger: true, pageSize: 10 }}
           search={searchConfig}
-          request={buildTableRequest((params, sorter) => adaptDeliveryLogResult(params as MessageLogQuery, sorter))}
+          request={deliveryLogTableRequest}
           toolBarRender={false}
         />
       </ManagementDrawer>

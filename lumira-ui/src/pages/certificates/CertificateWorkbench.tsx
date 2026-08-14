@@ -15,12 +15,14 @@ import {
   ZoomOutOutlined,
 } from '@ant-design/icons';
 import { history, useParams } from '@umijs/max';
-import { Button, Card, Descriptions, Form, Image, Input, InputNumber, Modal, Segmented, Select, Space, Table, Tag, Tooltip, Typography, Upload } from 'antd';
+import { Button, Card, Descriptions, Form, Image, Input, InputNumber, Modal, Segmented, Select, Space, Tag, Tooltip, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { StandardDrawer } from '@/features/management/StandardDrawer';
+import { DataTable } from '@/features/table/DataTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import {
   archiveCertificateTemplate,
   createCertificateTemplate,
@@ -251,6 +253,7 @@ const csvToRows = (text: string) => {
 };
 
 export const TemplatesPage = () => {
+  const responsive = useResponsive();
   const [records, setRecords] = useState<CertificateTemplateRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -294,8 +297,9 @@ export const TemplatesPage = () => {
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>新建模板</Button>
       </div>
-      <Table
+      <DataTable
         rowKey="id"
+        isMobile={responsive.isMobile}
         loading={loading}
         dataSource={records}
         columns={[
@@ -801,6 +805,7 @@ export const DesignerPage = () => {
 };
 
 export const GeneratePage = () => {
+  const responsive = useResponsive();
   const [templates, setTemplates] = useState<CertificateTemplateRecord[]>([]);
   const [versions, setVersions] = useState<CertificateTemplateVersionRecord[]>([]);
   const [result, setResult] = useState<CertificateRecord[]>([]);
@@ -881,7 +886,7 @@ export const GeneratePage = () => {
           <Button type="primary" onClick={submit}>生成单张证书</Button>
         </Form>
       </Card>
-      <Table rowKey="id" dataSource={result} columns={[
+      <DataTable rowKey="id" isMobile={responsive.isMobile} dataSource={result} columns={[
         { title: '证书编号', dataIndex: 'certificateNo' },
         { title: '获奖人/团队', dataIndex: 'recipientName' },
         { title: '状态', dataIndex: 'status', render: (value) => <Tag color={statusColor[value as string]}>{value}</Tag> },
@@ -892,6 +897,7 @@ export const GeneratePage = () => {
 };
 
 export const RecordsPage = () => {
+  const responsive = useResponsive();
   const [records, setRecords] = useState<CertificateRecord[]>([]);
   const [detail, setDetail] = useState<CertificateRecord | null>(null);
   const [filters, setFilters] = useState<Record<string, string>>({});
@@ -917,7 +923,7 @@ export const RecordsPage = () => {
           <Input.Search placeholder="获奖人/团队" onSearch={(recipientName) => setFilters((prev) => ({ ...prev, recipientName }))} />
         </Space>
       </div>
-      <Table rowKey="id" dataSource={records} columns={[
+      <DataTable rowKey="id" isMobile={responsive.isMobile} dataSource={records} columns={[
         { title: '证书编号', dataIndex: 'certificateNo' },
         { title: '获奖人/团队', dataIndex: 'recipientName' },
         { title: '赛事', dataIndex: 'competitionTitle' },

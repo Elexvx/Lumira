@@ -1,10 +1,9 @@
-import { AppstoreOutlined, AuditOutlined, BankOutlined, FileProtectOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Layout, Menu, Select, Space, Spin, Tag, Typography } from 'antd';
-import type { MenuProps } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
-import { history, Outlet, useLocation } from '@umijs/max';
-import { listCompetitionWorkspaces } from '@/services/competition/api';
-import type { CompetitionWorkspaceModule, CompetitionWorkspaceRecord } from '@/services/competition/types';
+import { AppstoreOutlined, ArrowLeftOutlined, AuditOutlined, BankOutlined, FileProtectOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined } from '@ant-design/icons';
+import { Alert, Button, Space, Spin, Tag, Typography } from 'antd';
+import { useEffect, useMemo } from 'react';
+import { history, Link, Outlet, useLocation } from '@umijs/max';
+import type { CompetitionWorkspaceModule } from '@/services/competition/types';
+import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useCompetitionWorkspace, CompetitionWorkspaceProvider } from './CompetitionWorkspaceContext';
 import {
@@ -16,33 +15,19 @@ import { competitionWorkspaceStatusMeta } from './competitionWorkspacePresentati
 import './CompetitionWorkspaceLayout.css';
 
 const moduleIcons: Record<CompetitionWorkspaceModule, React.ReactNode> = {
-  overview: <AppstoreOutlined />,
-  registrations: <TeamOutlined />,
-  reviews: <AuditOutlined />,
-  payments: <BankOutlined />,
-  certificates: <SafetyCertificateOutlined />,
-  settings: <SettingOutlined />,
-  audit: <FileProtectOutlined />,
+  overview: <AppstoreOutlined aria-hidden />,
+  registrations: <TeamOutlined aria-hidden />,
+  reviews: <AuditOutlined aria-hidden />,
+  payments: <BankOutlined aria-hidden />,
+  certificates: <SafetyCertificateOutlined aria-hidden />,
+  settings: <SettingOutlined aria-hidden />,
+  audit: <FileProtectOutlined aria-hidden />,
 };
 
 const WorkspaceFrame = () => {
   const location = useLocation();
   const { competitionUuid, workspace, loading, error, canOpen, navigateToModule, refresh } = useCompetitionWorkspace();
-  const [availableWorkspaces, setAvailableWorkspaces] = useState<CompetitionWorkspaceRecord[]>([]);
   const currentModule = competitionWorkspaceModuleFromPath(location.pathname);
-
-  useEffect(() => {
-    if (!workspace || !competitionUuid) return;
-    let active = true;
-    void listCompetitionWorkspaces({ pageNo: 1, pageSize: 50 }, { silent: true })
-      .then((response) => {
-        if (active) setAvailableWorkspaces(response.records || []);
-      })
-      .catch(() => {
-        if (active) setAvailableWorkspaces([]);
-      });
-    return () => { active = false; };
-  }, [competitionUuid, workspace]);
 
   useEffect(() => {
     if (!loading && workspace && currentModule !== 'overview' && !canOpen(currentModule)) {
@@ -50,17 +35,17 @@ const WorkspaceFrame = () => {
     }
   }, [canOpen, currentModule, loading, navigateToModule, workspace]);
 
-  const menuItems = useMemo<MenuProps['items']>(() => COMPETITION_WORKSPACE_MODULES
-    .filter((item) => canOpen(item.key))
-    .map((item) => ({ key: item.key, icon: moduleIcons[item.key], label: item.label })), [canOpen]);
-
-  const workspaceOptions = useMemo(() => availableWorkspaces.map((item) => ({
-    value: item.competitionUuid,
-    label: `${item.title}${item.competitionNo ? `（${item.competitionNo}）` : ''}`,
-  })), [availableWorkspaces]);
+  const visibleModules = useMemo(
+    () => COMPETITION_WORKSPACE_MODULES.filter((item) => canOpen(item.key)),
+    [canOpen],
+  );
 
   if (loading) {
-    return <ManagementPageBody className="competition-workspace"><Card><Spin description="正在加载赛事工作空间…" /></Card></ManagementPageBody>;
+    return (
+      <ManagementPageBody className="competition-workspace">
+        <div className="competition-workspace__state"><Spin description="正在加载赛事工作空间…" /></div>
+      </ManagementPageBody>
+    );
   }
 
   if (error || !workspace || !competitionUuid) {
@@ -77,57 +62,69 @@ const WorkspaceFrame = () => {
     );
   }
 
-  const onMenuClick: MenuProps['onClick'] = ({ key }) => {
-    if (COMPETITION_WORKSPACE_MODULES.some((item) => item.key === key)) {
-      navigateToModule(key as CompetitionWorkspaceModule);
-    }
-  };
   const statusMeta = competitionWorkspaceStatusMeta[workspace.status];
+  const competitionNo = workspace.competitionNo?.trim() || '';
+  const competitionCode = workspace.code?.trim() || '';
+  const showDistinctCode = Boolean(competitionCode && competitionCode !== competitionNo);
 
   return (
     <ManagementPageBody className="competition-workspace">
-      <Card
-        className="competition-workspace__card competition-workspace__card--unified"
-        styles={{ body: { padding: 0 } }}
-        title={(
-          <Space wrap>
-            <Typography.Text strong>{workspace.title}</Typography.Text>
-            <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
-          </Space>
-        )}
-        extra={(
-          <Select
-            className="competition-workspace__selector"
-            showSearch
-            value={competitionUuid}
-            options={workspaceOptions}
-            placeholder="切换赛事"
-            style={{ width: 'clamp(220px, 42vw, 420px)' }}
-            optionFilterProp="label"
-            onChange={(nextUuid) => history.push(competitionWorkspacePath(nextUuid, 'overview'))}
-          />
-        )}
-      >
-        <Menu
-          className="competition-workspace__module-menu"
-          mode="horizontal"
-          selectedKeys={[currentModule]}
-          items={menuItems}
-          onClick={onMenuClick}
-        />
-        <div className="competition-workspace__module-content competition-workspace__module-content--unified">
+      <section className="competition-workspace__shell" aria-label={`${workspace.title}赛事工作空间`}>
+        <header className="competition-workspace__context">
+          <div className="competition-workspace__identity">
+            <Space className="competition-workspace__title-row" size={10} wrap>
+              <Typography.Title level={3} className="competition-workspace__title">
+                {workspace.title}
+              </Typography.Title>
+              <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
+            </Space>
+            <Space className="competition-workspace__context-meta" size={[12, 4]} wrap separator={<span aria-hidden>·</span>}>
+              <Typography.Text type="secondary">赛事编号 {competitionNo || '-'}</Typography.Text>
+              {showDistinctCode ? <Typography.Text type="secondary">代码 {competitionCode}</Typography.Text> : null}
+            </Space>
+          </div>
+          <Button
+            className="competition-workspace__back-to-list"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => history.push('/competitions/management')}
+          >
+            返回列表
+          </Button>
+        </header>
+        <nav className="competition-workspace__navigation" aria-label="赛事管理模块">
+          <div className="competition-workspace__module-tabs">
+            {visibleModules.map((item) => (
+              <Link
+                key={item.key}
+                className={`competition-workspace__module-tab ${currentModule === item.key ? 'is-active' : ''}`}
+                to={competitionWorkspacePath(competitionUuid, item.key)}
+                aria-current={currentModule === item.key ? 'page' : undefined}
+              >
+                {moduleIcons[item.key]}
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+        <main className="competition-workspace__module-content">
           <Outlet />
-        </div>
-      </Card>
+        </main>
+      </section>
     </ManagementPageBody>
   );
 };
 
 const CompetitionWorkspaceLayout = () => (
   <CompetitionWorkspaceProvider>
-    <Layout style={{ background: 'transparent' }}>
+    <ManagementPage
+      title={false}
+      content={null}
+      ghost
+      breadcrumbRender={false}
+      className="competition-workspace-page"
+    >
       <WorkspaceFrame />
-    </Layout>
+    </ManagementPage>
   </CompetitionWorkspaceProvider>
 );
 

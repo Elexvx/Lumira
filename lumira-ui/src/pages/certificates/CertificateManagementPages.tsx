@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { history } from '@umijs/max';
-import { Alert, Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal, Row, Select, Space, Steps, Table, Tag, Typography, Upload } from 'antd';
+import { Alert, Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal, Row, Segmented, Select, Space, Steps, Tag, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
@@ -22,6 +22,8 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { DataTable } from '@/features/table/DataTable';
+import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useResponsive } from '@/hooks/useResponsive';
 import {
   archiveCertificateTemplate,
@@ -149,21 +151,17 @@ const CertificateWorkspaceNavigation = ({
   competitionUuid: string;
   active: CertificateWorkspaceSection;
 }) => (
-  <Space wrap>
-    {([
-      ['generate', '生成证书'],
-      ['batches', '生成批次'],
-      ['records', '证书记录'],
-    ] as Array<[CertificateWorkspaceSection, string]>).map(([section, label]) => (
-      <Button
-        key={section}
-        type={active === section ? 'primary' : 'default'}
-        onClick={() => history.push(certificateWorkspaceSectionPath(competitionUuid, section))}
-      >
-        {label}
-      </Button>
-    ))}
-  </Space>
+  <Segmented<CertificateWorkspaceSection>
+    className="competition-workspace-certificate-navigation"
+    aria-label="证书功能"
+    value={active}
+    options={[
+      { value: 'generate', label: '生成证书' },
+      { value: 'batches', label: '生成批次' },
+      { value: 'records', label: '证书记录' },
+    ]}
+    onChange={(section) => history.push(certificateWorkspaceSectionPath(competitionUuid, section))}
+  />
 );
 
 const handleCertificateDownload = async (record: CertificateRecord, competitionUuid?: string) => {
@@ -226,6 +224,16 @@ const TemplateForm = ({ form: templateEditorForm }: { form: ReturnType<typeof Fo
       <Input.TextArea rows={4} maxLength={1000} showCount placeholder="说明模板适用的赛事、奖项或使用边界" />
     </Form.Item>
   </Form>
+);
+
+const certificateTemplateTableRequest = buildTableRequest<CertificateTemplateRecord>(async (params) =>
+  listCertificateTemplates({
+    keyword: typeof params.keyword === 'string' ? params.keyword : undefined,
+    sceneType: typeof params.sceneType === 'string' ? params.sceneType : undefined,
+    status: typeof params.status === 'string' ? params.status : undefined,
+    pageNo: params.pageNo,
+    pageSize: params.pageSize,
+  }),
 );
 
 export const TemplatesManagementPage = () => {
@@ -413,16 +421,7 @@ export const TemplatesManagementPage = () => {
           rowKey="id"
           columns={columns}
           isMobile={responsive.isMobile}
-          request={async (params) => {
-            const response = await listCertificateTemplates({
-              keyword: typeof params.keyword === 'string' ? params.keyword : undefined,
-              sceneType: typeof params.sceneType === 'string' ? params.sceneType : undefined,
-              status: typeof params.status === 'string' ? params.status : undefined,
-              pageNo: params.current,
-              pageSize: params.pageSize,
-            });
-            return { data: response.records, total: response.total, success: true };
-          }}
+          request={certificateTemplateTableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           toolBarRender={() =>
             actionPermission.buildToolbarActions([
@@ -695,6 +694,7 @@ export const GenerateManagementPage = () => {
       embeddedInWorkspace={Boolean(workspaceUuid)}
       title={workspaceUuid ? '证书生成' : '跨赛事证书生成'}
       extra={workspaceUuid ? <CertificateWorkspaceNavigation competitionUuid={workspaceUuid} active="generate" /> : undefined}
+      showWorkspaceHeader={Boolean(workspaceUuid)}
       bodyClassName="certificate-generate-page"
       workspaceVariant="content"
     >
@@ -915,8 +915,9 @@ export const GenerateManagementPage = () => {
                     style={{ marginBottom: 16 }}
                   />
                 )}
-                <Table<CertificateAwardGrant>
+                <DataTable<CertificateAwardGrant>
                   rowKey="id"
+                  isMobile={responsive.isMobile}
                   size="small"
                   dataSource={awardGrants}
                   loading={awardGrantsLoading}
@@ -1009,8 +1010,9 @@ export const GenerateManagementPage = () => {
                     style={{ marginBottom: 16 }}
                   />
                 ) : null}
-                <Table<CertificateRecord>
+                <DataTable<CertificateRecord>
                   rowKey="id"
+                  isMobile={responsive.isMobile}
                   size="middle"
                   dataSource={result}
                   pagination={false}
@@ -1206,11 +1208,28 @@ export const RecordsManagementPage = () => {
     [actionPermission, responsive.isDesktop, responsive.isMobile, workspaceUuid],
   );
 
+  const tableRequest = useMemo(
+    () => buildTableRequest<CertificateRecord>(async (params) => {
+      const query = {
+        certificateNo: typeof params.certificateNo === 'string' ? params.certificateNo : undefined,
+        recipientName: typeof params.recipientName === 'string' ? params.recipientName : undefined,
+        status: typeof params.status === 'string' ? params.status : undefined,
+        pageNo: params.pageNo,
+        pageSize: params.pageSize,
+      };
+      return workspaceUuid
+        ? listCompetitionWorkspaceCertificates(workspaceUuid, query)
+        : listCertificates(query);
+    }),
+    [workspaceUuid],
+  );
+
   return (
     <CompetitionWorkspacePageFrame
       embeddedInWorkspace={Boolean(workspaceUuid)}
       title={workspaceUuid ? '证书记录' : '全局证书记录'}
       extra={workspaceUuid ? <CertificateWorkspaceNavigation competitionUuid={workspaceUuid} active="records" /> : undefined}
+      showWorkspaceHeader={Boolean(workspaceUuid)}
       bodyClassName="certificate-management-page"
       workspaceVariant="table"
     >
@@ -1219,19 +1238,7 @@ export const RecordsManagementPage = () => {
           rowKey="id"
           columns={columns}
           isMobile={responsive.isMobile}
-          request={async (params) => {
-            const query = {
-              certificateNo: typeof params.certificateNo === 'string' ? params.certificateNo : undefined,
-              recipientName: typeof params.recipientName === 'string' ? params.recipientName : undefined,
-              status: typeof params.status === 'string' ? params.status : undefined,
-              pageNo: params.current,
-              pageSize: params.pageSize,
-            };
-            const response = await (workspaceUuid
-              ? listCompetitionWorkspaceCertificates(workspaceUuid, query)
-              : listCertificates(query));
-            return { data: response.records, total: response.total, success: true };
-          }}
+          request={tableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
         />
       <ManagementDrawer title="证书详情" open={Boolean(detail)} onClose={() => setDetail(null)}>
@@ -1267,6 +1274,19 @@ export const BatchesManagementPage = () => {
   const workspaceUuid = workspace?.competitionUuid;
   const responsive = useResponsive();
   const actionRef = useRef<ActionType | null>(null);
+  const tableRequest = useMemo(
+    () => buildTableRequest<CertificateBatchRecord>(async (params) => {
+      if (!workspaceUuid) {
+        return { records: [], total: 0 };
+      }
+      return listCompetitionWorkspaceCertificateBatches(workspaceUuid, {
+        status: typeof params.status === 'string' ? params.status : undefined,
+        pageNo: params.pageNo,
+        pageSize: params.pageSize,
+      });
+    }),
+    [workspaceUuid],
+  );
   const columns = useMemo<ProColumns<CertificateBatchRecord>[]>(() => [
     {
       title: '批次编号',
@@ -1314,6 +1334,7 @@ export const BatchesManagementPage = () => {
       embeddedInWorkspace={Boolean(workspaceUuid)}
       title="证书批次"
       extra={workspaceUuid ? <CertificateWorkspaceNavigation competitionUuid={workspaceUuid} active="batches" /> : undefined}
+      showWorkspaceHeader={Boolean(workspaceUuid)}
       bodyClassName="certificate-management-page"
       workspaceVariant="table"
     >
@@ -1323,14 +1344,7 @@ export const BatchesManagementPage = () => {
           rowKey="id"
           columns={columns}
           isMobile={responsive.isMobile}
-          request={async (params) => {
-            const response = await listCompetitionWorkspaceCertificateBatches(workspaceUuid, {
-              status: typeof params.status === 'string' ? params.status : undefined,
-              pageNo: params.current,
-              pageSize: params.pageSize,
-            });
-            return { data: response.records, total: response.total, success: true };
-          }}
+          request={tableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
         />
       ) : <Alert showIcon type="warning" title="请从赛事工作空间进入证书批次。" />}

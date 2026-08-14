@@ -23,6 +23,14 @@ import type { OnlineSessionEventRecord, OnlineSessionRecord, PagedResult } from 
 import { API_OPTS } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+
+const onlineUsersTableRequest = buildTableRequest((params) =>
+  request<PagedResult<OnlineSessionRecord>>('/v1/system/online-users', {
+    method: 'GET',
+    params,
+    ...API_OPTS.NO_REDIRECT,
+  }),
+);
 import { UserAvatar } from '@/components/UserAvatar';
 
 import { databaseMessage } from '@/i18n/databaseMessage';
@@ -494,13 +502,7 @@ const OnlineUsersPage = () => {
           columns={columns}
           isMobile={responsive.isMobile}
           scroll={{ x: 1980 }}
-          request={buildTableRequest((params) =>
-            request<PagedResult<OnlineSessionRecord>>('/v1/system/online-users', {
-              method: 'GET',
-              params,
-              ...API_OPTS.NO_REDIRECT,
-            }),
-          )}
+          request={onlineUsersTableRequest}
           toolBarRender={() => [
             <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
               {t('ui.system.online-users.refresh')}

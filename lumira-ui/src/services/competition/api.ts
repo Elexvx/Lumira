@@ -117,7 +117,7 @@ export const getCompetitionWorkspaceExportTask = (competitionUuid: string, taskI
 
 export const listCompetitionWorkspaceAudit = (
   competitionUuid: string,
-  params: { module?: string; pageNo?: number; pageSize?: number } = {},
+  params: { module?: string; action?: string; pageNo?: number; pageSize?: number } = {},
 ) => request<PageResponse<CompetitionAuditRecord>>(`${competitionWorkspaceApi(competitionUuid)}/audit`, {
   method: 'GET',
   params,

@@ -26,14 +26,18 @@ import com.lumira.saas.modules.competition.repository.RegistrationDatasetReposit
 import com.lumira.saas.modules.competition.vo.CompetitionRegistrationVO;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -106,6 +110,124 @@ class CompetitionRegistrationExportAppServiceTest {
 
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND);
         verify(exportTaskPort, never()).createTask(any(), any(), any(), anyList(), anyLong(), any());
+    }
+
+    @Test
+    void dataExportUsesConfiguredCollectionFieldsAndHumanReadableValues() throws Exception {
+        CompetitionRegistrationAppService registrationAppService = mock(CompetitionRegistrationAppService.class);
+        RegistrationDatasetRepository datasetRepository = mock(RegistrationDatasetRepository.class);
+        TrustedUserSnapshotResolver userSnapshotResolver = mock(TrustedUserSnapshotResolver.class);
+        CompetitionRegistrationVO.Registration registration = new CompetitionRegistrationVO.Registration();
+        registration.setId(101L);
+        registration.setCompetitionId(88L);
+        registration.setRegistrationNo("REG-20260813175803842-BX4");
+        registration.setParticipantNo("202608122342108411-0001");
+        registration.setStatus("CONFIRMED");
+        registration.setMemberCount(1);
+        registration.setTeamName("Codex 流程测试团队");
+        registration.setProjectTitle("Codex 全流程点击测试项目");
+        registration.setMaterialSubmissionCount(0);
+        registration.setMaterialFileCount(0);
+        registration.setCreatedAt(LocalDateTime.of(2026, 8, 13, 17, 58, 3));
+        registration.setRegistrationSnapshotJson("{}");
+        registration.setTeamSnapshotJson("{\"teamId\":0,\"teamName\":\"Codex 流程测试团队\"}");
+        registration.setMemberSnapshotJson("[{\"memberName\":\"Codex测试成员\"}]");
+        registration.setProjectSnapshotJson("""
+                {
+                  "title":"Codex 全流程点击测试项目",
+                  "extraValues":{
+                    "intellectualProperties":[{
+                      "intellectualPropertyType":"软件著作权",
+                      "intellectualPropertyName":"Codex 测试软件著作权",
+                      "rightsHolder":"Codex 测试团队",
+                      "distributionRegions":["中国大陆"]
+                    }]
+                  }
+                }
+                """);
+        registration.setCollectionSchemaSnapshotJson("""
+                [
+                  {"scope":"TEAM_FIELD","itemKey":"teamName","title":"团队名称","fieldType":"TEXT","groupLabel":""},
+                  {"scope":"TEAM_FIELD","itemKey":"avatarUrl","title":"团队头像","fieldType":"IMAGE","groupLabel":""},
+                  {"scope":"TEAM_FIELD","itemKey":"description","title":"团队简介","fieldType":"TEXTAREA","groupLabel":""},
+                  {"scope":"MEMBER_FIELD","itemKey":"memberName","title":"成员姓名","fieldType":"TEXT","groupLabel":""},
+                  {"scope":"PROJECT_FIELD","itemKey":"title","title":"项目名称","fieldType":"TEXT","groupLabel":""},
+                  {"scope":"PROJECT_FIELD","itemKey":"imageUrl","title":"项目头像","fieldType":"IMAGE","groupLabel":""},
+                  {"scope":"PROJECT_FIELD","itemKey":"description","title":"项目简介","fieldType":"TEXTAREA","groupLabel":""},
+                  {"scope":"PROJECT_FIELD","itemKey":"intellectualPropertyType","title":"知识产权类型","fieldType":"SELECT","groupLabel":"知识产权信息"},
+                  {"scope":"PROJECT_FIELD","itemKey":"intellectualPropertyName","title":"知识产权名称","fieldType":"TEXT","groupLabel":"知识产权信息"},
+                  {"scope":"PROJECT_FIELD","itemKey":"registrationNumber","title":"申请号/登记号","fieldType":"TEXT","groupLabel":"知识产权信息"},
+                  {"scope":"PROJECT_FIELD","itemKey":"rightsHolder","title":"权利人","fieldType":"TEXT","groupLabel":"知识产权信息"},
+                  {"scope":"PROJECT_FIELD","itemKey":"legalStatus","title":"法律状态","fieldType":"SELECT","groupLabel":"知识产权信息"},
+                  {"scope":"PROJECT_FIELD","itemKey":"grantDate","title":"授权/登记日期","fieldType":"DATE","groupLabel":"知识产权信息"},
+                  {"scope":"PROJECT_FIELD","itemKey":"distributionRegions","title":"知识产权分布区域","fieldType":"MULTI_SELECT","groupLabel":"知识产权信息"}
+                ]
+                """);
+        when(registrationAppService.getRegistration(any(), eq(101L))).thenReturn(registration);
+        when(datasetRepository.isLinked(88L, 101L)).thenReturn(true);
+        CurrentUser user = trustedUser();
+        user.setPermissions(Set.of(
+                CompetitionRegistrationExportAppService.EXPORT_PERMISSION,
+                CompetitionRegistrationExportAppService.SENSITIVE_EXPORT_PERMISSION
+        ));
+        when(userSnapshotResolver.resolve(any(), any(), any(), any(), any())).thenReturn(user);
+        CompetitionRegistrationExportAppService service = new CompetitionRegistrationExportAppService(
+                registrationAppService,
+                datasetRepository,
+                new CompetitionExcelExportService(),
+                mock(ExportTaskPort.class),
+                userSnapshotResolver,
+                mock(FileInternalApi.class),
+                new ObjectMapper(),
+                provider(null),
+                provider(mock(ExecutorService.class))
+        );
+        CompetitionRegistrationDTO.RegistrationExportRequest request = new CompetitionRegistrationDTO.RegistrationExportRequest();
+        request.setCompetitionId(88L);
+        request.setRegistrationIds(List.of(101L));
+
+        byte[] exported = service.exportFromTrustedSnapshot(user, request, 9001L);
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(exported))) {
+            var sheet = workbook.getSheet("报名与材料");
+            DataFormatter formatter = new DataFormatter();
+            List<String> headers = new java.util.ArrayList<>();
+            Map<String, Integer> columnByHeader = new LinkedHashMap<>();
+            for (int index = 0; index < sheet.getRow(0).getLastCellNum(); index += 1) {
+                String header = formatter.formatCellValue(sheet.getRow(0).getCell(index));
+                headers.add(header);
+                columnByHeader.put(header, index);
+            }
+            assertThat(headers).containsExactly(
+                    "报名编号", "参赛编号", "报名状态", "报名时间", "团队人数", "成员序号",
+                    "团队名称", "团队头像", "团队简介", "成员姓名", "项目名称", "项目头像", "项目简介",
+                    "知识产权类型", "知识产权名称", "申请号/登记号", "权利人", "法律状态", "授权/登记日期",
+                    "知识产权分布区域", "材料提交次数", "材料文件数"
+            );
+            assertThat(headers).doesNotContain(
+                    "成员角色", "学号/工号", "院系/部门", "成员备注",
+                    "报名完整快照(JSON)", "团队完整快照(JSON)", "项目完整快照(JSON)",
+                    "成员完整快照(JSON)", "采集结构快照(JSON)", "阶段材料清单(JSON)"
+            );
+            var row = sheet.getRow(1);
+            assertThat(formatter.formatCellValue(row.getCell(columnByHeader.get("报名状态")))).isEqualTo("已确认");
+            assertThat(formatter.formatCellValue(row.getCell(columnByHeader.get("团队名称"))))
+                    .isEqualTo("Codex 流程测试团队");
+            assertThat(formatter.formatCellValue(row.getCell(columnByHeader.get("成员姓名"))))
+                    .isEqualTo("Codex测试成员");
+            assertThat(formatter.formatCellValue(row.getCell(columnByHeader.get("知识产权类型"))))
+                    .isEqualTo("软件著作权");
+            assertThat(formatter.formatCellValue(row.getCell(columnByHeader.get("知识产权名称"))))
+                    .isEqualTo("Codex 测试软件著作权");
+            assertThat(formatter.formatCellValue(row.getCell(columnByHeader.get("知识产权分布区域"))))
+                    .isEqualTo("中国大陆");
+            var teamAvatarCell = row.getCell(columnByHeader.get("团队头像"));
+            var registrationNumberCell = row.getCell(columnByHeader.get("申请号/登记号"));
+            assertThat(formatter.formatCellValue(teamAvatarCell)).isEmpty();
+            assertThat(formatter.formatCellValue(registrationNumberCell)).isEmpty();
+            assertThat(teamAvatarCell.getCellType()).isEqualTo(CellType.BLANK);
+            assertThat(registrationNumberCell.getCellType()).isEqualTo(CellType.BLANK);
+        }
     }
 
     @Test

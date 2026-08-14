@@ -11,7 +11,6 @@ import {
   QRCode,
   Select,
   Space,
-  Table,
   Tag,
   Typography,
 } from 'antd';
@@ -27,6 +26,8 @@ import {
 } from '@/services/payment/api';
 import { message } from '@/theme/antdFeedbackBridge';
 import { StandardDrawer } from '@/features/management/StandardDrawer';
+import { DataTable } from '@/features/table/DataTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import type { PaymentOrderRecord, PaymentProviderSettings } from '@/types/api';
 import {
   normalizePaymentEnvironment,
@@ -71,6 +72,7 @@ export const SandboxPaymentOrderTab = ({
   paymentSettings: PaymentProviderSettings[];
   canCreateOrders: boolean;
 }) => {
+  const responsive = useResponsive();
   const [form] = Form.useForm<ManualPaymentFormValues>();
   const selectedProviderCode = Form.useWatch('providerCode', form);
   const selectedScene = Form.useWatch('scene', form);
@@ -403,10 +405,11 @@ export const SandboxPaymentOrderTab = ({
         description={t('ui.settings.payment.sandboxpaymentorder.productionAndSandboxManualOrdersRemainAvailableAfter')}
       />
 
-      <Table<PaymentOrderRecord>
+      <DataTable<PaymentOrderRecord>
         rowKey="orderNo"
         columns={columns}
         dataSource={orders}
+        isMobile={responsive.isMobile}
         loading={loading}
         pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: [10, 20, 50] }}
         scroll={{ x: 1170 }}

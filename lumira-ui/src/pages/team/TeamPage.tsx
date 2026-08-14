@@ -18,7 +18,6 @@ import {
   Select,
   Space,
   Switch,
-  Table,
   Tabs,
   Tag,
   Typography,
@@ -40,7 +39,9 @@ import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
+import { DataTable } from '@/features/table/DataTable';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildTableRequest, DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { useDictOptions } from '@/hooks/useDictOptions';
@@ -328,6 +329,7 @@ const TeamMemberTable = ({
   loading?: boolean;
   actions?: (record: TeamMemberRecord) => React.ReactNode;
 }) => {
+  const responsive = useResponsive();
   const columns: ColumnsType<TeamMemberRecord> = [
     {
       title: '成员姓名',
@@ -351,8 +353,9 @@ const TeamMemberTable = ({
     : undefined;
 
   return (
-    <Table
+    <DataTable
       rowKey="id"
+      isMobile={responsive.isMobile}
       columns={actionColumn ? [...columns, actionColumn] : columns}
       dataSource={members}
       loading={loading}
@@ -361,6 +364,20 @@ const TeamMemberTable = ({
     />
   );
 };
+
+const teamListTableRequest = buildTableRequest<TeamRecord>(async (params) => {
+  const filters = buildTeamManagementFilters(params);
+  const teams = await listAllTeams();
+  const filteredTeams = teams.filter((team) => matchesTeamManagementFilters(team, filters));
+  const pageNo = params.pageNo ?? 1;
+  const pageSize = params.pageSize ?? DEFAULT_TABLE_PAGE_SIZE;
+  const startIndex = (pageNo - 1) * pageSize;
+
+  return {
+    records: filteredTeams.slice(startIndex, startIndex + pageSize),
+    total: filteredTeams.length,
+  };
+});
 
 const TeamListPage = () => {
   const responsive = useResponsive();
@@ -373,7 +390,7 @@ const TeamListPage = () => {
   const [saving, setSaving] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamRecord>();
 
-  const openEditDrawer = (record: TeamRecord) => {
+  const openEditDrawer = useCallback((record: TeamRecord) => {
     setEditingTeam(record);
     teamForm.resetFields();
     teamForm.setFieldsValue({
@@ -382,7 +399,7 @@ const TeamListPage = () => {
       description: record.description || '',
     });
     setDrawerOpen(true);
-  };
+  }, [teamForm]);
 
   const closeDrawer = () => {
     setDrawerOpen(false);
@@ -410,7 +427,7 @@ const TeamListPage = () => {
   const joinModeValueEnum = useMemo(() => buildTeamSearchValueEnum(joinModeOptions), [joinModeOptions]);
   const statusValueEnum = useMemo(() => buildTeamSearchValueEnum(teamStatusOptions), []);
 
-  const columns: ProColumns<TeamRecord>[] = [
+  const columns = useMemo<ProColumns<TeamRecord>[]>(() => [
     {
       title: '关键字',
       dataIndex: 'keyword',
@@ -542,7 +559,18 @@ const TeamListPage = () => {
         />
       ),
     },
-  ];
+  ], [
+    actionPermission,
+    joinModeOptions,
+    joinModeValueEnum,
+    openEditDrawer,
+    responsive.isMobile,
+    teamTypeOptions,
+    teamTypeValueEnum,
+    visibilityOptions,
+    visibilityValueEnum,
+    statusValueEnum,
+  ]);
 
   return (
     <ManagementPage title="团队管理">
@@ -555,19 +583,7 @@ const TeamListPage = () => {
           autoContentWidth
           search={searchConfig}
           scroll={{ x: 'max-content' }}
-          request={async (params) => {
-            const filters = buildTeamManagementFilters(params);
-            const teams = await listAllTeams();
-            const filteredTeams = teams.filter((team) => matchesTeamManagementFilters(team, filters));
-            const current = typeof params.current === 'number' ? params.current : Number(params.current || 1);
-            const pageSize = typeof params.pageSize === 'number' ? params.pageSize : Number(params.pageSize || 10);
-            const startIndex = (current - 1) * pageSize;
-            return {
-              data: filteredTeams.slice(startIndex, startIndex + pageSize),
-              total: filteredTeams.length,
-              success: true,
-            };
-          }}
+          request={teamListTableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           locale={{ emptyText: <Empty description="暂无团队" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
         />
@@ -742,6 +758,7 @@ const TeamSearchPage = () => {
 };
 
 const CreateTeamPage = () => {
+  const responsive = useResponsive();
   const actionPermission = useActionPermission();
   const { teamTypeOptions, visibilityOptions, joinModeOptions } = useTeamDictOptions();
   const customTeamMemberFields = useTeamMemberFieldSettings();
@@ -861,8 +878,9 @@ const CreateTeamPage = () => {
           <Form.List name="initialMembers">
             {(fields, { add, remove }) => (
               <div className="team-member-form-table">
-                <Table
+                <DataTable
                   rowKey="key"
+                  isMobile={responsive.isMobile}
                   pagination={false}
                   dataSource={fields}
                   columns={[
@@ -1286,6 +1304,7 @@ const MembersPage = () => {
 };
 
 const InvitesPage = () => {
+  const responsive = useResponsive();
   const teamId = useTeamId();
   const actionPermission = useActionPermission();
   const [invites, setInvites] = useState<TeamInviteRecord[]>([]);
@@ -1350,7 +1369,7 @@ const InvitesPage = () => {
           ) : null}
         </Card>
         <Card title="邀请记录">
-          <Table rowKey="id" columns={columns} dataSource={invites} pagination={false} />
+          <DataTable rowKey="id" isMobile={responsive.isMobile} columns={columns} dataSource={invites} pagination={false} />
         </Card>
       </div>
     </TeamShell>
@@ -1409,6 +1428,7 @@ const JoinPage = () => {
 };
 
 const JoinRequestsPage = ({ teamId }: { teamId: number }) => {
+  const responsive = useResponsive();
   const actionPermission = useActionPermission();
   const [requests, setRequests] = useState<TeamJoinRequestRecord[]>([]);
   const load = useCallback(async () => setRequests(await listTeamJoinRequests(teamId)), [teamId]);
@@ -1416,8 +1436,9 @@ const JoinRequestsPage = ({ teamId }: { teamId: number }) => {
     void load();
   }, [load]);
   return (
-    <Table
+    <DataTable
       rowKey="id"
+      isMobile={responsive.isMobile}
       dataSource={requests}
       pagination={false}
       columns={[

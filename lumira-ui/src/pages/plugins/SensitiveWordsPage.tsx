@@ -42,6 +42,15 @@ const CATEGORY_OPTIONS = [
   { label: t('plugin.sensitiveWords.category.custom'), value: 'CUSTOM' },
 ];
 
+const sensitiveWordsTableRequest = buildTableRequest(async (params) => {
+  const result = await request<PagedResponse<SensitiveWordRecord>>('/v1/sensitive-words', {
+    method: 'GET',
+    params,
+    ...API_OPTS.NO_REDIRECT,
+  });
+  return result;
+});
+
 const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
   const { initialState } = useInitialStateModel();
   const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
@@ -215,14 +224,7 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
               { key: 'create', label: <><PlusOutlined /> {t('plugin.sensitiveWords.create.title')}</>, onClick: openCreate, permission: 'plugin:sensitive-words:manage', type: 'primary' },
             ])
           }
-          request={buildTableRequest(async (params) => {
-            const result = await request<PagedResponse<SensitiveWordRecord>>('/v1/sensitive-words', {
-              method: 'GET',
-              params,
-              ...API_OPTS.NO_REDIRECT,
-            });
-            return result;
-          })}
+          request={sensitiveWordsTableRequest}
         />
         )}
       </ManagementPageBody>

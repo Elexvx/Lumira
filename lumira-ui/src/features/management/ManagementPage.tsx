@@ -3,7 +3,6 @@ import { useLocation } from '@umijs/max';
 import type { ComponentProps } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
-import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { buildBreadcrumbItems } from './managementBreadcrumb';
 
 type PageContainerProps = ComponentProps<typeof PageContainer>;
@@ -16,8 +15,8 @@ export const ManagementPage = ({ breadcrumb, className, children, ...props }: Pa
   const dynamicBreadcrumbItems = buildBreadcrumbItems(initialState?.menuTree, location.pathname);
   const dynamicBreadcrumb = dynamicBreadcrumbItems.length ? { items: dynamicBreadcrumbItems } : undefined;
   const pageContainerToken = {
-    paddingInlinePageContainerContent: resolveResponsiveValue(APP_SPACING.pageContainerPaddingInline, responsive.isMobile),
-    paddingBlockPageContainerContent: resolveResponsiveValue(APP_SPACING.pageContainerPaddingBlock, responsive.isMobile),
+    paddingInlinePageContainerContent: responsive.profile.pageGutter,
+    paddingBlockPageContainerContent: responsive.profile.pageSectionGap,
     ...(props.token || {}),
   };
 

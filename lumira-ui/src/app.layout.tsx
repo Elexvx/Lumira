@@ -48,6 +48,7 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useThemePreference } from '@/theme/ThemePreferenceProvider';
 import type { ThemePreference } from '@/theme/settings';
 import { resolveThemeRuntimeSnapshot } from '@/theme/runtime';
+import { getResponsiveProfile, resolveViewportTier } from '@/theme/responsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import policeBeianIcon from '@/assets/police-beian.png';
 import { ICP_QUERY_URL, resolvePoliceBeianQueryUrl } from '@/branding/beian';
@@ -56,8 +57,6 @@ import './layouts/components/GlobalFloatActions.css';
 import { buildBreadcrumbItems } from '@/features/management/managementBreadcrumb';
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
-const resolveIsMobileViewport = () =>
-  typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches;
 const STABLE_MAIN_ROUTE_PATHS = [
   '/dashboard/home',
   '/data-management',
@@ -1549,9 +1548,11 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
           initialState?.availablePlugins,
         )
       : resolveSelectedMenuPath(currentPathname, mainMenuTree);
-  const isMobile = resolveIsMobileViewport();
-  const LAYOUT_HEADER_HEIGHT = resolveResponsiveValue(APP_SPACING.layout.headerHeight, isMobile);
-  const LAYOUT_SIDER_WIDTH = resolveResponsiveValue(APP_SPACING.layout.siderWidth, isMobile);
+  const viewportTier = resolveViewportTier(typeof window === 'undefined' ? 1280 : window.innerWidth);
+  const responsiveProfile = getResponsiveProfile(viewportTier);
+  const isMobile = viewportTier === 'mobile';
+  const LAYOUT_HEADER_HEIGHT = responsiveProfile.headerHeight;
+  const LAYOUT_SIDER_WIDTH = responsiveProfile.siderWidth;
 
   applyBrandingRuntime(brandingSettings);
 

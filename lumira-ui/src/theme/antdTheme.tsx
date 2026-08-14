@@ -3,6 +3,7 @@ import zhCN from 'antd/locale/zh_CN';
 import enUS from 'antd/locale/en_US';
 import { resolveRuntimeLocale } from '@/i18n/locale';
 import { getThemeRuntimeSnapshot } from '@/theme/runtime';
+import { getResponsiveProfile, resolveViewportTier, type ViewportTier } from '@/theme/responsive';
 import type { ThemePreference } from '@/theme/settings';
 import { APP_SPACING } from '@/theme/spacing';
 
@@ -12,12 +13,18 @@ interface BuildAntdThemeConfigOptions {
   themePreference?: ThemePreference;
   resolvedColorMode?: 'light' | 'dark';
   isMobile?: boolean;
+  viewportTier?: ViewportTier;
 }
 
 type ResponsiveSpaceSize = NonNullable<NonNullable<Parameters<typeof ConfigProvider>[0]>['space']>;
 
-export const resolveResponsiveSpaceSize = (isMobile: boolean): NonNullable<ResponsiveSpaceSize>['size'] =>
-  isMobile ? 'small' : 'middle';
+export const resolveResponsiveSpaceSize = (isMobileOrTier: boolean | ViewportTier): NonNullable<ResponsiveSpaceSize>['size'] => {
+  if (typeof isMobileOrTier === 'boolean') {
+    return isMobileOrTier ? 'small' : 'middle';
+  }
+
+  return isMobileOrTier === 'mobile' ? 'small' : isMobileOrTier === 'wide' || isMobileOrTier === 'ultra' ? 'large' : 'middle';
+};
 
 const baseThemeToken: NonNullable<AntdThemeConfig>['token'] = {
   colorPrimary: '#1677ff',
@@ -31,8 +38,26 @@ const baseThemeToken: NonNullable<AntdThemeConfig>['token'] = {
   borderRadiusSM: 4,
 };
 
-const buildGlobalSpacingToken = (isMobile: boolean): NonNullable<AntdThemeConfig>['token'] =>
-  isMobile ? APP_SPACING.antdMobileTokens : APP_SPACING.antdDesktopTokens;
+const buildGlobalSpacingToken = (
+  isMobile: boolean,
+  viewportTier: ViewportTier,
+  isCompact: boolean,
+): NonNullable<AntdThemeConfig>['token'] => {
+  const profile = getResponsiveProfile(viewportTier);
+  const baseToken = isMobile ? APP_SPACING.antdMobileTokens : APP_SPACING.antdDesktopTokens;
+  const compactOffset = isCompact ? 4 : 0;
+
+  return {
+    ...baseToken,
+    controlHeight: Math.max(isMobile ? 40 : 32, profile.controlHeight - compactOffset),
+    controlHeightSM: Math.max(isMobile ? 32 : 24, profile.controlHeightSM - compactOffset),
+    controlHeightLG: Math.max(isMobile ? 44 : 40, profile.controlHeightLG - compactOffset),
+    fontSize: Math.max(14, profile.bodyFontSize - (isCompact ? 1 : 0)),
+    fontSizeSM: Math.max(12, profile.fontSizeSM - (isCompact ? 1 : 0)),
+    fontSizeLG: Math.max(16, profile.fontSizeLG - (isCompact ? 1 : 0)),
+    fontSizeXL: Math.max(18, profile.fontSizeXL - (isCompact ? 1 : 0)),
+  };
+};
 
 const lightThemeToken: NonNullable<AntdThemeConfig>['token'] = {
   colorBgBase: '#ffffff',
@@ -78,7 +103,8 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
   const themePreference = options?.themePreference ?? runtimeSnapshot.themePreference;
   const resolvedColorMode = options?.resolvedColorMode ?? runtimeSnapshot.resolvedColorMode;
   const isMobile = options?.isMobile ?? resolveIsMobile();
-  const globalSpacingToken = buildGlobalSpacingToken(isMobile);
+  const viewportTier = options?.viewportTier ?? resolveViewportTier(typeof window === 'undefined' ? 1280 : window.innerWidth);
+  const globalSpacingToken = buildGlobalSpacingToken(isMobile, viewportTier, themePreference === 'compact');
   const cssVar = {
     key: resolveCssVarKey(themePreference, resolvedColorMode),
   };

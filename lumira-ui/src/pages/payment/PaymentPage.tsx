@@ -7,6 +7,7 @@ import { useOptionalCompetitionWorkspace } from '@/features/competition-workspac
 import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { StandardDrawer } from '@/features/management/StandardDrawer';
+import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useResponsive } from '@/hooks/useResponsive';
 import {
   getRegistrationStatusLabel,
@@ -141,6 +142,23 @@ const PaymentPage = () => {
   const workspaceUuid = workspace?.competitionUuid;
   const workspaceTitle = workspace?.workspace?.title;
 
+  const tableRequest = useMemo(
+    () => buildTableRequest<RegistrationPaymentRecord>(async (params) => {
+      const query = {
+        keyword: typeof params.keyword === 'string' ? params.keyword : undefined,
+        paymentStatus: typeof params.paymentStatus === 'string' ? params.paymentStatus : undefined,
+        registrationStatus: typeof params.registrationStatus === 'string' ? params.registrationStatus : undefined,
+        providerCode: typeof params.providerCode === 'string' ? params.providerCode : undefined,
+        pageNo: params.pageNo,
+        pageSize: params.pageSize,
+      };
+      return workspaceUuid
+        ? listCompetitionWorkspacePayments(workspaceUuid, query)
+        : listRegistrationPayments(query);
+    }),
+    [workspaceUuid],
+  );
+
   const columns = useMemo<ProColumns<RegistrationPaymentRecord>[]>(
     () => [
       {
@@ -151,7 +169,7 @@ const PaymentPage = () => {
           placeholder: '报名号/订单号/赛事/团队/项目',
         },
         render: (_, record) => (
-          <Space className="payment-record-title" direction="vertical" size={0}>
+          <Space className="payment-record-title" orientation="vertical" size={0}>
             <Typography.Text strong ellipsis={{ tooltip: record.orderNo || undefined }}>
               {record.orderNo || '-'}
             </Typography.Text>
@@ -261,6 +279,7 @@ const PaymentPage = () => {
     <CompetitionWorkspacePageFrame
       embeddedInWorkspace={Boolean(workspaceUuid)}
       title={workspaceUuid ? '支付' : isStatusQuery ? '支付状态查询' : '全局支付流水'}
+      showWorkspaceHeader={Boolean(workspaceUuid)}
       workspaceVariant="table"
     >
       <ManagementTable<RegistrationPaymentRecord>
@@ -271,24 +290,7 @@ const PaymentPage = () => {
           isMobile={responsive.isMobile}
           scroll={{ x: 960 }}
           tableLayout="fixed"
-          request={async (params) => {
-            const query = {
-              keyword: typeof params.keyword === 'string' ? params.keyword : undefined,
-              paymentStatus: typeof params.paymentStatus === 'string' ? params.paymentStatus : undefined,
-              registrationStatus: typeof params.registrationStatus === 'string' ? params.registrationStatus : undefined,
-              providerCode: typeof params.providerCode === 'string' ? params.providerCode : undefined,
-              pageNo: params.current,
-              pageSize: params.pageSize,
-            };
-            const response = workspaceUuid
-              ? await listCompetitionWorkspacePayments(workspaceUuid, query)
-              : await listRegistrationPayments(query);
-            return {
-              data: response.records,
-              total: response.total,
-              success: true,
-            };
-          }}
+          request={tableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           toolBarRender={() => [
             <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reload()}>

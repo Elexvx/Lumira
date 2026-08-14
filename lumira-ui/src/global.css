@@ -5,6 +5,13 @@
   --saas-page-content-width-compact: 1120px;
   --saas-page-gutter: clamp(16px, 2.4vw, 28px);
   --saas-page-section-gap: clamp(16px, 2vw, 24px);
+  --saas-viewport-scale: 1;
+  --saas-font-size-body: 14px;
+  --saas-font-size-sm: 12px;
+  --saas-font-size-lg: 16px;
+  --saas-font-size-xl: 18px;
+  --saas-font-size-page-title: 26px;
+  --saas-font-size-section-title: 22px;
   --saas-table-section-gap: var(--saas-spacing-md);
   --saas-form-item-gap: var(--saas-spacing-xs);
   --saas-form-label-gap: var(--saas-spacing-xs);
@@ -16,6 +23,9 @@
   --saas-card-padding: clamp(18px, 2.2vw, 24px);
   --saas-control-height: 56px;
   --saas-control-height-compact: 48px;
+  --saas-layout-header-height: 56px;
+  --saas-layout-sider-width: 224px;
+  --saas-standard-drawer-width: 700px;
   --saas-panel-min-height: 160px;
   --saas-dashboard-hero-min-height: 228px;
   --saas-dashboard-panel-min-height: 272px;
@@ -165,6 +175,7 @@ body {
   overflow-x: hidden;
   width: 100%;
   min-width: 0;
+  font-size: var(--saas-font-size-body);
   font-feature-settings: 'rlig' 1, 'calt' 1;
 }
 
@@ -1046,6 +1057,20 @@ body,
   min-height: var(--saas-spacing-40);
 }
 
+.saas-management-page .ant-card-head-title,
+.saas-management-page .ant-pro-card-title {
+  font-size: var(--saas-font-size-section-title);
+  line-height: 1.4;
+}
+
+.saas-management-page .ant-table-thead > tr > th {
+  font-size: var(--saas-font-size-sm);
+}
+
+.saas-management-page .ant-table-tbody > tr > td {
+  font-size: var(--saas-font-size-body);
+}
+
 @media (min-width: 992px) {
   .saas-management-page .ant-form-vertical .ant-form-item-control {
     max-width: var(--saas-form-control-max-width);
@@ -1741,6 +1766,8 @@ select {
 
 .ant-pro-layout .ant-layout-header,
 .ant-layout-header {
+  min-height: var(--saas-layout-header-height);
+  height: var(--saas-layout-header-height);
   background: var(--ant-color-bg-container) !important;
   border-bottom: 1px solid var(--ant-color-border-secondary);
   backdrop-filter: none;
@@ -1749,6 +1776,13 @@ select {
 .ant-pro-layout .ant-layout-sider {
   background: var(--ant-color-bg-container) !important;
   border-inline-end: 1px solid var(--ant-color-border-secondary);
+}
+
+.ant-pro-layout .ant-layout-sider:not(.ant-layout-sider-collapsed) {
+  width: var(--saas-layout-sider-width) !important;
+  min-width: var(--saas-layout-sider-width) !important;
+  max-width: var(--saas-layout-sider-width) !important;
+  flex: 0 0 var(--saas-layout-sider-width) !important;
 }
 
 .ant-pro-layout .ant-layout-sider-children {

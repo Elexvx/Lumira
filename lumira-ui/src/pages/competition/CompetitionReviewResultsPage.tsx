@@ -1,8 +1,11 @@
 import { FileSearchOutlined, FormOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Form, Input, Modal, Space, Spin, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Form, Input, Modal, Space, Spin, Tag, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { DataTable } from '@/features/table/DataTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { message } from '@/theme/antdFeedbackBridge';
 import {
   listMyPublishedReviewResults,
@@ -35,7 +38,24 @@ type AppealFormValues = {
   reason: string;
 };
 
+const reviewAppealColumns: ColumnsType<ReviewAppeal> = [
+  { title: '申诉编号', dataIndex: 'appealNo', width: 210 },
+  { title: '报名编号', dataIndex: 'registrationId', render: (value) => `#${value}` },
+  {
+    title: '状态',
+    dataIndex: 'status',
+    render: (value: string) => {
+      const config = appealStatusLabels[value] || { color: 'default', text: value };
+      return <Tag color={config.color}>{config.text}</Tag>;
+    },
+  },
+  { title: '申诉理由', dataIndex: 'appealReason', ellipsis: true },
+  { title: '处理结论', dataIndex: 'resolution', ellipsis: true, render: (value) => value || '-' },
+  { title: '提交时间', dataIndex: 'createdAt', render: (value) => value || '-' },
+];
+
 const CompetitionReviewResultsPage = () => {
+  const responsive = useResponsive();
   const [form] = Form.useForm<AppealFormValues>();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -71,6 +91,61 @@ const CompetitionReviewResultsPage = () => {
     [appeals],
   );
 
+  const reviewResultColumns = useMemo<ColumnsType<ReviewPublishedResult>>(() => [
+    {
+      title: '赛事 / 阶段',
+      render: (_, record) => (
+        <Space direction="vertical" size={0}>
+          <Typography.Text>{record.competitionTitle || `赛事 #${record.competitionId}`}</Typography.Text>
+          <Typography.Text type="secondary">{record.stageName || `阶段 #${record.stageId}`}</Typography.Text>
+        </Space>
+      ),
+    },
+    {
+      title: '报名编号',
+      dataIndex: 'registrationNo',
+      render: (value, record) => value || `#${record.registrationId}`,
+    },
+    {
+      title: '结果',
+      dataIndex: 'decision',
+      render: (value: string) => {
+        const config = decisionLabels[value] || { color: 'default', text: value };
+        return <Tag color={config.color}>{config.text}</Tag>;
+      },
+    },
+    { title: '得分', dataIndex: 'aggregateScore', render: (value) => value ?? '-' },
+    { title: '名次', dataIndex: 'rankNo', render: (value) => value ? `第 ${value} 名` : '-' },
+    { title: '发布时间', dataIndex: 'publishedAt', render: (value) => value || '-' },
+    {
+      title: '申诉',
+      fixed: 'right',
+      width: 160,
+      render: (_, record) => {
+        const appeal = appealByResult.get(
+          `${record.publicationId}:${record.registrationId}`,
+        );
+        if (appeal) {
+          const config = appealStatusLabels[appeal.status]
+            || { color: 'default', text: appeal.status };
+          return <Tag color={config.color}>{config.text}</Tag>;
+        }
+        return (
+          <Button
+            type="link"
+            icon={<FormOutlined />}
+            onClick={() => {
+              form.resetFields();
+              setAppealTarget(record);
+            }}
+          >
+            提交申诉
+          </Button>
+        );
+      },
+    },
+  ], [appealByResult, form]);
+
   const submitAppeal = async () => {
     if (!appealTarget) return;
     const values = await form.validateFields();
@@ -97,89 +172,24 @@ const CompetitionReviewResultsPage = () => {
       <ManagementPageBody>
         <Spin spinning={loading}>
           <Card title="已发布结果" extra={<Button onClick={() => void load()}>刷新</Button>}>
-            <Table<ReviewPublishedResult>
+            <DataTable<ReviewPublishedResult>
               rowKey={(record) => `${record.publicationId}:${record.registrationId}`}
+              isMobile={responsive.isMobile}
               pagination={false}
               scroll={{ x: 900 }}
               dataSource={results}
-              columns={[
-                {
-                  title: '赛事 / 阶段',
-                  render: (_, record) => (
-                    <Space direction="vertical" size={0}>
-                      <Typography.Text>{record.competitionTitle || `赛事 #${record.competitionId}`}</Typography.Text>
-                      <Typography.Text type="secondary">{record.stageName || `阶段 #${record.stageId}`}</Typography.Text>
-                    </Space>
-                  ),
-                },
-                {
-                  title: '报名编号',
-                  dataIndex: 'registrationNo',
-                  render: (value, record) => value || `#${record.registrationId}`,
-                },
-                {
-                  title: '结果',
-                  dataIndex: 'decision',
-                  render: (value: string) => {
-                    const config = decisionLabels[value] || { color: 'default', text: value };
-                    return <Tag color={config.color}>{config.text}</Tag>;
-                  },
-                },
-                { title: '得分', dataIndex: 'aggregateScore', render: (value) => value ?? '-' },
-                { title: '名次', dataIndex: 'rankNo', render: (value) => value ? `第 ${value} 名` : '-' },
-                { title: '发布时间', dataIndex: 'publishedAt', render: (value) => value || '-' },
-                {
-                  title: '申诉',
-                  fixed: 'right',
-                  width: 160,
-                  render: (_, record) => {
-                    const appeal = appealByResult.get(
-                      `${record.publicationId}:${record.registrationId}`,
-                    );
-                    if (appeal) {
-                      const config = appealStatusLabels[appeal.status]
-                        || { color: 'default', text: appeal.status };
-                      return <Tag color={config.color}>{config.text}</Tag>;
-                    }
-                    return (
-                      <Button
-                        type="link"
-                        icon={<FormOutlined />}
-                        onClick={() => {
-                          form.resetFields();
-                          setAppealTarget(record);
-                        }}
-                      >
-                        提交申诉
-                      </Button>
-                    );
-                  },
-                },
-              ]}
+              columns={reviewResultColumns}
             />
           </Card>
 
           <Card title="我的申诉记录">
-            <Table<ReviewAppeal>
+            <DataTable<ReviewAppeal>
               rowKey="id"
+              isMobile={responsive.isMobile}
               pagination={false}
               scroll={{ x: 900 }}
               dataSource={appeals}
-              columns={[
-                { title: '申诉编号', dataIndex: 'appealNo', width: 210 },
-                { title: '报名编号', dataIndex: 'registrationId', render: (value) => `#${value}` },
-                {
-                  title: '状态',
-                  dataIndex: 'status',
-                  render: (value: string) => {
-                    const config = appealStatusLabels[value] || { color: 'default', text: value };
-                    return <Tag color={config.color}>{config.text}</Tag>;
-                  },
-                },
-                { title: '申诉理由', dataIndex: 'appealReason', ellipsis: true },
-                { title: '处理结论', dataIndex: 'resolution', ellipsis: true, render: (value) => value || '-' },
-                { title: '提交时间', dataIndex: 'createdAt', render: (value) => value || '-' },
-              ]}
+              columns={reviewAppealColumns}
             />
           </Card>
         </Spin>

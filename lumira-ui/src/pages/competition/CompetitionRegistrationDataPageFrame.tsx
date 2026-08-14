@@ -10,6 +10,7 @@ export const CompetitionRegistrationDataPageFrame = ({
     <CompetitionWorkspacePageFrame
       embeddedInWorkspace
       title="报名与材料"
+      showWorkspaceHeader
       breadcrumb={{
         items: [
           {

@@ -678,6 +678,11 @@ class CompetitionManagementAppServiceTest {
         oversizedText.setItemKey("commitment");
         oversizedText.setTitle("Commitment");
         oversizedText.setContentText("x".repeat(20001));
+        CompetitionDTO.ConfigItemRequest unsupportedFieldRule = new CompetitionDTO.ConfigItemRequest();
+        unsupportedFieldRule.setItemType("TEAM_FIELD");
+        unsupportedFieldRule.setItemKey("teamName");
+        unsupportedFieldRule.setTitle("团队名称");
+        unsupportedFieldRule.setContentJson("{\"fieldType\":\"TEXT\",\"validationRule\":\"UNSAFE_CUSTOM_RULE\"}");
 
         request.setItems(List.of(invalidJson));
         assertThatThrownBy(() -> service.saveSettingsModule(admin(), "competition-uuid", "files", request))
@@ -687,6 +692,12 @@ class CompetitionManagementAppServiceTest {
         assertThatThrownBy(() -> service.saveSettingsModule(admin(), "competition-uuid", "documents", request))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        request.setItems(List.of(unsupportedFieldRule));
+        assertThatThrownBy(() -> service.saveSettingsModule(admin(), "competition-uuid", "fields", request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
+                    assertThat(exception.getMessage()).contains("UNSAFE_CUSTOM_RULE");
+                });
 
         verifyNoInteractions(jdbcTemplate);
     }

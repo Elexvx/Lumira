@@ -58,6 +58,27 @@ public class CompetitionRegistrationExportAppService {
     private static final long MAX_MATERIAL_PACKAGE_BYTES = 512L * 1024L * 1024L;
     private static final String MATERIAL_REFERENCE_TYPE = "competition.registration.material";
     private static final String MATERIAL_PACKAGE_WORKBOOK_NAME = "报名记录.xlsx";
+    private static final String REGISTRATION_FIELD_SCOPE = "REGISTRATION_FIELD";
+    private static final String TEAM_FIELD_SCOPE = "TEAM_FIELD";
+    private static final String MEMBER_FIELD_SCOPE = "MEMBER_FIELD";
+    private static final String PROJECT_FIELD_SCOPE = "PROJECT_FIELD";
+    private static final String INTELLECTUAL_PROPERTY_GROUP = "知识产权信息";
+    private static final String INTELLECTUAL_PROPERTY_ENTRIES_KEY = "intellectualProperties";
+    private static final Set<String> COLLECTION_FIELD_SCOPES = Set.of(
+            REGISTRATION_FIELD_SCOPE,
+            TEAM_FIELD_SCOPE,
+            MEMBER_FIELD_SCOPE,
+            PROJECT_FIELD_SCOPE
+    );
+    private static final Map<String, String> REGISTRATION_STATUS_LABELS = Map.of(
+            "DRAFT", "草稿",
+            "CREATED", "待提交材料",
+            "MATERIAL_SUBMITTED", "材料已提交",
+            "PENDING_PAYMENT", "待付款",
+            "PAID", "已支付",
+            "CONFIRMED", "已确认",
+            "CANCELLED", "已取消"
+    );
     private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final CompetitionRegistrationAppService registrationAppService;
@@ -124,7 +145,7 @@ public class CompetitionRegistrationExportAppService {
                 currentUser,
                 MODULE_KEY,
                 payload,
-                columns().stream().map(ExportColumn::key).toList(),
+                taskFieldKeys(),
                 totalCount,
                 EXPORT_PERMISSION
         );
@@ -165,6 +186,7 @@ public class CompetitionRegistrationExportAppService {
         CompetitionRegistrationDTO.RegistrationExportRequest normalizedRequest = normalizeRequest(request);
         List<CompetitionRegistrationVO.Registration> registrations =
                 loadRegistrations(currentUser, normalizedRequest, taskId);
+        List<CollectedExportField> collectedFields = collectExportFields(registrations);
         List<RegistrationExportRow> rows = new ArrayList<>();
         for (CompetitionRegistrationVO.Registration registration : registrations) {
             CurrentUser refreshedUser = buildQueuedAsyncUser(
@@ -175,11 +197,11 @@ public class CompetitionRegistrationExportAppService {
             );
             rows.addAll(toRows(
                     registration,
-                    registrationAppService.listMaterials(refreshedUser, registration.getId()),
-                    hasPermission(refreshedUser, SENSITIVE_EXPORT_PERMISSION)
+                    hasPermission(refreshedUser, SENSITIVE_EXPORT_PERMISSION),
+                    collectedFields
             ));
         }
-        return excelExportService.export("报名与材料", columns(), rows);
+        return excelExportService.export("报名与材料", columns(collectedFields), rows);
     }
 
     byte[] exportMaterialPackageFromTrustedSnapshot(
@@ -191,6 +213,7 @@ public class CompetitionRegistrationExportAppService {
         requireMaterialDownloadPermission(currentUser);
         List<CompetitionRegistrationVO.Registration> registrations =
                 loadRegistrations(currentUser, normalizedRequest, taskId);
+        List<CollectedExportField> collectedFields = collectExportFields(registrations);
         List<Map<String, Object>> manifest = new ArrayList<>();
         List<RegistrationExportRow> rows = new ArrayList<>();
         long totalBytes = 0L;
@@ -210,8 +233,8 @@ public class CompetitionRegistrationExportAppService {
                         registrationAppService.listMaterials(refreshedUser, registration.getId());
                 rows.addAll(toRows(
                         registration,
-                        submissions,
-                        hasPermission(refreshedUser, SENSITIVE_EXPORT_PERMISSION)
+                        hasPermission(refreshedUser, SENSITIVE_EXPORT_PERMISSION),
+                        collectedFields
                 ));
                 String registrationFolder = registrationFolder(registration, registrationIndex + 1);
                 String directoryPath = registrationFolder + "/";
@@ -271,7 +294,7 @@ public class CompetitionRegistrationExportAppService {
                     }
                 }
             }
-            byte[] workbook = excelExportService.export("报名记录", columns(), rows);
+            byte[] workbook = excelExportService.export("报名记录", columns(collectedFields), rows);
             totalBytes += workbook.length;
             if (totalBytes > MAX_MATERIAL_PACKAGE_BYTES) {
                 throw new BizException(ErrorCode.BAD_REQUEST, "Material package exceeds the 512 MB limit");
@@ -418,9 +441,12 @@ public class CompetitionRegistrationExportAppService {
 
     private List<RegistrationExportRow> toRows(
             CompetitionRegistrationVO.Registration registration,
-            List<CompetitionRegistrationVO.MaterialSubmission> materials,
-            boolean includeSensitiveData
+            boolean includeSensitiveData,
+            List<CollectedExportField> collectedFields
     ) {
+        JsonNode registrationSnapshot = readJson(registration.getRegistrationSnapshotJson());
+        JsonNode teamSnapshot = readJson(registration.getTeamSnapshotJson());
+        JsonNode projectSnapshot = readJson(registration.getProjectSnapshotJson());
         JsonNode memberArray = readJson(registration.getMemberSnapshotJson());
         List<JsonNode> members = new ArrayList<>();
         if (memberArray.isArray()) {
@@ -429,81 +455,375 @@ public class CompetitionRegistrationExportAppService {
         if (members.isEmpty()) {
             members.add(objectMapper.createObjectNode());
         }
-        String restricted = "[需要“导出报名敏感数据”权限]";
-        String materialsJson = includeSensitiveData
-                ? writeJson(materials == null ? List.of() : materials)
-                : restricted;
         List<RegistrationExportRow> rows = new ArrayList<>();
         for (int index = 0; index < members.size(); index++) {
             JsonNode member = members.get(index);
             Map<String, Object> values = new LinkedHashMap<>();
-            values.put("competitionId", registration.getCompetitionId());
             values.put("registrationNo", registration.getRegistrationNo());
             values.put("participantNo", registration.getParticipantNo());
-            values.put("status", registration.getStatus());
-            values.put("teamName", registration.getTeamName());
-            values.put("projectTitle", registration.getProjectTitle());
+            values.put("status", registrationStatusLabel(registration.getStatus()));
+            values.put("createdAt", registration.getCreatedAt());
             values.put("memberCount", registration.getMemberCount());
             values.put("memberIndex", index + 1);
-            String memberName = firstText(member, "memberName", "name", "realName");
-            values.put("memberName", includeSensitiveData ? memberName : maskName(memberName));
-            values.put("memberRole", firstText(member, "role", "roleName"));
-            String studentEmployeeNo = firstText(member, "studentNo", "employeeNo");
-            values.put(
-                    "studentEmployeeNo",
-                    includeSensitiveData ? studentEmployeeNo : maskIdentifier(studentEmployeeNo)
-            );
-            values.put("department", firstText(member, "departmentName", "department"));
-            values.put("remark", includeSensitiveData ? firstText(member, "remark") : "");
+            for (CollectedExportField field : collectedFields) {
+                values.put(
+                        collectedFieldColumnKey(field),
+                        collectedFieldValue(
+                                field,
+                                registration,
+                                registrationSnapshot,
+                                teamSnapshot,
+                                projectSnapshot,
+                                member,
+                                includeSensitiveData
+                        )
+                );
+            }
             values.put("materialSubmissionCount", registration.getMaterialSubmissionCount());
             values.put("materialFileCount", registration.getMaterialFileCount());
-            values.put("createdAt", registration.getCreatedAt());
-            values.put(
-                    "registrationSnapshotJson",
-                    includeSensitiveData ? registration.getRegistrationSnapshotJson() : restricted
-            );
-            values.put(
-                    "teamSnapshotJson",
-                    includeSensitiveData ? registration.getTeamSnapshotJson() : restricted
-            );
-            values.put("projectSnapshotJson", registration.getProjectSnapshotJson());
-            values.put("memberSnapshotJson", includeSensitiveData ? member.toString() : restricted);
-            values.put("collectionSchemaSnapshotJson", registration.getCollectionSchemaSnapshotJson());
-            values.put("materialsJson", materialsJson);
             rows.add(new RegistrationExportRow(values));
         }
         return rows;
     }
 
-    private List<ExportColumn<RegistrationExportRow>> columns() {
+    private List<CollectedExportField> collectExportFields(
+            List<CompetitionRegistrationVO.Registration> registrations
+    ) {
+        Map<String, CollectedExportField> fields = new LinkedHashMap<>();
+        for (CompetitionRegistrationVO.Registration registration : safeList(registrations)) {
+            JsonNode schema = readJson(registration.getCollectionSchemaSnapshotJson());
+            if (!schema.isArray()) {
+                continue;
+            }
+            for (JsonNode item : schema) {
+                String scope = item.path("scope").asText("").trim().toUpperCase(Locale.ROOT);
+                String itemKey = item.path("itemKey").asText("").trim();
+                if (!COLLECTION_FIELD_SCOPES.contains(scope) || !StringUtils.hasText(itemKey)) {
+                    continue;
+                }
+                String title = item.path("title").asText("").trim();
+                String fieldType = item.path("fieldType").asText("TEXT").trim().toUpperCase(Locale.ROOT);
+                String groupLabel = item.path("groupLabel").asText("").trim();
+                CollectedExportField field = new CollectedExportField(
+                        scope,
+                        itemKey,
+                        StringUtils.hasText(title) ? title : itemKey,
+                        fieldType,
+                        groupLabel
+                );
+                fields.putIfAbsent(collectedFieldIdentity(field), field);
+            }
+        }
+        if (fields.isEmpty()) {
+            // Legacy registrations created before schema snapshots still need a useful minimal export.
+            ensureFallbackCollectedField(fields, TEAM_FIELD_SCOPE, "teamName", "团队名称");
+            ensureFallbackCollectedField(fields, MEMBER_FIELD_SCOPE, "memberName", "成员姓名");
+            ensureFallbackCollectedField(fields, PROJECT_FIELD_SCOPE, "title", "项目名称");
+        }
+        return List.copyOf(fields.values());
+    }
+
+    private void ensureFallbackCollectedField(
+            Map<String, CollectedExportField> fields,
+            String scope,
+            String itemKey,
+            String title
+    ) {
+        CollectedExportField fallback = new CollectedExportField(scope, itemKey, title, "TEXT", "");
+        fields.putIfAbsent(collectedFieldIdentity(fallback), fallback);
+    }
+
+    private List<ExportColumn<RegistrationExportRow>> columns(List<CollectedExportField> collectedFields) {
+        List<ExportColumn<RegistrationExportRow>> columns = new ArrayList<>();
+        columns.add(column("registrationNo", "报名编号"));
+        columns.add(column("participantNo", "参赛编号"));
+        columns.add(column("status", "报名状态"));
+        columns.add(column("createdAt", "报名时间"));
+        columns.add(column("memberCount", "团队人数"));
+        columns.add(column("memberIndex", "成员序号"));
+
+        Map<String, Integer> titleCounts = new LinkedHashMap<>();
+        for (CollectedExportField field : collectedFields) {
+            titleCounts.merge(field.title(), 1, Integer::sum);
+        }
+        for (CollectedExportField field : collectedFields) {
+            columns.add(column(
+                    collectedFieldColumnKey(field),
+                    collectedFieldLabel(field, titleCounts.getOrDefault(field.title(), 0) > 1)
+            ));
+        }
+        columns.add(column("materialSubmissionCount", "材料提交次数"));
+        columns.add(column("materialFileCount", "材料文件数"));
+        return List.copyOf(columns);
+    }
+
+    private List<String> taskFieldKeys() {
         return List.of(
-                column("competitionId", "比赛ID"),
-                column("registrationNo", "报名编号"),
-                column("participantNo", "参赛编号"),
-                column("status", "报名状态"),
-                column("teamName", "团队名称"),
-                column("projectTitle", "项目名称"),
-                column("memberCount", "团队人数"),
-                column("memberIndex", "成员序号"),
-                column("memberName", "成员姓名"),
-                column("memberRole", "成员角色"),
-                column("studentEmployeeNo", "学号/工号"),
-                column("department", "院系/部门"),
-                column("remark", "成员备注"),
-                column("materialSubmissionCount", "材料提交次数"),
-                column("materialFileCount", "材料文件数"),
-                column("createdAt", "报名时间"),
-                column("registrationSnapshotJson", "报名完整快照(JSON)"),
-                column("teamSnapshotJson", "团队完整快照(JSON)"),
-                column("projectSnapshotJson", "项目完整快照(JSON)"),
-                column("memberSnapshotJson", "成员完整快照(JSON)"),
-                column("collectionSchemaSnapshotJson", "采集结构快照(JSON)"),
-                column("materialsJson", "阶段材料清单(JSON)")
+                "registrationNo",
+                "participantNo",
+                "status",
+                "createdAt",
+                "memberCount",
+                "memberIndex",
+                "configuredCollectionFields",
+                "materialSubmissionCount",
+                "materialFileCount"
         );
     }
 
     private ExportColumn<RegistrationExportRow> column(String key, String label) {
         return new ExportColumn<>(key, label, true, row -> row.values().get(key));
+    }
+
+    private String collectedFieldLabel(CollectedExportField field, boolean duplicateTitle) {
+        if (!duplicateTitle) {
+            return field.title();
+        }
+        String scopeLabel = switch (field.scope()) {
+            case REGISTRATION_FIELD_SCOPE -> "报名";
+            case TEAM_FIELD_SCOPE -> "团队";
+            case MEMBER_FIELD_SCOPE -> "成员";
+            case PROJECT_FIELD_SCOPE -> "项目";
+            default -> "字段";
+        };
+        return StringUtils.hasText(field.groupLabel())
+                ? scopeLabel + "-" + field.groupLabel() + "-" + field.title()
+                : scopeLabel + "-" + field.title();
+    }
+
+    private String collectedFieldValue(
+            CollectedExportField field,
+            CompetitionRegistrationVO.Registration registration,
+            JsonNode registrationSnapshot,
+            JsonNode teamSnapshot,
+            JsonNode projectSnapshot,
+            JsonNode memberSnapshot,
+            boolean includeSensitiveData
+    ) {
+        String value;
+        if (isIntellectualPropertyField(field)) {
+            value = repeatedProjectFieldValue(projectSnapshot, field);
+        } else {
+            JsonNode source = switch (field.scope()) {
+                case REGISTRATION_FIELD_SCOPE -> registrationSnapshot;
+                case TEAM_FIELD_SCOPE -> teamSnapshot;
+                case MEMBER_FIELD_SCOPE -> memberSnapshot;
+                case PROJECT_FIELD_SCOPE -> projectSnapshot;
+                default -> null;
+            };
+            JsonNode node = resolveCollectedFieldNode(source, field);
+            if (isMissing(node)) {
+                node = fallbackStandardFieldNode(registration, field);
+            }
+            value = humanValue(node);
+        }
+        return applySensitiveFieldPolicy(field, value, includeSensitiveData);
+    }
+
+    private JsonNode resolveCollectedFieldNode(JsonNode source, CollectedExportField field) {
+        if (source == null || !source.isObject()) {
+            return null;
+        }
+        String standardKey = resolveStandardCollectedFieldKey(field.scope(), field.itemKey());
+        if (standardKey != null) {
+            JsonNode standardValue = source.get(standardKey);
+            if (!isMissing(standardValue)) {
+                return standardValue;
+            }
+            if (MEMBER_FIELD_SCOPE.equals(field.scope()) && "employeeNo".equals(standardKey)) {
+                JsonNode legacyStudentNo = source.get("studentNo");
+                if (!isMissing(legacyStudentNo)) {
+                    return legacyStudentNo;
+                }
+            }
+        }
+        JsonNode extraValues = extraValuesNode(source);
+        if (extraValues != null) {
+            JsonNode configuredValue = extraValues.get(field.itemKey());
+            if (!isMissing(configuredValue)) {
+                return configuredValue;
+            }
+        }
+        JsonNode legacyValue = source.get(field.itemKey());
+        return isMissing(legacyValue) ? null : legacyValue;
+    }
+
+    private JsonNode fallbackStandardFieldNode(
+            CompetitionRegistrationVO.Registration registration,
+            CollectedExportField field
+    ) {
+        String standardKey = resolveStandardCollectedFieldKey(field.scope(), field.itemKey());
+        if (TEAM_FIELD_SCOPE.equals(field.scope()) && "teamName".equals(standardKey)) {
+            return objectMapper.valueToTree(registration.getTeamName());
+        }
+        if (PROJECT_FIELD_SCOPE.equals(field.scope()) && "title".equals(standardKey)) {
+            return objectMapper.valueToTree(registration.getProjectTitle());
+        }
+        return null;
+    }
+
+    private JsonNode extraValuesNode(JsonNode source) {
+        if (source == null || !source.isObject()) {
+            return null;
+        }
+        JsonNode extraValues = source.get("extraValues");
+        if (extraValues != null && extraValues.isObject()) {
+            return extraValues;
+        }
+        JsonNode extraValuesJson = source.get("extraValuesJson");
+        if (extraValuesJson != null && extraValuesJson.isTextual()) {
+            JsonNode parsed = readJson(extraValuesJson.asText());
+            return parsed.isObject() ? parsed : null;
+        }
+        return null;
+    }
+
+    private String repeatedProjectFieldValue(JsonNode projectSnapshot, CollectedExportField field) {
+        JsonNode extraValues = extraValuesNode(projectSnapshot);
+        if (extraValues == null) {
+            return "";
+        }
+        JsonNode entries = extraValues.get(INTELLECTUAL_PROPERTY_ENTRIES_KEY);
+        if (entries == null || !entries.isArray()) {
+            return humanValue(extraValues.get(field.itemKey()));
+        }
+        List<String> values = new ArrayList<>();
+        for (JsonNode entry : entries) {
+            if (!entry.isObject()) {
+                continue;
+            }
+            String value = humanValue(entry.get(field.itemKey()));
+            if (StringUtils.hasText(value)) {
+                values.add(value);
+            }
+        }
+        if (values.size() <= 1) {
+            return values.isEmpty() ? "" : values.getFirst();
+        }
+        List<String> numbered = new ArrayList<>();
+        for (int index = 0; index < values.size(); index += 1) {
+            numbered.add((index + 1) + ". " + values.get(index));
+        }
+        return String.join("；", numbered);
+    }
+
+    private String humanValue(JsonNode value) {
+        if (isMissing(value)) {
+            return "";
+        }
+        if (value.isTextual()) {
+            return value.asText().trim();
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean() ? "是" : "否";
+        }
+        if (value.isNumber()) {
+            return value.asText();
+        }
+        if (value.isArray()) {
+            List<String> items = new ArrayList<>();
+            for (JsonNode item : value) {
+                String text = humanValue(item);
+                if (StringUtils.hasText(text)) {
+                    items.add(text);
+                }
+            }
+            return String.join("、", items);
+        }
+        if (value.isObject()) {
+            List<String> entries = new ArrayList<>();
+            value.fields().forEachRemaining(entry -> {
+                String text = humanValue(entry.getValue());
+                if (StringUtils.hasText(text)) {
+                    entries.add(entry.getKey() + "：" + text);
+                }
+            });
+            return String.join("；", entries);
+        }
+        return value.asText("").trim();
+    }
+
+    private String applySensitiveFieldPolicy(
+            CollectedExportField field,
+            String value,
+            boolean includeSensitiveData
+    ) {
+        if (includeSensitiveData || PROJECT_FIELD_SCOPE.equals(field.scope()) || !StringUtils.hasText(value)) {
+            return value;
+        }
+        String standardKey = resolveStandardCollectedFieldKey(field.scope(), field.itemKey());
+        if (TEAM_FIELD_SCOPE.equals(field.scope()) && "teamName".equals(standardKey)) {
+            return value;
+        }
+        if (MEMBER_FIELD_SCOPE.equals(field.scope())) {
+            if ("memberName".equals(standardKey)) {
+                return maskName(value);
+            }
+            if ("employeeNo".equals(standardKey)) {
+                return maskIdentifier(value);
+            }
+            if ("departmentName".equals(standardKey) || "role".equals(field.itemKey())) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private String resolveStandardCollectedFieldKey(String scope, String itemKey) {
+        if (MEMBER_FIELD_SCOPE.equals(scope) && "role".equals(itemKey)) {
+            return null;
+        }
+        String normalized = itemKey == null
+                ? ""
+                : itemKey.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+        return switch (scope) {
+            case TEAM_FIELD_SCOPE -> switch (normalized) {
+                case "teamname", "name" -> "teamName";
+                case "teamtype", "type" -> "teamType";
+                case "avatarurl", "avatar" -> "avatarUrl";
+                case "description", "teamdescription", "intro" -> "description";
+                default -> null;
+            };
+            case MEMBER_FIELD_SCOPE -> switch (normalized) {
+                case "membername", "name" -> "memberName";
+                case "employeeno", "studentno", "memberno" -> "employeeNo";
+                case "departmentname", "department" -> "departmentName";
+                case "remark", "note" -> "remark";
+                default -> null;
+            };
+            case PROJECT_FIELD_SCOPE -> switch (normalized) {
+                case "projecttitle", "projectname", "title", "name" -> "title";
+                case "imageurl", "projectimage", "projectavatar", "logourl", "logo" -> "imageUrl";
+                case "projectdescription", "description", "intro" -> "description";
+                default -> null;
+            };
+            default -> null;
+        };
+    }
+
+    private String registrationStatusLabel(String status) {
+        if (!StringUtils.hasText(status)) {
+            return "";
+        }
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        return REGISTRATION_STATUS_LABELS.getOrDefault(normalized, normalized);
+    }
+
+    private boolean isIntellectualPropertyField(CollectedExportField field) {
+        return PROJECT_FIELD_SCOPE.equals(field.scope())
+                && INTELLECTUAL_PROPERTY_GROUP.equals(field.groupLabel());
+    }
+
+    private boolean isMissing(JsonNode value) {
+        return value == null || value.isNull() || value.isMissingNode();
+    }
+
+    private String collectedFieldIdentity(CollectedExportField field) {
+        return field.scope() + ":" + field.itemKey();
+    }
+
+    private String collectedFieldColumnKey(CollectedExportField field) {
+        return "collected:" + collectedFieldIdentity(field);
     }
 
     private JsonNode readJson(String value) {
@@ -515,30 +835,6 @@ public class CompetitionRegistrationExportAppService {
         } catch (Exception exception) {
             return objectMapper.createArrayNode();
         }
-    }
-
-    private String writeJson(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (Exception exception) {
-            throw new IllegalStateException("Failed to serialize registration export data", exception);
-        }
-    }
-
-    private String firstText(JsonNode node, String... keys) {
-        if (node == null || !node.isObject()) {
-            return "";
-        }
-        for (String key : keys) {
-            JsonNode value = node.get(key);
-            if (value != null && !value.isNull()) {
-                String text = value.asText("").trim();
-                if (!text.isEmpty()) {
-                    return text;
-                }
-            }
-        }
-        return "";
     }
 
     private String maskName(String value) {
@@ -687,6 +983,15 @@ public class CompetitionRegistrationExportAppService {
     }
 
     record RegistrationExportRow(Map<String, Object> values) {
+    }
+
+    record CollectedExportField(
+            String scope,
+            String itemKey,
+            String title,
+            String fieldType,
+            String groupLabel
+    ) {
     }
 
     public static class AsyncTaskPayload {

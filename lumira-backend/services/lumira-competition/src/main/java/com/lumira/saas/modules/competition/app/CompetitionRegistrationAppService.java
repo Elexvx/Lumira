@@ -51,7 +51,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.regex.Pattern;
 
 @Service
 @Import(CompetitionRegistrationPersistenceAssemblyConfiguration.class)
@@ -72,6 +71,7 @@ public class CompetitionRegistrationAppService {
     private static final String STAGE_VIEW_PERMISSION = "aiadc:stage:view";
     private static final String STAGE_MANAGE_PERMISSION = "aiadc:stage:manage";
     private static final String PAYMENT_ORDER_VIEW_PERMISSION = "payment:order:view";
+    private static final String PAYMENT_OWNER_DISABLED_MESSAGE = "Payment owner is disabled";
     private static final Set<String> REGISTRATION_STATUSES = Set.of("DRAFT", "PENDING_PAYMENT", "PAID", "CONFIRMED", "CANCELLED");
     private static final Set<String> STAGE_CODES = Set.of("PRELIMINARY", "FINAL");
     private static final Set<String> STAGE_STATUSES = Set.of("DRAFT", "ENABLED", "DISABLED", "CLOSED");
@@ -90,13 +90,8 @@ public class CompetitionRegistrationAppService {
     private static final int MAX_JSON_LENGTH = 10000;
     private static final DateTimeFormatter NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final int PAYMENT_ORDER_TASK_MAX_RETRY = 8;
-    private static final Set<String> COLLECTION_FIELD_TYPES = Set.of(
-            "TEXT", "TEXTAREA", "IMAGE", "ROLE", "NUMBER", "DATE", "SELECT", "MULTI_SELECT", "MOBILE", "EMAIL"
-    );
     private static final String INTELLECTUAL_PROPERTY_GROUP = "知识产权信息";
     private static final String INTELLECTUAL_PROPERTY_ENTRIES_KEY = "intellectualProperties";
-    private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final ObjectMapper objectMapper;
     private final ObjectProvider<TeamInternalApi> teamInternalApiProvider;
@@ -1240,7 +1235,7 @@ public class CompetitionRegistrationAppService {
         if (!StringUtils.hasText(owner.status()) || !"ENABLED".equalsIgnoreCase(owner.status().trim())) {
             throw new BizException(
                     ErrorCode.UNAUTHORIZED,
-                    "Payment owner is disabled",
+                    PAYMENT_OWNER_DISABLED_MESSAGE,
                     "支付所属用户已被禁用"
             );
         }
@@ -1712,9 +1707,15 @@ public class CompetitionRegistrationAppService {
             } catch (Exception exception) {
                 throw biz(ErrorCode.VALIDATION_ERROR, "Invalid competition field configuration");
             }
-            String fieldType = metadata.path("fieldType").asText("TEXT").toUpperCase(Locale.ROOT);
-            if (!COLLECTION_FIELD_TYPES.contains(fieldType)) {
+            String fieldType = RegistrationFieldValidationPolicy.normalizeFieldType(metadata.path("fieldType").asText("TEXT"));
+            if (!RegistrationFieldValidationPolicy.FIELD_TYPES.contains(fieldType)) {
                 throw biz(ErrorCode.VALIDATION_ERROR, "Unsupported competition field type");
+            }
+            String configuredValidationRule = RegistrationFieldValidationPolicy.normalizeValidationRule(
+                    metadata.path("validationRule").asText("NONE")
+            );
+            if (!RegistrationFieldValidationPolicy.VALIDATION_RULES.contains(configuredValidationRule)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Unsupported competition field validation rule");
             }
             definitions.add(new CollectedFieldDefinition(
                     row.itemType(),
@@ -1722,12 +1723,35 @@ public class CompetitionRegistrationAppService {
                     row.title() == null ? row.itemKey() : row.title(),
                     fieldType,
                     Boolean.TRUE.equals(row.requiredFlag()) || Integer.valueOf(1).equals(row.requiredFlag()),
-                    metadata.path("validationRule").asText("NONE").toUpperCase(Locale.ROOT),
+                    RegistrationFieldValidationPolicy.resolveValidationRule(
+                            row.itemType(), row.itemKey(), fieldType, configuredValidationRule
+                    ),
                     metadata.path("options").asText(""),
                     metadata.path("groupLabel").asText("")
             ));
         }
+        ensureProtectedCollectedField(definitions, "TEAM_FIELD", "teamName", "团队名称", "DISPLAY_NAME");
+        ensureProtectedCollectedField(definitions, "MEMBER_FIELD", "memberName", "成员姓名", "PERSON_NAME");
+        ensureProtectedCollectedField(definitions, "PROJECT_FIELD", "title", "项目名称", "DISPLAY_NAME");
         return definitions;
+    }
+
+    private void ensureProtectedCollectedField(
+            List<CollectedFieldDefinition> definitions,
+            String scope,
+            String standardKey,
+            String title,
+            String validationRule
+    ) {
+        boolean configured = definitions.stream()
+                .filter(field -> scope.equals(field.scope()))
+                .map(field -> resolveStandardCollectedFieldKey(scope, field.itemKey()))
+                .anyMatch(standardKey::equals);
+        if (!configured) {
+            definitions.add(new CollectedFieldDefinition(
+                    scope, standardKey, title, "TEXT", true, validationRule, "", ""
+            ));
+        }
     }
 
     private void validateScopeValues(
@@ -1851,20 +1875,24 @@ public class CompetitionRegistrationAppService {
                 && ((List<?>) value).stream().map(String::valueOf).anyMatch(option -> !options.contains(option))) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Registration field contains an unavailable option: " + field.title());
         }
-        String text = String.valueOf(value).trim();
+        String rawText = String.valueOf(value);
+        String text = rawText.trim();
         if ("DATE".equals(field.fieldType()) && !isValidCollectedDate(field, text)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Invalid date: " + field.title());
         }
         if ("IMAGE".equals(field.fieldType()) && (!StringUtils.hasText(text) || text.length() > 2048)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Invalid image value: " + field.title());
         }
-        if (("MOBILE".equals(field.fieldType()) || "CHINA_MOBILE".equals(field.validationRule()))
-                && !MOBILE_PATTERN.matcher(text).matches()) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid mobile number: " + field.title());
-        }
-        if (("EMAIL".equals(field.fieldType()) || "EMAIL".equals(field.validationRule()))
-                && !EMAIL_PATTERN.matcher(text).matches()) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid email address: " + field.title());
+        if (!RegistrationFieldValidationPolicy.isValid(field.validationRule(), rawText)) {
+            String message = switch (field.validationRule()) {
+                case "CHINA_MOBILE" -> "Invalid mobile number: ";
+                case "EMAIL" -> "Invalid email address: ";
+                case "ID_CARD" -> "Invalid identity card number: ";
+                case "PERSON_NAME" -> "Invalid person name: ";
+                case "DISPLAY_NAME" -> "Invalid name text: ";
+                default -> "Registration field has an invalid value: ";
+            };
+            throw biz(ErrorCode.VALIDATION_ERROR, message + field.title());
         }
     }
 
@@ -2081,15 +2109,20 @@ public class CompetitionRegistrationAppService {
                 record.setUpdatedAt(order.updatedAt());
             }
         } catch (BizException exception) {
-            if (exception.getErrorCode() != ErrorCode.NOT_FOUND) {
+            if (exception.getErrorCode() != ErrorCode.NOT_FOUND && !isDisabledPaymentOwner(exception)) {
                 throw exception;
             }
-            // A registration can outlive a removed payment order. Keep the
-            // registration-side fallback data instead of failing the whole page.
+            // A registration can outlive a removed payment order or a disabled
+            // owner. Keep the registration-side fallback instead of failing an
+            // authorized historical payment ledger read.
         } catch (Exception ignored) {
             // A transient payment read must not reveal another owner's order or fail the whole list.
         }
         return record;
+    }
+
+    private boolean isDisabledPaymentOwner(BizException exception) {
+        return exception != null && PAYMENT_OWNER_DISABLED_MESSAGE.equals(exception.getMessage());
     }
 
     private boolean matchesPaymentRecord(
@@ -2156,6 +2189,14 @@ public class CompetitionRegistrationAppService {
         if (value instanceof Map<?, ?> map) {
             Map<String, Object> normalized = new LinkedHashMap<>();
             map.forEach((key, item) -> normalized.put(String.valueOf(key), item));
+            return normalized;
+        }
+        if (value instanceof TeamSummaryDTO team) {
+            Map<String, Object> normalized = new LinkedHashMap<>();
+            normalized.put("teamName", team.getTeamName());
+            normalized.put("teamType", team.getTeamType());
+            normalized.put("visibility", team.getVisibility());
+            normalized.entrySet().removeIf(entry -> entry.getValue() == null);
             return normalized;
         }
         return new LinkedHashMap<>();

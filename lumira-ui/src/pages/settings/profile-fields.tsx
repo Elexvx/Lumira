@@ -12,7 +12,6 @@ import {
   Space,
   Spin,
   Switch,
-  Table,
   Tag,
   Typography,
 } from "antd";
@@ -22,6 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ManagementPage } from "@/features/management/ManagementPage";
 import { ManagementPageBody } from "@/features/management/ManagementPageBody";
 import { StandardDrawer } from "@/features/management/StandardDrawer";
+import { DataTable } from "@/features/table/DataTable";
 import { useActionPermission } from "@/features/permissions/useActionPermission";
 import { useResponsive } from "@/hooks/useResponsive";
 import { request } from "@/services/common/request";
@@ -462,8 +462,9 @@ const ProfileFieldManagementPage = () => {
                 <Spin />
               </div>
             ) : items.length ? (
-              <Table
+              <DataTable
                 rowKey="fieldKey"
+                isMobile={isMobile}
                 columns={visibleColumns}
                 dataSource={[...items].sort(
                   (left, right) =>

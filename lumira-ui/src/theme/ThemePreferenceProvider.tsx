@@ -15,6 +15,7 @@ import {
   persistThemePreference,
   type ThemePreference,
 } from './settings';
+import { applyResponsiveProfileToDocument, useViewportTier } from './responsive';
 
 interface ThemePreferenceContextValue {
   themePreference: ThemePreference;
@@ -67,11 +68,8 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
     normalizeThemePreference(getStoredThemePreference()),
   );
   const [systemDarkMode, setSystemDarkMode] = useState(getSystemDarkMode);
-  const [isMobile, setIsMobile] = useState<boolean>(() =>
-    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
-      ? false
-      : window.matchMedia('(max-width: 767px)').matches,
-  );
+  const viewportProfile = useViewportTier();
+  const isMobile = viewportProfile.tier === 'mobile';
 
   useEffect(() => {
     persistThemePreference(themePreference);
@@ -98,30 +96,13 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
     return () => mediaQueryList.removeListener(updateSystemMode);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return;
-    }
-
-    const mediaQueryList = window.matchMedia('(max-width: 767px)');
-    const updateMobileMode = () => {
-      setIsMobile(mediaQueryList.matches);
-    };
-
-    updateMobileMode();
-
-    if (typeof mediaQueryList.addEventListener === 'function') {
-      mediaQueryList.addEventListener('change', updateMobileMode);
-      return () => mediaQueryList.removeEventListener('change', updateMobileMode);
-    }
-
-    mediaQueryList.addListener(updateMobileMode);
-    return () => mediaQueryList.removeListener(updateMobileMode);
-  }, []);
-
   // Keep the non-React layout config in sync with the current theme snapshot.
   const themeSnapshot = syncThemePreferenceRuntime(themePreference, systemDarkMode);
   const resolvedColorMode = themeSnapshot.resolvedColorMode;
+
+  useLayoutEffect(() => {
+    applyResponsiveProfileToDocument(viewportProfile);
+  }, [viewportProfile]);
 
   const themeConfig = useMemo(
     () =>
@@ -129,8 +110,9 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
         themePreference,
         resolvedColorMode,
         isMobile,
+        viewportTier: viewportProfile.tier,
       }),
-    [isMobile, resolvedColorMode, themePreference],
+    [isMobile, resolvedColorMode, themePreference, viewportProfile.tier],
   );
   useLayoutEffect(() => {
     commitThemePreference(themePreference, { systemDarkMode, persist: false });
@@ -156,7 +138,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
       <ConfigProvider
         locale={resolveAntdLocale()}
         theme={themeConfig}
-        space={{ size: resolveResponsiveSpaceSize(isMobile) }}
+        space={{ size: resolveResponsiveSpaceSize(viewportProfile.tier) }}
       >
         <ProConfigProvider intl={resolveProComponentsIntl()}>
           <AntdApp>

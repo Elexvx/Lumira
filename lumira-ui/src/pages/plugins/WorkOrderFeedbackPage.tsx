@@ -249,6 +249,17 @@ const WorkOrderFeedbackPage = () => {
   const canCreate = actionPermission.can('plugin:work-order-feedback:create');
   const canManage = actionPermission.can('plugin:work-order-feedback:manage');
   const tableScope = canManage ? scope : 'mine';
+  const tableRequest = useMemo(
+    () => buildTableRequest(async (params) => {
+      const result = await request<PagedResponse<WorkOrderFeedbackRecord>>('/v1/work-order-feedback', {
+        method: 'GET',
+        params: { ...params, scope: tableScope },
+        ...API_OPTS.NO_REDIRECT,
+      });
+      return result;
+    }),
+    [tableScope],
+  );
 
   const openCreate = useCallback(() => {
     crud.drawer.openCreate();
@@ -394,14 +405,7 @@ const WorkOrderFeedbackPage = () => {
                 { key: 'create', label: <><PlusOutlined /> {t('plugin.workOrders.create.title')}</>, onClick: openCreate, permission: 'plugin:work-order-feedback:create', type: 'primary' },
               ]),
             ]}
-            request={buildTableRequest(async (params) => {
-              const result = await request<PagedResponse<WorkOrderFeedbackRecord>>('/v1/work-order-feedback', {
-                method: 'GET',
-                params: { ...params, scope: tableScope },
-                ...API_OPTS.NO_REDIRECT,
-              });
-              return result;
-            })}
+            request={tableRequest}
           />
         )}
       </ManagementPageBody>

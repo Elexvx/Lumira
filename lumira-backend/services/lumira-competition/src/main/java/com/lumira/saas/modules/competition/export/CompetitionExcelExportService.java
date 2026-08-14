@@ -43,7 +43,15 @@ public class CompetitionExcelExportService {
                 Row row = sheet.createRow(rowIndex + 1);
                 T source = rows.get(rowIndex);
                 for (int columnIndex = 0; columnIndex < columns.size(); columnIndex += 1) {
-                    row.createCell(columnIndex).setCellValue(formatValue(columns.get(columnIndex).valueExtractor().apply(source)));
+                    Cell cell = row.createCell(columnIndex);
+                    String value = formatValue(columns.get(columnIndex).valueExtractor().apply(source));
+                    if (value.isEmpty()) {
+                        // Some spreadsheet viewers display an empty shared-string index as a number.
+                        // A real blank cell is portable and keeps missing values visually empty.
+                        cell.setBlank();
+                    } else {
+                        cell.setCellValue(value);
+                    }
                 }
             }
             workbook.write(output);

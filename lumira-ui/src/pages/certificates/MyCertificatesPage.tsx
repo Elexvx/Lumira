@@ -1,8 +1,11 @@
 import { DownloadOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { Button, Card, Empty, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Empty, Space, Tag, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { DataTable } from '@/features/table/DataTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { downloadMyCertificate, listMyCertificates } from '@/services/certificates/api';
 import type { CertificateRecord } from '@/services/certificates/types';
 import { saveBlobAsFile } from '@/utils/download';
@@ -22,7 +25,45 @@ const handleCertificateDownload = async (record: CertificateRecord) => {
   }
 };
 
+const certificateColumns: ColumnsType<CertificateRecord> = [
+  {
+    title: '证书',
+    dataIndex: 'certificateNo',
+    width: 190,
+    render: (value) => (
+      <Space>
+        <SafetyCertificateOutlined />
+        <Typography.Text strong>{value}</Typography.Text>
+      </Space>
+    ),
+  },
+  { title: '赛事', dataIndex: 'competitionTitle', ellipsis: true },
+  { title: '项目', dataIndex: 'projectName', ellipsis: true },
+  { title: '奖项', dataIndex: 'awardName', width: 140 },
+  { title: '签发日期', dataIndex: 'issueDate', width: 120 },
+  {
+    title: '状态',
+    dataIndex: 'status',
+    width: 100,
+    render: (value) => <Tag color={value === 'ISSUED' ? 'green' : 'red'}>{statusText[value] || value}</Tag>,
+  },
+  {
+    title: '操作',
+    width: 110,
+    render: (_, record) => (
+      <Button
+        icon={<DownloadOutlined />}
+        disabled={record.status !== 'ISSUED'}
+        onClick={() => void handleCertificateDownload(record)}
+      >
+        下载
+      </Button>
+    ),
+  },
+];
+
 export default function MyCertificatesPage() {
+  const responsive = useResponsive();
   const [records, setRecords] = useState<CertificateRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,48 +78,14 @@ export default function MyCertificatesPage() {
       <ManagementPageBody>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Card>
-            <Table<CertificateRecord>
+            <DataTable<CertificateRecord>
               rowKey="id"
               loading={loading}
               dataSource={records}
+              isMobile={responsive.isMobile}
               locale={{ emptyText: <Empty description="暂无已签发证书" /> }}
               scroll={{ x: 880 }}
-              columns={[
-                {
-                  title: '证书',
-                  dataIndex: 'certificateNo',
-                  width: 190,
-                  render: (value) => (
-                    <Space>
-                      <SafetyCertificateOutlined />
-                      <Typography.Text strong>{value}</Typography.Text>
-                    </Space>
-                  ),
-                },
-                { title: '赛事', dataIndex: 'competitionTitle', ellipsis: true },
-                { title: '项目', dataIndex: 'projectName', ellipsis: true },
-                { title: '奖项', dataIndex: 'awardName', width: 140 },
-                { title: '签发日期', dataIndex: 'issueDate', width: 120 },
-                {
-                  title: '状态',
-                  dataIndex: 'status',
-                  width: 100,
-                  render: (value) => <Tag color={value === 'ISSUED' ? 'green' : 'red'}>{statusText[value] || value}</Tag>,
-                },
-                {
-                  title: '操作',
-                  width: 110,
-                  render: (_, record) => (
-                    <Button
-                      icon={<DownloadOutlined />}
-                      disabled={record.status !== 'ISSUED'}
-                      onClick={() => void handleCertificateDownload(record)}
-                    >
-                      下载
-                    </Button>
-                  ),
-                },
-              ]}
+              columns={certificateColumns}
             />
           </Card>
         </Space>

@@ -1,11 +1,13 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Descriptions, Form, Input, Result, Select, Space, Steps, Table, Tag, Typography } from 'antd';
+import { Button, Card, Descriptions, Form, Input, Result, Select, Space, Steps, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { history, useLocation } from '@umijs/max';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { DataTable } from '@/features/table/DataTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { createActivityRegistration, listActivityRegistrations, listPublicActivities } from '@/services/activity/api';
 import type { ActivityRegistrationRecord as ActivityApplicationRecord, PublicActivityRecord } from '@/services/activity/types';
 import { message } from '@/theme/antdFeedbackBridge';
@@ -47,8 +49,41 @@ const createActivityRegistrationSearch = (stepIndex: number) => {
 
 const formatDateTime = (value?: string) => (value ? value.replace('T', ' ').slice(0, 19) : '-');
 
+const activityRegistrationColumns: ColumnsType<ActivityApplicationRecord> = [
+  {
+    title: '报名编号',
+    dataIndex: 'applicationNo',
+    render: (value: string) => <Typography.Text strong>{value}</Typography.Text>,
+  },
+  {
+    title: '活动',
+    dataIndex: 'activityTitle',
+  },
+  {
+    title: '报名人',
+    dataIndex: 'name',
+    render: (value?: string) => value || '-',
+  },
+  {
+    title: '手机号',
+    dataIndex: 'mobile',
+    render: (value?: string) => value || '-',
+  },
+  {
+    title: '状态',
+    dataIndex: 'status',
+    render: () => <Tag color="success">已提交</Tag>,
+  },
+  {
+    title: '提交时间',
+    dataIndex: 'submittedAt',
+    render: formatDateTime,
+  },
+];
+
 const ActivityRegistrationPage = () => {
   const location = useLocation();
+  const responsive = useResponsive();
   const actionPermission = useActionPermission();
   const [form] = Form.useForm<ActivityRegistrationValues>();
   const [viewMode, setViewMode] = useState<'list' | 'wizard'>('list');
@@ -149,47 +184,16 @@ const ActivityRegistrationPage = () => {
 
   const previous = () => setWizardStep(step - 1);
 
-  const columns: ColumnsType<ActivityApplicationRecord> = [
-    {
-      title: '报名编号',
-      dataIndex: 'applicationNo',
-      render: (value: string) => <Typography.Text strong>{value}</Typography.Text>,
-    },
-    {
-      title: '活动',
-      dataIndex: 'activityTitle',
-    },
-    {
-      title: '报名人',
-      dataIndex: 'name',
-      render: (value?: string) => value || '-',
-    },
-    {
-      title: '手机号',
-      dataIndex: 'mobile',
-      render: (value?: string) => value || '-',
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      render: () => <Tag color="success">已提交</Tag>,
-    },
-    {
-      title: '提交时间',
-      dataIndex: 'submittedAt',
-      render: formatDateTime,
-    },
-  ];
-
   if (viewMode === 'list') {
     return (
       <ManagementPage title="活动报名" extra={<Button onClick={() => history.push('/activities/management')}>返回活动管理</Button>}>
         <ManagementPageBody>
           <Card>
-            <Table<ActivityApplicationRecord>
+            <DataTable<ActivityApplicationRecord>
               rowKey="id"
-              columns={columns}
+              columns={activityRegistrationColumns}
               dataSource={records}
+              isMobile={responsive.isMobile}
               pagination={{ pageSize: 10, showSizeChanger: true }}
               title={() => (
                 <Space style={{ width: '100%', justifyContent: 'space-between' }}>

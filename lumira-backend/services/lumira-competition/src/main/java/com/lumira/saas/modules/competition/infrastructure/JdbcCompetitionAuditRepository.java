@@ -19,13 +19,17 @@ public class JdbcCompetitionAuditRepository implements CompetitionAuditRepositor
     }
 
     @Override
-    public AuditPage findRecords(String competitionUuid, String module, long offset, long limit) {
+    public AuditPage findRecords(String competitionUuid, String module, String action, long offset, long limit) {
         StringBuilder where = new StringBuilder(" from competition_config_audit where competition_uuid = ? and deleted = 0");
         List<Object> parameters = new ArrayList<>();
         parameters.add(competitionUuid);
         if (StringUtils.hasText(module)) {
             where.append(" and module = ?");
             parameters.add(module.trim());
+        }
+        if (StringUtils.hasText(action)) {
+            where.append(" and action = ?");
+            parameters.add(action.trim());
         }
         Long total = database.queryForObject("select count(1)" + where, Long.class, parameters.toArray());
         List<Object> pageParameters = new ArrayList<>(parameters);

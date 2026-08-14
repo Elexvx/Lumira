@@ -12,9 +12,9 @@ vi.mock('@/features/competition-workspace/CompetitionWorkspaceContext', () => ({
       status: 'published',
       activeRegistrationCount: 3,
       capabilities: [],
-      allowedModules: ['overview'],
+      allowedModules: ['overview', 'registrations'],
     },
-    canOpen: (module: string) => module === 'overview',
+    canOpen: (module: string) => ['overview', 'registrations'].includes(module),
     navigateToModule: vi.fn(),
   }),
 }));
@@ -34,7 +34,7 @@ describe('Competition workspace overview', () => {
   it('renders localized competition details in the requested order', () => {
     const markup = renderToStaticMarkup(<OverviewPage />);
 
-    expect(markup).toContain('data-page-title="概览"');
+    expect(markup).toContain('data-page-title="赛事概览"');
     expect(markup).not.toContain('赛事工作空间');
     expect(markup.indexOf('赛事名称')).toBeLessThan(markup.indexOf('赛事代码'));
     expect(markup).toContain('工作空间兼容性测试赛事');
@@ -42,12 +42,12 @@ describe('Competition workspace overview', () => {
     expect(markup).not.toContain('>published<');
   });
 
-  it('keeps module actions left aligned and removes header arrows', () => {
+  it('uses specific accessible module actions instead of repeated generic links', () => {
     const markup = renderToStaticMarkup(<OverviewPage />);
 
-    expect(markup).toContain('competition-workspace-overview__module-action');
-    expect(markup).toContain('competition-workspace-overview__module-card');
-    expect(markup).toContain('进入模块');
-    expect(markup).not.toContain('anticon-arrow-right');
+    expect(markup).toContain('competition-workspace-overview__module-tile');
+    expect(markup).toContain('aria-label="进入报名与材料"');
+    expect(markup).toContain('筛选报名团队、核对完整资料并按范围导出。');
+    expect(markup).not.toContain('>进入模块<');
   });
 });

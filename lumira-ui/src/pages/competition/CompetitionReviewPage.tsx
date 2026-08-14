@@ -25,7 +25,6 @@ import {
   Select,
   Space,
   Statistic,
-  Table,
   Tabs,
   Tag,
   Typography,
@@ -33,6 +32,8 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
+import { DataTable } from '@/features/table/DataTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import {
   listCompetitionWorkspaceStages,
   listCompetitions,
@@ -262,6 +263,7 @@ const snapshotLabel = (candidate: ReviewCandidate) => {
 
 const ReviewAdminWorkbench = () => {
   const access = useAccess();
+  const responsive = useResponsive();
   const [planForm] = Form.useForm<PlanFormValues>();
   const [batchForm] = Form.useForm<BatchFormValues>();
   const [assignmentForm] = Form.useForm<AssignmentFormValues>();
@@ -1158,8 +1160,9 @@ const ReviewAdminWorkbench = () => {
                   配置：每项目 {selectedBatch.reviewerCountPerCandidate || selectedBatch.minimumReviewerCount || 1} 名，专家项目数 {selectedBatch.expertMinAssignments ?? 5}-{selectedBatch.expertMaxAssignments ?? 6}（目标 {selectedBatch.expertTargetAssignments ?? 6}）
                 </Typography.Text>
               </Space>
-              <Table<ReviewRosterExpert>
+              <DataTable<ReviewRosterExpert>
                 rowKey="id"
+                isMobile={responsive.isMobile}
                 size="small"
                 pagination={{ pageSize: 5 }}
                 dataSource={roster}
@@ -1173,16 +1176,18 @@ const ReviewAdminWorkbench = () => {
               />
             </Space>
           </Card>
-          <Table
+          <DataTable
             rowKey="id"
+            isMobile={responsive.isMobile}
             size="small"
             columns={candidateColumns}
             dataSource={candidates}
             pagination={{ pageSize: 10 }}
           />
           <Typography.Title level={5} style={{ marginTop: 24 }}>任务明细</Typography.Title>
-          <Table<ReviewAdminAssignment>
+          <DataTable<ReviewAdminAssignment>
             rowKey="id"
+            isMobile={responsive.isMobile}
             size="small"
             pagination={{ pageSize: 10 }}
             dataSource={assignments}
@@ -1290,8 +1295,9 @@ const ReviewAdminWorkbench = () => {
             </Space>
           )}
         >
-          <Table
+          <DataTable
             rowKey="candidateId"
+            isMobile={responsive.isMobile}
             size="small"
             columns={aggregateColumns}
             dataSource={aggregates}
@@ -1314,8 +1320,9 @@ const ReviewAdminWorkbench = () => {
             description="申诉成立后，应通过更正批次和新发布版本修正结果，保留完整审计链。"
             style={{ marginBottom: 16 }}
           />
-          <Table<ReviewAppeal>
+          <DataTable<ReviewAppeal>
             rowKey="id"
+            isMobile={responsive.isMobile}
             size="small"
             pagination={{ pageSize: 10 }}
             dataSource={appeals}
@@ -1754,6 +1761,7 @@ const ReviewAdminWorkbench = () => {
 
 const ExpertTaskWorkbench = () => {
   const access = useAccess();
+  const responsive = useResponsive();
   const [scoreForm] = Form.useForm<ScoreFormValues>();
   const [declineForm] = Form.useForm<{ reason: string }>();
   const [tasks, setTasks] = useState<ReviewAssignmentTask[]>([]);
@@ -1908,8 +1916,9 @@ const ExpertTaskWorkbench = () => {
         title="我的评审任务"
         extra={<Button icon={<ReloadOutlined />} loading={loading} onClick={() => void loadTasks()}>刷新</Button>}
       >
-        <Table
+        <DataTable
           rowKey="assignmentId"
+          isMobile={responsive.isMobile}
           loading={loading}
           columns={columns}
           dataSource={tasks}
@@ -2017,10 +2026,13 @@ const CompetitionReviewPage = () => {
     <CompetitionWorkspacePageFrame
       embeddedInWorkspace={Boolean(workspace)}
       title={workspace ? '评审' : '跨赛事评审工作台'}
+      showWorkspaceHeader={Boolean(workspace)}
       workspaceVariant="content"
     >
       {items.length
-        ? <Tabs items={items} />
+        ? workspace && items.length === 1
+          ? items[0].children
+          : <Tabs items={items} />
         : <Empty description="当前角色没有评审操作权限，请联系管理员配置角色权限。" />}
     </CompetitionWorkspacePageFrame>
   );

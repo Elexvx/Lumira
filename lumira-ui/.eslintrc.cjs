@@ -30,4 +30,18 @@ module.exports = {
     'no-redeclare': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
   },
+  overrides: [
+    {
+      files: ['src/pages/**/*.ts', 'src/pages/**/*.tsx'],
+      rules: {
+        'no-restricted-imports': ['error', {
+          paths: [{
+            name: 'antd',
+            importNames: ['Table'],
+            message: 'Use DataTable or ManagementTable for business tables.',
+          }],
+        }],
+      },
+    },
+  ],
 };

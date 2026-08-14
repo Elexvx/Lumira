@@ -489,12 +489,15 @@ const DictManagementPage = () => {
     detailProps,
   } = useDictManagement();
 
-  const typeTableRequest = buildTableRequest((params) =>
-    request<PagedResponse<DictTypeRecord>>('/v1/system/dict-types', {
-      method: 'GET',
-      params,
-      ...API_OPTS.NO_REDIRECT,
-    }),
+  const typeTableRequest = useMemo(
+    () => buildTableRequest((params) =>
+      request<PagedResponse<DictTypeRecord>>('/v1/system/dict-types', {
+        method: 'GET',
+        params,
+        ...API_OPTS.NO_REDIRECT,
+      }),
+    ),
+    [],
   );
 
   return (

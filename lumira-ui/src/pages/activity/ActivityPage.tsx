@@ -13,6 +13,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { resolveActivityCtaTarget } from '@/pages/activity/utils/activityCtaTarget';
@@ -277,6 +278,17 @@ const parseFeaturedFilter = (value: unknown) => {
   }
   return undefined;
 };
+
+const activityTableRequest = buildTableRequest<ActivityRecord>(async (params) =>
+  listActivities({
+    keyword: typeof params.keyword === 'string' ? params.keyword : undefined,
+    locale: params.locale as ActivityLocale | undefined,
+    status: params.status as ActivityStatus | undefined,
+    featured: parseFeaturedFilter(params.featured),
+    pageNo: params.pageNo,
+    pageSize: params.pageSize,
+  }),
+);
 
 const uploadActivityImage = async (file: File) => {
   if (!file.type.startsWith('image/')) {
@@ -913,21 +925,7 @@ const ActivityManagementView = () => {
           columns={columns}
           isMobile={responsive.isMobile}
           scroll={{ x: 1280 }}
-          request={async (params) => {
-            const response = await listActivities({
-              keyword: typeof params.keyword === 'string' ? params.keyword : undefined,
-              locale: params.locale as ActivityLocale | undefined,
-              status: params.status as ActivityStatus | undefined,
-              featured: parseFeaturedFilter(params.featured),
-              pageNo: params.current,
-              pageSize: params.pageSize,
-            });
-            return {
-              data: response.records,
-              total: response.total,
-              success: true,
-            };
-          }}
+          request={activityTableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           toolBarRender={() =>
             actionPermission.buildToolbarActions([

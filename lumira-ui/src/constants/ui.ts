@@ -19,7 +19,7 @@ export const DETAIL_SECTION_GAP = APP_SPACING.sectionGap.desktop;
 export const DETAIL_SECTION_TITLE_LEVEL = 5;
 
 export const STANDARD_DRAWER_WIDTH_BY_BREAKPOINT = {
-  desktop: `min(var(--saas-spacing-${APP_SPACING.standardDrawerWidth.desktop}), calc(100vw - var(--saas-spacing-48)))`,
+  desktop: 'min(var(--saas-standard-drawer-width), calc(100vw - var(--saas-spacing-48)))',
   mobile: '100vw',
 } as const;
 

@@ -1278,17 +1278,20 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
     [activeBucket, closeUploadDrawer, fileScope, requestOptions],
   );
 
-  const fileColumns = buildFileObjectColumns({
-    isMobile: responsive.isMobile,
-    isSharedScope,
-    readOnlyCenter,
-    deletePermission,
-    actionPermissionCanDelete: canDeleteFile,
-    onOpenPreviewDrawer: openPreviewDrawer,
-    onDownload: handleDownload,
-    onCopyLink: handleCopyLink,
-    onDelete: handleDelete,
-  });
+  const fileColumns = useMemo(
+    () => buildFileObjectColumns({
+      isMobile: responsive.isMobile,
+      isSharedScope,
+      readOnlyCenter,
+      deletePermission,
+      actionPermissionCanDelete: canDeleteFile,
+      onOpenPreviewDrawer: openPreviewDrawer,
+      onDownload: handleDownload,
+      onCopyLink: handleCopyLink,
+      onDelete: handleDelete,
+    }),
+    [canDeleteFile, deletePermission, handleCopyLink, handleDelete, handleDownload, isSharedScope, openPreviewDrawer, readOnlyCenter, responsive.isMobile],
+  );
 
   const actionToolbar = useMemo(
     () =>

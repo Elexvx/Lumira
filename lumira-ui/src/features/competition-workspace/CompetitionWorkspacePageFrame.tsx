@@ -33,7 +33,7 @@ export const CompetitionWorkspacePageFrame = ({
   workspaceVariant = 'content',
 }: CompetitionWorkspacePageFrameProps) => {
   if (embeddedInWorkspace) {
-    const hasWorkspaceHeader = showWorkspaceHeader || Boolean(extra) || Boolean(description);
+    const hasWorkspaceHeader = showWorkspaceHeader || Boolean(title) || Boolean(extra) || Boolean(description);
 
     return (
       <ManagementPageBody
@@ -46,11 +46,13 @@ export const CompetitionWorkspacePageFrame = ({
         )}
       >
         {hasWorkspaceHeader ? (
-          <div className="competition-workspace-module-page__toolbar">
+          <header className="competition-workspace-module-page__toolbar">
             <div className="competition-workspace-module-page__heading">
-              <Typography.Title level={4} className="competition-workspace-module-page__title">
-                {title}
-              </Typography.Title>
+              {title ? (
+                <Typography.Title level={3} className="competition-workspace-module-page__title">
+                  {title}
+                </Typography.Title>
+              ) : null}
               {description ? (
                 <Typography.Paragraph
                   type="secondary"
@@ -61,7 +63,7 @@ export const CompetitionWorkspacePageFrame = ({
               ) : null}
             </div>
             {extra ? <div className="competition-workspace-module-page__actions">{extra}</div> : null}
-          </div>
+          </header>
         ) : null}
         {children}
       </ManagementPageBody>

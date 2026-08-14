@@ -52,6 +52,7 @@ public class CompetitionWorkspaceAuditController {
     public ApiResponse<PageResponse<CompetitionAuditVO.Record>> records(
             @PathVariable String competitionUuid,
             @RequestParam(name = "module", required = false) String module,
+            @RequestParam(name = "action", required = false) String action,
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "20") long pageSize
     ) {
@@ -61,8 +62,9 @@ public class CompetitionWorkspaceAuditController {
         long normalizedPageNo = Math.max(1L, pageNo);
         long normalizedPageSize = Math.max(1L, Math.min(MAX_PAGE_SIZE, pageSize));
         String normalizedModule = normalizeModule(module);
+        String normalizedAction = normalizeAction(action);
         CompetitionAuditRepository.AuditPage page = auditRepository.findRecords(
-                decision.competition().uuid(), normalizedModule,
+                decision.competition().uuid(), normalizedModule, normalizedAction,
                 (normalizedPageNo - 1) * normalizedPageSize, normalizedPageSize);
         PageResponse<CompetitionAuditVO.Record> response = new PageResponse<>();
         response.setRecords(page.records());
@@ -80,6 +82,17 @@ public class CompetitionWorkspaceAuditController {
         String normalized = value.trim();
         if (normalized.length() > 64) {
             throw new BizException(ErrorCode.BAD_REQUEST, "Audit module is too large");
+        }
+        return normalized;
+    }
+
+    private String normalizeAction(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.length() > 64) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Audit action is too large");
         }
         return normalized;
     }

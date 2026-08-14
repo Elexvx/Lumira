@@ -907,7 +907,8 @@ body.saas-login-viewport {
 }
 
 .saas-login-page {
-  --saas-login-panel-min-height: 461px;
+  --saas-login-panel-min-height: clamp(451px, 44vh, 620px);
+  --saas-login-control-height: clamp(44px, calc(2.2vw + 10px), 56px);
 
   width: 100%;
   height: 100vh;
@@ -915,7 +916,7 @@ body.saas-login-viewport {
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(0, 2.08fr) minmax(400px, 1fr);
+  grid-template-columns: minmax(0, 1.8fr) minmax(clamp(440px, 31vw, 720px), 1fr);
   align-items: stretch;
   justify-content: stretch;
   padding: 0;
@@ -993,18 +994,18 @@ body.saas-login-viewport {
 
 .saas-login-page__utility-actions {
   position: absolute;
-  top: 18px;
-  right: 20px;
+  top: clamp(12px, 1.4vw, 26px);
+  right: clamp(12px, 1.7vw, 32px);
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: clamp(8px, 0.6vw, 12px);
 }
 
 .saas-login-page__locale-switch.ant-btn,
 .saas-login-page__theme-switch.ant-btn {
-  height: 34px;
-  padding-inline: 11px;
+  height: clamp(34px, 2.2vw, 46px);
+  padding-inline: clamp(11px, 0.7vw, 16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--ant-border-radius-lg);
   color: rgba(255, 255, 255, 0.78);
@@ -1013,7 +1014,7 @@ body.saas-login-viewport {
 }
 
 .saas-login-page__theme-switch.ant-btn {
-  width: 34px;
+  width: clamp(34px, 2.2vw, 46px);
   padding-inline: 0;
 }
 
@@ -1027,24 +1028,24 @@ body.saas-login-viewport {
 }
 
 .saas-login-page__stage {
-  width: min(calc(100% - 64px), 440px);
+  width: min(calc(100% - clamp(32px, 5vw, 96px)), clamp(440px, 28vw, 720px));
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  padding: 76px 0 104px;
+  padding: clamp(64px, 7vh, 104px) 0 clamp(72px, 9vh, 132px);
   box-sizing: border-box;
 }
 
 .saas-login-page__brand {
-  margin: 0 0 32px;
+  margin: 0 0 clamp(24px, 2.1vw, 40px);
   text-align: left;
 }
 
 .saas-login-page__brand-title {
   color: #f7f8fa;
-  font-size: clamp(25px, 1.65vw, 31px);
+  font-size: clamp(28px, 1.8vw, 42px);
   font-weight: 700;
   line-height: 1.25;
   letter-spacing: -0.025em;
@@ -1066,29 +1067,29 @@ html[data-theme="dark"] .saas-login-page__panel {
   flex-direction: column;
   padding: 0;
   color: #e6eaf0;
-  font-size: 14px;
+  font-size: var(--saas-font-size-body, 14px);
 }
 
 .saas-login-page__mode-header {
   width: 100%;
-  min-height: 34px;
+  min-height: clamp(34px, 2.1vw, 42px);
   height: auto;
   flex-basis: auto;
   align-items: flex-start;
-  margin-bottom: 24px;
+  margin-bottom: clamp(18px, 1.6vw, 30px);
 }
 
 .saas-login-page__mode-tabs {
   width: 100%;
   flex-wrap: wrap;
-  gap: 13px 24px;
+  gap: clamp(10px, 0.8vw, 16px) clamp(20px, 1.6vw, 30px);
 }
 
 .saas-login-page__mode-tab,
 html[data-theme="dark"] .saas-login-page__mode-tab {
-  height: 34px;
+  height: clamp(34px, 2.1vw, 42px);
   color: #8f99a8;
-  font-size: 16px;
+  font-size: clamp(15px, 0.85vw, 19px);
   font-weight: 500;
 }
 
@@ -1105,25 +1106,25 @@ html[data-theme="dark"] .saas-login-page__mode-tab[data-active="true"] {
 }
 
 .saas-login-page__credentials-stack {
-  gap: 16px;
+  gap: clamp(14px, 1vw, 22px);
 }
 
 .saas-login-page__form .ant-input,
 .saas-login-page__form .ant-input-affix-wrapper,
 html[data-theme="dark"] .saas-login-page__form .ant-input,
 html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper {
-  height: 44px;
-  padding-inline: 12px;
+  height: var(--saas-login-control-height);
+  padding-inline: clamp(12px, 0.8vw, 16px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--ant-border-radius-lg);
   color: #eef1f5;
   background: rgba(255, 255, 255, 0.025) !important;
-  font-size: 14px;
+  font-size: var(--saas-font-size-body, 14px);
   box-shadow: none !important;
 }
 
 .saas-login-page__form .ant-input-affix-wrapper > input.ant-input {
-  height: 42px;
+  height: 100%;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -1152,9 +1153,9 @@ html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper {
 
 .saas-login-page__send-code-button,
 .saas-login-page__captcha-image-button {
-  height: 44px;
-  flex-basis: 118px;
-  width: 118px;
+  height: var(--saas-login-control-height);
+  flex-basis: clamp(108px, 7.4vw, 144px);
+  width: clamp(108px, 7.4vw, 144px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--ant-border-radius-lg);
   color: #69a7ff;
@@ -1163,7 +1164,8 @@ html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper {
 
 .saas-login-page__slider-placeholder,
 .saas-login-page__slider-verified {
-  height: 44px;
+  min-height: var(--saas-login-control-height);
+  height: var(--saas-login-control-height);
   border-radius: var(--ant-border-radius-lg);
 }
 
@@ -1175,20 +1177,20 @@ html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper {
 
 .saas-login-page__actions,
 html[data-theme="dark"] .saas-login-page__actions {
-  margin-top: 12px;
+  margin-top: clamp(10px, 0.8vw, 16px);
   color: #8f99a8;
 }
 
 .saas-login-page__actions .ant-checkbox-wrapper,
 html[data-theme="dark"] .saas-login-page__actions .ant-checkbox-wrapper {
   color: #8f99a8;
-  font-size: 13px;
+  font-size: var(--saas-font-size-sm, 13px);
 }
 
 .saas-login-page__forgot-link.ant-btn,
 html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
   color: #aeb6c2;
-  font-size: 13px;
+  font-size: var(--saas-font-size-sm, 13px);
 }
 
 .saas-login-page__forgot-link.ant-btn:hover {
@@ -1196,10 +1198,10 @@ html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
 }
 
 .saas-login-page__submit-button.ant-btn {
-  height: 44px;
-  margin-top: 22px;
+  height: var(--saas-login-control-height);
+  margin-top: clamp(18px, 1.3vw, 28px);
   border-radius: var(--ant-border-radius-lg);
-  font-size: 14px;
+  font-size: var(--saas-font-size-body, 14px);
   font-weight: 650;
   box-shadow: 0 10px 28px color-mix(in srgb, var(--ant-color-primary) 18%, transparent);
 }
@@ -1209,14 +1211,14 @@ html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
   align-self: flex-start;
   width: auto;
   height: auto;
-  margin-top: 10px;
+  margin-top: clamp(8px, 0.7vw, 14px);
   padding: 0;
   border: 0;
   border-radius: 0;
   color: #aeb6c2;
   background: transparent;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--saas-font-size-sm, 13px);
   box-shadow: none;
   cursor: pointer;
   animation: none;
@@ -1247,9 +1249,9 @@ html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
 }
 
 .saas-login-page__other-title {
-  gap: 16px;
+  gap: clamp(12px, 0.9vw, 20px);
   color: #626d7c;
-  font-size: 12px;
+  font-size: var(--saas-font-size-sm, 12px);
 }
 
 .saas-login-page__other-title::before,
@@ -1258,14 +1260,14 @@ html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
 }
 
 .saas-login-page__social-actions {
-  gap: 28px;
-  margin-top: 18px;
+  gap: clamp(22px, 1.4vw, 36px);
+  margin-top: clamp(16px, 1vw, 24px);
 }
 
 .saas-login-page__social-button.ant-btn,
 .saas-login-page__social-button.ant-btn:disabled {
-  width: 42px;
-  height: 42px;
+  width: clamp(40px, 2.6vw, 52px);
+  height: clamp(40px, 2.6vw, 52px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.035);
 }
@@ -1273,9 +1275,9 @@ html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
 .saas-login-page__agreement,
 html[data-theme="dark"] .saas-login-page__agreement {
   order: 7;
-  margin-top: 14px;
+  margin-top: clamp(12px, 0.9vw, 20px);
   color: #687383;
-  font-size: 12px;
+  font-size: var(--saas-font-size-sm, 12px);
   text-align: center;
 }
 
@@ -1285,12 +1287,12 @@ html[data-theme="dark"] .saas-login-page__agreement {
 
 .saas-login-page__footer {
   position: absolute;
-  right: 36px;
-  bottom: 24px;
-  left: 36px;
-  gap: 5px 14px;
+  right: clamp(20px, 2.5vw, 56px);
+  bottom: clamp(16px, 2.2vh, 32px);
+  left: clamp(20px, 2.5vw, 56px);
+  gap: clamp(4px, 0.35vw, 8px) clamp(10px, 0.9vw, 18px);
   color: #626d7c;
-  font-size: 11px;
+  font-size: clamp(11px, 0.7vw, 14px);
   line-height: 1.55;
   text-shadow: none;
 }
@@ -1426,166 +1428,6 @@ html[data-theme="light"] .saas-login-page__social-button.ant-btn:disabled {
 
 html[data-theme="light"] .saas-login-page__footer {
   color: #7b8798;
-}
-
-@media (min-width: 1920px) and (min-height: 900px) {
-  .saas-login-page {
-    --saas-login-panel-min-height: 541px;
-
-    grid-template-columns: minmax(0, 1.85fr) minmax(680px, 1fr);
-  }
-
-  .saas-login-page__utility-actions {
-    top: 26px;
-    right: 32px;
-    gap: 10px;
-  }
-
-  .saas-login-page__locale-switch.ant-btn,
-  .saas-login-page__theme-switch.ant-btn {
-    height: 42px;
-    border-radius: var(--ant-border-radius-lg);
-    font-size: 16px;
-  }
-
-  .saas-login-page__theme-switch.ant-btn {
-    width: 42px;
-  }
-
-  .saas-login-page__stage {
-    width: min(calc(100% - 96px), clamp(520px, 22vw, 620px));
-    padding: 104px 0 132px;
-  }
-
-  .saas-login-page__brand {
-    margin-bottom: 40px;
-  }
-
-  .saas-login-page__brand-title {
-    font-size: clamp(34px, 1.55vw, 42px);
-  }
-
-  .saas-login-page__form {
-    font-size: 16px;
-  }
-
-  .saas-login-page__mode-header {
-    min-height: 40px;
-    margin-bottom: 30px;
-  }
-
-  .saas-login-page__mode-tabs {
-    gap: 16px 30px;
-  }
-
-  .saas-login-page__mode-tab,
-  html[data-theme="dark"] .saas-login-page__mode-tab,
-  html[data-theme="light"] .saas-login-page__mode-tab {
-    height: 40px;
-    font-size: 18px;
-  }
-
-  .saas-login-page__credentials-stack {
-    gap: 20px;
-  }
-
-  .saas-login-page__form .ant-input,
-  .saas-login-page__form .ant-input-affix-wrapper,
-  html[data-theme="dark"] .saas-login-page__form .ant-input,
-  html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper,
-  html[data-theme="light"] .saas-login-page__form .ant-input,
-  html[data-theme="light"] .saas-login-page__form .ant-input-affix-wrapper {
-    height: 52px;
-    padding-inline: 15px;
-    border-radius: var(--ant-border-radius-lg);
-    font-size: 16px;
-  }
-
-  .saas-login-page__form .ant-input-affix-wrapper > input.ant-input,
-  html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper > input.ant-input,
-  html[data-theme="light"] .saas-login-page__form .ant-input-affix-wrapper > input.ant-input {
-    height: 50px;
-  }
-
-  .saas-login-page__field-icon {
-    font-size: 18px;
-  }
-
-  .saas-login-page__send-code-button,
-  .saas-login-page__captcha-image-button {
-    width: 138px;
-    height: 52px;
-    flex-basis: 138px;
-    border-radius: var(--ant-border-radius-lg);
-    font-size: 15px;
-  }
-
-  .saas-login-page__slider-placeholder,
-  .saas-login-page__slider-verified {
-    height: 52px;
-    border-radius: var(--ant-border-radius-lg);
-  }
-
-  .saas-login-page__actions,
-  html[data-theme="dark"] .saas-login-page__actions {
-    margin-top: 16px;
-    font-size: 15px;
-  }
-
-  .saas-login-page__actions .ant-checkbox-wrapper,
-  html[data-theme="dark"] .saas-login-page__actions .ant-checkbox-wrapper,
-  .saas-login-page__forgot-link.ant-btn,
-  html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
-    font-size: 15px;
-  }
-
-  .saas-login-page__submit-button.ant-btn {
-    height: 52px;
-    margin-top: 28px;
-    border-radius: var(--ant-border-radius-lg);
-    font-size: 16px;
-  }
-
-  .saas-login-page__join-button {
-    height: auto;
-    margin-top: 14px;
-    border-radius: 0;
-    font-size: 15px;
-  }
-
-  .saas-login-page__other-login {
-    margin-top: auto;
-  }
-
-  .saas-login-page__other-title {
-    gap: 20px;
-    font-size: 14px;
-  }
-
-  .saas-login-page__social-actions {
-    gap: 34px;
-    margin-top: 22px;
-  }
-
-  .saas-login-page__social-button.ant-btn,
-  .saas-login-page__social-button.ant-btn:disabled {
-    width: 48px;
-    height: 48px;
-    font-size: 16px;
-  }
-
-  .saas-login-page__agreement,
-  html[data-theme="dark"] .saas-login-page__agreement {
-    margin-top: 18px;
-    font-size: 14px;
-  }
-
-  .saas-login-page__footer {
-    right: 48px;
-    bottom: 32px;
-    left: 48px;
-    font-size: 13px;
-  }
 }
 
 @media (max-width: 1100px) {

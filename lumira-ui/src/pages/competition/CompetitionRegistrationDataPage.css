@@ -1,5 +1,69 @@
 .competition-registration-data-page__detail {
+  min-width: 0;
   width: 100%;
+}
+
+.competition-registration-data-page__detail-section {
+  min-width: 0;
+}
+
+.competition-registration-data-page__detail-section-title.ant-typography {
+  margin: 0 0 var(--saas-spacing-sm);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.competition-registration-data-page__detail-section > .ant-descriptions,
+.competition-registration-data-page__detail-section > .ant-table-wrapper,
+.competition-registration-data-page__detail-section > .saas-table-wrap {
+  width: 100%;
+}
+
+.competition-registration-data-page__detail .ant-card,
+.competition-registration-data-page__detail .ant-card-body,
+.competition-registration-data-page__detail .ant-descriptions,
+.competition-registration-data-page__detail .ant-descriptions-view {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.competition-registration-data-page__detail .ant-descriptions-view {
+  overflow: hidden;
+}
+
+.competition-registration-data-page__detail .ant-descriptions-view > table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.competition-registration-data-page__detail .ant-descriptions-item-label {
+  width: 140px;
+  min-width: 140px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.competition-registration-data-page__detail .ant-descriptions-item-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.competition-registration-data-page__detail .ant-descriptions-item-content > .saas-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.competition-registration-data-page__snapshot-record-list {
+  width: 100%;
+  max-width: 100%;
+}
+
+.competition-registration-data-page__snapshot-record {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--saas-spacing-xs);
 }
 
 .competition-registration-data-page__team-cell {
@@ -50,5 +114,12 @@
     padding-inline-start: calc(var(--saas-card-padding) - var(--saas-spacing-xs)) !important;
     padding-inline-end: 0 !important;
     text-align: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .competition-registration-data-page__detail .ant-descriptions-item-label {
+    width: 112px;
+    min-width: 112px;
   }
 }

@@ -31,7 +31,11 @@ describe("CompetitionRegistrationDataPageFrame", () => {
 
     expect(markup).toContain("saas-management-page-body");
     expect(markup).toContain("competition-registration-data-page--workspace");
-    expect(markup).not.toContain("competition-workspace-module-page__toolbar");
+    expect(markup).toContain("competition-workspace-module-page__toolbar");
+    expect(markup).toContain("报名与材料");
+    expect(markup).not.toContain("筛选报名团队");
+    expect(markup).not.toContain("查询结果");
+    expect(markup).not.toContain("最多选择");
     expect(markup).not.toContain("data-management-page");
   });
 });

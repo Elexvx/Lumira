@@ -12,12 +12,13 @@ import {
   Popconfirm,
   QRCode,
   Space,
-  Table,
   Tag,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { DataTable } from '@/features/table/DataTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import {
   acceptReviewInvitationAssignment,
   declineReviewInvitationAssignment,
@@ -52,6 +53,7 @@ const parseSnapshot = (value?: string | null) => {
 
 const ReviewInvitationPage = () => {
   const location = useLocation();
+  const responsive = useResponsive();
   const token = useMemo(() => new URLSearchParams(location.search).get('token') || '', [location.search]);
   const [invitation, setInvitation] = useState<ReviewInvitation>();
   const [tasks, setTasks] = useState<ReviewAssignmentTask[]>([]);
@@ -119,7 +121,7 @@ const ReviewInvitationPage = () => {
     return () => window.clearInterval(timer);
   }, [invitation?.checkinStatus, refreshStatus, token]);
 
-  const runAction = async (key: string, action: () => Promise<unknown>, success: string) => {
+  const runAction = useCallback(async (key: string, action: () => Promise<unknown>, success: string) => {
     setActionLoading(key);
     try {
       await action();
@@ -130,16 +132,16 @@ const ReviewInvitationPage = () => {
     } finally {
       setActionLoading(undefined);
     }
-  };
+  }, [loadTasks]);
 
-  const openScore = (task: ReviewAssignmentTask) => {
+  const openScore = useCallback((task: ReviewAssignmentTask) => {
     scoreForm.setFieldsValue({
       scores: Object.fromEntries((task.latestScores || []).map((item) => [String(item.criterionId), item.score])),
       comments: Object.fromEntries((task.latestScores || []).map((item) => [String(item.criterionId), item.comment || ''])),
       reviewComment: task.latestReviewComment || '',
     });
     setActiveTask(task);
-  };
+  }, [scoreForm]);
 
   const submitScores = async (submit: boolean) => {
     if (!activeTask || !token) return;
@@ -162,7 +164,7 @@ const ReviewInvitationPage = () => {
     setActiveTask(undefined);
   };
 
-  const columns: ColumnsType<ReviewAssignmentTask> = [
+  const columns = useMemo<ColumnsType<ReviewAssignmentTask>>(() => [
     { title: '评审批次', dataIndex: 'batchName', width: 200 },
     {
       title: '候选编号',
@@ -209,7 +211,7 @@ const ReviewInvitationPage = () => {
         </Space>
       ),
     },
-  ];
+  ], [actionLoading, openScore, runAction, token]);
 
   if (!token) {
     return <Card style={{ maxWidth: 720, margin: '12vh auto' }}><Empty description="缺少评审邀请令牌" /></Card>;
@@ -261,7 +263,14 @@ const ReviewInvitationPage = () => {
           style={{ marginTop: 16 }}
           extra={<Button icon={<ReloadOutlined />} loading={refreshing} onClick={() => void loadTasks()}>刷新任务</Button>}
         >
-          <Table rowKey="assignmentId" columns={columns} dataSource={tasks} scroll={{ x: 980 }} pagination={{ pageSize: 10 }} />
+          <DataTable
+            rowKey="assignmentId"
+            columns={columns}
+            dataSource={tasks}
+            isMobile={responsive.isMobile}
+            scroll={{ x: 980 }}
+            pagination={{ pageSize: 10 }}
+          />
         </Card>
       ) : null}
 

@@ -72,6 +72,9 @@ public class CompetitionManagementAppService {
             "STAGE_MATERIAL",
             "TIMELINE"
     );
+    private static final Set<String> COLLECTION_CONFIG_ITEM_TYPES = Set.of(
+            "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD"
+    );
     private static final Map<String, Set<String>> SETTINGS_MODULE_TYPES = Map.of(
             "documents", Set.of("AGREEMENT", "CONSENT"),
             "fields", Set.of("TEAM_SETTINGS", "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD"),
@@ -1415,8 +1418,41 @@ public class CompetitionManagementAppService {
         normalized.setSortOrder(request.getSortOrder());
         normalized.setRequiredFlag(Boolean.TRUE.equals(request.getRequiredFlag()));
         normalized.setEnabled(request.getEnabled() == null || Boolean.TRUE.equals(request.getEnabled()));
+        validateCollectedFieldConfigItem(normalized);
         validateMaterialConfigItem(normalized);
         return normalized;
+    }
+
+    private void validateCollectedFieldConfigItem(CompetitionDTO.ConfigItemRequest item) {
+        if (!COLLECTION_CONFIG_ITEM_TYPES.contains(item.getItemType())) {
+            return;
+        }
+        JsonNode parsed;
+        try {
+            parsed = StringUtils.hasText(item.getContentJson())
+                    ? OBJECT_MAPPER.readTree(item.getContentJson())
+                    : OBJECT_MAPPER.createObjectNode();
+        } catch (Exception error) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "报名字段配置格式不正确");
+        }
+        if (!(parsed instanceof ObjectNode metadata)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "报名字段配置必须是 JSON 对象");
+        }
+        String fieldType = RegistrationFieldValidationPolicy.normalizeFieldType(metadata.path("fieldType").asText("TEXT"));
+        if (!RegistrationFieldValidationPolicy.FIELD_TYPES.contains(fieldType)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "不支持的报名字段类型：" + fieldType);
+        }
+        String configuredRule = RegistrationFieldValidationPolicy.normalizeValidationRule(
+                metadata.path("validationRule").asText("NONE")
+        );
+        if (!RegistrationFieldValidationPolicy.VALIDATION_RULES.contains(configuredRule)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "不支持的报名字段校验规则：" + configuredRule);
+        }
+        metadata.put("fieldType", fieldType);
+        metadata.put("validationRule", RegistrationFieldValidationPolicy.resolveValidationRule(
+                item.getItemType(), item.getItemKey(), fieldType, configuredRule
+        ));
+        item.setContentJson(metadata.toString());
     }
 
     private void validateMaterialConfigItem(CompetitionDTO.ConfigItemRequest item) {

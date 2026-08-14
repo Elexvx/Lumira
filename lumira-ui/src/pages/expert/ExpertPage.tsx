@@ -10,6 +10,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { createExpert, deleteExpert, listExperts, updateExpert, uploadExpertAvatar } from '@/services/expert/api';
@@ -118,6 +119,21 @@ const splitTags = (tags?: string | null) =>
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean);
+
+const expertTableRequest = buildTableRequest<ExpertRecord>(async (params) =>
+  listExperts({
+    keyword:
+      typeof params.keyword === 'string'
+        ? params.keyword
+        : typeof params.competitionKeyword === 'string'
+          ? params.competitionKeyword
+          : undefined,
+    status: params.status as ExpertStatus | undefined,
+    approvalStatus: params.approvalStatus as ExpertApprovalStatus | undefined,
+    pageNo: params.pageNo,
+    pageSize: params.pageSize,
+  }),
+);
 
 const validateOptionalPhone = async (_: unknown, value?: string) => {
   const normalizedValue = value?.trim();
@@ -524,25 +540,7 @@ const ExpertManagementView = () => {
           columns={columns}
           isMobile={responsive.isMobile}
           scroll={{ x: 1180 }}
-          request={async (params) => {
-            const response = await listExperts({
-              keyword:
-                typeof params.keyword === 'string'
-                  ? params.keyword
-                  : typeof params.competitionKeyword === 'string'
-                    ? params.competitionKeyword
-                    : undefined,
-              status: params.status as ExpertStatus | undefined,
-              approvalStatus: params.approvalStatus as ExpertApprovalStatus | undefined,
-              pageNo: params.current,
-              pageSize: params.pageSize,
-            });
-            return {
-              data: response.records,
-              total: response.total,
-              success: true,
-            };
-          }}
+          request={expertTableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           toolBarRender={() =>
             actionPermission.buildToolbarActions([

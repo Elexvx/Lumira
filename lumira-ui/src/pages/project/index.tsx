@@ -1,6 +1,6 @@
 import { CheckCircleOutlined, DeleteOutlined, EditOutlined, FileDoneOutlined, PlusOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Alert, Avatar, Button, Card, Checkbox, Descriptions, Form, Input, InputNumber, List, Modal, Radio, Result, Select, Space, Steps, Switch, Table, Tag, Typography, Upload } from 'antd';
+import { Alert, Avatar, Button, Card, Checkbox, Descriptions, Form, Input, InputNumber, List, Modal, Radio, Result, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance, SelectProps, UploadProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -9,6 +9,7 @@ import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
+import { DataTable } from '@/features/table/DataTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { useDictOptions } from '@/hooks/useDictOptions';
@@ -704,6 +705,7 @@ const ProjectTeamFormationForm = ({
   onExistingTeamSelect?: (teamId?: number) => void;
   onDraftChange?: () => void;
 }) => {
+  const responsive = useResponsive();
   const { teamTypeOptions, projectTeamMemberRoleOptions } = useTeamDictOptions();
   const avatarUrlValue = Form.useWatch(['teamDraft', 'avatarUrl'], form);
   const teamMode = Form.useWatch('teamMode', form) || 'NEW';
@@ -825,8 +827,9 @@ const ProjectTeamFormationForm = ({
         <Form.List name="projectTeamMembers">
           {(fields, { add, remove }) => (
             <div className="project-team-member-table">
-              <Table
+              <DataTable
                 rowKey="key"
+                isMobile={responsive.isMobile}
                 pagination={false}
                 dataSource={fields}
                 tableLayout="fixed"

@@ -35,3 +35,6 @@ export const competitionWorkspaceModuleFromPath = (pathname: string): Competitio
     ? module!
     : 'overview';
 };
+
+export const isCertificateRecordsPath = (pathname: string) =>
+  /^\/competitions\/[^/]+\/certificates\/records\/?$/i.test(pathname);

@@ -1287,7 +1287,7 @@ const SettingsRoutesTab = () => {
     [handleRouteDragEnd, handleRouteDragOver, handleRouteDragStart, handleRouteDrop, routeDragState, token.colorPrimary, token.colorPrimaryBg],
   );
 
-  const columns: ProColumns<SettingsRouteRecord>[] = [
+  const columns = useMemo<ProColumns<SettingsRouteRecord>[]>(() => [
     {
         title: t('ui.settings.menus.drag'),
       dataIndex: 'dragHandle',
@@ -1388,7 +1388,7 @@ const SettingsRoutesTab = () => {
         </Space>
       ),
     },
-  ];
+  ], [openEditRoute, responsive.isMobile, token.colorTextTertiary]);
 
   return (
     <>

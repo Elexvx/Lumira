@@ -783,10 +783,6 @@
   margin: 0 !important;
 }
 
-.competition-config-module__description {
-  margin-bottom: var(--saas-spacing-lg);
-}
-
 .competition-config-item--team-limits {
   margin-bottom: var(--saas-spacing-md);
 }

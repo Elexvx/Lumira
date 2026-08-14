@@ -2,6 +2,7 @@ package com.lumira.team;
 
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.team.api.TeamInternalApi;
+import com.lumira.team.app.InProcessTeamInternalApiAdapter;
 import com.lumira.team.app.TeamInternalApiService;
 import com.lumira.team.app.TeamPermissionService;
 import com.lumira.team.controller.InternalTeamController;
@@ -26,8 +27,9 @@ class InternalTeamAssemblyTest {
     @Test
     void monolithKeepsLocalInternalApiButDoesNotExposeController() {
         contextRunner.withPropertyValues("lumira.monolith=true").run(context -> {
-            assertThat(context.getBeansOfType(TeamInternalApi.class)).hasSize(1);
+            assertThat(context.getBeansOfType(TeamInternalApi.class)).hasSize(2);
             assertThat(context.getBeansOfType(TeamInternalApiService.class)).hasSize(1);
+            assertThat(context.getBean(TeamInternalApi.class)).isInstanceOf(InProcessTeamInternalApiAdapter.class);
             assertThat(context.getBeansOfType(InternalTeamController.class)).isEmpty();
         });
     }
@@ -37,12 +39,13 @@ class InternalTeamAssemblyTest {
         contextRunner.withPropertyValues("lumira.monolith=false").run(context -> {
             assertThat(context.getBeansOfType(TeamInternalApi.class)).hasSize(1);
             assertThat(context.getBeansOfType(TeamInternalApiService.class)).hasSize(1);
+            assertThat(context.getBean(TeamInternalApi.class)).isInstanceOf(TeamInternalApiService.class);
             assertThat(context.getBeansOfType(InternalTeamController.class)).hasSize(1);
         });
     }
 
     @Configuration(proxyBeanMethods = false)
-    @Import({TeamInternalApiService.class, InternalTeamController.class})
+    @Import({InProcessTeamInternalApiAdapter.class, TeamInternalApiService.class, InternalTeamController.class})
     static class TestConfiguration {
 
         @Bean

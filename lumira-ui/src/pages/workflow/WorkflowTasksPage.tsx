@@ -1,12 +1,13 @@
 import { CheckOutlined, CloseOutlined, FileSearchOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Input, Modal, Space, Tag, Timeline, Typography } from 'antd';
-import { useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { StandardDrawer } from '@/features/management/StandardDrawer';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useResponsive } from '@/hooks/useResponsive';
 import { approveWorkflowTask, listMyWorkflowTasks, listWorkflowLogs, rejectWorkflowTask } from '@/services/workflow/api';
 import type { WorkflowActionLog, WorkflowTask } from '@/services/workflow/types';
@@ -18,13 +19,17 @@ const businessText: Record<string, string> = {
   COMPETITION_APPROVAL: '赛事审批',
 };
 
+const workflowTasksTableRequest = buildTableRequest<WorkflowTask>(async (params) =>
+  listMyWorkflowTasks({ status: 'PENDING', pageNo: params.pageNo, pageSize: params.pageSize }),
+);
+
 const WorkflowTasksPage = () => {
   const responsive = useResponsive();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const [logs, setLogs] = useState<WorkflowActionLog[]>([]);
   const [logOpen, setLogOpen] = useState(false);
 
-  const handleAction = (record: WorkflowTask, action: 'approve' | 'reject') => {
+  const handleAction = useCallback((record: WorkflowTask, action: 'approve' | 'reject') => {
     let comment = '';
     Modal.confirm({
       title: action === 'approve' ? '通过审批' : '驳回审批',
@@ -46,18 +51,18 @@ const WorkflowTasksPage = () => {
         }
       },
     });
-  };
+  }, [actionRef]);
 
-  const openLogs = async (record: WorkflowTask) => {
+  const openLogs = useCallback(async (record: WorkflowTask) => {
     try {
       setLogs(await listWorkflowLogs(record.instanceId));
       setLogOpen(true);
     } catch (error) {
       showErrorMessage(error, '审批轨迹加载失败');
     }
-  };
+  }, []);
 
-  const columns: ProColumns<WorkflowTask>[] = [
+  const columns = useMemo<ProColumns<WorkflowTask>[]>(() => [
     {
       title: '业务',
       dataIndex: 'businessTitle',
@@ -103,7 +108,7 @@ const WorkflowTasksPage = () => {
         />
       ),
     },
-  ];
+  ], [handleAction, openLogs, responsive.isDesktop, responsive.isMobile]);
 
   return (
     <ManagementPage title="我的审批">
@@ -114,10 +119,7 @@ const WorkflowTasksPage = () => {
           columns={columns}
           isMobile={responsive.isMobile}
           scroll={{ x: 980 }}
-          request={async (params) => {
-            const response = await listMyWorkflowTasks({ status: 'PENDING', pageNo: params.current, pageSize: params.pageSize });
-            return { data: response.records, total: response.total, success: true };
-          }}
+          request={workflowTasksTableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
         />
         <StandardDrawer title="审批轨迹" open={logOpen} onClose={() => setLogOpen(false)}>

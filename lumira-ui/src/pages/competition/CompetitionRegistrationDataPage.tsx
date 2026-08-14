@@ -13,10 +13,10 @@ import {
   Empty,
   Space,
   Spin,
-  Table,
   Tag,
   Typography,
 } from "antd";
+import type { TableColumnsType } from "antd";
 import {
   type Key,
   type ReactNode,
@@ -27,6 +27,8 @@ import {
 } from "react";
 import { ManagementTable } from "@/features/management/ManagementTable";
 import { StandardDrawer } from "@/features/management/StandardDrawer";
+import { DataTable } from "@/features/table/DataTable";
+import { buildTableRequest } from "@/features/table/proTableRequest";
 import { useResponsive } from "@/hooks/useResponsive";
 import { message } from "@/theme/antdFeedbackBridge";
 import { requestFile } from "@/services/common/request";
@@ -56,12 +58,26 @@ import {
   resolveRegistrationExportScope,
   type RegistrationExportQuery,
 } from "@/pages/competition/registrationExportScope";
+import { saveBlobAsFile } from "@/utils/download";
 import { showErrorMessage } from "@/utils/errorMessage";
 import { useCompetitionWorkspace } from "@/features/competition-workspace/CompetitionWorkspaceContext";
 import { CompetitionRegistrationDataPageFrame } from "./CompetitionRegistrationDataPageFrame";
+import { RecentRegistrationExportDownloadButton } from "./RecentRegistrationExportDownloadButton";
+import {
+  createReadyRegistrationExportDownload,
+  downloadReadyRegistrationExport,
+  type ReadyRegistrationExportDownload,
+} from "./registrationExportDownload";
 import "./CompetitionRegistrationDataPage.css";
 
 type JsonRecord = Record<string, unknown>;
+
+type SnapshotFieldDefinition = {
+  scope: string;
+  itemKey: string;
+  title: string;
+  groupLabel?: string;
+};
 
 const SNAPSHOT_FIELD_LABELS: Record<string, string> = {
   teamId: "团队 ID",
@@ -113,6 +129,38 @@ const valueText = (value: unknown) => {
   return JSON.stringify(value);
 };
 
+const getSnapshotFieldDefinitions = (
+  snapshot: JsonRecord[],
+  scope: string,
+): SnapshotFieldDefinition[] => {
+  const definitions = snapshot
+    .filter(
+      (field) =>
+        field.scope === scope && typeof field.itemKey === "string",
+    )
+    .map((field) => {
+      const itemKey = field.itemKey as string;
+      return {
+        scope,
+        itemKey,
+        title:
+          typeof field.title === "string" && field.title.trim()
+            ? field.title
+            : snapshotFieldLabel(itemKey),
+        groupLabel:
+          typeof field.groupLabel === "string" && field.groupLabel.trim()
+            ? field.groupLabel
+            : undefined,
+      };
+    });
+  return definitions.filter(
+    (field, index, fields) =>
+      fields.findIndex(
+        (candidate) => candidate.itemKey === field.itemKey,
+      ) === index,
+  );
+};
+
 const SnapshotValue = ({ value }: { value: unknown }) => {
   if (Array.isArray(value)) {
     if (!value.length) return <Typography.Text type="secondary">-</Typography.Text>;
@@ -135,6 +183,7 @@ const SnapshotValue = ({ value }: { value: unknown }) => {
 };
 
 const SnapshotValueTable = ({ values }: { values: JsonRecord[] }) => {
+  const responsive = useResponsive();
   const columns = Array.from(
     new Set(values.flatMap((value) => Object.keys(value))),
   );
@@ -142,8 +191,9 @@ const SnapshotValueTable = ({ values }: { values: JsonRecord[] }) => {
   if (!columns.length) return <Typography.Text type="secondary">-</Typography.Text>;
 
   return (
-    <Table<JsonRecord>
+    <DataTable<JsonRecord>
       rowKey={(_, index) => String(index)}
+      isMobile={responsive.isMobile}
       size="small"
       bordered
       pagination={false}
@@ -160,7 +210,121 @@ const SnapshotValueTable = ({ values }: { values: JsonRecord[] }) => {
   );
 };
 
-const renderSnapshotValue = (value: unknown): ReactNode => {
+const SnapshotRecordList = ({
+  values,
+  fieldDefinitions = [],
+}: {
+  values: JsonRecord[];
+  fieldDefinitions?: SnapshotFieldDefinition[];
+}) => (
+  <Space
+    className="competition-registration-data-page__snapshot-record-list"
+    orientation="vertical"
+    size={8}
+  >
+    {values.map((record, index) => {
+      const definitionByKey = new Map(
+        fieldDefinitions.map((field) => [field.itemKey, field]),
+      );
+      const configuredFields = fieldDefinitions.map((field) => ({
+        key: field.itemKey,
+        label: field.title,
+        value: record[field.itemKey],
+      }));
+      const recordFields = Object.entries(record)
+        .filter(([key]) => key !== "extraValues")
+        .filter(([key]) => !definitionByKey.has(key))
+        .map(([key, value]) => ({
+          key,
+          label: snapshotFieldLabel(key),
+          value,
+        }));
+      const extraFields = isJsonRecord(record.extraValues)
+        ? Object.entries(record.extraValues)
+            .filter(([key]) => !definitionByKey.has(key))
+            .map(([key, value]) => ({
+              key: `extra-${key}`,
+              label: snapshotFieldLabel(key, true),
+              value,
+            }))
+        : [];
+      const fields = [...configuredFields, ...recordFields, ...extraFields];
+      return (
+        <div
+          key={`snapshot-record-${index + 1}`}
+          className="competition-registration-data-page__snapshot-record"
+        >
+          {values.length > 1 ? (
+            <Typography.Text strong>知识产权 {index + 1}</Typography.Text>
+          ) : null}
+          {fields.length ? (
+            <Descriptions
+              bordered
+              size="small"
+              column={1}
+              items={fields.map(({ key, label, value }) => ({
+                key,
+                label,
+                children: <SnapshotValue value={value} />,
+              }))}
+            />
+          ) : (
+            <Typography.Text type="secondary">-</Typography.Text>
+          )}
+        </div>
+      );
+    })}
+  </Space>
+);
+
+const readMemberFieldValue = (member: JsonRecord, fieldKey: string) => {
+  if (Object.prototype.hasOwnProperty.call(member, fieldKey)) {
+    return member[fieldKey];
+  }
+  if (isJsonRecord(member.extraValues)) {
+    return member.extraValues[fieldKey];
+  }
+  if (typeof member.extraValuesJson === "string") {
+    return parseJson<JsonRecord>(member.extraValuesJson, {})[fieldKey];
+  }
+  return undefined;
+};
+
+const DetailSection = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) => (
+  <section className="competition-registration-data-page__detail-section">
+    <Typography.Title
+      level={5}
+      className="competition-registration-data-page__detail-section-title"
+    >
+      {title}
+    </Typography.Title>
+    {children}
+  </section>
+);
+
+const renderSnapshotValue = (
+  value: unknown,
+  fieldKey?: string,
+  fieldDefinitions: SnapshotFieldDefinition[] = [],
+): ReactNode => {
+  if (
+    fieldKey === "intellectualProperties" &&
+    Array.isArray(value) &&
+    value.every(isJsonRecord)
+  ) {
+    return (
+      <SnapshotRecordList
+        values={value}
+        fieldDefinitions={fieldDefinitions.filter((field) => Boolean(field.groupLabel))}
+      />
+    );
+  }
   if (Array.isArray(value) && value.every(isJsonRecord)) {
     return <SnapshotValueTable values={value} />;
   }
@@ -170,56 +334,74 @@ const renderSnapshotValue = (value: unknown): ReactNode => {
 const SnapshotCard = ({
   title,
   values,
+  fieldDefinitions = [],
+  emptyDescription = "暂无数据",
 }: {
   title: string;
   values: JsonRecord;
+  fieldDefinitions?: SnapshotFieldDefinition[];
+  emptyDescription?: string;
 }) => {
-  const entries = Object.entries(values).filter(
-    ([key]) => key !== "extraValues",
-  );
   const extras =
     values.extraValues &&
     typeof values.extraValues === "object" &&
     !Array.isArray(values.extraValues)
       ? Object.entries(values.extraValues as JsonRecord)
       : [];
+  const directDefinitions = fieldDefinitions.filter(
+    (field) => !field.groupLabel,
+  );
+  const definitionByKey = new Map(
+    directDefinitions.map((field) => [field.itemKey, field]),
+  );
   const items = [
-    ...entries.map(([key, value]) => ({ key, label: snapshotFieldLabel(key), value })),
-    ...extras.map(([key, value]) => ({
-      key: `custom-${key}`,
-      label: snapshotFieldLabel(key, true),
-      value,
+    ...directDefinitions.map((field) => ({
+      key: field.itemKey,
+      fieldKey: field.itemKey,
+      label: field.title,
+      value: Object.prototype.hasOwnProperty.call(values, field.itemKey)
+        ? values[field.itemKey]
+        : Object.fromEntries(extras)[field.itemKey],
     })),
+    ...Object.entries(values)
+      .filter(([key]) => key !== "extraValues")
+      .filter(([key]) => !definitionByKey.has(key))
+      .map(([key, value]) => ({
+        key,
+        fieldKey: key,
+        label: snapshotFieldLabel(key),
+        value,
+      })),
+    ...extras
+      .filter(([key]) => !definitionByKey.has(key))
+      .map(([key, value]) => ({
+        key: `custom-${key}`,
+        fieldKey: key,
+        label: snapshotFieldLabel(key, true),
+        value,
+      })),
   ];
   return (
-    <Card size="small" title={title}>
+    <DetailSection title={title}>
       {items.length ? (
         <Descriptions
           bordered
           size="small"
           column={1}
-          items={items.map(({ key, label, value }) => ({
+          items={items.map(({ key, fieldKey, label, value }) => ({
             key,
             label,
-            children: renderSnapshotValue(value),
+            children: renderSnapshotValue(value, fieldKey, fieldDefinitions),
           }))}
         />
       ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description={emptyDescription}
+        />
       )}
-    </Card>
+    </DetailSection>
   );
-};
-
-const downloadBlob = (blob: Blob, filename: string) => {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
 };
 
 const CompetitionRegistrationDataPage = () => {
@@ -235,6 +417,9 @@ const CompetitionRegistrationDataPage = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [exporting, setExporting] = useState(false);
   const [packaging, setPackaging] = useState(false);
+  const [readyDownload, setReadyDownload] =
+    useState<ReadyRegistrationExportDownload>();
+  const [downloadingReadyFile, setDownloadingReadyFile] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<CompetitionRegistrationRecord>();
@@ -312,13 +497,15 @@ const CompetitionRegistrationDataPage = () => {
         }
         if (task.status === "SUCCESS") {
           if (!task.downloadUrl) throw new Error("导出文件下载地址缺失");
-          const downloadPath = task.downloadUrl.replace(/^\/api(?=\/)/, "");
-          const blob = await requestFile(downloadPath, {
-            method: "GET",
-            silent: true,
-          });
-          downloadBlob(blob, task.fileName || started.fileName);
-          message.success("报名记录 Excel 已生成并开始下载");
+          const download = createReadyRegistrationExportDownload(
+            task.downloadUrl,
+            task.fileName || started.fileName,
+          );
+          setReadyDownload(download);
+          await downloadReadyRegistrationExport(download);
+          message.success(
+            `报名记录 Excel 已生成并已提交浏览器下载；如未看到下载提示，可点击“重新下载最近文件”`,
+          );
           finished = true;
           break;
         }
@@ -362,13 +549,15 @@ const CompetitionRegistrationDataPage = () => {
         }
         if (task.status === "SUCCESS") {
           if (!task.downloadUrl) throw new Error("材料包下载地址缺失");
-          const downloadPath = task.downloadUrl.replace(/^\/api(?=\/)/, "");
-          const blob = await requestFile(downloadPath, {
-            method: "GET",
-            silent: true,
-          });
-          downloadBlob(blob, task.fileName || started.fileName);
-          message.success("完整材料包（含报名记录 Excel）已生成并开始下载");
+          const download = createReadyRegistrationExportDownload(
+            task.downloadUrl,
+            task.fileName || started.fileName,
+          );
+          setReadyDownload(download);
+          await downloadReadyRegistrationExport(download);
+          message.success(
+            `完整材料包已生成并已提交浏览器下载；如未看到下载提示，可点击“重新下载最近文件”`,
+          );
           finished = true;
           break;
         }
@@ -384,6 +573,19 @@ const CompetitionRegistrationDataPage = () => {
     }
   };
 
+  const downloadLatestReadyFile = async () => {
+    if (!readyDownload) return;
+    setDownloadingReadyFile(true);
+    try {
+      await downloadReadyRegistrationExport(readyDownload);
+      message.success(`已重新提交浏览器下载：${readyDownload.fileName}`);
+    } catch (error) {
+      showErrorMessage(error, "最近生成文件下载失败");
+    } finally {
+      setDownloadingReadyFile(false);
+    }
+  };
+
   const downloadMaterial = async (value: CompetitionMaterialValueRecord) => {
     if (!value.fileId || !detail?.id) return;
     setDownloadingFileId(value.fileId);
@@ -395,7 +597,7 @@ const CompetitionRegistrationDataPage = () => {
           silent: true,
         },
       );
-      downloadBlob(blob, `${value.fieldKey}-${value.fileId}`);
+      saveBlobAsFile(blob, `${value.fieldKey}-${value.fileId}`);
     } catch (error) {
       showErrorMessage(error, "材料下载失败");
     } finally {
@@ -419,7 +621,7 @@ const CompetitionRegistrationDataPage = () => {
         render: (_, record) => (
           <Space
             className="competition-registration-data-page__team-cell"
-            direction="vertical"
+            orientation="vertical"
             size={0}
           >
             <Typography.Text
@@ -562,8 +764,46 @@ const CompetitionRegistrationDataPage = () => {
               </Button>,
             ]
           : []),
+        ...(readyDownload
+          ? [
+              <RecentRegistrationExportDownloadButton
+                key="download-latest-ready-file"
+                download={readyDownload}
+                busy={exporting || packaging}
+                loading={downloadingReadyFile}
+                onDownload={() => void downloadLatestReadyFile()}
+              />,
+            ]
+          : []),
       ]
     : [];
+
+  const tableRequest = useMemo(
+    () => buildTableRequest<CompetitionRegistrationRecord>(async (params) => {
+      const query: RegistrationExportQuery = {
+        status: typeof params.status === "string" ? params.status : undefined,
+        keyword: typeof params.keyword === "string" ? params.keyword.trim() || undefined : undefined,
+      };
+      const querySignature = buildRegistrationQuerySignature(query);
+      if (lastQuerySignatureRef.current !== querySignature) {
+        lastQuerySignatureRef.current = querySignature;
+        clearSelection();
+        setResultTotal(0);
+      }
+      setLastQuery(query);
+      setResultTotal(0);
+      const response = await listCompetitionWorkspaceRegistrations(workspaceUuid, {
+        status: query.status,
+        keyword: query.keyword,
+        includeSnapshots: true,
+        pageNo: params.pageNo,
+        pageSize: params.pageSize,
+      });
+      setResultTotal(response.total || 0);
+      return { records: response.records, total: response.total };
+    }),
+    [clearSelection, workspaceUuid],
+  );
 
   const tableBody = (
     <CompetitionRegistrationDataPageFrame>
@@ -577,40 +817,7 @@ const CompetitionRegistrationDataPage = () => {
         scroll={{ x: "max-content" }}
         tableLayout="fixed"
         toolBarRender={() => tableToolbarActions}
-        request={async (params) => {
-          const query: RegistrationExportQuery = {
-            status:
-              typeof params.status === "string" ? params.status : undefined,
-            keyword:
-              typeof params.keyword === "string"
-                ? params.keyword.trim() || undefined
-                : undefined,
-          };
-          const querySignature = buildRegistrationQuerySignature(query);
-          if (lastQuerySignatureRef.current !== querySignature) {
-            lastQuerySignatureRef.current = querySignature;
-            clearSelection();
-            setResultTotal(0);
-          }
-          setLastQuery(query);
-          setResultTotal(0);
-          const response = await listCompetitionWorkspaceRegistrations(
-            workspaceUuid,
-            {
-              status: query.status,
-              keyword: query.keyword,
-              includeSnapshots: true,
-              pageNo: params.current,
-              pageSize: params.pageSize,
-            },
-          );
-          setResultTotal(response.total || 0);
-          return {
-            data: response.records,
-            total: response.total,
-            success: true,
-          };
-        }}
+        request={tableRequest}
         pagination={{ pageSize: 20, showSizeChanger: true }}
         rowSelection={{
           selectedRowKeys,
@@ -638,6 +845,61 @@ const CompetitionRegistrationDataPage = () => {
         )}
       />
     </CompetitionRegistrationDataPageFrame>
+  );
+
+  const collectionSchemaSnapshot = useMemo(
+    () => parseJson<JsonRecord[]>(detail?.collectionSchemaSnapshotJson, []),
+    [detail?.collectionSchemaSnapshotJson],
+  );
+
+  const fieldDefinitionsByScope = useMemo(() => {
+    const scopes = [
+      "REGISTRATION_FIELD",
+      "TEAM_FIELD",
+      "MEMBER_FIELD",
+      "PROJECT_FIELD",
+    ];
+    return scopes.reduce<Record<string, SnapshotFieldDefinition[]>>(
+      (result, scope) => {
+        result[scope] = getSnapshotFieldDefinitions(
+          collectionSchemaSnapshot,
+          scope,
+        );
+        return result;
+      },
+      {},
+    );
+  }, [collectionSchemaSnapshot]);
+
+  const memberFieldDefinitions = useMemo(() => {
+    const definitions = [
+      ...(fieldDefinitionsByScope.MEMBER_FIELD || []),
+    ];
+    if (!definitions.some((field) => field.itemKey === "memberName")) {
+      definitions.unshift({
+        scope: "MEMBER_FIELD",
+        itemKey: "memberName",
+        title: "姓名",
+      });
+    }
+    return definitions.filter((field, index, fields) => (
+      fields.findIndex((candidate) => candidate.itemKey === field.itemKey) === index
+    ));
+  }, [fieldDefinitionsByScope]);
+
+  const registrationFieldDefinitions =
+    fieldDefinitionsByScope.REGISTRATION_FIELD || [];
+  const teamFieldDefinitions = fieldDefinitionsByScope.TEAM_FIELD || [];
+  const projectFieldDefinitions = fieldDefinitionsByScope.PROJECT_FIELD || [];
+
+  const memberColumns = useMemo<TableColumnsType<JsonRecord>>(
+    () => memberFieldDefinitions.map(({ itemKey, title }) => ({
+      key: itemKey,
+      title,
+      dataIndex: itemKey,
+      render: (_value, member) => valueText(readMemberFieldValue(member, itemKey)),
+    })),
+    [memberFieldDefinitions],
   );
 
   const detailDrawer = (
@@ -682,10 +944,10 @@ const CompetitionRegistrationDataPage = () => {
         {detail ? (
           <Space
             className="competition-registration-data-page__detail"
-            direction="vertical"
+            orientation="vertical"
             size={16}
           >
-            <Card size="small" title="报名概览">
+            <DetailSection title="报名概览">
               <Descriptions
                 bordered
                 size="small"
@@ -742,52 +1004,35 @@ const CompetitionRegistrationDataPage = () => {
                   },
                 ]}
               />
-            </Card>
-            <SnapshotCard title="报名信息" values={registrationValues} />
-            <SnapshotCard title="团队信息" values={teamValues} />
-            <SnapshotCard title="项目信息" values={projectValues} />
-            <Card size="small" title={`学生成员（${memberValues.length}）`}>
-              <Table<JsonRecord>
+            </DetailSection>
+            <SnapshotCard
+              title="报名信息"
+              values={registrationValues}
+              fieldDefinitions={registrationFieldDefinitions}
+              emptyDescription="该赛事未配置报名信息字段"
+            />
+            <SnapshotCard
+              title="团队信息"
+              values={teamValues}
+              fieldDefinitions={teamFieldDefinitions}
+            />
+            <SnapshotCard
+              title="项目信息"
+              values={projectValues}
+              fieldDefinitions={projectFieldDefinitions}
+            />
+            <DetailSection title={`学生成员（${memberValues.length}）`}>
+              <DataTable<JsonRecord>
                 rowKey={(_, index) => String(index)}
+                isMobile={responsive.isMobile}
                 size="small"
                 pagination={false}
-                scroll={{ x: 900 }}
+                scroll={memberColumns.length > 4 ? { x: 900 } : undefined}
                 dataSource={memberValues}
-                columns={[
-                  {
-                    title: "姓名",
-                    dataIndex: "memberName",
-                    render: (value) => valueText(value),
-                  },
-                  {
-                    title: "角色",
-                    dataIndex: "role",
-                    render: (value) => valueText(value),
-                  },
-                  {
-                    title: "学号/工号",
-                    dataIndex: "employeeNo",
-                    render: (value) => valueText(value),
-                  },
-                  {
-                    title: "院系/部门",
-                    dataIndex: "departmentName",
-                    render: (value) => valueText(value),
-                  },
-                  {
-                    title: "自定义资料",
-                    dataIndex: "extraValues",
-                    render: (value) => valueText(value),
-                  },
-                  {
-                    title: "备注",
-                    dataIndex: "remark",
-                    render: (value) => valueText(value),
-                  },
-                ]}
+                columns={memberColumns}
               />
-            </Card>
-            <Card size="small" title={`阶段材料（${materials.length} 次提交）`}>
+            </DetailSection>
+            <DetailSection title={`阶段材料（${materials.length} 次提交）`}>
               {materials.length ? (
                 materials.map((submission) => (
                   <Card
@@ -801,8 +1046,9 @@ const CompetitionRegistrationDataPage = () => {
                     }
                     extra={<Tag color="green">{submission.status}</Tag>}
                   >
-                    <Table<CompetitionMaterialValueRecord>
+                    <DataTable<CompetitionMaterialValueRecord>
                       rowKey="id"
+                      isMobile={responsive.isMobile}
                       size="small"
                       pagination={false}
                       dataSource={submission.values || []}
@@ -852,7 +1098,7 @@ const CompetitionRegistrationDataPage = () => {
                   description="暂未提交阶段材料"
                 />
               )}
-            </Card>
+            </DetailSection>
           </Space>
         ) : detailLoading ? null : (
           <Empty description="未能加载报名资料" />

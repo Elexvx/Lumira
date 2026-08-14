@@ -13,13 +13,11 @@ import com.lumira.team.repository.TeamRepository;
 import com.lumira.team.vo.TeamVO;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.context.annotation.Primary;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service("teamInternalApi")
-@Primary
 public class TeamInternalApiService implements TeamInternalApi {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository memberRepository;

@@ -22,7 +22,7 @@ vi.mock('@/features/management/ManagementPageBody', () => ({
 import { CompetitionWorkspacePageFrame } from './CompetitionWorkspacePageFrame';
 
 describe('CompetitionWorkspacePageFrame', () => {
-  it('uses the shared embedded table frame without nesting a page container', () => {
+  it('uses the shared embedded table frame with a flat page introduction', () => {
     const markup = renderToStaticMarkup(
       <CompetitionWorkspacePageFrame embeddedInWorkspace title="Workspace table" workspaceVariant="table">
         <div>table</div>
@@ -31,7 +31,8 @@ describe('CompetitionWorkspacePageFrame', () => {
 
     expect(markup).toContain('competition-workspace-module-page--table');
     expect(markup).not.toContain('data-management-page');
-    expect(markup).not.toContain('competition-workspace-module-page__toolbar');
+    expect(markup).toContain('competition-workspace-module-page__toolbar');
+    expect(markup).toContain('Workspace table');
   });
 
   it('keeps required actions in a reusable embedded toolbar', () => {

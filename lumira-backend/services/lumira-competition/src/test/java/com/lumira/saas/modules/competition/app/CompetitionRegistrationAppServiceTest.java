@@ -303,6 +303,57 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void createRegistrationEnforcesConfiguredIdentityCardRuleOnTheServer() {
+        RegistrationSql sql = new RegistrationSql();
+        Map<String, Object> identityCard = configField("REGISTRATION_FIELD", "identityCard", "身份证号", "TEXT", true);
+        identityCard.put("contentJson", "{\"fieldType\":\"TEXT\",\"validationRule\":\"ID_CARD\"}");
+        sql.collectionFieldRows.add(identityCard);
+        CompetitionRegistrationDTO.RegistrationCreateRequest invalid = inlineRegistrationRequest();
+        invalid.setRegistrationExtraValues(Map.of("identityCard", "123"));
+
+        assertThatThrownBy(() -> service(sql, teamApiRejectingLookup()).createRegistration(student(), invalid))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getMessage()).contains("身份证号"));
+
+        CompetitionRegistrationDTO.RegistrationCreateRequest valid = inlineRegistrationRequest();
+        valid.setRegistrationExtraValues(Map.of("identityCard", "110101200001011234"));
+        CompetitionRegistrationVO.Registration registration = service(sql, teamApiRejectingLookup())
+                .createRegistration(student(), valid);
+
+        assertThat(registration.getRegistrationSnapshotJson()).contains("110101200001011234");
+    }
+
+    @Test
+    void createRegistrationEnforcesSafeMinimumRulesForProtectedFields() {
+        RegistrationSql unsafeTeamSql = new RegistrationSql();
+        CompetitionRegistrationDTO.RegistrationCreateRequest unsafeTeam = inlineRegistrationRequest();
+        unsafeTeam.getTeamSnapshot().setTeamName("大噶地方刮大风官方阿哥十多个a'f'd'g");
+        assertThatThrownBy(() -> service(unsafeTeamSql, teamApiRejectingLookup())
+                .createRegistration(student(), unsafeTeam))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getMessage()).contains("团队名称"));
+
+        RegistrationSql unsafeMemberSql = new RegistrationSql();
+        CompetitionRegistrationDTO.RegistrationCreateRequest unsafeMember = inlineRegistrationRequest();
+        unsafeMember.getMembers().getFirst().setMemberName("Alice 1");
+        assertThatThrownBy(() -> service(unsafeMemberSql, teamApiRejectingLookup())
+                .createRegistration(student(), unsafeMember))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getMessage()).contains("成员姓名"));
+
+        RegistrationSql unsafeProjectSql = new RegistrationSql();
+        CompetitionRegistrationDTO.RegistrationCreateRequest unsafeProject = inlineRegistrationRequest();
+        unsafeProject.setProjectId(null);
+        CompetitionRegistrationDTO.ProjectSnapshotRequest projectSnapshot = new CompetitionRegistrationDTO.ProjectSnapshotRequest();
+        projectSnapshot.setTitle("Project ^ unsafe");
+        unsafeProject.setProjectSnapshot(projectSnapshot);
+        assertThatThrownBy(() -> service(unsafeProjectSql, teamApiRejectingLookup())
+                .createRegistration(student(), unsafeProject))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getMessage()).contains("项目名称"));
+    }
+
+    @Test
     void confirmRegistrationAutoConfirmsZeroFeeWithoutPaymentOrder() {
         RegistrationSql sql = new RegistrationSql();
         sql.competitionEntryFeeMinor = 0L;
@@ -1764,6 +1815,70 @@ class CompetitionRegistrationAppServiceTest {
         assertThat(record.getOrderNo()).isEqualTo("REG-1-ORPHAN");
         assertThat(record.getPaymentStatus()).isEqualTo("PENDING_PAYMENT");
         assertThat(record.getAmountMinor()).isEqualTo(8_800L);
+    }
+
+    @Test
+    void listPaymentRecordsKeepsHistoricalRowWhenPaymentOwnerIsDisabled() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "CONFIRMED", "REG-1-HISTORICAL", 8_800L);
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("registrationId", 1L);
+        row.put("registrationNo", "REG-TEST");
+        row.put("competitionId", 11L);
+        row.put("teamId", 21L);
+        row.put("projectId", 31L);
+        row.put("ownerUserId", 1001L);
+        row.put("registrationStatus", "CONFIRMED");
+        row.put("payableAmountMinor", 8_800L);
+        row.put("orderNo", "REG-1-HISTORICAL");
+        row.put("amountMinor", 8_800L);
+        row.put("currency", "CNY");
+        row.put("paymentStatus", "CONFIRMED");
+        sql.paymentRecordRows = List.of(row);
+        PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(new SystemUserSnapshotDTO(
+                1001L,
+                "user-uuid-1001",
+                "student",
+                null,
+                "DISABLED",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        CompetitionRegistrationAppService service = service(
+                sql,
+                teamApiWithMembers(1001L, 1),
+                paymentInternalApi,
+                null,
+                null,
+                systemInternalApi
+        );
+
+        PageResponse<CompetitionRegistrationVO.PaymentRecord> page = service.listPaymentRecords(
+                paymentAdmin(),
+                1,
+                10,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThat(page.getTotal()).isEqualTo(1);
+        assertThat(page.getRecords()).hasSize(1);
+        assertThat(page.getRecords().getFirst().getOrderNo()).isEqualTo("REG-1-HISTORICAL");
+        assertThat(page.getRecords().getFirst().getPaymentStatus()).isEqualTo("CONFIRMED");
+        verifyNoInteractions(paymentInternalApi);
     }
 
     @Test

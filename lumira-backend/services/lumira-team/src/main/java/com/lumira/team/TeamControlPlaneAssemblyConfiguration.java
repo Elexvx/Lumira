@@ -1,6 +1,7 @@
 package com.lumira.team;
 
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
+import com.lumira.team.app.InProcessTeamInternalApiAdapter;
 import com.lumira.team.app.TeamAppService;
 import com.lumira.team.app.TeamInternalApiService;
 import com.lumira.team.app.TeamInviteService;
@@ -33,6 +34,7 @@ import org.springframework.context.annotation.Import;
         SystemOwnerTeamAuditPort.class,
         TeamAppService.class,
         TeamInternalApiService.class,
+        InProcessTeamInternalApiAdapter.class,
         TeamInviteService.class,
         TeamPermissionService.class,
         InternalTeamController.class,

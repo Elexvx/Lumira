@@ -1013,7 +1013,7 @@ export const useRoleManagementPageData = () => {
     },
     [roleCrud],
   );
-  const openDetail = async (record: RoleRecord) => {
+  const openDetail = useCallback(async (record: RoleRecord) => {
     roleCrud.detail.openDetail(record);
     roleCrud.detail.setLoading(true);
     try {
@@ -1026,7 +1026,7 @@ export const useRoleManagementPageData = () => {
     } finally {
       roleCrud.detail.setLoading(false);
     }
-  };
+  }, [roleCrud]);
   const roleActions = {
     selectedRoleDetail,
     roleEditorMode,
@@ -1058,24 +1058,30 @@ export const useRoleManagementPageData = () => {
     [permissionEditor.pageTreeData, permissionEditor.permissionCatalogMap, selectedRoleDetail?.permissionKeys],
   );
   const defaultHomeOptions = useMemo(() => collectDefaultHomeOptions(permissionEditor.pageTreeData), [permissionEditor.pageTreeData]);
-  const columns = [
-    ...roleDataColumns,
-    buildRoleActionColumn({
-      isDesktop: responsive.isDesktop,
-      isMobile: responsive.isMobile,
-      buildRowActions: actionPermission.buildTableActions,
-      onOpenDetail: (record) => void openDetail(record),
-      onOpenEdit: (record) => void openEdit(record),
-      onOpenPermissions: (record) => void openEdit(record, 'permissions'),
-      onDelete: roleActions.deleteRole,
-    }),
-  ];
-  const tableRequest = buildTableRequest((params) =>
-    request<PagedResult<RoleRecord>>('/v1/system/roles', {
-      method: 'GET',
-      params,
-      ...API_OPTS.NO_REDIRECT,
-    }),
+  const columns = useMemo(
+    () => [
+      ...roleDataColumns,
+      buildRoleActionColumn({
+        isDesktop: responsive.isDesktop,
+        isMobile: responsive.isMobile,
+        buildRowActions: actionPermission.buildTableActions,
+        onOpenDetail: (record) => void openDetail(record),
+        onOpenEdit: (record) => void openEdit(record),
+        onOpenPermissions: (record) => void openEdit(record, 'permissions'),
+        onDelete: deleteRole,
+      }),
+    ],
+    [actionPermission.buildTableActions, deleteRole, openDetail, openEdit, responsive.isDesktop, responsive.isMobile],
+  );
+  const tableRequest = useMemo(
+    () => buildTableRequest((params) =>
+      request<PagedResult<RoleRecord>>('/v1/system/roles', {
+        method: 'GET',
+        params,
+        ...API_OPTS.NO_REDIRECT,
+      }),
+    ),
+    [],
   );
 
   return {
