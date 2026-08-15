@@ -1955,8 +1955,8 @@
       "sourceType": "ROUTE",
       "sourceRef": "src/locales/zh-CN/nav.ts",
       "translations": {
-        "zh-CN": "跨赛事评审工作台",
-        "en-US": "Cross-competition Review Workbench"
+        "zh-CN": "我的评审",
+        "en-US": "My Reviews"
       }
     },
     {

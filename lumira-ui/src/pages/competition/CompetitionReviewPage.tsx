@@ -25,14 +25,16 @@ import {
   Select,
   Space,
   Statistic,
-  Tabs,
   Tag,
   Typography,
 } from 'antd';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
+import { ManagementTable } from '@/features/management/ManagementTable';
 import { DataTable } from '@/features/table/DataTable';
+import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useResponsive } from '@/hooks/useResponsive';
 import {
   listCompetitionWorkspaceStages,
@@ -106,6 +108,7 @@ import type {
   ReviewAdminAssignment,
   ReviewAggregate,
   ReviewAppeal,
+  ReviewAssignmentStatus,
   ReviewAssignmentTask,
   ReviewBatch,
   ReviewCandidate,
@@ -116,7 +119,11 @@ import type {
   ReviewRosterExpert,
   ReviewSheetPayload,
 } from '@/services/review/types';
-import { shouldReloadReviewPlans, shouldShowGlobalExpertTasks } from './reviewWorkspaceBehavior';
+import {
+  shouldReloadReviewPlans,
+  shouldShowGlobalExpertTasks,
+  shouldShowReviewAdminWorkbench,
+} from './reviewWorkspaceBehavior';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
@@ -176,6 +183,10 @@ const assignmentStatusLabels: Record<string, { color: string; text: string }> = 
   REVOKED: { color: 'default', text: '已撤回' },
 };
 
+const assignmentStatusValueEnum = Object.fromEntries(
+  Object.entries(assignmentStatusLabels).map(([value, item]) => [value, { text: item.text }]),
+);
+
 const appealStatusLabels: Record<string, { color: string; text: string }> = {
   SUBMITTED: { color: 'processing', text: '待处理' },
   ACCEPTED: { color: 'success', text: '申诉成立' },
@@ -201,6 +212,35 @@ const statusTag = (status: string, dictionary: Record<string, { color: string; t
   const item = dictionary[status] || { color: 'default', text: status };
   return <Tag color={item.color}>{item.text}</Tag>;
 };
+
+const normalizeReviewTaskKeyword = (value: unknown) => (
+  typeof value === 'string' ? value.trim().toLocaleLowerCase() : ''
+);
+
+const reviewTaskTableRequest = buildTableRequest<ReviewAssignmentTask>(async (params) => {
+  const tasks = await listMyReviewAssignments();
+  const batchKeyword = normalizeReviewTaskKeyword(params.batchName);
+  const candidateKeyword = normalizeReviewTaskKeyword(params.blindCode);
+  const status = typeof params.assignmentStatus === 'string'
+    ? params.assignmentStatus as ReviewAssignmentStatus
+    : undefined;
+  const filteredTasks = tasks.filter((task) => {
+    const candidateLabel = `${task.blindCode || ''} 候选 #${task.candidateId}`.toLocaleLowerCase();
+    return (
+      (!batchKeyword || task.batchName.toLocaleLowerCase().includes(batchKeyword))
+      && (!candidateKeyword || candidateLabel.includes(candidateKeyword))
+      && (!status || task.assignmentStatus === status)
+    );
+  });
+  const pageNo = Math.max(1, Number(params.pageNo) || 1);
+  const pageSize = Math.max(1, Number(params.pageSize) || 10);
+  const start = (pageNo - 1) * pageSize;
+
+  return {
+    records: filteredTasks.slice(start, start + pageSize),
+    total: filteredTasks.length,
+  };
+});
 
 const parseSnapshot = (value?: string | null): Record<string, unknown> => {
   if (!value?.trim()) return {};
@@ -1764,27 +1804,15 @@ const ExpertTaskWorkbench = () => {
   const responsive = useResponsive();
   const [scoreForm] = Form.useForm<ScoreFormValues>();
   const [declineForm] = Form.useForm<{ reason: string }>();
-  const [tasks, setTasks] = useState<ReviewAssignmentTask[]>([]);
-  const [loading, setLoading] = useState(false);
+  const actionRef = useRef<ActionType | undefined>(undefined);
   const [actionLoading, setActionLoading] = useState<string>();
   const [activeTask, setActiveTask] = useState<ReviewAssignmentTask>();
   const [declineTask, setDeclineTask] = useState<ReviewAssignmentTask>();
   const canScore = access.hasPermission('review:score:submit');
 
   const loadTasks = useCallback(async () => {
-    setLoading(true);
-    try {
-      setTasks(await listMyReviewAssignments());
-    } catch (error) {
-      showErrorMessage(error, '我的评审任务加载失败');
-    } finally {
-      setLoading(false);
-    }
+    await actionRef.current?.reload();
   }, []);
-
-  useEffect(() => {
-    void loadTasks();
-  }, [loadTasks]);
 
   const runTaskAction = async (
     key: string,
@@ -1847,29 +1875,41 @@ const ExpertTaskWorkbench = () => {
     setDeclineTask(undefined);
   };
 
-  const columns: ColumnsType<ReviewAssignmentTask> = [
-    { title: '评审批次', dataIndex: 'batchName', width: 200 },
+  const columns: ProColumns<ReviewAssignmentTask>[] = [
+    {
+      title: '评审批次',
+      dataIndex: 'batchName',
+      width: 200,
+      fieldProps: { placeholder: '输入评审批次' },
+    },
     {
       title: '候选编号',
+      dataIndex: 'blindCode',
       width: 150,
+      fieldProps: { placeholder: '输入候选编号' },
       render: (_, record) => record.blindCode || `候选 #${record.candidateId}`,
     },
     {
       title: '状态',
       dataIndex: 'assignmentStatus',
+      valueType: 'select',
+      valueEnum: assignmentStatusValueEnum,
       width: 110,
-      render: (value) => statusTag(value, assignmentStatusLabels),
+      render: (_, record) => statusTag(record.assignmentStatus, assignmentStatusLabels),
     },
-    { title: '截止时间', dataIndex: 'dueAt', width: 180, render: (value) => value || '-' },
+    { title: '截止时间', dataIndex: 'dueAt', search: false, width: 180, render: (value) => value || '-' },
     {
       title: '最新得分',
       dataIndex: 'latestTotalScore',
+      search: false,
       width: 100,
       render: (value) => value ?? '-',
     },
     {
       title: '操作',
       width: 250,
+      search: false,
+      valueType: 'option',
       fixed: 'right',
       render: (_, record) => (
         <Space>
@@ -1912,20 +1952,21 @@ const ExpertTaskWorkbench = () => {
 
   return (
     <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-      <Card
-        title="我的评审任务"
-        extra={<Button icon={<ReloadOutlined />} loading={loading} onClick={() => void loadTasks()}>刷新</Button>}
-      >
-        <DataTable
-          rowKey="assignmentId"
-          isMobile={responsive.isMobile}
-          loading={loading}
-          columns={columns}
-          dataSource={tasks}
-          scroll={{ x: 950 }}
-          pagination={{ pageSize: 10 }}
-        />
-      </Card>
+      <ManagementTable<ReviewAssignmentTask>
+        actionRef={actionRef}
+        rowKey="assignmentId"
+        columns={columns}
+        isMobile={responsive.isMobile}
+        scroll={{ x: 950 }}
+        request={reviewTaskTableRequest}
+        search={{ defaultCollapsed: true }}
+        pagination={{ pageSize: 10, showSizeChanger: true }}
+        toolBarRender={() => [
+          <Button key="refresh" icon={<ReloadOutlined />} onClick={() => void loadTasks()}>
+            刷新
+          </Button>,
+        ]}
+      />
 
       <Modal
         title={`评审评分 · ${activeTask?.blindCode || `候选 #${activeTask?.candidateId || ''}`}`}
@@ -2010,14 +2051,14 @@ const CompetitionReviewPage = () => {
   const canAdmin = REVIEW_ADMIN_PERMISSIONS.some((permission) => access.hasPermission(permission));
   const canViewTasks = access.hasPermission('review:task:view');
   const items = [
-    ...(canAdmin ? [{
+    ...(shouldShowReviewAdminWorkbench(canAdmin, Boolean(workspace)) ? [{
       key: 'admin',
       label: '评审管理',
       children: <ReviewAdminWorkbench />,
     }] : []),
     ...(shouldShowGlobalExpertTasks(canViewTasks, Boolean(workspace)) ? [{
       key: 'mine',
-      label: '我的评审任务',
+      label: '我的评审',
       children: <ExpertTaskWorkbench />,
     }] : []),
   ];
@@ -2025,14 +2066,12 @@ const CompetitionReviewPage = () => {
   return (
     <CompetitionWorkspacePageFrame
       embeddedInWorkspace={Boolean(workspace)}
-      title={workspace ? '评审' : '跨赛事评审工作台'}
+      title={workspace ? '评审' : '我的评审'}
       showWorkspaceHeader={Boolean(workspace)}
       workspaceVariant="content"
     >
       {items.length
-        ? workspace && items.length === 1
-          ? items[0].children
-          : <Tabs items={items} />
+        ? items[0].children
         : <Empty description="当前角色没有评审操作权限，请联系管理员配置角色权限。" />}
     </CompetitionWorkspacePageFrame>
   );

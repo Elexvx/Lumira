@@ -63,9 +63,9 @@ describe('route meta', () => {
     });
   });
 
-  it('registers the review workbench independently from workflow approvals', () => {
+  it('registers the reviewer task page independently from workflow approvals', () => {
     expect(realPageRouteMetaMap.get('/expert-review/reviews')?.access)
-      .toBe('canVisitReviewWorkbench');
+      .toBe('canVisitReviewTasks');
   });
 
   it('keeps expert management and expert application in the unified review navigation', () => {

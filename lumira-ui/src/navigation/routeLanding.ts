@@ -12,11 +12,14 @@ export const resolveDataManagementLandingPath = (access: unknown) => resolveFirs
   ['canVisitCompetitions', '/competitions/management'],
   ['canVisitActivities', '/activities/management'],
   ['canVisitPaymentOrders', '/payments/management'],
+  ['canVisitCertificateTemplates', '/certificates/templates'],
+  ['canVisitCertificateGenerate', '/certificates/generate'],
+  ['canVisitCertificateRecords', '/certificates/records'],
   ['canVisitDownloadCenter', '/data-management/download-center'],
 ]);
 
 export const resolveExpertReviewLandingPath = (access: unknown) => resolveFirstAccessiblePath(access, [
-  ['canVisitReviewWorkbench', '/expert-review/reviews'],
+  ['canVisitReviewTasks', '/expert-review/reviews'],
   ['canVisitExperts', '/experts/management'],
 ]);
 

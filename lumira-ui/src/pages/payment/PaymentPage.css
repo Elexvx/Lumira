@@ -1,12 +1,3 @@
-.payment-record-title {
-  width: 100%;
-  max-width: 210px;
-}
-
-.payment-record-title .ant-typography {
-  margin: 0;
-}
-
 .payment-detail-descriptions .ant-descriptions-item-label {
   white-space: nowrap;
 }

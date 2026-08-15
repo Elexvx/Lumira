@@ -581,6 +581,27 @@ class FileManagementAppServiceTest {
     }
 
     @Test
+    void getPreviewableFile_shouldScanPendingDownloadCenterContentBeforeReturning() {
+        FileObjectEntity pending = fileObjectEntity(88L, "pending.pdf", "2026/08/pending.pdf");
+        pending.setFileExtension("pdf");
+        pending.setContentType("application/pdf");
+        pending.setPreviewMode("PDF");
+        pending.setStatus("PENDING_SCAN");
+        when(fileObjectMapper.selectOne(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileObjectEntity>>any()))
+                .thenReturn(pending);
+        when(fileSecurityScanProcessor.scan(88L, 11L, "user-uuid-11")).thenAnswer(invocation -> {
+            pending.setStatus("CLEAN");
+            return new FileSecurityScanProcessor.SecurityScanResult(88L, "TEST", "CLEAN", "", 128L);
+        });
+
+        FileObjectDTO preview = service.getPreviewableFile(currentUser(), 88L, true, true);
+
+        assertThat(preview.status()).isEqualTo("CLEAN");
+        assertThat(preview.previewUrl()).isEqualTo("/api/uploads/2026/08/pending.pdf");
+        verify(fileSecurityScanProcessor).scan(88L, 11L, "user-uuid-11");
+    }
+
+    @Test
     void listStorageSpaceOptions_shouldAllowCompetitionEditorsAndHideSystemManagedCompetitionBuckets() {
         CurrentUser currentUser = currentUser("aiadc:competition:update");
         when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(

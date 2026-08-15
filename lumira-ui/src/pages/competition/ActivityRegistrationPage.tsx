@@ -1,12 +1,13 @@
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Button, Card, Descriptions, Form, Input, Result, Select, Space, Steps, Tag, Typography } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { history, useLocation } from '@umijs/max';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { DataTable } from '@/features/table/DataTable';
+import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useResponsive } from '@/hooks/useResponsive';
 import { createActivityRegistration, listActivityRegistrations, listPublicActivities } from '@/services/activity/api';
 import type { ActivityRegistrationRecord as ActivityApplicationRecord, PublicActivityRecord } from '@/services/activity/types';
@@ -21,6 +22,14 @@ type ActivityRegistrationValues = {
   organization?: string;
   position?: string;
   remark?: string;
+};
+
+type ActivityRegistrationFilterValues = {
+  applicationNo?: string;
+  activityTitle?: string;
+  name?: string;
+  mobile?: string;
+  status?: ActivityApplicationRecord['status'];
 };
 
 const activityRegistrationModeQueryKey = 'mode';
@@ -47,49 +56,99 @@ const createActivityRegistrationSearch = (stepIndex: number) => {
   return `?${params.toString()}`;
 };
 
+const activityRegistrationBreadcrumb = {
+  items: [{ title: '活动报名' }],
+};
+
 const formatDateTime = (value?: string) => (value ? value.replace('T', ' ').slice(0, 19) : '-');
 
-const activityRegistrationColumns: ColumnsType<ActivityApplicationRecord> = [
+const activityRegistrationColumns: ProColumns<ActivityApplicationRecord>[] = [
   {
     title: '报名编号',
     dataIndex: 'applicationNo',
-    render: (value: string) => <Typography.Text strong>{value}</Typography.Text>,
+    width: 190,
+    fieldProps: {
+      placeholder: 'Registration No.',
+    },
+    render: (_, record) => (
+      <Typography.Text strong ellipsis={{ tooltip: record.applicationNo }}>
+        {record.applicationNo}
+      </Typography.Text>
+    ),
   },
   {
     title: '活动',
     dataIndex: 'activityTitle',
+    fieldProps: {
+      placeholder: '请输入活动名称',
+    },
+    ellipsis: true,
   },
   {
     title: '报名人',
     dataIndex: 'name',
-    render: (value?: string) => value || '-',
+    width: 130,
+    fieldProps: {
+      placeholder: '请输入报名人',
+    },
+    render: (_, record) => record.name || '-',
   },
   {
     title: '手机号',
     dataIndex: 'mobile',
-    render: (value?: string) => value || '-',
+    width: 150,
+    fieldProps: {
+      placeholder: '请输入手机号',
+    },
+    render: (_, record) => record.mobile || '-',
   },
   {
     title: '状态',
     dataIndex: 'status',
+    valueType: 'select',
+    valueEnum: {
+      SUBMITTED: { text: '已提交' },
+    },
+    width: 110,
     render: () => <Tag color="success">已提交</Tag>,
   },
   {
     title: '提交时间',
     dataIndex: 'submittedAt',
-    render: formatDateTime,
+    width: 172,
+    render: (_, record) => formatDateTime(record.submittedAt),
   },
 ];
+
+const normalizeFilterValue = (value?: string) => value?.trim().toLocaleLowerCase() || '';
+
+const filterActivityRegistrations = (
+  records: ActivityApplicationRecord[],
+  filters: ActivityRegistrationFilterValues,
+) => {
+  const applicationNo = normalizeFilterValue(filters.applicationNo);
+  const activityTitle = normalizeFilterValue(filters.activityTitle);
+  const name = normalizeFilterValue(filters.name);
+  const mobile = normalizeFilterValue(filters.mobile);
+
+  return records.filter((record) => (
+    (!applicationNo || record.applicationNo.toLocaleLowerCase().includes(applicationNo))
+      && (!activityTitle || record.activityTitle.toLocaleLowerCase().includes(activityTitle))
+      && (!name || record.name.toLocaleLowerCase().includes(name))
+      && (!mobile || record.mobile?.toLocaleLowerCase().includes(mobile))
+      && (!filters.status || record.status === filters.status)
+  ));
+};
 
 const ActivityRegistrationPage = () => {
   const location = useLocation();
   const responsive = useResponsive();
   const actionPermission = useActionPermission();
+  const actionRef = useRef<ActionType | undefined>(undefined);
   const [form] = Form.useForm<ActivityRegistrationValues>();
   const [viewMode, setViewMode] = useState<'list' | 'wizard'>('list');
   const [step, setStep] = useState(0);
   const [activities, setActivities] = useState<PublicActivityRecord[]>([]);
-  const [records, setRecords] = useState<ActivityApplicationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [applicationNo, setApplicationNo] = useState<string>();
   const [selectedActivityId, setSelectedActivityId] = useState<number>();
@@ -123,25 +182,42 @@ const ActivityRegistrationPage = () => {
     setWizardStep(0, false);
   }, [form, setWizardStep]);
 
-  useEffect(() => {
-    const loadActivities = async () => {
-      setLoading(true);
-      try {
-        const [activityResponse, registrationResponse] = await Promise.all([
-          listPublicActivities({ status: 'published', pageNo: 1, pageSize: 100 }),
-          listActivityRegistrations(),
-        ]);
-        setActivities(activityResponse.records);
-        setRecords(registrationResponse);
-      } catch (error) {
-        showErrorMessage(error, '活动列表加载失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void loadActivities();
+  const loadPage = useCallback(async () => {
+    setLoading(true);
+    try {
+      const activityResponse = await listPublicActivities({ status: 'published', pageNo: 1, pageSize: 100 });
+      setActivities(activityResponse.records);
+    } catch (error) {
+      showErrorMessage(error, '活动列表加载失败');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadPage();
+  }, [loadPage]);
+
+  const activityRegistrationTableRequest = useMemo(
+    () => buildTableRequest<ActivityApplicationRecord>(async (params) => {
+      const registrationResponse = await listActivityRegistrations();
+      const filteredRecords = filterActivityRegistrations(registrationResponse, {
+        applicationNo: typeof params.applicationNo === 'string' ? params.applicationNo : undefined,
+        activityTitle: typeof params.activityTitle === 'string' ? params.activityTitle : undefined,
+        name: typeof params.name === 'string' ? params.name : undefined,
+        mobile: typeof params.mobile === 'string' ? params.mobile : undefined,
+        status: params.status === 'SUBMITTED' ? 'SUBMITTED' : undefined,
+      });
+      const pageNo = Math.max(1, Number(params.pageNo) || 1);
+      const pageSize = Math.max(1, Number(params.pageSize) || 10);
+      const start = (pageNo - 1) * pageSize;
+      return {
+        records: filteredRecords.slice(start, start + pageSize),
+        total: filteredRecords.length,
+      };
+    }),
+    [],
+  );
 
   useEffect(() => {
     const requestedStep = parseActivityRegistrationStepFromSearch(location.search);
@@ -176,7 +252,6 @@ const ActivityRegistrationPage = () => {
       activityId: values.activityId!, name: values.name!, mobile: values.mobile, email: values.email,
       organization: values.organization, position: values.position, remark: values.remark,
     });
-    setRecords((current) => [created, ...current]);
     setApplicationNo(created.applicationNo);
     message.success('活动报名已提交');
     setWizardStep(3);
@@ -186,36 +261,40 @@ const ActivityRegistrationPage = () => {
 
   if (viewMode === 'list') {
     return (
-      <ManagementPage title="活动报名" extra={<Button onClick={() => history.push('/activities/management')}>返回活动管理</Button>}>
+      <ManagementPage title="活动报名" breadcrumb={activityRegistrationBreadcrumb}>
         <ManagementPageBody>
-          <Card>
-            <DataTable<ActivityApplicationRecord>
-              rowKey="id"
-              columns={activityRegistrationColumns}
-              dataSource={records}
-              isMobile={responsive.isMobile}
-              pagination={{ pageSize: 10, showSizeChanger: true }}
-              title={() => (
-                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    活动报名记录
-                  </Typography.Title>
-                  {canCreateActivityRegistration ? (
-                    <Button type="primary" icon={<PlusOutlined />} onClick={startNewRegistration}>
-                      新增报名
-                    </Button>
-                  ) : null}
-                </Space>
-              )}
-            />
-          </Card>
+          <ManagementTable<ActivityApplicationRecord>
+            actionRef={actionRef}
+            rowKey="id"
+            columns={activityRegistrationColumns}
+            isMobile={responsive.isMobile}
+            autoContentWidth
+            scroll={{ x: 'max-content' }}
+            tableLayout="auto"
+            request={activityRegistrationTableRequest}
+            pagination={{ pageSize: 10, showSizeChanger: true }}
+            toolBarRender={() => [
+              <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reload()}>
+                刷新
+              </Button>,
+              ...(canCreateActivityRegistration ? [
+                <Button key="create" type="primary" icon={<PlusOutlined />} onClick={startNewRegistration}>
+                  新增报名
+                </Button>,
+              ] : []),
+            ]}
+          />
         </ManagementPageBody>
       </ManagementPage>
     );
   }
 
   return (
-    <ManagementPage title="活动报名" extra={<Button onClick={showList}>返回报名记录</Button>}>
+    <ManagementPage
+      title="活动报名"
+      breadcrumb={activityRegistrationBreadcrumb}
+      extra={<Button onClick={showList}>返回报名记录</Button>}
+    >
       <ManagementPageBody>
         <Card className="competition-application-card">
           <Steps

@@ -251,6 +251,7 @@ public class FileManagementAppService {
 
     public FileObjectDTO getPreviewableFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
         FileObjectDTO file = getFile(currentUser, fileId, sharedScope, downloadCenterScope);
+        file = ensureDownloadCenterContentReady(currentUser, file, sharedScope, downloadCenterScope);
         requireContentAccessible(file);
         if (!Boolean.TRUE.equals(file.previewable()) || "UNSUPPORTED".equalsIgnoreCase(file.previewMode())) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前文件不支持在线预览");
@@ -820,6 +821,7 @@ public class FileManagementAppService {
                 sharedScope,
                 downloadCenterScope
         );
+        file = ensureDownloadCenterContentReady(currentUser, file, sharedScope, downloadCenterScope);
         requireContentAccessible(file);
         Path target = resolveFilePath(file);
         if (target == null) {
@@ -1200,6 +1202,52 @@ public class FileManagementAppService {
         if (file == null || !FileObjectSecurityStatus.isContentAccessible(file.status())) {
             throw visibleBizException(ErrorCode.FORBIDDEN, "File content is unavailable until its security scan passes");
         }
+    }
+
+    /**
+     * The native monolith intentionally runs without the asynchronous worker by default. Download-center
+     * files uploaded in that mode must still be scanned when the user first requests their content; otherwise
+     * a file can remain in PENDING_SCAN forever even though the configured scanner is available.
+     *
+     * This method never makes content readable without a scanner verdict. Failed or rejected scans continue
+     * through requireContentAccessible and remain blocked.
+     */
+    private FileObjectDTO ensureDownloadCenterContentReady(
+            CurrentUser currentUser,
+            FileObjectDTO file,
+            boolean sharedScope,
+            boolean downloadCenterScope
+    ) {
+        if (!downloadCenterScope
+                || file == null
+                || FileObjectSecurityStatus.isContentAccessible(file.status())
+                || !isRetryableSecurityScanStatus(file.status())
+                || file.id() == null
+                || file.uploadedBy() == null
+                || file.uploadedBy() <= 0
+                || !StringUtils.hasText(file.uploadedByUuid())) {
+            return file;
+        }
+
+        FileSecurityScanProcessor processor = securityScanProcessorProvider == null
+                ? null
+                : securityScanProcessorProvider.getIfAvailable();
+        if (processor == null) {
+            return file;
+        }
+
+        try {
+            processor.scan(file.id(), file.uploadedBy(), file.uploadedByUuid());
+            return getFile(currentUser, file.id(), sharedScope, true);
+        } catch (RuntimeException exception) {
+            log.warn("Download-center file content scan failed fileId={}", file.id(), exception);
+            return file;
+        }
+    }
+
+    private boolean isRetryableSecurityScanStatus(String status) {
+        return FileObjectSecurityStatus.PENDING_SCAN.equalsIgnoreCase(status)
+                || FileObjectSecurityStatus.FAILED.equalsIgnoreCase(status);
     }
 
     private FileObjectRepository.Access resolveFileAccess(TrustedCurrentUser actor, boolean sharedScopeRequested, boolean downloadCenterScope) {

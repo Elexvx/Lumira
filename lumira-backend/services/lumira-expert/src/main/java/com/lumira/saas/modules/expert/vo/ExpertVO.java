@@ -9,6 +9,7 @@ public final class ExpertVO {
     public static class Expert {
         private Long id;
         private String code;
+        private String competitionUuid;
         private String name;
         private String title;
         private String organization;
@@ -30,6 +31,7 @@ public final class ExpertVO {
         private String approvalStatus;
         private Long approvalInstanceId;
         private Integer sort;
+        private String extraValuesJson;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -37,6 +39,8 @@ public final class ExpertVO {
         public void setId(Long id) { this.id = id; }
         public String getCode() { return code; }
         public void setCode(String code) { this.code = code; }
+        public String getCompetitionUuid() { return competitionUuid; }
+        public void setCompetitionUuid(String competitionUuid) { this.competitionUuid = competitionUuid; }
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
         public String getTitle() { return title; }
@@ -79,6 +83,8 @@ public final class ExpertVO {
         public void setApprovalInstanceId(Long approvalInstanceId) { this.approvalInstanceId = approvalInstanceId; }
         public Integer getSort() { return sort; }
         public void setSort(Integer sort) { this.sort = sort; }
+        public String getExtraValuesJson() { return extraValuesJson; }
+        public void setExtraValuesJson(String extraValuesJson) { this.extraValuesJson = extraValuesJson; }
         public LocalDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
         public LocalDateTime getUpdatedAt() { return updatedAt; }

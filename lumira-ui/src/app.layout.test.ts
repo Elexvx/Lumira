@@ -77,4 +77,41 @@ describe('filterRetiredMainMenuNodes', () => {
       },
     ]);
   });
+
+  it('moves legacy certificate administration into data management', () => {
+    const menuTree = [
+      {
+        menuCode: 'data.management.root',
+        path: '/data-management',
+        id: 1100,
+        children: [
+          { menuCode: 'download.center', path: '/data-management/download-center', id: 956 },
+        ],
+      },
+      {
+        menuCode: 'certificate.root',
+        path: '/certificates',
+        id: 1079,
+        children: [
+          { menuCode: 'certificate.templates', path: '/certificates/templates', id: 1080 },
+          { menuCode: 'certificate.generate', path: '/certificates/generate', id: 1081 },
+          { menuCode: 'certificate.records', path: '/certificates/records', id: 1082 },
+        ],
+      },
+    ] as MenuNode[];
+
+    expect(filterRetiredMainMenuNodes(menuTree)).toEqual([
+      {
+        menuCode: 'data.management.root',
+        path: '/data-management',
+        id: 1100,
+        children: [
+          { menuCode: 'download.center', path: '/data-management/download-center', id: 956 },
+          { menuCode: 'certificate.templates', path: '/certificates/templates', id: 1080, parentId: 1100 },
+          { menuCode: 'certificate.generate', path: '/certificates/generate', id: 1081, parentId: 1100 },
+          { menuCode: 'certificate.records', path: '/certificates/records', id: 1082, parentId: 1100 },
+        ],
+      },
+    ]);
+  });
 });

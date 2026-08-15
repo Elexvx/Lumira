@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { shouldReloadReviewPlans, shouldShowGlobalExpertTasks } from './reviewWorkspaceBehavior';
+import {
+  shouldReloadReviewPlans,
+  shouldShowGlobalExpertTasks,
+  shouldShowReviewAdminWorkbench,
+} from './reviewWorkspaceBehavior';
 
 describe('competition review workspace behavior', () => {
   it('reloads plans with a workspace UUID even when the numeric competition id is intentionally absent', () => {
@@ -26,5 +30,11 @@ describe('competition review workspace behavior', () => {
   it('keeps the cross-competition expert task list out of a selected competition workspace', () => {
     expect(shouldShowGlobalExpertTasks(true, true)).toBe(false);
     expect(shouldShowGlobalExpertTasks(true, false)).toBe(true);
+  });
+
+  it('keeps review management inside a selected competition workspace', () => {
+    expect(shouldShowReviewAdminWorkbench(true, true)).toBe(true);
+    expect(shouldShowReviewAdminWorkbench(true, false)).toBe(false);
+    expect(shouldShowReviewAdminWorkbench(false, true)).toBe(false);
   });
 });

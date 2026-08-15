@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.Map;
 
 public final class ExpertDTO {
     private ExpertDTO() {
@@ -12,6 +13,8 @@ public final class ExpertDTO {
     public static class ExpertUpsertRequest {
         @Size(max = 64)
         private String code;
+        @Size(max = 64)
+        private String competitionUuid;
         @NotBlank
         @Size(max = 64)
         @Pattern(regexp = "^[\\p{IsHan}A-Za-z·\\s]{2,64}$", message = "专家姓名只能包含中文、英文字母、空格和间隔号")
@@ -46,9 +49,13 @@ public final class ExpertDTO {
         @Size(max = 32)
         private String status;
         private Integer sort;
+        private Map<String, Object> extraValues;
+        private String extraValuesJson;
 
         public String getCode() { return code; }
         public void setCode(String code) { this.code = code; }
+        public String getCompetitionUuid() { return competitionUuid; }
+        public void setCompetitionUuid(String competitionUuid) { this.competitionUuid = competitionUuid; }
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
         public String getTitle() { return title; }
@@ -77,5 +84,9 @@ public final class ExpertDTO {
         public void setStatus(String status) { this.status = status; }
         public Integer getSort() { return sort; }
         public void setSort(Integer sort) { this.sort = sort; }
+        public Map<String, Object> getExtraValues() { return extraValues; }
+        public void setExtraValues(Map<String, Object> extraValues) { this.extraValues = extraValues; }
+        public String getExtraValuesJson() { return extraValuesJson; }
+        public void setExtraValuesJson(String extraValuesJson) { this.extraValuesJson = extraValuesJson; }
     }
 }

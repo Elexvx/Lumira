@@ -428,7 +428,7 @@ const certificateRoutes: BackendRouteRecord[] = [
 
 const expertRouteMeta: BackendRouteMeta[] = [
   { path: '/expert-review', name: 'nav.expertReview.root', icon: 'SolutionOutlined', access: 'canVisitExpertReview' },
-  { path: '/expert-review/reviews', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitReviewWorkbench' },
+  { path: '/expert-review/reviews', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitReviewTasks' },
   { path: '/experts/management', name: 'nav.experts.management', icon: 'SolutionOutlined', access: 'canVisitExperts' },
   { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
 ];
@@ -442,7 +442,7 @@ const expertRoutes: BackendRouteRecord[] = [
     access: 'canVisitExpertReview',
     routes: [
       { path: '/expert-review', redirect: '/expert-review/reviews', hideInMenu: true },
-      { path: '/expert-review/reviews', component: '@/pages/competition/CompetitionReviewPage', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitReviewWorkbench' },
+      { path: '/expert-review/reviews', component: '@/pages/competition/CompetitionReviewPage', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitReviewTasks' },
     ],
   },
   {

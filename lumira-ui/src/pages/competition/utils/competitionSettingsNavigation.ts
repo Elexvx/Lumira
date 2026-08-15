@@ -11,6 +11,7 @@ export type CompetitionSettingsRegistrationTab =
   | 'MEMBER_FIELD'
   | 'TEAM_FIELD'
   | 'PROJECT_FIELD'
+  | 'EXPERT_FIELD'
   | 'INTELLECTUAL_PROPERTY'
   | 'documents';
 
@@ -40,6 +41,8 @@ const registrationTabByQueryValue: Record<string, CompetitionSettingsRegistratio
   team: 'TEAM_FIELD',
   'other-fields': 'PROJECT_FIELD',
   project: 'PROJECT_FIELD',
+  experts: 'EXPERT_FIELD',
+  'expert-fields': 'EXPERT_FIELD',
   'intellectual-property': 'INTELLECTUAL_PROPERTY',
   documents: 'documents',
 };
@@ -48,6 +51,7 @@ const registrationQueryValueByTab: Record<CompetitionSettingsRegistrationTab, st
   MEMBER_FIELD: 'students',
   TEAM_FIELD: 'team',
   PROJECT_FIELD: 'project',
+  EXPERT_FIELD: 'experts',
   INTELLECTUAL_PROPERTY: 'intellectual-property',
   documents: 'documents',
 };
