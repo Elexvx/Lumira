@@ -61,7 +61,6 @@ const STABLE_MAIN_ROUTE_PATHS = [
   '/dashboard/home',
   '/data-management',
   '/registration',
-  '/certificates',
   '/expert-review',
   '/workflows',
   '/user-center',
@@ -77,10 +76,14 @@ const DATA_MANAGEMENT_DIRECT_CHILD_PATHS = [
   '/competitions/management',
   '/activities/management',
   '/payments/management',
+  '/certificates/templates',
+  '/certificates/generate',
+  '/certificates/records',
   '/data-management/download-center',
 ];
+const DATA_MANAGEMENT_CONSOLIDATED_PATHS = ['/certificates'];
 const DATA_SOURCE_GROUP_PATHS = ['/activities', '/competitions', '/projects', '/team', '/payments'];
-const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
+const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center', '/certificates']);
 const ACTIVE_MAIN_MENU_PATH_BY_ROUTE: Array<[RegExp, string]> = [
   [/^\/competitions\/create$/, '/competitions/management'],
   [/^\/competitions\/[^/]+\/settings$/, '/competitions/management'],
@@ -1415,6 +1418,7 @@ const buildMainMenuDataForLayout = (
   const hasDataManagementSource =
     hasMenuPathOrChild(sourcePaths, DATA_MANAGEMENT_GROUP_PATH)
     || DATA_MANAGEMENT_DIRECT_CHILD_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path))
+    || DATA_MANAGEMENT_CONSOLIDATED_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path))
     || DATA_SOURCE_GROUP_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path));
   const dashboardMenu = allowMissingStableMenus || hasDashboardSource
     ? buildDashboardMenuGroupForLayout(fallbackByPath, accessMap)
@@ -1431,6 +1435,7 @@ const buildMainMenuDataForLayout = (
       ? [
           DATA_MANAGEMENT_GROUP_PATH,
           ...DATA_MANAGEMENT_DIRECT_CHILD_PATHS,
+          ...DATA_MANAGEMENT_CONSOLIDATED_PATHS,
           ...DATA_SOURCE_GROUP_PATHS,
         ]
       : []),

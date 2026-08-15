@@ -45,7 +45,9 @@ describe('SQL menu and frontend route catalog consistency', () => {
     expect(enabledMenus.length).toBeGreaterThan(40);
     expect(enabledMenus.map((menu) => menu.path)).toEqual(expect.arrayContaining([
       '/registration',
-      '/certificates',
+      '/certificates/templates',
+      '/certificates/generate',
+      '/certificates/records',
       '/competitions/expert-apply',
       '/workflows/tasks',
       '/settings/workflows',

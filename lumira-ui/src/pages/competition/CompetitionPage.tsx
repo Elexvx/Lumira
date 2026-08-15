@@ -1,6 +1,6 @@
 import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, DownloadOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Spin, Steps, Switch, Tabs, Tag, Typography, Upload } from 'antd';
+import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Popconfirm, Radio, Result, Select, Space, Spin, Steps, Switch, Tabs, Tag, Typography, Upload } from 'antd';
 import type { DatePickerProps, UploadFile } from 'antd';
 import type { FormInstance } from 'antd';
 import ImgCrop from 'antd-img-crop';
@@ -92,6 +92,7 @@ import {
   resolveAcceptedRegistrationDocumentKeys,
 } from '@/pages/competition/utils/registrationDocumentAcceptance';
 import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
+import { buildRegistrationDraftIdentifiers } from '@/pages/competition/utils/registrationDraftIdentifiers';
 import {
   buildCompetitionMaterialFileStorageContext,
   buildCompetitionStorageKey,
@@ -299,6 +300,8 @@ type CompetitionRegistrationDraftStorage = {
   competitionFeeMode?: CompetitionFeeMode | null;
   competitionEntryFeeMinor?: number | null;
   competitionCurrency?: string | null;
+  registrationNo?: string;
+  participantNo?: string;
   registrationId?: number;
   currentStep?: number;
   flowVersion?: number;
@@ -1093,16 +1096,22 @@ const _CompetitionSharedBasicFields = ({
                         }}
                       />
                     ) : null}
-                    <Button
-                      aria-label="移除组织者"
-                      title="移除组织者"
-                      icon={<DeleteOutlined />}
-                      disabled={fields.length <= 1}
-                      onClick={() => {
+                    <Popconfirm
+                      title="确认移除该组织者？"
+                      okText="确认移除"
+                      cancelText="取消"
+                      onConfirm={() => {
                         remove(field.name);
                         onListChange?.();
                       }}
-                    />
+                    >
+                      <Button
+                        aria-label="移除组织者"
+                        title="移除组织者"
+                        icon={<DeleteOutlined />}
+                        disabled={fields.length <= 1}
+                      />
+                    </Popconfirm>
                   </div>
                 </div>
               ))}
@@ -1160,7 +1169,14 @@ const CompetitionBasicFields = ({
                     {index === fields.length - 1 ? (
                       <Button aria-label="添加组织者" title="添加组织者" icon={<PlusOutlined />} onClick={() => add({ role: '', name: '' })} />
                     ) : null}
-                    <Button aria-label="移除组织者" title="移除组织者" icon={<DeleteOutlined />} disabled={fields.length <= 1} onClick={() => remove(field.name)} />
+                    <Popconfirm
+                      title="确认移除该组织者？"
+                      okText="确认移除"
+                      cancelText="取消"
+                      onConfirm={() => remove(field.name)}
+                    >
+                      <Button aria-label="移除组织者" title="移除组织者" icon={<DeleteOutlined />} disabled={fields.length <= 1} />
+                    </Popconfirm>
                   </div>
                 </div>
               ))}
@@ -1315,7 +1331,14 @@ const CompetitionBasicFields = ({
                               onClick={() => add({ timeMode: 'CONFIRMED', title: '' })}
                             />
                           ) : null}
-                          <Button aria-label="删除竞赛安排" title="删除竞赛安排" icon={<DeleteOutlined />} disabled={fields.length <= 1} onClick={() => remove(field.name)} />
+                          <Popconfirm
+                            title="确认删除该竞赛安排？"
+                            okText="确认删除"
+                            cancelText="取消"
+                            onConfirm={() => remove(field.name)}
+                          >
+                            <Button aria-label="删除竞赛安排" title="删除竞赛安排" icon={<DeleteOutlined />} disabled={fields.length <= 1} />
+                          </Popconfirm>
                         </div>
                       </div>
                     ))}
@@ -2107,9 +2130,14 @@ const buildCurrentUserRegistrationDraftRecord = (
     return undefined;
   }
 
+  const generatedIdentifiers = buildRegistrationDraftIdentifiers(
+    draft.savedAt,
+    draft.competitionUuid || toPositiveId(values.competitionId) || 'registration-draft',
+  );
+
   return {
     id: 0,
-    registrationNo: '\u62a5\u540d\u8349\u7a3f',
+    registrationNo: draft.registrationNo || generatedIdentifiers.registrationNo,
     competitionId: toPositiveId(values.competitionId) || 0,
     teamId: toPositiveId(values.teamId) || 0,
     projectId: toPositiveId(values.projectId) || 0,
@@ -2120,6 +2148,7 @@ const buildCurrentUserRegistrationDraftRecord = (
     memberCount: values.newTeam?.initialMembers?.length || 0,
     payableAmountMinor: 0,
     currency: 'CNY',
+    participantNo: draft.participantNo || generatedIdentifiers.participantNo,
     createdAt: draft.savedAt ? new Date(draft.savedAt).toISOString() : undefined,
     updatedAt: draft.savedAt ? new Date(draft.savedAt).toISOString() : undefined,
     isCurrentUserDraft: true,
@@ -2851,12 +2880,24 @@ const CompetitionRegistrationPage = () => {
   ) => {
     const savedAt = Date.now();
     const latestDraft = latestRegistrationDraftRef.current;
+    const generatedIdentifiers = nextRegistrationId
+      ? undefined
+      : buildRegistrationDraftIdentifiers(
+        latestDraft?.savedAt || savedAt,
+        latestDraft?.competitionUuid || selectedCompetition?.uuid || toPositiveId(nextValues.competitionId) || 'registration-draft',
+      );
     const draftState: CompetitionRegistrationDraftStorage = {
       competitionTitle: selectedCompetition?.title || latestDraft?.competitionTitle,
       competitionUuid: selectedCompetition?.uuid || latestDraft?.competitionUuid,
       competitionFeeMode: selectedCompetition?.feeMode ?? latestDraft?.competitionFeeMode,
       competitionEntryFeeMinor: selectedCompetition?.entryFeeMinor ?? latestDraft?.competitionEntryFeeMinor,
       competitionCurrency: selectedCompetition?.currency ?? latestDraft?.competitionCurrency,
+      registrationNo: nextRegistrationId
+        ? latestDraft?.registrationNo
+        : latestDraft?.registrationNo || generatedIdentifiers?.registrationNo,
+      participantNo: nextRegistrationId
+        ? latestDraft?.participantNo
+        : latestDraft?.participantNo || generatedIdentifiers?.participantNo,
       registrationId: nextRegistrationId,
       currentStep: nextStep,
       flowVersion: REGISTRATION_WIZARD_FLOW_VERSION,
@@ -3222,7 +3263,7 @@ const CompetitionRegistrationPage = () => {
           );
         }
         const nextRegistrationFields = (settings.fields || [])
-          .filter((item) => item.itemType !== 'TEAM_SETTINGS' && item.enabled !== false)
+          .filter((item) => ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(item.itemType) && item.enabled !== false)
           .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
         const invalidRegistrationField = nextRegistrationFields
           .map(toRegistrationCollectedField)
@@ -4072,23 +4113,24 @@ const CompetitionRegistrationPage = () => {
       {
         title: '\u62a5\u540d\u8bb0\u5f55',
         dataIndex: 'registrationNo',
-        width: 320,
-        minWidth: 320,
+        width: 220,
+        minWidth: 220,
         fieldProps: {
-          placeholder: 'Registration No. / Participant No.',
+          placeholder: 'Registration No.',
         },
         render: (_, record) => (
-          <Space className="competition-registration-record-cell" orientation="vertical" size={0}>
-            <Typography.Text className="competition-registration-record-cell__no" strong ellipsis={{ tooltip: record.registrationNo }}>
-              {record.registrationNo || `\u62a5\u540d ${record.id}`}
-            </Typography.Text>
-            {record.participantNo ? (
-              <Tag className="competition-registration-record-cell__participant" color="blue">
-                {record.participantNo}
-              </Tag>
-            ) : null}
-          </Space>
+          <Typography.Text className="competition-registration-record-cell__no" strong ellipsis={{ tooltip: record.registrationNo }}>
+            {record.registrationNo || `\u62a5\u540d ${record.id}`}
+          </Typography.Text>
         ),
+      },
+      {
+        title: '\u53c2\u8d5b\u7f16\u53f7',
+        dataIndex: 'participantNo',
+        search: false,
+        width: 160,
+        ellipsis: true,
+        render: (_, record) => record.participantNo || '-',
       },
       {
         title: '\u8d5b\u4e8b',
@@ -4190,6 +4232,7 @@ const CompetitionRegistrationPage = () => {
         : '';
       const draftMatchesKeyword = !registrationKeyword || Boolean(draftRecord && [
         draftRecord.registrationNo,
+        draftRecord.participantNo,
         draftRecord.draftCompetitionTitle,
         draftRecord.draftTeamName,
         draftRecord.draftProjectTitle,
@@ -5107,6 +5150,11 @@ const CompetitionRegistrationPage = () => {
 
 type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files';
 type CompetitionSettingsModuleKey = CompetitionSettingsSectionKey;
+type RegistrationFieldScope = Extract<
+  CompetitionConfigItemType,
+  'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'
+>;
+type CompetitionConfigFieldScope = RegistrationFieldScope | 'EXPERT_FIELD';
 
 type CompetitionSettingsModuleConfig = {
   key: CompetitionSettingsConfigModuleKey;
@@ -5120,7 +5168,7 @@ type CompetitionSettingsModuleConfig = {
 type ConfigItemMetadata = {
   documentKind?: 'AGREEMENT' | 'CONSENT';
   readingSeconds?: number;
-  fieldScope?: CompetitionConfigItemType;
+  fieldScope?: CompetitionConfigFieldScope;
   fieldType?: string;
   placeholder?: string;
   description?: string;
@@ -5200,7 +5248,7 @@ const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
     defaultLabel: 'Team Management',
     descriptionId: 'page.competition.settings.module.fields.description',
     defaultDescription: 'Configure team size limits and registration fields.',
-    itemTypes: ['TEAM_SETTINGS', 'REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'],
+    itemTypes: ['TEAM_SETTINGS', 'REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD', 'EXPERT_FIELD'],
   },
   {
     key: 'payments',
@@ -5222,6 +5270,21 @@ const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
 
 const getCompetitionSettingsModuleLabel = (module: CompetitionSettingsModuleConfig) =>
   formatMessage({ id: module.labelId, defaultMessage: module.defaultLabel });
+
+const getCompetitionSettingsFieldLabel = (
+  fieldScope: CompetitionConfigFieldScope,
+  fieldGroupLabel?: string,
+) => {
+  if (fieldScope === 'PROJECT_FIELD') {
+    return fieldGroupLabel || '项目信息';
+  }
+  return {
+    REGISTRATION_FIELD: '报名信息',
+    TEAM_FIELD: '团队信息',
+    MEMBER_FIELD: '学生信息',
+    EXPERT_FIELD: '专家信息',
+  }[fieldScope];
+};
 
 const competitionSettingsMenuItems = [
   { key: 'basic' as const, label: '基础信息' },
@@ -5290,10 +5353,13 @@ const getConfigItemReadingSeconds = (item: CompetitionConfigItem) =>
 const getRegistrationDocumentKey = (item: CompetitionConfigItem, index: number) =>
   getRegistrationDocumentAcceptanceKey(item, index);
 
+const isCompetitionConfigFieldType = (itemType: CompetitionConfigItemType): itemType is CompetitionConfigFieldScope =>
+  ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD', 'EXPERT_FIELD'].includes(itemType);
+
 const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetitionConfigItem[] =>
   items.map((item) => {
-    const fieldScope = ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(item.itemType)
-      ? resolveRegistrationFieldScope(item)
+    const fieldScope = isCompetitionConfigFieldType(item.itemType)
+      ? item.itemType === 'EXPERT_FIELD' ? 'EXPERT_FIELD' : resolveRegistrationFieldScope(item)
       : undefined;
     const metadata = normalizeIndependentMemberRoleMetadata(
       fieldScope,
@@ -5365,7 +5431,7 @@ const toConfigItems = (items: EditableCompetitionConfigItem[]): CompetitionConfi
     const documentMetadata = isDocumentItem
       ? { ...metadata, readingSeconds: normalizeReadingSeconds(metadata?.readingSeconds) }
       : metadata;
-    const normalizedFieldMetadata = ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(itemType)
+    const normalizedFieldMetadata = isCompetitionConfigFieldType(itemType)
       ? {
           ...documentMetadata,
           validationRule: resolveRegistrationFieldValidationRule(
@@ -5445,24 +5511,21 @@ const buildCompetitionStorageSpaceOptions = (competition: CompetitionRecord): St
   }] : [];
 };
 
-type RegistrationFieldScope = Extract<
-  CompetitionConfigItemType,
-  'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'
->;
-
 const INTELLECTUAL_PROPERTY_GROUP_LABEL = '知识产权信息';
 
-const protectedCollectionFieldKeys: Partial<Record<RegistrationFieldScope, Set<string>>> = {
+const protectedCollectionFieldKeys: Partial<Record<CompetitionConfigFieldScope, Set<string>>> = {
   TEAM_FIELD: new Set(['teamName']),
   MEMBER_FIELD: new Set(['memberName']),
   PROJECT_FIELD: new Set(['title']),
+  EXPERT_FIELD: new Set(['name', 'expertise']),
 };
 
-const fieldScopeOptions: Array<{ label: string; value: RegistrationFieldScope }> = [
+const fieldScopeOptions: Array<{ label: string; value: CompetitionConfigFieldScope }> = [
   { label: '报名信息', value: 'REGISTRATION_FIELD' },
   { label: '团队信息', value: 'TEAM_FIELD' },
   { label: '成员信息', value: 'MEMBER_FIELD' },
   { label: '项目信息', value: 'PROJECT_FIELD' },
+  { label: '专家信息', value: 'EXPERT_FIELD' },
 ];
 
 const loadConfiguredPaymentProviderOptions = async (): Promise<PaymentProviderOption[]> => {
@@ -5484,7 +5547,7 @@ const emptyConfigItem = (itemType: CompetitionConfigItemType, sortOrder: number)
   itemKey: `${itemType.toLowerCase()}-${Date.now()}`,
   title: '',
   contentJson: serializeConfigItemMetadata(
-    ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(itemType)
+    isCompetitionConfigFieldType(itemType)
       ? { fieldScope: itemType, fieldType: 'TEXT', validationRule: 'NONE' }
       : itemType === 'REQUIRED_FILE'
         ? { fileFormat: 'ANY', maxSizeMb: 20, stageCode: 'GENERAL', stageName: '通用' }
@@ -5618,6 +5681,7 @@ const renderConfigItemFields = (
   module: CompetitionSettingsModuleConfig,
   fieldName: number,
   storageSpaceOptions: StorageSpaceOption[],
+  forcedFieldScope?: CompetitionConfigFieldScope,
 ) => {
   if (module.key === 'documents') {
     return (
@@ -5647,9 +5711,15 @@ const renderConfigItemFields = (
     return (
       <>
         <div className="competition-config-grid">
-          <Form.Item name={[fieldName, 'metadata', 'fieldScope']} label="适用范围" initialValue="REGISTRATION_FIELD">
-            <Select options={fieldScopeOptions} />
-          </Form.Item>
+          {forcedFieldScope ? (
+            <Form.Item name={[fieldName, 'metadata', 'fieldScope']} initialValue={forcedFieldScope} hidden>
+              <Input />
+            </Form.Item>
+          ) : (
+            <Form.Item name={[fieldName, 'metadata', 'fieldScope']} label="适用范围" initialValue="REGISTRATION_FIELD">
+              <Select options={fieldScopeOptions} />
+            </Form.Item>
+          )}
           <Form.Item name={[fieldName, 'metadata', 'fieldType']} label="字段类型" rules={[{ required: true, message: '请选择字段类型' }]}>
             <Select options={fieldTypeOptions} />
           </Form.Item>
@@ -5775,7 +5845,7 @@ const renderFieldSettingsTable = (
   fields: Array<{ key: number; name: number }>,
   add: (defaultValue?: EditableCompetitionConfigItem) => void,
   remove: (index: number | number[]) => void,
-  scope: RegistrationFieldScope,
+  scope: CompetitionConfigFieldScope,
   scheduleSave: () => void,
   reorderField: (fields: Array<{ key: number; name: number }>, fromIndex: number, toIndex: number) => void,
   openOptionsEditor: (fieldName: number, fieldTitle?: string, options?: string) => void,
@@ -5898,22 +5968,30 @@ const renderFieldSettingsTable = (
             </Form.Item>
             <Form.Item noStyle shouldUpdate>
               {({ getFieldValue }) => {
-                const itemScope = (getFieldValue(['items', field.name, 'metadata', 'fieldScope']) || scope) as RegistrationFieldScope;
+                const itemScope = (getFieldValue(['items', field.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
                 const itemKey = String(getFieldValue(['items', field.name, 'itemKey']) || '');
                 const isProtectedField = Boolean(protectedCollectionFieldKeys[itemScope]?.has(itemKey));
                 return (
-                  <Button
-                    danger
-                    disabled={isProtectedField}
-                    title={isProtectedField ? '核心识别字段不可删除' : '删除字段'}
-                    type="link"
-                    onClick={() => {
+                  <Popconfirm
+                    title={isProtectedField
+                      ? '核心识别字段不可删除'
+                      : `确认删除${itemKey ? `“${String(getFieldValue(['items', field.name, 'title']) || itemKey)}”` : '该'}字段？`}
+                    okText="确认删除"
+                    cancelText="取消"
+                    onConfirm={() => {
                       remove(field.name);
                       scheduleSave();
                     }}
                   >
-                    删除
-                  </Button>
+                    <Button
+                      danger
+                      disabled={isProtectedField}
+                      title={isProtectedField ? '核心识别字段不可删除' : '删除字段'}
+                      type="link"
+                    >
+                      删除
+                    </Button>
+                  </Popconfirm>
                 );
               }}
             </Form.Item>
@@ -5946,7 +6024,7 @@ type ConfigModulePanelProps = {
   module: CompetitionSettingsModuleConfig;
   items: CompetitionConfigItem[];
   storageSpaceOptions: StorageSpaceOption[];
-  fieldScope?: RegistrationFieldScope;
+  fieldScope?: CompetitionConfigFieldScope;
   fieldGroupLabel?: string;
   includeMemberFields?: boolean;
   fileStageCode?: string;
@@ -6171,8 +6249,8 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       {module.key === 'files' && fileStageCode ? null : (
         <div className="competition-config-module__header">
           <Typography.Title className="competition-config-module__title" level={4}>
-            {module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
-              ? (fieldGroupLabel || '项目信息')
+            {module.key === 'fields' && fieldScope
+              ? getCompetitionSettingsFieldLabel(fieldScope, fieldGroupLabel)
               : getCompetitionSettingsModuleLabel(module)}
           </Typography.Title>
         </div>
@@ -6193,7 +6271,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
         onValuesChange={markDraftChangedAndScheduleSave}
       >
         {module.key === 'fields' && fieldScope === 'TEAM_FIELD' ? (
-          <Card className="competition-config-item competition-config-item--team-limits" size="small" title="团队人数设置">
+          <Card className="competition-team-limits-card" title="团队人数设置">
             <div className="competition-config-grid">
               <Form.Item
                 name="teamMinMembers"
@@ -6391,20 +6469,24 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     </Space>
                   }
                   extra={module.key === 'payments' ? null : (
-                    <Button
-                      danger
-                      onClick={() => {
+                    <Popconfirm
+                      title="确认删除该配置项？"
+                      okText="确认删除"
+                      cancelText="取消"
+                      onConfirm={() => {
                         remove(field.name);
                         markDraftChangedAndScheduleSave();
                       }}
                     >
-                      {formatMessage({ id: 'page.competition.settings.item.remove', defaultMessage: 'Remove' })}
-                    </Button>
+                      <Button danger>
+                        {formatMessage({ id: 'page.competition.settings.item.remove', defaultMessage: 'Remove' })}
+                      </Button>
+                    </Popconfirm>
                   )}
                 >
                   <Space orientation="vertical" style={{ width: '100%' }}>
                     <div className="competition-config-item__fields">
-                      {renderConfigItemFields(module, field.name, storageSpaceOptions)}
+                      {renderConfigItemFields(module, field.name, storageSpaceOptions, fieldScope)}
                     </div>
                     <div className="competition-config-switches">
                       {module.key !== 'documents' ? (
@@ -6813,11 +6895,6 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
 
   return (
     <section className="competition-config-module">
-      <div className="competition-config-module__header">
-        <Typography.Title className="competition-config-module__title" level={4}>
-          赛事时间
-        </Typography.Title>
-      </div>
       <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues} onValuesChange={scheduleSave}>
         <section className="competition-basic-section">
           <Typography.Title className="competition-basic-section__title" level={5}>
@@ -6966,19 +7043,25 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                             >
                               保存
                             </Button>
-                            <Button
-                              danger
-                              type="link"
-                              aria-label="删除竞赛安排"
-                              title={fields.length <= 1 ? '至少保留一个竞赛安排' : '删除竞赛安排'}
-                              disabled={savingScheduleKey !== undefined || fields.length <= 1}
-                              onClick={() => {
+                            <Popconfirm
+                              title="确认删除该竞赛安排？"
+                              okText="确认删除"
+                              cancelText="取消"
+                              onConfirm={() => {
                                 remove(field.name);
                                 scheduleSave();
                               }}
                             >
-                              删除
-                            </Button>
+                              <Button
+                                danger
+                                type="link"
+                                aria-label="删除竞赛安排"
+                                title={fields.length <= 1 ? '至少保留一个竞赛安排' : '删除竞赛安排'}
+                                disabled={savingScheduleKey !== undefined || fields.length <= 1}
+                              >
+                                删除
+                              </Button>
+                            </Popconfirm>
                           </Space>
                         </div>
                       ))}
@@ -7322,6 +7405,7 @@ const CompetitionSettingsPage = () => {
                       { key: 'MEMBER_FIELD', label: '学生信息' },
                       { key: 'TEAM_FIELD', label: '团队信息' },
                       { key: 'PROJECT_FIELD', label: '项目信息' },
+                      { key: 'EXPERT_FIELD', label: '专家信息' },
                       { key: 'INTELLECTUAL_PROPERTY', label: '知识产权信息' },
                       { key: 'documents', label: '报名须知与文书' },
                     ]}
@@ -7479,10 +7563,7 @@ const CompetitionPage = () => {
         search: false,
         minWidth: 260,
         render: (_, record) => (
-          <Space className="competition-name-cell" orientation="vertical" size={0}>
-            <Typography.Text strong>{record.title}</Typography.Text>
-            <span className="competition-name-cell__meta">{record.shortName || '-'}</span>
-          </Space>
+          <Typography.Text strong className="competition-name-cell">{record.title}</Typography.Text>
         ),
       },
       {

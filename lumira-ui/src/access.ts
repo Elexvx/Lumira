@@ -96,6 +96,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canDownloadRegistrationMaterials =
     isLogin && hasPermission(permissions, 'registration:material:download');
   const canVisitPaymentOrders = isLogin && hasPermission(permissions, 'payment:order:view');
+  const canVisitReviewTasks = isLogin && hasPermission(permissions, 'review:task:view');
   const canVisitReviewWorkbench =
     isLogin && hasAnyPermission(permissions, REVIEW_WORKBENCH_PERMISSIONS);
   const canVisitCompetitionReviewResults =
@@ -111,12 +112,21 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, ACTIVITY_REGISTER_PERMISSIONS);
   const canVisitSensitiveWordsPlugin =
     isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:sensitive-words:view'));
+  const canVisitCertificateTemplates = isLogin && hasPermission(permissions, 'aiadc:certificate-template:view');
+  const canVisitCertificateGenerate = isLogin && hasPermission(permissions, 'aiadc:certificate-batch:create');
+  const canVisitCertificateRecords = isLogin && hasPermission(permissions, 'aiadc:certificate:view');
+  const canVisitCertificateManagement = [
+    canVisitCertificateTemplates,
+    canVisitCertificateGenerate,
+    canVisitCertificateRecords,
+  ].some(Boolean);
   const canVisitDataManagement =
     [
       canVisitCompetitions,
       canVisitActivities,
       canVisitPaymentOrders,
       canVisitDownloadCenter,
+      canVisitCertificateManagement,
     ].some(Boolean);
   // Settings are a separate route group. The group gate is intentionally
   // independent from the main business-route permissions; each settings page
@@ -193,16 +203,18 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitActivityRegister,
     canVisitPaymentOrders,
     canVisitCertificates: isLogin,
-    canVisitCertificateTemplates: isLogin && hasPermission(permissions, 'aiadc:certificate-template:view'),
-    canVisitCertificateGenerate: isLogin && hasPermission(permissions, 'aiadc:certificate-batch:create'),
-    canVisitCertificateRecords: isLogin && hasPermission(permissions, 'aiadc:certificate:view'),
+    canVisitCertificateManagement,
+    canVisitCertificateTemplates,
+    canVisitCertificateGenerate,
+    canVisitCertificateRecords,
     canVisitMyCertificates: isLogin,
     canVisitExperts: isLogin && hasPermission(permissions, 'expert:view'),
     canVisitExpertReview:
       isLogin && (
         hasPermission(permissions, 'expert:view')
-        || hasAnyPermission(permissions, REVIEW_WORKBENCH_PERMISSIONS)
+        || canVisitReviewTasks
       ),
+    canVisitReviewTasks,
     canVisitReviewWorkbench,
     canVisitCompetitionReviewResults,
     canManageReviewAppeals,

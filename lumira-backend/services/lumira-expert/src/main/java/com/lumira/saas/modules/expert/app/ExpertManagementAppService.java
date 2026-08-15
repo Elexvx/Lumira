@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.expert.app;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.dictionary.DictionaryValueNormalizer;
 import com.lumira.api.workflow.WorkflowStartPort;
 import com.lumira.common.enums.ErrorCode;
@@ -21,6 +22,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -36,6 +39,7 @@ public class ExpertManagementAppService {
     private static final String STATUS_DICT_CODE = "aiadc_expert_status";
     private static final String INITIAL_STATUS_DICT_CODE = "aiadc_expert_initial_status";
     private static final String APPROVAL_STATUS_DICT_CODE = "aiadc_expert_approval_status";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final long MAX_PAGE_SIZE = 100L;
     private static final DateTimeFormatter EXPERT_CODE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final int[] CHINA_ID_CARD_WEIGHTS = {7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2};
@@ -49,6 +53,8 @@ public class ExpertManagementAppService {
     private static final int MAX_EMAIL_LENGTH = 128;
     private static final int MAX_URL_LENGTH = 512;
     private static final int MAX_LONG_TEXT_LENGTH = 1000;
+    private static final int MAX_COMPETITION_UUID_LENGTH = 64;
+    private static final int MAX_EXTRA_VALUES_LENGTH = 20000;
     private static final java.util.regex.Pattern EXPERT_NAME_PATTERN = java.util.regex.Pattern.compile("^[\\p{IsHan}A-Za-z鐠虹棆\s]{2,64}$");
     private static final java.util.regex.Pattern PHONE_PATTERN = java.util.regex.Pattern.compile("^(?:1[3-9]\\d{9}|0\\d{2,3}-?\\d{7,8}(?:-\\d{1,6})?)$");
     private static final java.util.regex.Pattern MOBILE_PATTERN = java.util.regex.Pattern.compile("^1[3-9]\\d{9}$");
@@ -133,7 +139,8 @@ public class ExpertManagementAppService {
         Long userId = requireUserId(currentUser);
         String userUuid = requireUserUuid(currentUser);
         requireRequest(request);
-        ExpertDTO.ExpertUpsertRequest normalized = normalizeRequest(request, generateExpertCode());
+        ExpertDTO.ExpertUpsertRequest normalized = normalizeRequest(request, generateExpertCode(), null, null);
+        validateCompetitionApplication(normalized);
         String initialStatus = requiredDictValues(INITIAL_STATUS_DICT_CODE).getFirst();
         String initialApprovalStatus = requiredDictValues(APPROVAL_STATUS_DICT_CODE).getFirst();
         Long id = expertRepository.create(normalized, initialStatus, initialApprovalStatus, userId, userUuid);
@@ -146,11 +153,7 @@ public class ExpertManagementAppService {
                 id,
                 normalized.getCode(),
                 normalized.getName(),
-                Map.of(
-                        "name", normalized.getName(),
-                        "email", normalized.getEmail() == null ? "" : normalized.getEmail(),
-                        "expertise", normalized.getExpertise()
-                )
+                workflowVariables(normalized)
         );
         int updated = expertRepository.attachWorkflow(id, normalized.getCode(), initialStatus, initialApprovalStatus,
                 workflowInstanceId, userId, userUuid);
@@ -170,7 +173,12 @@ public class ExpertManagementAppService {
         if (existing == null) {
             throw biz(ErrorCode.NOT_FOUND, "Expert not found");
         }
-        ExpertDTO.ExpertUpsertRequest normalized = normalizeRequest(request, existing.getCode());
+        ExpertDTO.ExpertUpsertRequest normalized = normalizeRequest(
+                request,
+                existing.getCode(),
+                existing.getCompetitionUuid(),
+                existing.getExtraValuesJson()
+        );
         int updated = expertRepository.update(id, existing, normalized, userId, userUuid);
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Expert not found");
@@ -200,6 +208,15 @@ public class ExpertManagementAppService {
     }
 
     private ExpertDTO.ExpertUpsertRequest normalizeRequest(ExpertDTO.ExpertUpsertRequest request, String fallbackCode) {
+        return normalizeRequest(request, fallbackCode, null, null);
+    }
+
+    private ExpertDTO.ExpertUpsertRequest normalizeRequest(
+            ExpertDTO.ExpertUpsertRequest request,
+            String fallbackCode,
+            String fallbackCompetitionUuid,
+            String fallbackExtraValuesJson
+    ) {
         ExpertDTO.ExpertUpsertRequest normalized = new ExpertDTO.ExpertUpsertRequest();
         normalized.setCode(StringUtils.hasText(request.getCode())
                 ? trimRequired(request.getCode(), "Expert code is required", MAX_CODE_LENGTH, "Expert code is too long")
@@ -216,15 +233,119 @@ public class ExpertManagementAppService {
         normalized.setAvatarUrl(normalizeUrl(request.getAvatarUrl(), "Expert avatar URL"));
         normalized.setBio(trimOptional(request.getBio(), MAX_LONG_TEXT_LENGTH, "Expert bio is too long"));
         normalized.setTags(trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Expert tags are too long"));
+        normalized.setCompetitionUuid(trimOptional(
+                StringUtils.hasText(request.getCompetitionUuid()) ? request.getCompetitionUuid() : fallbackCompetitionUuid,
+                MAX_COMPETITION_UUID_LENGTH,
+                "Competition identifier is too long"
+        ));
+        normalized.setExtraValues(request.getExtraValues());
+        normalized.setExtraValuesJson(normalizeExtraValuesJson(request.getExtraValues(), fallbackExtraValuesJson));
         List<String> statuses = requiredDictValues(STATUS_DICT_CODE);
-        normalized.setTitle(validateOptionalDictValue("aiadc_expert_title", normalized.getTitle(), "Expert title"));
-        normalized.setPosition(validateOptionalDictValue("aiadc_expert_position", normalized.getPosition(), "Expert position"));
-        normalized.setExpertise(validateDictValues("aiadc_expert_expertise", normalized.getExpertise(), "Expert expertise"));
-        normalized.setTags(validateDictValues("aiadc_expert_tag", normalized.getTags(), "Expert tags"));
+        if (!StringUtils.hasText(normalized.getCompetitionUuid())) {
+            normalized.setTitle(validateOptionalDictValue("aiadc_expert_title", normalized.getTitle(), "Expert title"));
+            normalized.setPosition(validateOptionalDictValue("aiadc_expert_position", normalized.getPosition(), "Expert position"));
+            normalized.setExpertise(validateDictValues("aiadc_expert_expertise", normalized.getExpertise(), "Expert expertise"));
+            normalized.setTags(validateDictValues("aiadc_expert_tag", normalized.getTags(), "Expert tags"));
+        }
         normalized.setStatus(StringUtils.hasText(request.getStatus())
                 ? normalizeStatus(request.getStatus()) : statuses.getFirst());
         normalized.setSort(request.getSort() == null ? 100 : request.getSort());
         return normalized;
+    }
+
+    private Map<String, Object> workflowVariables(ExpertDTO.ExpertUpsertRequest request) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("name", request.getName());
+        variables.put("email", request.getEmail() == null ? "" : request.getEmail());
+        variables.put("expertise", request.getExpertise());
+        if (StringUtils.hasText(request.getCompetitionUuid())) {
+            variables.put("competitionUuid", request.getCompetitionUuid());
+        }
+        return variables;
+    }
+
+    private void validateCompetitionApplication(ExpertDTO.ExpertUpsertRequest request) {
+        if (!StringUtils.hasText(request.getCompetitionUuid())) {
+            return;
+        }
+        if (!expertRepository.isPublishedCompetition(request.getCompetitionUuid())) {
+            throw biz(ErrorCode.NOT_FOUND, "Competition not found or not open for expert applications");
+        }
+        List<ExpertRepository.ExpertApplicationField> fields = expertRepository
+                .findPublishedCompetitionExpertFields(request.getCompetitionUuid());
+        for (ExpertRepository.ExpertApplicationField field : fields) {
+            if (!field.enabled() || !field.required()) {
+                continue;
+            }
+            Object value = resolveApplicationFieldValue(field.itemKey(), request);
+            if (isBlankApplicationValue(value)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "请填写" + field.title());
+            }
+        }
+    }
+
+    private Object resolveApplicationFieldValue(String itemKey, ExpertDTO.ExpertUpsertRequest request) {
+        String key = normalizeApplicationFieldKey(itemKey);
+        return switch (key) {
+            case "name", "expertname", "fullname" -> request.getName();
+            case "title", "experttitle" -> request.getTitle();
+            case "organization", "company", "institution" -> request.getOrganization();
+            case "position", "jobtitle" -> request.getPosition();
+            case "expertise", "specialty", "speciality" -> request.getExpertise();
+            case "phone", "telephone" -> request.getPhone();
+            case "mobile", "mobilephone" -> request.getMobile();
+            case "idcardnumber", "idcard", "identitycard" -> request.getIdCardNumber();
+            case "email", "mail" -> request.getEmail();
+            case "avatarurl", "avatar" -> request.getAvatarUrl();
+            case "bio", "introduction", "profile" -> request.getBio();
+            case "tags", "tag" -> request.getTags();
+            default -> request.getExtraValues() == null ? null : request.getExtraValues().get(itemKey);
+        };
+    }
+
+    private boolean isBlankApplicationValue(Object value) {
+        if (value == null) {
+            return true;
+        }
+        if (value instanceof CharSequence text) {
+            return text.toString().trim().isEmpty();
+        }
+        if (value instanceof Collection<?> collection) {
+            return collection.isEmpty();
+        }
+        if (value instanceof Map<?, ?> map) {
+            return map.isEmpty();
+        }
+        return false;
+    }
+
+    private String normalizeApplicationFieldKey(String value) {
+        return value == null ? "" : value.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeExtraValuesJson(Map<String, Object> values, String fallbackJson) {
+        if (values == null && StringUtils.hasText(fallbackJson)) {
+            return fallbackJson;
+        }
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        if (values != null) {
+            values.forEach((key, value) -> {
+                if (StringUtils.hasText(key)) {
+                    normalized.put(key.trim(), value);
+                }
+            });
+        }
+        try {
+            String json = OBJECT_MAPPER.writeValueAsString(normalized);
+            if (json.length() > MAX_EXTRA_VALUES_LENGTH) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Expert application data is too long");
+            }
+            return json;
+        } catch (BizException error) {
+            throw error;
+        } catch (Exception error) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Expert application data is invalid");
+        }
     }
 
     private String generateExpertCode() {

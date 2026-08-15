@@ -924,7 +924,9 @@ const ActivityManagementView = () => {
           rowKey="id"
           columns={columns}
           isMobile={responsive.isMobile}
-          scroll={{ x: 1280 }}
+          autoContentWidth
+          scroll={{ x: 'max-content' }}
+          tableLayout="auto"
           request={activityTableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           toolBarRender={() =>

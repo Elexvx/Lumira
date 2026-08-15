@@ -6,6 +6,11 @@ import type { MenuNode } from '@/types/api';
 type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
+const DATA_MANAGEMENT_CERTIFICATE_PATHS = new Set([
+  '/certificates/templates',
+  '/certificates/generate',
+  '/certificates/records',
+]);
 
 const normalizeBreadcrumbHref = (path: string | null | undefined, id: number) => path || `#menu-${id}`;
 
@@ -42,6 +47,21 @@ export const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname
   if (!menuNodes?.length) return routeMetaTrail;
 
   const trail = findMenuTrail(menuNodes, pathname);
+  const shouldUseDataManagementCertificateTrail = DATA_MANAGEMENT_CERTIFICATE_PATHS.has(pathname)
+    && (!trail.length || trail[0]?.path === '/certificates');
+  if (shouldUseDataManagementCertificateTrail) {
+    return [
+      {
+        key: '/data-management',
+        title: resolveRouteMetaTitle('/data-management'),
+        href: '/data-management',
+      },
+      {
+        key: pathname,
+        title: resolveRouteMetaTitle(pathname),
+      },
+    ];
+  }
   if (!trail.length) return routeMetaTrail;
 
   return trail.map((node, index) => {

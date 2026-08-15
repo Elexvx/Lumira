@@ -98,6 +98,7 @@ const joinOptions = (values?: string[]) => values?.map((value) => value.trim()).
 
 export const normalizeExpertPayload = (values: ExpertFormValues): ExpertUpsertPayload => ({
   code: trimOptional(values.code),
+  competitionUuid: trimOptional(values.competitionUuid),
   name: values.name.trim(),
   title: trimOptional(values.title),
   organization: trimOptional(values.organization),
@@ -311,6 +312,7 @@ const ExpertManagementView = () => {
     form.resetFields();
     form.setFieldsValue({
       ...record,
+      competitionUuid: record.competitionUuid || undefined,
       expertise: splitTags(record.expertise),
       title: record.title || undefined,
       organization: record.organization || undefined,

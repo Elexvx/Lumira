@@ -1,6 +1,6 @@
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Descriptions, Space, Tag, Typography } from 'antd';
+import { Button, Descriptions, Tag, Typography } from 'antd';
 import { useLocation } from '@umijs/max';
 import { useMemo, useRef, useState } from 'react';
 import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
@@ -77,6 +77,10 @@ const formatAmount = (amountMinor?: number | null, currency?: string | null) => 
 };
 
 const formatTime = (value?: string | null) => (value ? value.replace('T', ' ') : '-');
+
+const renderIdentifier = (value?: string | null) => (
+  <Typography.Text ellipsis={{ tooltip: value || undefined }}>{value || '-'}</Typography.Text>
+);
 
 const renderPaymentStatus = (status?: string | null) => {
   const normalized = status || 'PENDING_PAYMENT';
@@ -164,21 +168,28 @@ const PaymentPage = () => {
       {
         title: '订单号',
         dataIndex: 'keyword',
-        width: 210,
+        width: 180,
         fieldProps: {
           placeholder: '报名号/订单号/赛事/团队/项目',
         },
-        render: (_, record) => (
-          <Space className="payment-record-title" orientation="vertical" size={0}>
-            <Typography.Text strong ellipsis={{ tooltip: record.orderNo || undefined }}>
-              {record.orderNo || '-'}
-            </Typography.Text>
-            <Typography.Text type="secondary" ellipsis={{ tooltip: record.registrationNo }}>
-              报名：{record.registrationNo}
-            </Typography.Text>
-            {record.participantNo ? <Tag color="blue">{record.participantNo}</Tag> : null}
-          </Space>
-        ),
+        render: (_, record) => renderIdentifier(record.orderNo),
+      },
+      {
+        title: '报名号',
+        dataIndex: 'registrationNo',
+        search: false,
+        width: 190,
+        ellipsis: true,
+        render: (_, record) => renderIdentifier(record.registrationNo),
+      },
+      {
+        title: '参赛编号',
+        dataIndex: 'participantNo',
+        search: false,
+        width: 150,
+        responsive: ['xl', 'xxl'],
+        ellipsis: true,
+        render: (_, record) => renderIdentifier(record.participantNo),
       },
       {
         title: '支付状态',
@@ -288,8 +299,9 @@ const PaymentPage = () => {
           columns={tableColumns}
           containerResponsive
           isMobile={responsive.isMobile}
-          scroll={{ x: 960 }}
-          tableLayout="fixed"
+          autoContentWidth
+          scroll={{ x: 'max-content' }}
+          tableLayout="auto"
           request={tableRequest}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           toolBarRender={() => [

@@ -34,6 +34,9 @@ export const resolveRegistrationFieldValidationRule = (
   if (normalizedScope === 'PROJECT_FIELD' && ['projecttitle', 'projectname', 'title', 'name'].includes(normalizedKey)) {
     return 'DISPLAY_NAME';
   }
+  if (normalizedScope === 'EXPERT_FIELD' && ['expertname', 'fullname', 'name'].includes(normalizedKey)) {
+    return 'PERSON_NAME';
+  }
   return configuredRule;
 };
 

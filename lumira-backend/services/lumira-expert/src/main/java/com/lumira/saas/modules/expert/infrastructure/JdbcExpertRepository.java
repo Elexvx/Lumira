@@ -18,10 +18,11 @@ import org.springframework.util.StringUtils;
 public class JdbcExpertRepository implements ExpertRepository {
     private static final String SELECT = """
             select id, code, name, title, organization, position, expertise,
+                   competition_uuid as competitionUuid,
                    phone, mobile, id_card_number as idCardNumber, user_id as userId, user_uuid as userUuid,
                    account_status as accountStatus, initial_password_reset_required as initialPasswordResetRequired,
                    email, avatar_url as avatarUrl,
-                   bio, tags, status, approval_status as approvalStatus,
+                   bio, tags, extra_values_json as extraValuesJson, status, approval_status as approvalStatus,
                    approval_instance_id as approvalInstanceId, sort,
                    created_at as createdAt, updated_at as updatedAt
             """;
@@ -64,6 +65,44 @@ public class JdbcExpertRepository implements ExpertRepository {
     }
 
     @Override
+    public boolean isPublishedCompetition(String competitionUuid) {
+        Long count = database.queryForObject(
+                "select count(1) from aiadc_competition where uuid = ? and status = 'published' and deleted = 0",
+                Long.class,
+                competitionUuid
+        );
+        return count != null && count > 0;
+    }
+
+    @Override
+    public List<ExpertApplicationField> findPublishedCompetitionExpertFields(String competitionUuid) {
+        return database.query(
+                """
+                        select item.item_key as itemKey, item.title, item.content_json as contentJson,
+                               item.required_flag as requiredFlag, item.enabled
+                        from competition_config_item item
+                        join competition_config_set config_set
+                          on config_set.id = item.config_set_id
+                         and config_set.competition_uuid = item.competition_uuid
+                         and config_set.status = 'PUBLISHED'
+                         and config_set.deleted = 0
+                        where item.competition_uuid = ?
+                          and item.item_type = 'EXPERT_FIELD'
+                          and item.deleted = 0
+                        order by item.sort_order asc, item.id asc
+                        """,
+                (row, rowNumber) -> new ExpertApplicationField(
+                        row.getString("itemKey"),
+                        row.getString("title"),
+                        row.getString("contentJson"),
+                        row.getInt("requiredFlag") != 0,
+                        row.getInt("enabled") != 0
+                ),
+                competitionUuid
+        );
+    }
+
+    @Override
     public Optional<ExpertVO.Expert> findById(Long id) {
         return database.query(
                 SELECT + " from aiadc_expert where id = ? and deleted = 0 limit 1",
@@ -82,13 +121,13 @@ public class JdbcExpertRepository implements ExpertRepository {
     ) {
         int inserted = database.update("""
                 insert into aiadc_expert (
-                    code, name, title, organization, position, expertise, phone, mobile, id_card_number, email,
-                    avatar_url, bio, tags, status, approval_status, sort,
+                    code, competition_uuid, name, title, organization, position, expertise, phone, mobile, id_card_number, email,
+                    avatar_url, bio, tags, extra_values_json, status, approval_status, sort,
                     created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                """, expert.getCode(), expert.getName(), expert.getTitle(), expert.getOrganization(),
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                """, expert.getCode(), expert.getCompetitionUuid(), expert.getName(), expert.getTitle(), expert.getOrganization(),
                 expert.getPosition(), expert.getExpertise(), expert.getPhone(), expert.getMobile(),
-                expert.getIdCardNumber(), expert.getEmail(), expert.getAvatarUrl(), expert.getBio(), expert.getTags(),
+                expert.getIdCardNumber(), expert.getEmail(), expert.getAvatarUrl(), expert.getBio(), expert.getTags(), expert.getExtraValuesJson(),
                 initialStatus, initialApprovalStatus, expert.getSort(), userId, userUuid, userId, userUuid);
         return inserted == 1 ? database.queryForObject("select last_insert_id()", Long.class) : null;
     }
@@ -137,13 +176,13 @@ public class JdbcExpertRepository implements ExpertRepository {
     ) {
         return database.update("""
                 update aiadc_expert
-                set code = ?, name = ?, title = ?, organization = ?, position = ?, expertise = ?,
-                    phone = ?, mobile = ?, id_card_number = ?, email = ?, avatar_url = ?, bio = ?, tags = ?, status = ?, sort = ?,
+                set code = ?, competition_uuid = ?, name = ?, title = ?, organization = ?, position = ?, expertise = ?,
+                    phone = ?, mobile = ?, id_card_number = ?, email = ?, avatar_url = ?, bio = ?, tags = ?, extra_values_json = ?, status = ?, sort = ?,
                     updated_by = ?, updated_by_uuid = ?, updated_at = ?
                 where id = ? and code = ? and status = ? and approval_status = ? and deleted = 0
-                """, expert.getCode(), expert.getName(), expert.getTitle(), expert.getOrganization(),
+                """, expert.getCode(), expert.getCompetitionUuid(), expert.getName(), expert.getTitle(), expert.getOrganization(),
                 expert.getPosition(), expert.getExpertise(), expert.getPhone(), expert.getMobile(),
-                expert.getIdCardNumber(), expert.getEmail(), expert.getAvatarUrl(), expert.getBio(), expert.getTags(),
+                expert.getIdCardNumber(), expert.getEmail(), expert.getAvatarUrl(), expert.getBio(), expert.getTags(), expert.getExtraValuesJson(),
                 expert.getStatus(), expert.getSort(), userId, userUuid, LocalDateTime.now(), id, expected.getCode(),
                 expected.getStatus(), expected.getApprovalStatus());
     }

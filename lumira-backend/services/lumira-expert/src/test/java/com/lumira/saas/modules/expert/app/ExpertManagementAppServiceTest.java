@@ -30,6 +30,56 @@ import static org.mockito.Mockito.when;
 class ExpertManagementAppServiceTest {
 
     @Test
+    void competitionApplicationPersistsDynamicValuesAndChecksConfiguredRequiredFields() {
+        ExpertRepository repository = mock(ExpertRepository.class);
+        WorkflowStartPort workflowStartPort = mock(WorkflowStartPort.class);
+        ExpertVO.Expert stored = expert(72L, "pending", "PENDING");
+        when(repository.isPublishedCompetition("competition-uuid")).thenReturn(true);
+        when(repository.findPublishedCompetitionExpertFields("competition-uuid")).thenReturn(List.of(
+                new ExpertRepository.ExpertApplicationField("portfolio", "代表作品", "{}", true, true)
+        ));
+        when(repository.create(any(), anyString(), anyString(), anyLong(), anyString())).thenReturn(72L);
+        when(workflowStartPort.startWorkflow(any(), anyString(), anyLong(), anyString(), anyString(), anyMap())).thenReturn(902L);
+        when(repository.attachWorkflow(anyLong(), anyString(), anyString(), anyString(), anyLong(), anyLong(), anyString()))
+                .thenReturn(1);
+        when(repository.findById(72L)).thenReturn(Optional.of(stored));
+        ExpertManagementAppService service = new ExpertManagementAppService(repository, workflowStartPort, dictionary());
+
+        ExpertDTO.ExpertUpsertRequest request = request();
+        request.setCompetitionUuid("competition-uuid");
+        request.setExpertise("人工智能与机器人");
+        request.setExtraValues(Map.of("portfolio", "智能制造平台"));
+
+        ExpertVO.Expert result = service.createExpert(user("expert:apply"), request);
+
+        assertThat(result.getId()).isEqualTo(72L);
+        verify(repository).create(
+                org.mockito.ArgumentMatchers.argThat(value -> "competition-uuid".equals(value.getCompetitionUuid())
+                        && value.getExtraValuesJson().contains("智能制造平台")),
+                anyString(), anyString(), anyLong(), anyString()
+        );
+    }
+
+    @Test
+    void competitionApplicationRejectsMissingConfiguredRequiredField() {
+        ExpertRepository repository = mock(ExpertRepository.class);
+        when(repository.isPublishedCompetition("competition-uuid")).thenReturn(true);
+        when(repository.findPublishedCompetitionExpertFields("competition-uuid")).thenReturn(List.of(
+                new ExpertRepository.ExpertApplicationField("portfolio", "代表作品", "{}", true, true)
+        ));
+        ExpertManagementAppService service = new ExpertManagementAppService(repository, mock(WorkflowStartPort.class), dictionary());
+        ExpertDTO.ExpertUpsertRequest request = request();
+        request.setCompetitionUuid("competition-uuid");
+        request.setExpertise("人工智能与机器人");
+
+        assertThatThrownBy(() -> service.createExpert(user("expert:apply"), request))
+                .isInstanceOf(BizException.class)
+                .extracting(error -> ((BizException) error).getErrorCode())
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+        verify(repository, org.mockito.Mockito.never()).create(any(), anyString(), anyString(), anyLong(), anyString());
+    }
+
+    @Test
     void createExpertStartsWorkflowAndAttachesItUsingExpertOwnedRepository() {
         ExpertRepository repository = mock(ExpertRepository.class);
         WorkflowStartPort workflowStartPort = mock(WorkflowStartPort.class);

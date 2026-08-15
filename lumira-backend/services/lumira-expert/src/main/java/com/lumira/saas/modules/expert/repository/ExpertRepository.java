@@ -8,6 +8,8 @@ import java.util.Optional;
 
 public interface ExpertRepository {
     PageData search(String keyword, String status, String approvalStatus, long offset, long limit);
+    boolean isPublishedCompetition(String competitionUuid);
+    List<ExpertApplicationField> findPublishedCompetitionExpertFields(String competitionUuid);
     Optional<ExpertVO.Expert> findById(Long id);
     Long create(ExpertDTO.ExpertUpsertRequest expert, String initialStatus, String initialApprovalStatus,
                 Long userId, String userUuid);
@@ -18,4 +20,12 @@ public interface ExpertRepository {
     int delete(Long id, ExpertVO.Expert expected, Long userId, String userUuid);
 
     record PageData(List<ExpertVO.Expert> records, long total) { }
+
+    record ExpertApplicationField(
+            String itemKey,
+            String title,
+            String contentJson,
+            boolean required,
+            boolean enabled
+    ) { }
 }

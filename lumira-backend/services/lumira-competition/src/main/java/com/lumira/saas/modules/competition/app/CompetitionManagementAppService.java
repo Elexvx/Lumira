@@ -66,6 +66,7 @@ public class CompetitionManagementAppService {
             "TEAM_FIELD",
             "MEMBER_FIELD",
             "PROJECT_FIELD",
+            "EXPERT_FIELD",
             "TEAM_SETTINGS",
             "PAYMENT_SETTINGS",
             "REQUIRED_FILE",
@@ -73,11 +74,11 @@ public class CompetitionManagementAppService {
             "TIMELINE"
     );
     private static final Set<String> COLLECTION_CONFIG_ITEM_TYPES = Set.of(
-            "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD"
+            "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD"
     );
     private static final Map<String, Set<String>> SETTINGS_MODULE_TYPES = Map.of(
             "documents", Set.of("AGREEMENT", "CONSENT"),
-            "fields", Set.of("TEAM_SETTINGS", "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD"),
+            "fields", Set.of("TEAM_SETTINGS", "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD"),
             "payments", Set.of("PAYMENT_SETTINGS"),
             "files", Set.of("REQUIRED_FILE"),
             "stage-materials", Set.of("STAGE_MATERIAL"),
@@ -1020,7 +1021,7 @@ public class CompetitionManagementAppService {
             requirePublishText(missing, item.getItemKey(), itemReference + "标识不能为空");
             if ("AGREEMENT".equals(item.getItemType()) || "CONSENT".equals(item.getItemType())) {
                 requirePublishText(missing, item.getContentText(), itemReference + "必须填写内容");
-            } else if (Set.of("REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD").contains(item.getItemType())) {
+            } else if (Set.of("REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD").contains(item.getItemType())) {
                 requirePublishText(missing, fieldTypeForPublish(item), itemReference + "必须设置字段类型");
             } else if ("REQUIRED_FILE".equals(item.getItemType())) {
                 requirePublishText(missing, fileFormatForPublish(item), itemReference + "必须设置允许上传的文件格式");
@@ -1072,6 +1073,7 @@ public class CompetitionManagementAppService {
         return switch (itemType == null ? "" : itemType) {
             case "AGREEMENT", "CONSENT" -> "报名文书";
             case "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD" -> "报名字段";
+            case "EXPERT_FIELD" -> "专家字段";
             case "TEAM_SETTINGS" -> "团队设置";
             case "PAYMENT_SETTINGS" -> "支付设置";
             case "REQUIRED_FILE" -> "提交材料";

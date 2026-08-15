@@ -247,6 +247,16 @@ describe('access', () => {
     expect(result.canVisitDownloadCenter).toBe(true);
   });
 
+  it('exposes certificate administration through data management', () => {
+    const result = access({
+      currentUser: userWithPermissions(['aiadc:certificate-template:view']),
+    });
+
+    expect(result.canVisitCertificateTemplates).toBe(true);
+    expect(result.canVisitCertificateManagement).toBe(true);
+    expect(result.canVisitDataManagement).toBe(true);
+  });
+
   it('keeps data management access for competition managers', () => {
     const manager = access({
       currentUser: userWithPermissions(['aiadc:competition:view', 'aiadc:registration:view']),
@@ -306,8 +316,11 @@ describe('access', () => {
     });
 
     expect(expert.canVisitExpertReview).toBe(true);
+    expect(expert.canVisitReviewTasks).toBe(true);
     expect(expert.canVisitReviewWorkbench).toBe(true);
     expect(expert.canVisitWorkflowTasks).toBe(false);
+    expect(reviewManager.canVisitExpertReview).toBe(false);
+    expect(reviewManager.canVisitReviewTasks).toBe(false);
     expect(reviewManager.canVisitReviewWorkbench).toBe(true);
     expect(workflowApprover.canVisitReviewWorkbench).toBe(false);
   });

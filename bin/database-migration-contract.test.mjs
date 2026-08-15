@@ -403,7 +403,7 @@ test('expert navigation is consolidated under the expert review catalog', () => 
 
   assert.match(bootstrap, /\(-1060,\s*0,\s*'expert\.root'.*'DISABLED',\s*0,\s*0,\s*1\)/);
   assert.match(bootstrap, /\(-1061,\s*-1068,\s*'expert\.management'/);
-  assert.match(bootstrap, /\(-1078,\s*-1068,\s*'expert\.review\.tasks'.*?,\s*2,\s*'review:workbench:view'/);
+  assert.match(bootstrap, /\(-1078,\s*-1068,\s*'expert\.review\.tasks'.*?,\s*2,\s*'review:task:view'/);
   assert.match(bootstrap, /\(-1077,\s*-1068,\s*'expert\.application'.*?,\s*3,\s*NULL/);
   assert.match(migration, /JOIN `sys_menu` AS review_root/);
   assert.match(migration, /`menu_code` = 'expert\.root'/);
@@ -443,6 +443,7 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   const migration = read('deploy/migrations/V202608030002__repair_builtin_navigation_hierarchy.sql');
   const dynamicParentRepair = read('deploy/migrations/V202608030003__repair_dynamic_registration_parent.sql');
   const navigationAuthorityRepair = read('deploy/migrations/V202608030005__repair_navigation_authority.sql');
+  const certificateDataManagementMigration = read('deploy/migrations/V202608150004__move_certificate_management_into_data_management.sql');
   const menuInsertStart = baseline.indexOf('INSERT INTO `sys_menu`');
   const menuInsertEnd = baseline.indexOf('ON DUPLICATE KEY UPDATE', menuInsertStart);
   const menuInsert = baseline.slice(menuInsertStart, menuInsertEnd);
@@ -465,6 +466,9 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   assert.equal(byCode.get('competition.review-results')?.parentId, '-1069');
   assert.equal(byCode.get('certificate.mine')?.id, '-1114');
   assert.equal(byCode.get('certificate.mine')?.parentId, '-1069');
+  for (const certificateMenuCode of ['certificate.templates', 'certificate.generate', 'certificate.records']) {
+    assert.equal(byCode.get(certificateMenuCode)?.parentId, '-1100');
+  }
   assert.equal(byCode.get('expert.application')?.parentId, '-1068');
 
   for (const marker of [
@@ -500,6 +504,15 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   assert.doesNotMatch(navigationAuthorityRepair, /child_menu\.`deleted`\s*=/);
   assert.doesNotMatch(navigationAuthorityRepair, /\bDELETE\s+FROM\b/i);
   assert.doesNotMatch(navigationAuthorityRepair, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+
+  assert.match(certificateDataManagementMigration, /JOIN `sys_menu` AS data_root/);
+  assert.match(certificateDataManagementMigration, /certificate\.templates/);
+  assert.match(certificateDataManagementMigration, /certificate\.generate/);
+  assert.match(certificateDataManagementMigration, /certificate\.records/);
+  assert.match(certificateDataManagementMigration, /certificate\.root/);
+  assert.match(certificateDataManagementMigration, /migration:V202608150004:certificate-data-management/);
+  assert.doesNotMatch(certificateDataManagementMigration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(certificateDataManagementMigration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
 
 test('platform event outbox audit identity repair matches the fresh bootstrap', () => {

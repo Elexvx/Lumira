@@ -663,6 +663,7 @@ class SystemUserManagementAppServiceTest {
         assertEquals(1, jdbcTemplate.lastInsertIdQueries);
         verify(iamUserService).createUserWithIdentity(createdUser, "create-user", "ADMIN_CREATE");
         verify(iamUserService).recordUserRegistered(2001L, "user-uuid-2001", "ADMIN_CREATE", null, null);
+        verify(permissionSnapshotService, never()).invalidatePermissions();
     }
 
     @Test

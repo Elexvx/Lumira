@@ -17,3 +17,8 @@ export const shouldShowGlobalExpertTasks = (
   canViewTasks: boolean,
   embeddedInCompetitionWorkspace: boolean,
 ) => canViewTasks && !embeddedInCompetitionWorkspace;
+
+export const shouldShowReviewAdminWorkbench = (
+  canManageReview: boolean,
+  embeddedInCompetitionWorkspace: boolean,
+) => canManageReview && embeddedInCompetitionWorkspace;

@@ -91,6 +91,7 @@ describe('competition settings URL navigation', () => {
     expect(createCompetitionSettingsSearch('', 'registration', 'MEMBER_FIELD')).toBe('?section=registration&tab=students');
     expect(createCompetitionSettingsSearch('', 'registration', 'TEAM_FIELD')).toBe('?section=registration&tab=team');
     expect(createCompetitionSettingsSearch('', 'registration', 'INTELLECTUAL_PROPERTY')).toBe('?section=registration&tab=intellectual-property');
+    expect(createCompetitionSettingsSearch('', 'registration', 'EXPERT_FIELD')).toBe('?section=registration&tab=experts');
     expect(createCompetitionSettingsSearch('', 'stages', 'timeline')).toBe('?section=stages&tab=timeline');
     expect(createCompetitionSettingsSearch('', 'stages', 'preliminary')).toBe('?section=stages&tab=preliminary');
     expect(createCompetitionSettingsSearch('', 'stages', 'final')).toBe('?section=stages&tab=final');
@@ -101,6 +102,7 @@ describe('competition settings URL navigation', () => {
       'MEMBER_FIELD',
       'TEAM_FIELD',
       'PROJECT_FIELD',
+      'EXPERT_FIELD',
       'INTELLECTUAL_PROPERTY',
       'documents',
       'INTELLECTUAL_PROPERTY',

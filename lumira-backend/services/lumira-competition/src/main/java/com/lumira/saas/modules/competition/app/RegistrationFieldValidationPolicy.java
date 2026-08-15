@@ -65,6 +65,9 @@ final class RegistrationFieldValidationPolicy {
                 && Set.of("projecttitle", "projectname", "title", "name").contains(normalizedKey)) {
             return "DISPLAY_NAME";
         }
+        if ("EXPERT_FIELD".equals(normalizedScope) && Set.of("expertname", "fullname", "name").contains(normalizedKey)) {
+            return "PERSON_NAME";
+        }
         return configuredRule;
     }
 

@@ -4,6 +4,7 @@ export type ExpertApprovalStatus = 'PENDING' | 'RUNNING' | 'APPROVED' | 'REJECTE
 export interface ExpertRecord {
   id: number;
   code: string;
+  competitionUuid?: string | null;
   name: string;
   title?: string | null;
   organization?: string | null;
@@ -26,10 +27,12 @@ export interface ExpertRecord {
   sort: number;
   createdAt?: string | null;
   updatedAt?: string | null;
+  extraValuesJson?: string | null;
 }
 
 export interface ExpertUpsertPayload {
   code?: string;
+  competitionUuid?: string;
   name: string;
   title?: string;
   organization?: string;
@@ -44,6 +47,7 @@ export interface ExpertUpsertPayload {
   tags?: string;
   status: ExpertStatus;
   sort?: number;
+  extraValues?: Record<string, unknown>;
 }
 
 export interface ExpertQueryParams {

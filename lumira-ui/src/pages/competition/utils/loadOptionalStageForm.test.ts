@@ -43,12 +43,12 @@ describe('loadOptionalPreliminaryStageForm', () => {
     expect(getStageForm).toHaveBeenCalledWith(12);
   });
 
-  it('没有初赛时使用第一个阶段', async () => {
+  it('没有初赛时不加载决赛阶段表单', async () => {
     const listStages = vi.fn().mockResolvedValue([stage(11, 'FINAL')]);
-    const getStageForm = vi.fn().mockResolvedValue({ ...form, stageId: 11 });
+    const getStageForm = vi.fn();
 
-    await loadOptionalPreliminaryStageForm(7, listStages, getStageForm);
-    expect(getStageForm).toHaveBeenCalledWith(11);
+    await expect(loadOptionalPreliminaryStageForm(7, listStages, getStageForm)).resolves.toBeUndefined();
+    expect(getStageForm).not.toHaveBeenCalled();
   });
 
   it('没有阶段时返回 undefined', async () => {
@@ -75,15 +75,14 @@ describe('loadOptionalPreliminaryStageForm', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('首选阶段表单不存在时继续尝试其他阶段', async () => {
-    const fallbackForm = { ...form, stageId: 11 };
+  it('初赛表单不存在时不回退到决赛表单', async () => {
     const getStageForm = vi.fn()
       .mockRejectedValueOnce(new ApiRequestError(
         ErrorCode.NOT_FOUND,
         'missing preliminary form',
         { httpStatus: 404 },
       ))
-      .mockResolvedValueOnce(fallbackForm);
+      .mockResolvedValue({ ...form, stageId: 11 });
 
     await expect(
       loadOptionalPreliminaryStageForm(
@@ -91,9 +90,9 @@ describe('loadOptionalPreliminaryStageForm', () => {
         vi.fn().mockResolvedValue([stage(11, 'FINAL'), stage(12, 'PRELIMINARY')]),
         getStageForm,
       ),
-    ).resolves.toEqual(fallbackForm);
-    expect(getStageForm).toHaveBeenNthCalledWith(1, 12);
-    expect(getStageForm).toHaveBeenNthCalledWith(2, 11);
+    ).resolves.toBeUndefined();
+    expect(getStageForm).toHaveBeenCalledTimes(1);
+    expect(getStageForm).toHaveBeenCalledWith(12);
   });
 
   it('阶段表单服务异常时向上抛出真实错误', async () => {
