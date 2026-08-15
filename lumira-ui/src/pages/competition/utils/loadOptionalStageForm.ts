@@ -11,11 +11,10 @@ export const loadOptionalPreliminaryStageForm = async (
   getStageForm: GetCompetitionStageForm,
 ): Promise<CompetitionStageFormRecord | undefined> => {
   const stages = await listStages(competitionId);
-  const candidates = [
-    ...stages.filter((item) => item.stageCode === 'PRELIMINARY'),
-    ...stages.filter((item) => item.stageCode !== 'PRELIMINARY' && item.materialEditable !== false),
-    ...stages.filter((item) => item.stageCode !== 'PRELIMINARY'),
-  ].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
+  // Registration confirmation can submit only preliminary materials. Falling
+  // back to a final-stage form makes the registration wizard send a future
+  // stageId, which then fails the final-stage material window check.
+  const candidates = stages.filter((item) => item.stageCode === 'PRELIMINARY');
 
   for (const candidate of candidates) {
     try {

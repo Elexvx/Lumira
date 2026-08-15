@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
-import { notifyCurrentUserSync } from '@/auth/currentUserSync';
+import { notifyCurrentUserSync, refreshAuthSessionAndNotifyCurrentUserSync } from '@/auth/currentUserSync';
 import type { ProColumns } from '@ant-design/pro-components';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
@@ -578,7 +578,11 @@ export const useUserManagement = () => {
         message.success(t('ui.system.users.useuser.userCreated'));
       }
 
-      notifyCurrentUserSync();
+      if (isCreating) {
+        notifyCurrentUserSync();
+      } else {
+        await refreshAuthSessionAndNotifyCurrentUserSync();
+      }
       drawer.close();
       if (isCreating && selectedDepartmentId !== null) {
         setSelectedDepartmentId(null);
@@ -635,6 +639,7 @@ export const useUserManagement = () => {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
+          await refreshAuthSessionAndNotifyCurrentUserSync();
           reloadTable();
           await loadDepartments();
         },

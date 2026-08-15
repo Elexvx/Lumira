@@ -406,7 +406,10 @@ public class SystemUserManagementAppService {
         replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), true);
         updateExtraProfileValues(currentUser, userId, userUuid, request.getExtraProfileValues());
-        permissionSnapshotService.invalidatePermissions();
+        // Creating an identity does not change any existing user's roles,
+        // departments, or data scope. Advancing the global permission version
+        // here would invalidate every active administrator session for a
+        // mutation that cannot affect the current user's authorization.
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
         return buildUserDetail(currentUser, userId);
     }
