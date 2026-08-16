@@ -17,6 +17,8 @@ import java.util.Map;
 public interface SystemRoleManagementRepository {
     PageResponse<SystemVO.RoleVO> findRoles(RoleSearch search);
 
+    List<SystemVO.RoleVO> findActiveRoles();
+
     SystemVO.RoleVO findActiveRoleById(Long roleId);
 
     SystemVO.RoleVO findLatestActiveRoleByCode(String roleCode);

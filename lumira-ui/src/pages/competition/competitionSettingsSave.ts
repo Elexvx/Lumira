@@ -20,7 +20,13 @@ export type CompetitionSettingsScheduleFormItem = {
   reviewRange?: [Dayjs, Dayjs] | [string, string];
 };
 
-export type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files' | 'timeline';
+export type CompetitionSettingsConfigModuleKey =
+  | 'documents'
+  | 'fields'
+  | 'payments'
+  | 'files'
+  | 'timeline'
+  | 'awards';
 
 export type CompetitionSettingsConfigItemDraft = {
   itemType?: string | null;

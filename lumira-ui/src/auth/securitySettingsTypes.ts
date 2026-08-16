@@ -7,6 +7,7 @@ export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
   accessTokenExpireSeconds: 1800,
   refreshTokenExpireSeconds: 604800,
   allowMultiDeviceLogin: true,
+  registrationEnabled: false,
   captchaEnabled: false,
   captchaType: 'IMAGE',
   loginDefenseWindowMinutes: 5,

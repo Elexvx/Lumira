@@ -30,6 +30,7 @@ public class SecuritySettingsService {
     private static final String ACCESS_TOKEN_EXPIRE_KEY = "security.access-token-expire-seconds";
     private static final String REFRESH_TOKEN_EXPIRE_KEY = "security.refresh-token-expire-seconds";
     private static final String ALLOW_MULTI_DEVICE_LOGIN_KEY = "security.allow-multi-device-login";
+    private static final String REGISTRATION_ENABLED_KEY = "security.registration-enabled";
     private static final String CAPTCHA_ENABLED_KEY = "security.captcha-enabled";
     private static final String CAPTCHA_TYPE_KEY = "security.captcha-type";
     private static final String LOGIN_DEFENSE_WINDOW_MINUTES_KEY = "security.login-defense-window-minutes";
@@ -52,6 +53,7 @@ public class SecuritySettingsService {
             ACCESS_TOKEN_EXPIRE_KEY,
             REFRESH_TOKEN_EXPIRE_KEY,
             ALLOW_MULTI_DEVICE_LOGIN_KEY,
+            REGISTRATION_ENABLED_KEY,
             CAPTCHA_ENABLED_KEY,
             CAPTCHA_TYPE_KEY,
             LOGIN_DEFENSE_WINDOW_MINUTES_KEY,
@@ -131,6 +133,10 @@ public class SecuritySettingsService {
 
     public boolean isAllowMultiDeviceLogin() {
         return loadSettings().isAllowMultiDeviceLogin();
+    }
+
+    public boolean isRegistrationEnabled() {
+        return loadSettings().isRegistrationEnabled();
     }
 
     public boolean isCaptchaEnabled() {
@@ -214,6 +220,7 @@ public class SecuritySettingsService {
                 resolveSeconds(values, ACCESS_TOKEN_EXPIRE_KEY, securityProperties.getAccessTokenExpireSeconds()),
                 resolveSeconds(values, REFRESH_TOKEN_EXPIRE_KEY, securityProperties.getRefreshTokenExpireSeconds()),
                 resolveBoolean(values, ALLOW_MULTI_DEVICE_LOGIN_KEY, securityProperties.isAllowMultiDeviceLogin()),
+                resolveBoolean(values, REGISTRATION_ENABLED_KEY, false),
                 resolveBoolean(values, CAPTCHA_ENABLED_KEY, securityProperties.isCaptchaEnabled()),
                 resolveCaptchaType(values, CAPTCHA_TYPE_KEY, securityProperties.getCaptchaType()),
                 resolvePositiveLong(values, LOGIN_DEFENSE_WINDOW_MINUTES_KEY, securityProperties.getLoginDefenseWindowMinutes()),
@@ -289,6 +296,12 @@ public class SecuritySettingsService {
                 "多设备登录",
                 request.isAllowMultiDeviceLogin(),
                 "是否允许同一账号在多个设备同时在线"
+        );
+        upsertConfig(
+                REGISTRATION_ENABLED_KEY,
+                "允许用户注册",
+                request.isRegistrationEnabled(),
+                "是否允许未注册手机号通过短信验证码创建普通用户"
         );
         upsertConfig(
                 CAPTCHA_ENABLED_KEY,
@@ -605,6 +618,7 @@ public class SecuritySettingsService {
         private long accessTokenExpireSeconds;
         private long refreshTokenExpireSeconds;
         private boolean allowMultiDeviceLogin;
+        private boolean registrationEnabled;
         private boolean captchaEnabled;
         private String captchaType;
         private long loginDefenseWindowMinutes;
@@ -639,10 +653,51 @@ public class SecuritySettingsService {
                 boolean passwordRequireSpecialCharacter,
                 boolean passwordAllowConsecutiveCharacters
         ) {
+            this(
+                    idleTimeoutSeconds,
+                    accessTokenExpireSeconds,
+                    refreshTokenExpireSeconds,
+                    allowMultiDeviceLogin,
+                    false,
+                    captchaEnabled,
+                    captchaType,
+                    loginDefenseWindowMinutes,
+                    loginMaxValidationAttempts,
+                    loginMaxFailureCount,
+                    verificationCodeExpireSeconds,
+                    verificationCodeCooldownSeconds,
+                    passwordMinLength,
+                    passwordRequireUppercase,
+                    passwordRequireLowercase,
+                    passwordRequireSpecialCharacter,
+                    passwordAllowConsecutiveCharacters
+            );
+        }
+
+        public SecuritySettingsSnapshot(
+                long idleTimeoutSeconds,
+                long accessTokenExpireSeconds,
+                long refreshTokenExpireSeconds,
+                boolean allowMultiDeviceLogin,
+                boolean registrationEnabled,
+                boolean captchaEnabled,
+                String captchaType,
+                long loginDefenseWindowMinutes,
+                long loginMaxValidationAttempts,
+                long loginMaxFailureCount,
+                long verificationCodeExpireSeconds,
+                long verificationCodeCooldownSeconds,
+                long passwordMinLength,
+                boolean passwordRequireUppercase,
+                boolean passwordRequireLowercase,
+                boolean passwordRequireSpecialCharacter,
+                boolean passwordAllowConsecutiveCharacters
+        ) {
             this.idleTimeoutSeconds = idleTimeoutSeconds;
             this.accessTokenExpireSeconds = accessTokenExpireSeconds;
             this.refreshTokenExpireSeconds = refreshTokenExpireSeconds;
             this.allowMultiDeviceLogin = allowMultiDeviceLogin;
+            this.registrationEnabled = registrationEnabled;
             this.captchaEnabled = captchaEnabled;
             this.captchaType = captchaType;
             this.loginDefenseWindowMinutes = loginDefenseWindowMinutes;
@@ -687,6 +742,14 @@ public class SecuritySettingsService {
 
         public void setAllowMultiDeviceLogin(boolean allowMultiDeviceLogin) {
             this.allowMultiDeviceLogin = allowMultiDeviceLogin;
+        }
+
+        public boolean isRegistrationEnabled() {
+            return registrationEnabled;
+        }
+
+        public void setRegistrationEnabled(boolean registrationEnabled) {
+            this.registrationEnabled = registrationEnabled;
         }
 
         public boolean isCaptchaEnabled() {

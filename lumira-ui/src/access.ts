@@ -113,11 +113,9 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitSensitiveWordsPlugin =
     isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:sensitive-words:view'));
   const canVisitCertificateTemplates = isLogin && hasPermission(permissions, 'aiadc:certificate-template:view');
-  const canVisitCertificateGenerate = isLogin && hasPermission(permissions, 'aiadc:certificate-batch:create');
   const canVisitCertificateRecords = isLogin && hasPermission(permissions, 'aiadc:certificate:view');
   const canVisitCertificateManagement = [
     canVisitCertificateTemplates,
-    canVisitCertificateGenerate,
     canVisitCertificateRecords,
   ].some(Boolean);
   const canVisitDataManagement =
@@ -205,7 +203,6 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitCertificates: isLogin,
     canVisitCertificateManagement,
     canVisitCertificateTemplates,
-    canVisitCertificateGenerate,
     canVisitCertificateRecords,
     canVisitMyCertificates: isLogin,
     canVisitExperts: isLogin && hasPermission(permissions, 'expert:view'),

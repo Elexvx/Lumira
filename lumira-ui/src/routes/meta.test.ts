@@ -44,12 +44,12 @@ describe('route meta', () => {
       .toBe('canVisitCompetitionReviewResults');
   });
 
-  it('keeps certificate generation, batches, and records as distinct competition workspace pages', () => {
+  it('keeps certificate batches and records in the competition workspace', () => {
     const competitionGroup = backendRoutes.find((route) => route.path === '/competitions');
     const workspaceGroup = competitionGroup?.routes?.find((route) => route.path === '/competitions/:competitionUuid');
 
-    expect(workspaceGroup?.routes?.find((route) => route.path.endsWith('/certificates/generate'))?.component)
-      .toBe('@/pages/certificates/GeneratePage');
+    expect(workspaceGroup?.routes?.find((route) => route.path.endsWith('/certificates/generate')))
+      .toBeUndefined();
     expect(workspaceGroup?.routes?.find((route) => route.path.endsWith('/certificates/batches'))?.component)
       .toBe('@/pages/certificates/BatchesPage');
     expect(workspaceGroup?.routes?.find((route) => route.path.endsWith('/certificates/records'))?.component)

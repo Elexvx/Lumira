@@ -7,6 +7,7 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.TrustedCurrentUserResolver;
 import com.lumira.api.event.EventCatalogEventTypes;
 import com.lumira.api.event.TransactionalEventOutboxPort;
+import com.lumira.saas.modules.activity.model.ActivityRegistrationField;
 import com.lumira.saas.modules.activity.repository.ActivityRepository;
 import com.lumira.saas.modules.activity.dto.ActivityDTO;
 import com.lumira.saas.modules.activity.vo.ActivityPageResponse;
@@ -20,6 +21,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,6 +48,11 @@ public class ActivityManagementAppService {
     private static final int MAX_LONG_TEXT_LENGTH = 1000;
     private static final int MAX_URL_LENGTH = 512;
     private static final int MAX_LOCATION_LENGTH = 255;
+    private static final int MAX_REGISTRATION_FIELDS = 50;
+    private static final int MAX_REGISTRATION_OPTIONS = 100;
+    private static final Set<String> REGISTRATION_FIELD_TYPES = Set.of(
+            "TEXT", "TEXTAREA", "NUMBER", "DATE", "SELECT", "MULTI_SELECT", "MOBILE", "EMAIL"
+    );
 
     private final ActivityRepository activityRepository;
     private final TrustedCurrentUserResolver trustedCurrentUserResolver;
@@ -138,7 +146,7 @@ public class ActivityManagementAppService {
         Long userId = trustedCurrentUser.getUserId();
         String userUuid = requireUserUuid(trustedCurrentUser);
         requireRequest(request);
-        ActivityDTO.ActivityUpsertRequest normalized = normalizeRequest(request, generateActivityCode());
+        ActivityDTO.ActivityUpsertRequest normalized = normalizeRequest(request, generateActivityCode(), List.of());
         Long id = activityRepository.create(normalized, userId, userUuid);
         requireActivityWrite(id == null ? 0 : 1);
         ActivityVO.Activity activity = getActivity(trustedCurrentUser, id);
@@ -157,7 +165,11 @@ public class ActivityManagementAppService {
         if (existing == null) {
             throw biz(ErrorCode.NOT_FOUND, "Activity not found");
         }
-        ActivityDTO.ActivityUpsertRequest normalized = normalizeRequest(request, existing.getCode());
+        ActivityDTO.ActivityUpsertRequest normalized = normalizeRequest(
+                request,
+                existing.getCode(),
+                existing.getRegistrationFields() == null ? List.of() : existing.getRegistrationFields()
+        );
         int updated = activityRepository.update(id, existing, normalized, userId, userUuid);
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Activity not found");
@@ -286,7 +298,11 @@ public class ActivityManagementAppService {
         return response;
     }
 
-    private ActivityDTO.ActivityUpsertRequest normalizeRequest(ActivityDTO.ActivityUpsertRequest request, String fallbackCode) {
+    private ActivityDTO.ActivityUpsertRequest normalizeRequest(
+            ActivityDTO.ActivityUpsertRequest request,
+            String fallbackCode,
+            List<ActivityRegistrationField> fallbackRegistrationFields
+    ) {
         ActivityDTO.ActivityUpsertRequest normalized = new ActivityDTO.ActivityUpsertRequest();
         normalized.setCode(StringUtils.hasText(request.getCode())
                 ? trimRequired(request.getCode(), "Activity code is required", MAX_CODE_LENGTH, "Activity code is too long")
@@ -307,7 +323,68 @@ public class ActivityManagementAppService {
         List<String> statuses = requiredDictValues(STATUS_DICT_CODE);
         normalized.setLocale(normalizeLocales(request.getLocale(), locales, "Invalid activity locale"));
         normalized.setStatus(normalizeEnum(request.getStatus(), statuses.getFirst(), Set.copyOf(statuses), "Invalid activity status"));
+        normalized.setRegistrationFields(normalizeRegistrationFields(
+                request.getRegistrationFields() == null ? fallbackRegistrationFields : request.getRegistrationFields()
+        ));
         return normalized;
+    }
+
+    private List<ActivityRegistrationField> normalizeRegistrationFields(List<ActivityRegistrationField> fields) {
+        List<ActivityRegistrationField> source = fields == null ? List.of() : fields;
+        if (source.size() > MAX_REGISTRATION_FIELDS) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Too many activity registration fields");
+        }
+        Set<String> fieldKeys = new HashSet<>();
+        List<ActivityRegistrationField> normalized = new ArrayList<>(source.size());
+        for (ActivityRegistrationField field : source) {
+            if (field == null) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Activity registration field is required");
+            }
+            String fieldKey = trimRequired(field.getFieldKey(), "Registration field key is required", 64, "Registration field key is too long");
+            if (!fieldKey.matches("[A-Za-z][A-Za-z0-9_-]{0,63}")) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Registration field key is invalid");
+            }
+            if (!fieldKeys.add(fieldKey.toLowerCase(Locale.ROOT))) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Registration field keys must be unique");
+            }
+            String fieldType = trimRequired(field.getFieldType(), "Registration field type is required")
+                    .toUpperCase(Locale.ROOT);
+            if (!REGISTRATION_FIELD_TYPES.contains(fieldType)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Registration field type is invalid");
+            }
+            List<String> options = normalizeRegistrationFieldOptions(field.getOptions());
+            if (("SELECT".equals(fieldType) || "MULTI_SELECT".equals(fieldType)) && options.isEmpty()) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Choice registration fields require options");
+            }
+
+            ActivityRegistrationField next = new ActivityRegistrationField();
+            next.setFieldKey(fieldKey);
+            next.setLabel(trimRequired(field.getLabel(), "Registration field label is required", 128, "Registration field label is too long"));
+            next.setFieldType(fieldType);
+            next.setPlaceholder(trimOptional(field.getPlaceholder(), 255, "Registration field placeholder is too long"));
+            next.setDescription(trimOptional(field.getDescription(), 500, "Registration field description is too long"));
+            next.setRequired(Boolean.TRUE.equals(field.getRequired()));
+            next.setOptions(("SELECT".equals(fieldType) || "MULTI_SELECT".equals(fieldType)) ? options : List.of());
+            normalized.add(next);
+        }
+        return List.copyOf(normalized);
+    }
+
+    private List<String> normalizeRegistrationFieldOptions(List<String> options) {
+        if (options == null || options.isEmpty()) {
+            return List.of();
+        }
+        if (options.size() > MAX_REGISTRATION_OPTIONS) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Too many registration field options");
+        }
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String option : options) {
+            String value = trimRequired(option, "Registration field option is required", 128, "Registration field option is too long");
+            if (!normalized.add(value)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Registration field options must be unique");
+            }
+        }
+        return List.copyOf(normalized);
     }
 
     private String generateActivityCode() {
@@ -460,6 +537,7 @@ public class ActivityManagementAppService {
         view.setActivityTime(activity.getActivityTime());
         view.setLocation(activity.getLocation());
         view.setFeatured(activity.getFeatured());
+        view.setRegistrationFields(activity.getRegistrationFields() == null ? List.of() : activity.getRegistrationFields());
         return view;
     }
 

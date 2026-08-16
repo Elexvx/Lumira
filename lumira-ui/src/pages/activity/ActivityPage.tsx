@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
+import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Button, Card, DatePicker, Divider, Empty, Form, Image, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
@@ -17,8 +17,14 @@ import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { resolveActivityCtaTarget } from '@/pages/activity/utils/activityCtaTarget';
+import {
+  activityRegistrationFieldTypeOptions,
+  createDefaultActivityRegistrationFields,
+  isActivityRegistrationChoiceField,
+  normalizeActivityRegistrationFields,
+} from '@/pages/activity/utils/activityRegistrationForm';
 import { createActivity, deleteActivity, listActivities, updateActivity } from '@/services/activity/api';
-import type { ActivityLocale, ActivityRecord, ActivityStatus, ActivityUpsertPayload } from '@/services/activity/types';
+import type { ActivityLocale, ActivityRecord, ActivityRegistrationField, ActivityStatus, ActivityUpsertPayload } from '@/services/activity/types';
 import { request } from '@/services/common/request';
 import { message } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
@@ -115,6 +121,21 @@ type ActivityFormValues = Omit<ActivityUpsertPayload, 'code' | 'activityDate' | 
   activityDateTimeRange?: [Dayjs, Dayjs] | [string, string];
 };
 
+const createEmptyActivityRegistrationField = (fields?: ActivityRegistrationField[]): ActivityRegistrationField => {
+  const usedKeys = new Set((fields || []).map((field) => field.fieldKey));
+  let index = usedKeys.size + 1;
+  while (usedKeys.has(`field${index}`)) {
+    index += 1;
+  }
+  return {
+    fieldKey: `field${index}`,
+    label: '新字段',
+    fieldType: 'TEXT',
+    required: false,
+    options: [],
+  };
+};
+
 const trimOptional = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed || undefined;
@@ -180,6 +201,7 @@ const normalizePayload = (values: ActivityFormValues): ActivityUpsertPayload => 
     ctaHref: trimOptional(values.ctaHref),
     sort: values.sort ?? 100,
     featured: Boolean(values.featured),
+    registrationFields: normalizeActivityRegistrationFields(values.registrationFields),
   };
 };
 
@@ -343,6 +365,7 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
         featured: false,
         ctaLabel: '填写报名资料',
         ctaHref: '/activities/register?mode=wizard&step=1',
+        registrationFields: createDefaultActivityRegistrationFields(),
       }}
     >
       <Form.Item name="locale" label="语言" rules={[{ required: true }]}>
@@ -474,6 +497,130 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
           <Input maxLength={512} />
         </Form.Item>
       </Space>
+
+      <Divider titlePlacement="start">报名信息采集</Divider>
+      <Typography.Paragraph type="secondary">
+        每个活动可配置独立的报名字段；发布后，报名页会按这里的顺序动态生成表单。
+      </Typography.Paragraph>
+      <Form.List
+        name="registrationFields"
+        rules={[
+          {
+            validator: async (_, fields?: ActivityRegistrationField[]) => {
+              const normalizedKeys = (fields || []).map((field) => field?.fieldKey?.trim().toLocaleLowerCase()).filter(Boolean);
+              if (new Set(normalizedKeys).size !== normalizedKeys.length) {
+                throw new Error('字段标识不能重复');
+              }
+            },
+          },
+        ]}
+      >
+        {(fields, { add, remove, move }, { errors }) => (
+          <Space direction="vertical" size="middle" className="activity-registration-fields">
+            <div className="activity-registration-fields__header">
+              <Typography.Text strong>字段列表</Typography.Text>
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={() => add(createEmptyActivityRegistrationField(form.getFieldValue('registrationFields')))}
+              >
+                新增字段
+              </Button>
+            </div>
+            {fields.length === 0 ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前活动不采集额外信息，可直接报名" />
+            ) : null}
+            {fields.map((field, index) => (
+              <Card
+                key={field.key}
+                size="small"
+                className="activity-registration-field-card"
+                title={`字段 ${index + 1}`}
+                extra={(
+                  <Space size={4}>
+                    <Button
+                      type="text"
+                      size="small"
+                      aria-label={`上移字段 ${index + 1}`}
+                      icon={<ArrowUpOutlined />}
+                      disabled={index === 0}
+                      onClick={() => move(index, index - 1)}
+                    />
+                    <Button
+                      type="text"
+                      size="small"
+                      aria-label={`下移字段 ${index + 1}`}
+                      icon={<ArrowDownOutlined />}
+                      disabled={index === fields.length - 1}
+                      onClick={() => move(index, index + 1)}
+                    />
+                    <Button
+                      type="text"
+                      size="small"
+                      danger
+                      aria-label={`删除字段 ${index + 1}`}
+                      icon={<DeleteOutlined />}
+                      onClick={() => remove(index)}
+                    />
+                  </Space>
+                )}
+              >
+                <div className="activity-registration-field-grid">
+                  <Form.Item
+                    name={[field.name, 'label']}
+                    label="字段名称"
+                    rules={[{ required: true, whitespace: true, message: '请输入字段名称' }]}
+                  >
+                    <Input maxLength={128} placeholder="例如：参会人姓名" />
+                  </Form.Item>
+                  <Form.Item
+                    name={[field.name, 'fieldKey']}
+                    label="字段标识"
+                    rules={[
+                      { required: true, whitespace: true, message: '请输入字段标识' },
+                      { pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/, message: '需以字母开头，仅使用字母、数字、下划线或短横线' },
+                    ]}
+                  >
+                    <Input maxLength={64} placeholder="例如：attendeeName" />
+                  </Form.Item>
+                  <Form.Item
+                    name={[field.name, 'fieldType']}
+                    label="字段类型"
+                    rules={[{ required: true, message: '请选择字段类型' }]}
+                  >
+                    <Select options={activityRegistrationFieldTypeOptions} />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'required']} label="是否必填" valuePropName="checked">
+                    <Switch checkedChildren="必填" unCheckedChildren="选填" />
+                  </Form.Item>
+                </div>
+                <Form.Item name={[field.name, 'placeholder']} label="输入提示">
+                  <Input maxLength={255} placeholder="显示在输入框中的提示文字" />
+                </Form.Item>
+                <Form.Item name={[field.name, 'description']} label="字段说明">
+                  <Input.TextArea rows={2} maxLength={500} placeholder="向报名人说明该信息的用途" />
+                </Form.Item>
+                <Form.Item noStyle shouldUpdate={(previous, current) => (
+                  previous.registrationFields?.[field.name]?.fieldType !== current.registrationFields?.[field.name]?.fieldType
+                )}>
+                  {({ getFieldValue }) => isActivityRegistrationChoiceField(
+                    getFieldValue(['registrationFields', field.name, 'fieldType']),
+                  ) ? (
+                    <Form.Item
+                      name={[field.name, 'options']}
+                      label="可选项"
+                      rules={[{ required: true, message: '请至少配置一个可选项' }]}
+                    >
+                      <Select mode="tags" tokenSeparators={[',', '，']} placeholder="输入选项后按回车，可添加多个" />
+                    </Form.Item>
+                  ) : null}
+                </Form.Item>
+              </Card>
+            ))}
+            <Form.ErrorList errors={errors} />
+          </Space>
+        )}
+      </Form.List>
     </Form>
   );
 };
@@ -748,6 +895,7 @@ const ActivityManagementView = () => {
       featured: false,
       ctaLabel: '填写报名资料',
       ctaHref: '/activities/register?mode=wizard&step=1',
+      registrationFields: createDefaultActivityRegistrationFields(),
     });
     setDrawerOpen(true);
   };
@@ -766,6 +914,7 @@ const ActivityManagementView = () => {
       ctaHref: record.ctaHref || undefined,
       activityDateTimeRange: parseActivityDateTimeRange(record.activityDate, record.activityTime),
       featured: Boolean(record.featured),
+      registrationFields: record.registrationFields ?? createDefaultActivityRegistrationFields(),
     });
     setDrawerOpen(true);
   }, [form]);

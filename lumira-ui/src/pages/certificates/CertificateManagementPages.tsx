@@ -151,7 +151,6 @@ const CertificateWorkspaceNavigation = ({
     aria-label="证书功能"
     value={active}
     options={[
-      { value: 'generate', label: '生成证书' },
       { value: 'batches', label: '生成批次' },
       { value: 'records', label: '证书记录' },
     ]}

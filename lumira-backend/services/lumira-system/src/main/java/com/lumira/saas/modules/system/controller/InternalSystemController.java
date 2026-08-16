@@ -11,6 +11,7 @@ import com.lumira.api.system.CaptchaValidationRequestDTO;
 import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.LoginCapabilitiesDTO;
+import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.PasswordLoginVerificationDTO;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
@@ -48,6 +49,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
+import com.lumira.saas.modules.system.app.MaintenanceLoginPolicyService;
 import com.lumira.saas.modules.system.internal.app.InternalSystemApplicationService;
 import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
@@ -57,6 +59,7 @@ import com.lumira.saas.modules.auth.vo.LoginCodeChallengeVO;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -160,6 +163,7 @@ public class InternalSystemController {
     private final PasswordPolicyService passwordPolicyService;
     private final AuthSessionStore authSessionStore;
     private final ReadModelVersionService readModelVersionService;
+    private MaintenanceLoginPolicyService maintenanceLoginPolicyService;
 
     public InternalSystemController(
             UserDomainService userDomainService,
@@ -193,6 +197,11 @@ public class InternalSystemController {
         this.passwordPolicyService = passwordPolicyService;
         this.authSessionStore = authSessionStore;
         this.readModelVersionService = readModelVersionService;
+    }
+
+    @Autowired
+    public void setMaintenanceLoginPolicyService(MaintenanceLoginPolicyService maintenanceLoginPolicyService) {
+        this.maintenanceLoginPolicyService = maintenanceLoginPolicyService;
     }
 
     @ModelAttribute
@@ -641,6 +650,15 @@ public class InternalSystemController {
         return wechatLoginSettingsService.getInternalSettings();
     }
 
+    @GetMapping("/maintenance-login-policy")
+    public MaintenanceLoginPolicyDTO maintenanceLoginPolicy() {
+        requireInternalServicePrincipal();
+        if (maintenanceLoginPolicyService == null) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "Maintenance login policy service is unavailable");
+        }
+        return maintenanceLoginPolicyService.loadEffectivePolicy();
+    }
+
     @GetMapping("/verification/passkey-settings")
     public PasskeySettingsDTO passkeySettings() {
         requireInternalServicePrincipal();
@@ -838,6 +856,7 @@ public class InternalSystemController {
         var existingUser = userDomainService.findLoginUser(normalizedAccount);
         if (existingUser.isEmpty()) {
             if (FACTOR_SMS.equals(normalizedLoginType)) {
+                requireRegistrationEnabled();
                 return toChallenge(verificationAppService.startPendingLoginCodeChallenge(normalizedAccount, normalizedLoginType));
             }
             throw loginCodeChallengeAccountMismatch();
@@ -947,6 +966,12 @@ public class InternalSystemController {
 
     private BizException loginCodeChallengeAccountMismatch() {
         return new BizException(ErrorCode.VALIDATION_ERROR, "账号不存在或暂不支持该登录方式");
+    }
+
+    private void requireRegistrationEnabled() {
+        if (!securitySettingsService.isRegistrationEnabled()) {
+            throw new BizException(ErrorCode.FORBIDDEN, "用户注册通道未开放");
+        }
     }
 
     private BizException passwordResetChallengeMismatch() {
@@ -1385,6 +1410,7 @@ public class InternalSystemController {
     }
 
     private SysUserEntity registerLoginCodeUser(String account, String loginType) {
+        requireRegistrationEnabled();
         String normalizedLoginType = normalizeLoginCodeType(loginType);
         String identityType = iamUserService.detectIdentityType(account);
         if (FACTOR_SMS.equals(normalizedLoginType) && !IamUserService.IDENTITY_MOBILE.equals(identityType)) {

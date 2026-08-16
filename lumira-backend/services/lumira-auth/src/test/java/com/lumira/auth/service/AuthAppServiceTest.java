@@ -10,10 +10,13 @@ import com.lumira.api.auth.RefreshTokenRequest;
 import com.lumira.api.auth.RefreshTokenResponseDTO;
 import com.lumira.api.auth.SecondFactorCompleteRequest;
 import com.lumira.api.auth.SimulatedRoleSwitchRequest;
+import com.lumira.api.auth.WechatLoginRequest;
 import com.lumira.api.auth.SimulatedRoleSwitchResponseDTO;
 import com.lumira.api.auth.VerificationBindRequest;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.LoginCapabilitiesDTO;
+import com.lumira.api.system.LoginAuditRecordRequestDTO;
+import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.PasswordLoginVerificationDTO;
 import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.SecuritySettingsDTO;
@@ -37,6 +40,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.lang.reflect.Field;
@@ -96,6 +100,7 @@ class AuthAppServiceTest {
     private SecurityContextFacade securityContextFacade;
     private SecuritySettingsService securitySettingsService;
     private AuthSecurityProperties authSecurityProperties;
+    private WechatLoginService wechatLoginService;
 
     @BeforeEach
     void setUp() {
@@ -107,7 +112,7 @@ class AuthAppServiceTest {
         passwordEncoder = mock(PasswordEncoder.class);
         securityContextFacade = mock(SecurityContextFacade.class);
         ClientIpResolver clientIpResolver = mock(ClientIpResolver.class);
-        WechatLoginService wechatLoginService = mock(WechatLoginService.class);
+        wechatLoginService = mock(WechatLoginService.class);
         authSecurityProperties = new AuthSecurityProperties();
         securitySettingsService = mock(SecuritySettingsService.class);
 
@@ -120,6 +125,8 @@ class AuthAppServiceTest {
         when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(1L);
         when(systemInternalApi.requiresInitialPasswordChange(org.mockito.ArgumentMatchers.anyLong(), anyString()))
                 .thenReturn(false);
+        when(systemInternalApi.maintenanceLoginPolicy())
+                .thenReturn(new MaintenanceLoginPolicyDTO(false, List.of(1001L)));
         when(systemInternalApi.verifyPasswordLogin(anyString(), anyString()))
                 .thenAnswer(invocation -> verifiedPasswordLogin(enabledUser(42L), true, false));
         when(securitySettingsService.getIdleTimeoutSeconds()).thenReturn(1800L);
@@ -167,6 +174,110 @@ class AuthAppServiceTest {
         verify(systemInternalApi, never()).verifyPasswordLogin("jane", "password");
         verify(systemInternalApi, never()).validateCaptcha(any());
         verify(loginProtectionService).recordFailure("jane", "127.0.0.1");
+    }
+
+    @Test
+    void passwordLoginShouldRejectNonAllowedRoleBeforeIssuingSecondFactorState() {
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
+        when(loginEncryptionService.decryptPassword("ciphertext")).thenReturn("password");
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42"))
+                .thenReturn(permissionSnapshotWithRoles(List.of(3002L)));
+        when(systemInternalApi.maintenanceLoginPolicy())
+                .thenReturn(new MaintenanceLoginPolicyDTO(true, List.of(1001L)));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.login(new LoginRequest("jane", null, "ciphertext", null, null, null), httpRequest)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        verify(authSessionStore, never()).save(any(), anyBoolean());
+        verify(systemInternalApi, never()).listLoginSecondFactorOptions(42L, "user-uuid-42");
+        assertMaintenanceAudit("PASSWORD", "MAINTENANCE_ROLE_NOT_ALLOWED");
+    }
+
+    @Test
+    void passwordLoginShouldAllowAnyMatchingRoleFromTheConfiguredList() {
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
+        when(loginEncryptionService.decryptPassword("ciphertext")).thenReturn("password");
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42"))
+                .thenReturn(permissionSnapshotWithRoles(List.of(3002L, 1001L)));
+        when(systemInternalApi.maintenanceLoginPolicy())
+                .thenReturn(new MaintenanceLoginPolicyDTO(true, List.of(1001L)));
+
+        LoginResponseDTO response = authAppService.login(
+                new LoginRequest("jane", null, "ciphertext", null, null, null),
+                httpRequest
+        );
+
+        assertEquals(42L, response.getUser().userId());
+        verify(authSessionStore).save(any(AuthSession.class), eq(true));
+    }
+
+    @Test
+    void maintenancePolicyReadFailureShouldFailClosedBeforeCreatingASession() {
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
+        when(loginEncryptionService.decryptPassword("ciphertext")).thenReturn("password");
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42"))
+                .thenReturn(permissionSnapshotWithRoles(List.of(1001L)));
+        when(systemInternalApi.maintenanceLoginPolicy()).thenThrow(new IllegalStateException("policy unavailable"));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.login(new LoginRequest("jane", null, "ciphertext", null, null, null), httpRequest)
+        );
+
+        assertEquals(ErrorCode.DEPENDENCY_UNAVAILABLE, exception.getErrorCode());
+        verify(authSessionStore, never()).save(any(), anyBoolean());
+        assertMaintenanceAudit("PASSWORD", "MAINTENANCE_POLICY_UNAVAILABLE");
+    }
+
+    @Test
+    void wechatLoginShouldApplyTheMaintenanceRolePolicyBeforeCreatingSession() {
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
+        when(wechatLoginService.exchangeCode("code", "state"))
+                .thenReturn(new WechatLoginService.WechatOAuthUser("openid", "unionid", "snsapi_login"));
+        when(systemInternalApi.resolveWechatLoginUser(any()))
+                .thenReturn(enabledUser(42L));
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42"))
+                .thenReturn(permissionSnapshotWithRoles(List.of(3002L)));
+        when(systemInternalApi.maintenanceLoginPolicy())
+                .thenReturn(new MaintenanceLoginPolicyDTO(true, List.of(1001L)));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.wechatLogin(new WechatLoginRequest("code", "state"), httpRequest)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        verify(authSessionStore, never()).save(any(), anyBoolean());
+        assertMaintenanceAudit("WECHAT", "MAINTENANCE_ROLE_NOT_ALLOWED");
+    }
+
+    @Test
+    void secondFactorCompletionShouldRecheckTheMaintenanceRolePolicy() {
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
+        SecondFactorCompleteRequest request = new SecondFactorCompleteRequest("totp", "challenge-1", "123456");
+        when(systemInternalApi.completeSecondFactorLogin(request))
+                .thenReturn(new VerificationVerificationDTO(true, "ok", 42L, "user-uuid-42", "totp", null));
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42"))
+                .thenReturn(permissionSnapshotWithRoles(List.of(3002L)));
+        when(systemInternalApi.maintenanceLoginPolicy())
+                .thenReturn(new MaintenanceLoginPolicyDTO(true, List.of(1001L)));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.completeSecondFactorLogin(request, httpRequest)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        verify(authSessionStore, never()).save(any(), anyBoolean());
+        assertMaintenanceAudit("SECOND_FACTOR", "MAINTENANCE_ROLE_NOT_ALLOWED");
     }
 
     @Test
@@ -2038,6 +2149,28 @@ class AuthAppServiceTest {
         assertThrows(BizException.class, () -> authAppService.currentUserBySessionId("session-1"));
 
         verify(authSessionStore).save(session, false);
+    }
+
+    private PermissionSnapshotDTO permissionSnapshotWithRoles(List<Long> roleIds) {
+        return new PermissionSnapshotDTO(
+                "v1",
+                List.of("dashboard:view"),
+                roleIds,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                "/dashboard/home"
+        );
+    }
+
+    private void assertMaintenanceAudit(String loginType, String failReason) {
+        ArgumentCaptor<LoginAuditRecordRequestDTO> auditCaptor = ArgumentCaptor.forClass(LoginAuditRecordRequestDTO.class);
+        verify(systemInternalApi).recordLoginAudit(auditCaptor.capture());
+        LoginAuditRecordRequestDTO audit = auditCaptor.getValue();
+        assertEquals(loginType, audit.loginType());
+        assertEquals("FAIL", audit.loginResult());
+        assertEquals(failReason, audit.failReason());
     }
 
     private AuthSession cachedSession() {

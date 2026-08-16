@@ -12,6 +12,7 @@ import com.lumira.api.system.CaptchaValidationRequestDTO;
 import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.LoginCapabilitiesDTO;
+import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import com.lumira.api.system.PasskeyCredentialAssertionDTO;
@@ -224,6 +225,11 @@ public class SystemInternalApiService implements SystemInternalApi {
     @Override
     public WechatLoginSettingsDTO wechatLoginSettings() {
         return call(delegate::wechatLoginSettings);
+    }
+
+    @Override
+    public MaintenanceLoginPolicyDTO maintenanceLoginPolicy() {
+        return call(delegate::maintenanceLoginPolicy);
     }
 
     @Override

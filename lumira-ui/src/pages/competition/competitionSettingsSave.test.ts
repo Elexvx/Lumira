@@ -23,7 +23,7 @@ describe('competition settings page-level save guards', () => {
     })).toBe(true);
   });
 
-  it('keeps an incomplete basic page quiet instead of autosaving', () => {
+  it('keeps an incomplete basic page blocked until manual save', () => {
     expect(isBasicSettingsPageReadyToSave({
       title: '',
       category: 'OTHER',
@@ -63,7 +63,7 @@ describe('competition settings page-level save guards', () => {
     ])).toBe(true);
   });
 
-  it('requires confirmed timeline rows to be complete before autosave', () => {
+  it('requires confirmed timeline rows to be complete before manual save', () => {
     expect(isTimelineSettingsPageReadyToSave({
       registrationRange: ['2026.07.01 09:00', '2026.07.31 18:00'],
       schedules: [{ timeMode: 'CONFIRMED', title: 'Final' }],
@@ -254,7 +254,7 @@ describe('competition settings page-level save guards', () => {
     })).toContain('提交材料时间');
   });
 
-  it('keeps field-module autosave quiet while a new row title is still blank', () => {
+  it('keeps field-module manual save blocked while a new row title is still blank', () => {
     expect(isConfigModuleReadyToSave('fields', [
       {
         title: '',
@@ -264,7 +264,7 @@ describe('competition settings page-level save guards', () => {
     ])).toBe(false);
   });
 
-  it('allows field-module autosave after the new row becomes complete', () => {
+  it('allows field-module manual save after the new row becomes complete', () => {
     expect(isConfigModuleReadyToSave('fields', [
       {
         title: '学校',

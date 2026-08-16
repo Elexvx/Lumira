@@ -34,6 +34,8 @@ class SaasSqlBootstrapCompletenessTest {
                 .contains("CREATE TABLE `sys_role`")
                 .contains("CREATE TABLE `sys_role_permission`")
                 .contains("CREATE TABLE `sys_user_role`")
+                .contains("`uuid` char(18) NOT NULL COMMENT 'Stable 18-digit numeric user UID'")
+                .contains("CONSTRAINT `chk_sys_user_uid_numeric_format` CHECK (`uuid` REGEXP '^[1-9][0-9]{17}$')")
                 .contains("CREATE TABLE `ddd_read_model_version`")
                 .contains("CREATE TABLE `aiadc_activity_registration`")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_config_metadata`")

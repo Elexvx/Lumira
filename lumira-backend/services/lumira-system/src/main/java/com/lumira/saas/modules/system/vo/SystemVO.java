@@ -300,6 +300,32 @@ public final class SystemVO {
     public static class BrandingSettingsVO extends com.lumira.saas.modules.system.branding.vo.BrandingSettingsVO {
     }
 
+    public static class MaintenanceLoginRoleOptionVO {
+        private Long id;
+        private String roleCode;
+        private String roleName;
+        private String roleType;
+
+        public MaintenanceLoginRoleOptionVO() {
+        }
+
+        public MaintenanceLoginRoleOptionVO(Long id, String roleCode, String roleName, String roleType) {
+            this.id = id;
+            this.roleCode = roleCode;
+            this.roleName = roleName;
+            this.roleType = roleType;
+        }
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public String getRoleCode() { return roleCode; }
+        public void setRoleCode(String roleCode) { this.roleCode = roleCode; }
+        public String getRoleName() { return roleName; }
+        public void setRoleName(String roleName) { this.roleName = roleName; }
+        public String getRoleType() { return roleType; }
+        public void setRoleType(String roleType) { this.roleType = roleType; }
+    }
+
     public static class AgreementSettingsVO extends com.lumira.saas.modules.system.agreement.vo.AgreementSettingsVO {
     }
 

@@ -8,7 +8,6 @@ type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const DATA_MANAGEMENT_CERTIFICATE_PATHS = new Set([
   '/certificates/templates',
-  '/certificates/generate',
   '/certificates/records',
 ]);
 

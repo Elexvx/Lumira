@@ -41,6 +41,15 @@ import {
   listCompetitions,
   listCompetitionStages,
 } from '@/services/competition/api';
+import {
+  grantCompetitionWorkspacePublishedAwards,
+  listCompetitionWorkspaceAwardGrants,
+  listCompetitionWorkspaceCertificateAwardRules,
+} from '@/services/certificates/api';
+import type {
+  CertificateAwardGrant,
+  CertificateAwardRule,
+} from '@/services/certificates/types';
 import type {
   CompetitionRecord,
   CompetitionStageRecord,
@@ -319,6 +328,8 @@ const ReviewAdminWorkbench = () => {
   const [assignments, setAssignments] = useState<ReviewAdminAssignment[]>([]);
   const [roster, setRoster] = useState<ReviewRosterExpert[]>([]);
   const [aggregates, setAggregates] = useState<ReviewAggregate[]>([]);
+  const [awardRules, setAwardRules] = useState<CertificateAwardRule[]>([]);
+  const [awardGrants, setAwardGrants] = useState<CertificateAwardGrant[]>([]);
   const [appeals, setAppeals] = useState<ReviewAppeal[]>([]);
   const [experts, setExperts] = useState<ExpertRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -423,6 +434,15 @@ const ReviewAdminWorkbench = () => {
     revokeAssignment: (nextBatchId: number, assignmentId: number, reason: string) => workspaceUuid
       ? revokeWorkspaceReviewAssignment(workspaceUuid, nextBatchId, assignmentId, reason)
       : revokeReviewAssignment(nextBatchId, assignmentId, reason),
+    listAwardRules: () => workspaceUuid
+      ? listCompetitionWorkspaceCertificateAwardRules(workspaceUuid)
+      : Promise.resolve([] as CertificateAwardRule[]),
+    listAwardGrants: (nextBatchId: number) => workspaceUuid
+      ? listCompetitionWorkspaceAwardGrants(workspaceUuid, nextBatchId)
+      : Promise.resolve([] as CertificateAwardGrant[]),
+    grantAwards: (nextBatchId: number, rules: CertificateAwardRule[]) => workspaceUuid
+      ? grantCompetitionWorkspacePublishedAwards(workspaceUuid, { reviewBatchId: nextBatchId, rules })
+      : Promise.resolve([] as CertificateAwardGrant[]),
   }), [workspaceUuid]);
 
   const canManagePlans = access.hasPermission('review:plan:manage');
@@ -435,6 +455,7 @@ const ReviewAdminWorkbench = () => {
   const canFinalize = access.hasPermission('review:result:finalize');
   const canPublish = access.hasPermission('review:result:publish');
   const canManageAppeals = access.hasPermission('review:appeal:manage');
+  const canGenerateAwards = Boolean(workspaceUuid) && access.hasPermission('aiadc:certificate-batch:create');
   const selectedPlan = plans.find((item) => item.id === planId);
   const selectedBatch = batches.find((item) => item.id === batchId);
   const eligibleExperts = experts.filter((item) =>
@@ -473,14 +494,16 @@ const ReviewAdminWorkbench = () => {
       setAssignments([]);
       setRoster([]);
       setAggregates([]);
+      setAwardGrants([]);
       setAppeals([]);
       return;
     }
-    const [nextCandidates, nextAssignments, nextRoster, nextAggregates, nextAppeals] = await Promise.all([
+    const [nextCandidates, nextAssignments, nextRoster, nextAggregates, nextAwardGrants, nextAppeals] = await Promise.all([
       canManageAssignments ? reviewApi.listCandidates(nextBatchId) : Promise.resolve([]),
       canManageAssignments ? reviewApi.listAssignments(nextBatchId) : Promise.resolve([]),
       canManageRoster ? reviewApi.listRoster(nextBatchId) : Promise.resolve([]),
       canAggregate ? reviewApi.listAggregates(nextBatchId) : Promise.resolve([]),
+      canGenerateAwards ? reviewApi.listAwardGrants(nextBatchId) : Promise.resolve([]),
       canManageAppeals ? reviewApi.listAppeals({ batchId: nextBatchId }) : Promise.resolve([]),
     ]);
     setCandidates(nextCandidates || []);
@@ -488,8 +511,9 @@ const ReviewAdminWorkbench = () => {
     setRoster(nextRoster || []);
     setSelectedRosterExpertIds((nextRoster || []).map((item) => item.expertId));
     setAggregates(nextAggregates || []);
+    setAwardGrants(nextAwardGrants || []);
     setAppeals(nextAppeals || []);
-  }, [canAggregate, canManageAppeals, canManageAssignments, canManageRoster, reviewApi]);
+  }, [canAggregate, canGenerateAwards, canManageAppeals, canManageAssignments, canManageRoster, reviewApi]);
 
   const refreshWorkbench = useCallback(async () => {
     setLoading(true);
@@ -560,6 +584,16 @@ const ReviewAdminWorkbench = () => {
     void loadBatchDetails(batchId)
       .catch((error) => showErrorMessage(error, '评审批次详情加载失败'));
   }, [batchId, loadBatchDetails]);
+
+  useEffect(() => {
+    if (!canGenerateAwards) {
+      setAwardRules([]);
+      return;
+    }
+    void reviewApi.listAwardRules()
+      .then((result) => setAwardRules(result || []))
+      .catch((error) => showErrorMessage(error, '赛事获奖设置加载失败'));
+  }, [canGenerateAwards, reviewApi]);
 
   useEffect(() => {
     if (!checkinModalOpen || !scannerActive) return undefined;
@@ -840,6 +874,27 @@ const ReviewAdminWorkbench = () => {
     );
     setCorrectionModalOpen(false);
     setCorrectionReason('');
+  };
+
+  const generateAwardList = async () => {
+    if (!selectedBatch || selectedBatch.status !== 'PUBLISHED') {
+      message.warning('请先发布评审结果');
+      return;
+    }
+    if (!awardRules.length) {
+      message.warning('当前赛事没有可用的获奖设置');
+      return;
+    }
+    setActionLoading('award-list');
+    try {
+      const nextGrants = await reviewApi.grantAwards(selectedBatch.id, awardRules);
+      setAwardGrants(nextGrants || []);
+      message.success(`已按赛事设置生成 ${nextGrants?.length || 0} 条获奖名单`);
+    } catch (error) {
+      showErrorMessage(error, '获奖名单生成失败');
+    } finally {
+      setActionLoading(undefined);
+    }
   };
 
   const assignmentCountByCandidate = useMemo(() => {
@@ -1346,9 +1401,57 @@ const ReviewAdminWorkbench = () => {
         </Card>
       )}
 
+      {selectedBatch && workspaceUuid && canGenerateAwards && selectedBatch.status === 'PUBLISHED' && (
+        <Card
+          title="5. 获奖名单生成"
+          extra={<Tag color={awardGrants.length ? 'success' : 'default'}>已生成 {awardGrants.length} 条</Tag>}
+        >
+          <Alert
+            type="info"
+            showIcon
+            title="名单仅按当前赛事设置和已发布排行生成"
+            description="修改赛事获奖名额后重新生成，会撤销本批次尚未制证的旧名单并按最新设置重建；已经制证的记录会保留。"
+            style={{ marginBottom: 16 }}
+          />
+          <Space wrap style={{ marginBottom: 16 }}>
+            {awardRules.map((rule) => (
+              <Tag color="blue" key={`${rule.awardName}-${rule.minRank}-${rule.maxRank}`}>
+                {rule.awardName}：第 {rule.minRank}–{rule.maxRank} 名
+              </Tag>
+            ))}
+          </Space>
+          <Space style={{ marginBottom: 16 }}>
+            <Button
+              type="primary"
+              loading={actionLoading === 'award-list'}
+              disabled={!awardRules.length}
+              onClick={() => void generateAwardList()}
+            >
+              根据赛事设置生成获奖名单
+            </Button>
+            <Typography.Text type="secondary">生成后可在赛事“证书”页继续制证。</Typography.Text>
+          </Space>
+          <DataTable<CertificateAwardGrant>
+            rowKey="id"
+            isMobile={responsive.isMobile}
+            size="small"
+            pagination={{ pageSize: 10 }}
+            dataSource={awardGrants}
+            columns={[
+              { title: '排名', dataIndex: 'rankNo', width: 80 },
+              { title: '奖项', dataIndex: 'awardName', width: 110 },
+              { title: '获奖人', dataIndex: 'recipientName', width: 130 },
+              { title: '团队', dataIndex: 'teamName', width: 180, render: (value) => value || '-' },
+              { title: '项目', dataIndex: 'projectName', width: 180, render: (value) => value || '-' },
+              { title: '状态', dataIndex: 'status', width: 100, render: (value: string) => statusTag(value, { GRANTED: { color: 'processing', text: '待制证' }, ISSUED: { color: 'success', text: '已制证' }, REVOKED: { color: 'default', text: '已取消' } }) },
+            ]}
+          />
+        </Card>
+      )}
+
       {selectedBatch && canManageAppeals && (
         <Card
-          title="5. 结果申诉处理"
+          title="6. 结果申诉处理"
           extra={<Tag color={appeals.some((item) => item.status === 'SUBMITTED') ? 'processing' : 'default'}>
             待处理 {appeals.filter((item) => item.status === 'SUBMITTED').length}
           </Tag>}

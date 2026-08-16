@@ -17,6 +17,7 @@ import type {
   ReviewPublishedResult,
 } from '@/services/review/types';
 import { showErrorMessage } from '@/utils/errorMessage';
+import './CompetitionReviewResultsPage.css';
 
 const decisionLabels: Record<string, { color: string; text: string }> = {
   PASS: { color: 'success', text: '通过' },
@@ -171,27 +172,29 @@ const CompetitionReviewResultsPage = () => {
     <ManagementPage title="评审结果与申诉">
       <ManagementPageBody>
         <Spin spinning={loading}>
-          <Card title="已发布结果" extra={<Button onClick={() => void load()}>刷新</Button>}>
-            <DataTable<ReviewPublishedResult>
-              rowKey={(record) => `${record.publicationId}:${record.registrationId}`}
-              isMobile={responsive.isMobile}
-              pagination={false}
-              scroll={{ x: 900 }}
-              dataSource={results}
-              columns={reviewResultColumns}
-            />
-          </Card>
+          <div className="competition-review-results__sections">
+            <Card title="已发布结果" extra={<Button onClick={() => void load()}>刷新</Button>}>
+              <DataTable<ReviewPublishedResult>
+                rowKey={(record) => `${record.publicationId}:${record.registrationId}`}
+                isMobile={responsive.isMobile}
+                pagination={false}
+                scroll={{ x: 900 }}
+                dataSource={results}
+                columns={reviewResultColumns}
+              />
+            </Card>
 
-          <Card title="我的申诉记录">
-            <DataTable<ReviewAppeal>
-              rowKey="id"
-              isMobile={responsive.isMobile}
-              pagination={false}
-              scroll={{ x: 900 }}
-              dataSource={appeals}
-              columns={reviewAppealColumns}
-            />
-          </Card>
+            <Card title="我的申诉记录">
+              <DataTable<ReviewAppeal>
+                rowKey="id"
+                isMobile={responsive.isMobile}
+                pagination={false}
+                scroll={{ x: 900 }}
+                dataSource={appeals}
+                columns={reviewAppealColumns}
+              />
+            </Card>
+          </div>
         </Spin>
       </ManagementPageBody>
 

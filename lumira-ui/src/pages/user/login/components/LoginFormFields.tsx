@@ -660,6 +660,7 @@ interface LoginFormFieldsProps {
   pendingSecondFactorLogin: LoginResponse | null;
   pendingSecondFactorPrompt: string;
   agreementSettings: AgreementSettings;
+  registrationEnabled: boolean;
   securityCaptchaEnabled: boolean;
   securityCaptchaType: CaptchaChallenge['captchaType'];
   captchaChallenge: CaptchaChallenge | null;
@@ -842,6 +843,7 @@ export const LoginFormFields = ({
   pendingSecondFactorLogin,
   pendingSecondFactorPrompt,
   agreementSettings,
+  registrationEnabled,
   securityCaptchaEnabled,
   securityCaptchaType,
   captchaChallenge,
@@ -949,8 +951,8 @@ export const LoginFormFields = ({
           <div className="saas-login-page__agreement">
             <span className="saas-login-page__agreement-text">
               {formatMessage({
-                id: codeLoginMode === 'sms' ? 'page.login.autoRegisterNoticePrefix' : 'page.login.agreement.accept',
-                defaultMessage: codeLoginMode === 'sms' ? '未注册手机号验证后自动登录，注册即代表同意' : '我已阅读并同意',
+                id: codeLoginMode === 'sms' && registrationEnabled ? 'page.login.autoRegisterNoticePrefix' : 'page.login.agreement.accept',
+                defaultMessage: codeLoginMode === 'sms' && registrationEnabled ? '未注册手机号验证后自动登录，注册即代表同意' : '我已阅读并同意',
               })}
               <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
                 {showUserAgreement

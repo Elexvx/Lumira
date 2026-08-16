@@ -9,11 +9,11 @@ const RETIRED_MAIN_MENU_PATHS = new Set([
   '/activities/search',
   '/payments/status',
   '/experts/query',
+  '/certificates/generate',
 ]);
 const CERTIFICATE_ROOT_MENU_CODE = 'certificate.root';
 const CERTIFICATE_MANAGEMENT_MENU_CODES = new Set([
   'certificate.templates',
-  'certificate.generate',
   'certificate.records',
 ]);
 const normalizeMenuPath = (path: string) => path.trim().replace(/\/+$/, '') || '/';

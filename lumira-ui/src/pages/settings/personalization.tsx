@@ -27,7 +27,7 @@ import { MaintenanceTab } from './personalization/components/MaintenanceTab';
 import { WatermarkTab } from './personalization/components/WatermarkTab';
 import { buildBrandingAssetSettings, isBrandingAssetTarget } from './personalization/brandingAssetSettings';
 import { DEFAULT_AGREEMENT_SETTINGS } from '@/agreement/settings';
-import type { AgreementSettings, BrandingSettings, FileStorageSpaceRecord, FloatingWindowSettings, PagedResult, WatermarkSettings } from '@/types/api';
+import type { AgreementSettings, BrandingSettings, FileStorageSpaceRecord, FloatingWindowSettings, MaintenanceLoginRoleOption, PagedResult, WatermarkSettings } from '@/types/api';
 import { useStandardFormProps } from '@/features/form/config';
 import { databaseMessage } from '@/i18n/databaseMessage';
 
@@ -229,10 +229,46 @@ const PersonalizationSettingsPage = () => {
   const [floatingPreview, setFloatingPreview] = useState<FloatingWindowSettings>(DEFAULT_FLOATING_WINDOW_SETTINGS);
   const [uploadingTarget, setUploadingTarget] = useState<UploadTarget | null>(null);
   const [imageUploadSizeMb, setImageUploadSizeMb] = useState(DEFAULT_IMAGE_UPLOAD_SIZE_MB);
+  const [maintenanceRoleOptions, setMaintenanceRoleOptions] = useState<MaintenanceLoginRoleOption[]>([]);
+  const [maintenanceRolesLoading, setMaintenanceRolesLoading] = useState(true);
+  const [maintenanceRolesLoadError, setMaintenanceRolesLoadError] = useState(false);
 
   useEffect(() => {
     applyFavicon(previewState.websiteFaviconUrl);
   }, [previewState.websiteFaviconUrl]);
+
+  useEffect(() => {
+    let active = true;
+    setMaintenanceRolesLoading(true);
+    setMaintenanceRolesLoadError(false);
+    request<MaintenanceLoginRoleOption[]>('/v1/system/maintenance-login-roles', {
+      method: 'GET',
+      ...API_OPTS.SILENT_NO_REDIRECT,
+    })
+      .then((roles) => {
+        if (!active) {
+          return;
+        }
+        setMaintenanceRoleOptions(Array.isArray(roles) ? roles : []);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+        setMaintenanceRoleOptions([]);
+        setMaintenanceRolesLoadError(true);
+        showErrorMessage(error, t('ui.settings.personalization.maintenance.failedToLoadAllowedLoginRoles'));
+      })
+      .finally(() => {
+        if (active) {
+          setMaintenanceRolesLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const commitBrandingSettings = useCallback(
     async (brandingValues: BrandingSettings) => {
@@ -669,6 +705,9 @@ const PersonalizationSettingsPage = () => {
                     formProps={maintenanceFormProps}
                     saving={maintenanceSaving}
                     canUpdate={canUpdate}
+                    roleOptions={maintenanceRoleOptions}
+                    rolesLoading={maintenanceRolesLoading}
+                    rolesLoadError={maintenanceRolesLoadError}
                     onSave={() => void handleSaveMaintenance()}
                   />
                 ),

@@ -75,6 +75,16 @@ public class CompetitionWorkspaceCertificateController {
         );
     }
 
+    @GetMapping("/certificate-award-rules")
+    public ApiResponse<List<CertificateVO.AwardRule>> awardRules(@PathVariable String competitionUuid) {
+        CurrentUser currentUser = requireTrustedUser();
+        accessPolicy.requireAccessibleCompetition(currentUser, competitionUuid, CompetitionCapability.CERTIFICATE_MANAGE);
+        return ApiResponse.success(
+                certificateAppService.listCompetitionAwardRules(currentUser, competitionUuid),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping("/certificate-awards/grant")
     @RepeatSubmit
     public ApiResponse<List<CertificateVO.AwardGrant>> grantAwards(
@@ -86,7 +96,7 @@ public class CompetitionWorkspaceCertificateController {
         Long competitionId = decision.competition().id();
         requirePublishedBatch(currentUser, request.getReviewBatchId(), competitionId);
         return ApiResponse.success(
-                certificateAppService.grantPublishedAwards(currentUser, request).stream()
+                certificateAppService.grantPublishedAwardsFromCompetitionSettings(currentUser, competitionUuid, request.getReviewBatchId()).stream()
                         .filter(grant -> Objects.equals(competitionId, grant.getCompetitionId()))
                         .toList(),
                 TraceContext.getRequestId()

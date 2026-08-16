@@ -22,6 +22,7 @@ const tokenFieldNames: (keyof SecuritySettings)[] = [
   'refreshTokenExpireSeconds',
   'allowMultiDeviceLogin',
 ];
+const registrationFieldNames: (keyof SecuritySettings)[] = ['registrationEnabled'];
 const captchaFieldNames: (keyof SecuritySettings)[] = ['captchaEnabled', 'captchaType'];
 const defenseFieldNames: (keyof SecuritySettings)[] = [
   'loginDefenseWindowMinutes',
@@ -129,8 +130,29 @@ const SecuritySettingsPage = () => {
         >
           <Form {...formProps}>
             <Tabs
-              defaultActiveKey="token"
+              defaultActiveKey="registration"
               items={[
+                {
+                  key: 'registration',
+                  label: formatMessage({ id: 'page.security.registration.tab', defaultMessage: 'User registration' }),
+                  children: (
+                    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+                      <Form.Item
+                        name="registrationEnabled"
+                        label={formatMessage({ id: 'page.security.registration.enabled', defaultMessage: 'Allow user registration' })}
+                        valuePropName="checked"
+                        extra={formatMessage({
+                          id: 'page.security.registration.enabled.help',
+                          defaultMessage:
+                            'When enabled, an unregistered mobile number can create an ordinary user after SMS verification. Existing SMS login is not affected when disabled.',
+                        })}
+                      >
+                        <Switch />
+                      </Form.Item>
+                      {renderFooter(registrationFieldNames)}
+                    </Space>
+                  ),
+                },
                 {
                   key: 'token',
                   label: formatMessage({ id: 'page.security.tokenStrategy', defaultMessage: 'Token strategy' }),

@@ -17,10 +17,14 @@ import com.lumira.common.security.TrustedCurrentUserResolver;
 import com.lumira.common.security.data.DataPermissionRule;
 import com.lumira.common.security.data.DataScopeType;
 import com.lumira.saas.modules.activity.dto.ActivityRegistrationDTO;
+import com.lumira.saas.modules.activity.model.ActivityRegistrationField;
 import com.lumira.saas.modules.activity.repository.ActivityRegistrationRepository;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class ActivityRegistrationAppServiceTest {
 
@@ -62,10 +66,109 @@ class ActivityRegistrationAppServiceTest {
         when(resolver.resolve(requestUser)).thenReturn(resolvedUser);
         ActivityRegistrationDTO.CreateRequest request = new ActivityRegistrationDTO.CreateRequest();
         request.setActivityId(9L);
+        when(repository.findPublishedRegistrationForm(9L)).thenReturn(Optional.of(
+                new ActivityRegistrationRepository.RegistrationForm(9L, "Roadshow", List.of())
+        ));
 
         new ActivityRegistrationAppService(repository, resolver).create(requestUser, request);
 
-        verify(repository).create(USER_ID, USER_UUID, "live-alice", request);
+        verify(repository).create(
+                org.mockito.Mockito.eq(USER_ID),
+                org.mockito.Mockito.eq(USER_UUID),
+                org.mockito.Mockito.eq("live-alice"),
+                any(ActivityRegistrationRepository.RegistrationSubmission.class)
+        );
+    }
+
+    @Test
+    void createRejectsMissingRequiredConfiguredFieldBeforeWrite() {
+        ActivityRegistrationRepository repository = mock(ActivityRegistrationRepository.class);
+        when(repository.findPublishedRegistrationForm(9L)).thenReturn(Optional.of(
+                new ActivityRegistrationRepository.RegistrationForm(9L, "Roadshow", List.of(field("name", "姓名", "TEXT", true)))
+        ));
+        ActivityRegistrationDTO.CreateRequest request = new ActivityRegistrationDTO.CreateRequest();
+        request.setActivityId(9L);
+
+        assertThatThrownBy(() -> new ActivityRegistrationAppService(repository).create(user(List.of()), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> org.assertj.core.api.Assertions.assertThat(((BizException) error).getErrorCode())
+                        .isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verify(repository, never()).create(anyLong(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void createPersistsSchemaSnapshotAnswersAndCompatibilityColumns() {
+        ActivityRegistrationRepository repository = mock(ActivityRegistrationRepository.class);
+        ActivityRegistrationField mobile = field("contactMobile", "联系电话", "MOBILE", true);
+        ActivityRegistrationField audience = field("audience", "参会类型", "SELECT", true);
+        audience.setOptions(List.of("嘉宾", "观众"));
+        when(repository.findPublishedRegistrationForm(9L)).thenReturn(Optional.of(
+                new ActivityRegistrationRepository.RegistrationForm(9L, "Roadshow", List.of(mobile, audience))
+        ));
+        ActivityRegistrationDTO.CreateRequest request = new ActivityRegistrationDTO.CreateRequest();
+        request.setActivityId(9L);
+        request.setAnswers(Map.of("contactMobile", "13800138000", "audience", "嘉宾"));
+
+        new ActivityRegistrationAppService(repository).create(user(List.of()), request);
+
+        ArgumentCaptor<ActivityRegistrationRepository.RegistrationSubmission> submission =
+                ArgumentCaptor.forClass(ActivityRegistrationRepository.RegistrationSubmission.class);
+        verify(repository).create(
+                org.mockito.Mockito.eq(USER_ID),
+                org.mockito.Mockito.eq(USER_UUID),
+                org.mockito.Mockito.eq("alice"),
+                submission.capture()
+        );
+        org.assertj.core.api.Assertions.assertThat(submission.getValue().mobile()).isEqualTo("13800138000");
+        org.assertj.core.api.Assertions.assertThat(submission.getValue().answers())
+                .extracting("fieldKey", "label", "value")
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("contactMobile", "联系电话", "13800138000"),
+                        org.assertj.core.groups.Tuple.tuple("audience", "参会类型", "嘉宾")
+                );
+    }
+
+    @Test
+    void createRejectsChoiceValueOutsideConfiguredOptions() {
+        ActivityRegistrationRepository repository = mock(ActivityRegistrationRepository.class);
+        ActivityRegistrationField audience = field("audience", "参会类型", "SELECT", true);
+        audience.setOptions(List.of("嘉宾", "观众"));
+        when(repository.findPublishedRegistrationForm(9L)).thenReturn(Optional.of(
+                new ActivityRegistrationRepository.RegistrationForm(9L, "Roadshow", List.of(audience))
+        ));
+        ActivityRegistrationDTO.CreateRequest request = new ActivityRegistrationDTO.CreateRequest();
+        request.setActivityId(9L);
+        request.setAnswers(Map.of("audience", "未配置选项"));
+
+        assertThatThrownBy(() -> new ActivityRegistrationAppService(repository).create(user(List.of()), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> org.assertj.core.api.Assertions.assertThat(((BizException) error).getErrorCode())
+                        .isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verify(repository, never()).create(anyLong(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void createRejectsNumberWhoseExpandedValueIsTooLarge() {
+        ActivityRegistrationRepository repository = mock(ActivityRegistrationRepository.class);
+        when(repository.findPublishedRegistrationForm(9L)).thenReturn(Optional.of(
+                new ActivityRegistrationRepository.RegistrationForm(
+                        9L,
+                        "Roadshow",
+                        List.of(field("budget", "预算", "NUMBER", true))
+                )
+        ));
+        ActivityRegistrationDTO.CreateRequest request = new ActivityRegistrationDTO.CreateRequest();
+        request.setActivityId(9L);
+        request.setAnswers(Map.of("budget", "1e1001"));
+
+        assertThatThrownBy(() -> new ActivityRegistrationAppService(repository).create(user(List.of()), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> org.assertj.core.api.Assertions.assertThat(((BizException) error).getErrorCode())
+                        .isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verify(repository, never()).create(anyLong(), anyString(), anyString(), any());
     }
 
     @Test
@@ -112,5 +215,15 @@ class ActivityRegistrationAppServiceTest {
         user.setUserUuid(USER_UUID);
         user.setPermissionsVersion("permissions-live");
         return user;
+    }
+
+    private ActivityRegistrationField field(String key, String label, String type, boolean required) {
+        ActivityRegistrationField field = new ActivityRegistrationField();
+        field.setFieldKey(key);
+        field.setLabel(label);
+        field.setFieldType(type);
+        field.setRequired(required);
+        field.setOptions(List.of());
+        return field;
     }
 }

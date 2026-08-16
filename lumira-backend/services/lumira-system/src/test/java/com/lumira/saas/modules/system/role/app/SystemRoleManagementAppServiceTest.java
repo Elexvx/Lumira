@@ -91,6 +91,23 @@ class SystemRoleManagementAppServiceTest {
     }
 
     @Test
+    void maintenanceLoginRoleOptionsShouldExposeActiveRoleIdentityFields() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemRoleManagementAppService service = buildService(jdbcTemplate, mock(PermissionSnapshotService.class));
+
+        List<SystemVO.MaintenanceLoginRoleOptionVO> options = service.listMaintenanceLoginRoleOptions(
+                userWithPermission("system:config:view")
+        );
+
+        assertThat(options)
+                .extracting(SystemVO.MaintenanceLoginRoleOptionVO::getId)
+                .containsExactly(1001L, 2001L);
+        assertThat(options.getFirst().getRoleCode()).isEqualTo("ADMIN");
+        assertThat(options.getFirst().getRoleName()).isEqualTo("管理员");
+        assertThat(options.getFirst().getRoleType()).isEqualTo("SYSTEM");
+    }
+
+    @Test
     void getRoleShouldReturnPermissionKeys() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         SystemRoleManagementAppService service = buildService(jdbcTemplate, mock(PermissionSnapshotService.class));
@@ -970,6 +987,12 @@ class SystemRoleManagementAppServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
+            if (sql.contains("from sys_role") && SystemVO.RoleVO.class.equals(elementType)) {
+                return castList(List.of(
+                        role(1001L, "ADMIN", "管理员", "SYSTEM"),
+                        role(2001L, "commonuser", "普通用户", "BUSINESS")
+                ));
+            }
             if (sql.contains("from sys_role_permission") && String.class.equals(elementType)) {
                 rolePermissionLookupCount += 1;
                 if (rolePermissionKeys != null) {

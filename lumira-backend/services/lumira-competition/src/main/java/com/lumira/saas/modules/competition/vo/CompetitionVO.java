@@ -131,6 +131,7 @@ public final class CompetitionVO {
         private java.util.List<ConfigItem> files = java.util.List.of();
         private java.util.List<ConfigItem> stageMaterials = java.util.List.of();
         private java.util.List<ConfigItem> timeline = java.util.List.of();
+        private java.util.List<ConfigItem> awards = java.util.List.of();
 
         public Competition getCompetition() { return competition; }
         public void setCompetition(Competition competition) { this.competition = competition; }
@@ -148,6 +149,8 @@ public final class CompetitionVO {
         public void setStageMaterials(java.util.List<ConfigItem> stageMaterials) { this.stageMaterials = stageMaterials; }
         public java.util.List<ConfigItem> getTimeline() { return timeline; }
         public void setTimeline(java.util.List<ConfigItem> timeline) { this.timeline = timeline; }
+        public java.util.List<ConfigItem> getAwards() { return awards; }
+        public void setAwards(java.util.List<ConfigItem> awards) { this.awards = awards; }
     }
 
     public static class ConfigSet {

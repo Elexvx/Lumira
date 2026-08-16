@@ -8054,6 +8054,39 @@
       }
     },
     {
+      "messageKey": "page.security.registration.tab",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/locales/zh-CN/pageSecurity.ts",
+      "translations": {
+        "zh-CN": "用户注册",
+        "en-US": "User registration"
+      }
+    },
+    {
+      "messageKey": "page.security.registration.enabled",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/locales/zh-CN/pageSecurity.ts",
+      "translations": {
+        "zh-CN": "允许用户注册",
+        "en-US": "Allow user registration"
+      }
+    },
+    {
+      "messageKey": "page.security.registration.enabled.help",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/locales/zh-CN/pageSecurity.ts",
+      "translations": {
+        "zh-CN": "开启后，未注册手机号通过短信验证后可创建普通用户；关闭后仅禁止新用户注册，不影响已有用户短信登录。",
+        "en-US": "When enabled, an unregistered mobile number can create an ordinary user after SMS verification. Disabling it only blocks new registrations; existing SMS login remains available."
+      }
+    },
+    {
       "messageKey": "page.security.password.consecutive",
       "namespaceCode": "page",
       "sourceLocale": "zh-CN",
@@ -21581,6 +21614,61 @@
       "translations": {
         "zh-CN": "维护模式",
         "en-US": "Maintenance mode"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.maintenance.allowedLoginRoles",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/MaintenanceTab.tsx",
+      "translations": {
+        "zh-CN": "允许登录的角色",
+        "en-US": "Roles allowed to log in"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.maintenance.allowedLoginRolesHint",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/MaintenanceTab.tsx",
+      "translations": {
+        "zh-CN": "维护模式开启后，仅勾选的角色可以完成登录；默认仅允许管理员",
+        "en-US": "When maintenance mode is enabled, only selected roles can complete login; administrators are allowed by default"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.maintenance.allowedLoginRolesRequired",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/MaintenanceTab.tsx",
+      "translations": {
+        "zh-CN": "开启维护模式时至少选择一个允许登录的角色",
+        "en-US": "Select at least one role allowed to log in when maintenance mode is enabled"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.maintenance.failedToLoadAllowedLoginRoles",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/MaintenanceTab.tsx",
+      "translations": {
+        "zh-CN": "允许登录角色加载失败，请刷新后重试",
+        "en-US": "Failed to load login roles. Refresh and try again"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.maintenance.loginEntry",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/maintenance/MaintenanceModeGate.tsx",
+      "translations": {
+        "zh-CN": "维护模式登录入口",
+        "en-US": "Maintenance mode login entry"
       }
     },
     {

@@ -114,7 +114,7 @@ class SecuritySettingsServiceTest {
         service.updateSettings(request, trustedOperator(23L, "operator-uuid-23"));
 
         ArgumentCaptor<SysConfigEntity> captor = ArgumentCaptor.forClass(SysConfigEntity.class);
-        verify(mapper, times(16)).upsertPlatformConfig(captor.capture());
+        verify(mapper, times(17)).upsertPlatformConfig(captor.capture());
         captor.getAllValues().forEach(entity -> {
             assertEquals(23L, entity.getCreatedBy());
             assertEquals("operator-uuid-23", entity.getCreatedByUuid());

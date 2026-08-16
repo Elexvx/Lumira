@@ -895,6 +895,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         title: t('ui.files.center.title'),
         dataIndex: 'title',
         width: 'var(--saas-spacing-260)',
+        ellipsis: true,
         render: (_, record) => (
           <Typography.Link onClick={() => enterStorageSpace(record)}>
             {record.title}
@@ -905,41 +906,47 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         title: t('ui.files.center.storageKey'),
         dataIndex: 'storageKey',
         width: 'var(--saas-spacing-220)',
+        ellipsis: true,
       },
       {
         title: t('ui.files.center.type'),
         dataIndex: 'provider',
         width: 'var(--saas-spacing-160)',
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         render: (_, record) => <Tag>{STORAGE_PROVIDER_LABELS[record.provider] || record.provider}</Tag>,
       },
       {
         title: t('ui.files.center.defaultStorageSpace'),
         dataIndex: 'defaultStorage',
         width: 'var(--saas-spacing-160)',
+        responsive: ['lg', 'xl', 'xxl'],
         render: (_, record) => (record.defaultStorage ? <span style={{ color: token.colorSuccess, fontSize: 20 }}>✓</span> : '-'),
       },
       {
         title: t('ui.files.center.anonymousAccess'),
         dataIndex: 'anonymousAccessAllowed',
         width: 'var(--saas-spacing-140)',
+        responsive: ['xxl'],
         render: (_, record) => (record.anonymousAccessAllowed ? <Tag color="green">{t('ui.files.center.allowed')}</Tag> : <Tag>{t('ui.files.center.off')}</Tag>),
       },
       {
         title: t('ui.files.center.fileCount'),
         dataIndex: 'fileCount',
         width: 'var(--saas-spacing-120)',
+        responsive: ['xl', 'xxl'],
         render: (_, record) => record.fileCount ?? 0,
       },
       {
         title: t('ui.files.center.size.33ff764e'),
         dataIndex: 'totalSizeLabel',
         width: 'var(--saas-spacing-120)',
+        responsive: ['xxl'],
         render: (_, record) => record.totalSizeLabel || formatFileSize(record.totalSizeBytes),
       },
       {
         title: t('ui.files.center.actions'),
         valueType: 'option',
-        fixed: 'right',
+        fixed: false,
         width: 'var(--saas-spacing-180)',
         render: (_, record) => (
           <TableActionBar
@@ -1410,6 +1417,8 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         {browserSectionProps.isSharedScope && !browserSectionProps.activeBucket && !readOnlyCenter ? (
           <ManagementTable
             actionRef={browserSectionProps.storageActionRef}
+            adaptiveSpacing
+            containerResponsive
             rowKey="id"
             columns={browserSectionProps.storageColumns}
             isMobile={browserSectionProps.isMobile}

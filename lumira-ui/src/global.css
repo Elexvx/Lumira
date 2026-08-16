@@ -1057,12 +1057,6 @@ body,
   min-height: var(--saas-spacing-40);
 }
 
-.saas-management-page .ant-card-head-title,
-.saas-management-page .ant-pro-card-title {
-  font-size: var(--saas-font-size-section-title);
-  line-height: 1.4;
-}
-
 .saas-management-page .ant-table-thead > tr > th {
   font-size: var(--saas-font-size-sm);
 }
@@ -1106,11 +1100,6 @@ body,
   .saas-management-page .ant-card-head,
   .saas-management-page .ant-pro-card-head {
     padding-inline: var(--saas-spacing-sm);
-  }
-
-  .saas-management-page .ant-card-head-title,
-  .saas-management-page .ant-pro-card-title {
-    font-size: 15px;
   }
 
   .saas-table-wrap .ant-pro-table-search,

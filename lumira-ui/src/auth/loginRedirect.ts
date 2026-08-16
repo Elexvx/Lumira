@@ -12,7 +12,6 @@ const STABLE_ACCESSIBLE_FALLBACK_PATHS = [
   '/dashboard/home',
   '/data-management',
   '/certificates/templates',
-  '/certificates/generate',
   '/certificates/records',
   '/experts/management',
   '/workflows/tasks',

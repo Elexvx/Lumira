@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.system.branding.dto;
 
+import java.util.List;
+
 public class BrandingSettingsRequest {
 
     private String websiteName;
@@ -19,6 +21,7 @@ public class BrandingSettingsRequest {
     private String maintenanceTitle;
     private String maintenanceMessage;
     private String maintenanceEndAt;
+    private List<Long> maintenanceAllowedRoleIds;
     private Long expectedConfigVersion;
     private String changeReason;
 
@@ -156,6 +159,14 @@ public class BrandingSettingsRequest {
 
     public void setMaintenanceEndAt(String maintenanceEndAt) {
         this.maintenanceEndAt = maintenanceEndAt;
+    }
+
+    public List<Long> getMaintenanceAllowedRoleIds() {
+        return maintenanceAllowedRoleIds;
+    }
+
+    public void setMaintenanceAllowedRoleIds(List<Long> maintenanceAllowedRoleIds) {
+        this.maintenanceAllowedRoleIds = maintenanceAllowedRoleIds;
     }
 
     public Long getExpectedConfigVersion() { return expectedConfigVersion; }

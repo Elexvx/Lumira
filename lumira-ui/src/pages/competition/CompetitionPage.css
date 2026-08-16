@@ -34,6 +34,10 @@
   grid-column: 1 / -1;
 }
 
+.activity-registration-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .competition-application-actions {
   display: flex;
   justify-content: center;
@@ -857,7 +861,7 @@
 
 .competition-settings-content .competition-organizer-list .competition-dynamic-list__row {
   display: grid;
-  grid-template-columns: minmax(160px, 0.75fr) minmax(240px, 1fr) 72px;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1fr) 72px;
   align-items: start;
   gap: 0 24px;
   min-width: 0;

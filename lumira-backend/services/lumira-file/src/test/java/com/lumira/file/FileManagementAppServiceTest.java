@@ -765,7 +765,7 @@ class FileManagementAppServiceTest {
         inserted.setPreviewMode("PDF");
         inserted.setPreviewableFlag(1);
         inserted.setStatus("PENDING_SCAN");
-        when(fileObjectMapper.selectById(99L)).thenReturn(inserted);
+        when(fileObjectMapper.selectFreshById(99L)).thenReturn(inserted);
 
         FileObjectDTO uploaded = service.uploadDocument(currentUser(), multipartFile, "资料", null, null, "missing_bucket");
 
@@ -847,7 +847,7 @@ class FileManagementAppServiceTest {
             stored.set(entity);
             return 1;
         });
-        when(fileObjectMapper.selectById(99L)).thenAnswer(invocation -> stored.get());
+        when(fileObjectMapper.selectFreshById(99L)).thenAnswer(invocation -> stored.get());
         return stored;
     }
 

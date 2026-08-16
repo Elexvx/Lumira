@@ -2,6 +2,9 @@ package com.lumira.saas.modules.activity.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+import com.lumira.saas.modules.activity.model.ActivityRegistrationField;
+import java.util.List;
 
 public final class ActivityDTO {
     private ActivityDTO() {
@@ -40,6 +43,9 @@ public final class ActivityDTO {
         @Size(max = 255)
         private String location;
         private Boolean featured;
+        @Valid
+        @Size(max = 50)
+        private List<ActivityRegistrationField> registrationFields;
 
         public String getCode() { return code; }
         public void setCode(String code) { this.code = code; }
@@ -71,5 +77,7 @@ public final class ActivityDTO {
         public void setLocation(String location) { this.location = location; }
         public Boolean getFeatured() { return featured; }
         public void setFeatured(Boolean featured) { this.featured = featured; }
+        public List<ActivityRegistrationField> getRegistrationFields() { return registrationFields; }
+        public void setRegistrationFields(List<ActivityRegistrationField> registrationFields) { this.registrationFields = registrationFields; }
     }
 }

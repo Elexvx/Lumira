@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.system.app;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
@@ -41,6 +42,7 @@ import java.util.UUID;
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
 public class SystemPlatformSettingsAppService {
+    private static final ObjectMapper LEGACY_OBJECT_MAPPER = new ObjectMapper();
     private static final String STATUS_ENABLED = "ENABLED";
 
     private static final String CONTEXT_PLATFORM = "platform";
@@ -64,6 +66,7 @@ public class SystemPlatformSettingsAppService {
     private static final String BRANDING_MAINTENANCE_TITLE_KEY = "branding.maintenance-title";
     private static final String BRANDING_MAINTENANCE_MESSAGE_KEY = "branding.maintenance-message";
     private static final String BRANDING_MAINTENANCE_END_AT_KEY = "branding.maintenance-end-at";
+    private static final String BRANDING_MAINTENANCE_ALLOWED_ROLE_IDS_KEY = "branding.maintenance-allowed-role-ids";
     private static final String GROUP_BRANDING = "BRANDING";
 
     private static final String AGREEMENT_USER_MARKDOWN_KEY = "agreement.user-agreement-markdown";
@@ -126,6 +129,7 @@ public class SystemPlatformSettingsAppService {
     private final boolean enforceTrustedUserResolution;
     private SystemConfigVersioningService configVersioningService;
     private PlatformUpdateMaintenanceService platformUpdateMaintenanceService;
+    private MaintenanceLoginPolicyService maintenanceLoginPolicyService;
 
     @Autowired
     public SystemPlatformSettingsAppService(
@@ -198,6 +202,11 @@ public class SystemPlatformSettingsAppService {
         this.platformUpdateMaintenanceService = platformUpdateMaintenanceService;
     }
 
+    @Autowired
+    public void setMaintenanceLoginPolicyService(MaintenanceLoginPolicyService maintenanceLoginPolicyService) {
+        this.maintenanceLoginPolicyService = maintenanceLoginPolicyService;
+    }
+
     private SystemConfigVersioningService.GovernanceSession beginGovernance(
             String group,
             Long expectedVersion,
@@ -267,6 +276,7 @@ public class SystemPlatformSettingsAppService {
 
     public SystemVO.BrandingSettingsVO getPublicBrandingSettings() {
         SystemVO.BrandingSettingsVO settings = loadBrandingSettings();
+        settings.setMaintenanceAllowedRoleIds(null);
         if (platformUpdateMaintenanceService != null
                 && platformUpdateMaintenanceService.isAutomaticMaintenanceActive()) {
             settings.setMaintenanceModeEnabled(Boolean.TRUE);
@@ -295,7 +305,8 @@ public class SystemPlatformSettingsAppService {
                 BRANDING_HELP_LINK_ENABLED_KEY, BRANDING_HELP_LINK_URL_KEY, BRANDING_COMPANY_NAME_KEY,
                 BRANDING_COPYRIGHT_START_YEAR_KEY, BRANDING_FOOTER_ICP_KEY, BRANDING_FOOTER_POLICE_BEIAN_KEY,
                 BRANDING_FOOTER_COPYRIGHT_KEY, BRANDING_MAINTENANCE_MODE_ENABLED_KEY, BRANDING_MAINTENANCE_TITLE_KEY,
-                BRANDING_MAINTENANCE_MESSAGE_KEY, BRANDING_MAINTENANCE_END_AT_KEY
+                BRANDING_MAINTENANCE_MESSAGE_KEY, BRANDING_MAINTENANCE_END_AT_KEY,
+                BRANDING_MAINTENANCE_ALLOWED_ROLE_IDS_KEY
         ));
         upsertConfigValue(BRANDING_WEBSITE_NAME_KEY, websiteName, operatorId);
         upsertConfigValue(BRANDING_WEBSITE_FAVICON_URL_KEY, sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""), operatorId);
@@ -318,6 +329,19 @@ public class SystemPlatformSettingsAppService {
         upsertConfigValue(BRANDING_MAINTENANCE_TITLE_KEY, sanitizeBrandingText(request.getMaintenanceTitle(), "马上回来，精彩不掉线"), operatorId);
         upsertConfigValue(BRANDING_MAINTENANCE_MESSAGE_KEY, sanitizeBrandingText(request.getMaintenanceMessage(), "我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。"), operatorId);
         upsertConfigValue(BRANDING_MAINTENANCE_END_AT_KEY, normalizeMaintenanceEndAt(request.getMaintenanceEndAt()), operatorId);
+        List<Long> allowedRoleIds = maintenanceLoginPolicyService == null
+                ? normalizeLegacyMaintenanceRoleIds(request.getMaintenanceAllowedRoleIds(), Boolean.TRUE.equals(request.getMaintenanceModeEnabled()))
+                : maintenanceLoginPolicyService.resolveRequestedRoleIds(
+                        request.getMaintenanceAllowedRoleIds(),
+                        Boolean.TRUE.equals(request.getMaintenanceModeEnabled())
+                );
+        upsertConfigValue(
+                BRANDING_MAINTENANCE_ALLOWED_ROLE_IDS_KEY,
+                maintenanceLoginPolicyService == null
+                        ? serializeLegacyMaintenanceRoleIds(allowedRoleIds)
+                        : maintenanceLoginPolicyService.serializeAllowedRoleIds(allowedRoleIds),
+                operatorId
+        );
         operationAuditService.log(
                 operatorId,
                 currentUser.getUserUuid(),
@@ -601,6 +625,12 @@ public class SystemPlatformSettingsAppService {
         settings.setMaintenanceTitle(defaultIfBlank(valueByKey.get(BRANDING_MAINTENANCE_TITLE_KEY), "马上回来，精彩不掉线"));
         settings.setMaintenanceMessage(defaultIfBlank(valueByKey.get(BRANDING_MAINTENANCE_MESSAGE_KEY), "我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。"));
         settings.setMaintenanceEndAt(normalizeMaintenanceEndAt(valueByKey.get(BRANDING_MAINTENANCE_END_AT_KEY)));
+        List<Long> allowedRoleIds = maintenanceLoginPolicyService == null
+                ? normalizeLegacyMaintenanceRoleIdsFromStoredValue(valueByKey.get(BRANDING_MAINTENANCE_ALLOWED_ROLE_IDS_KEY))
+                : (StringUtils.hasText(valueByKey.get(BRANDING_MAINTENANCE_ALLOWED_ROLE_IDS_KEY))
+                        ? maintenanceLoginPolicyService.parseAllowedRoleIds(valueByKey.get(BRANDING_MAINTENANCE_ALLOWED_ROLE_IDS_KEY))
+                        : maintenanceLoginPolicyService.defaultAdminRoleIds());
+        settings.setMaintenanceAllowedRoleIds(allowedRoleIds);
         return settings;
     }
 
@@ -800,6 +830,45 @@ public class SystemPlatformSettingsAppService {
             } catch (DateTimeParseException invalid) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "Maintenance end time must be a valid ISO-8601 timestamp");
             }
+        }
+    }
+
+    private List<Long> normalizeLegacyMaintenanceRoleIds(List<Long> roleIds, boolean enabled) {
+        List<Long> normalized = roleIds == null
+                ? List.of(MaintenanceLoginPolicyService.SEEDED_ADMIN_ROLE_ID)
+                : roleIds.stream()
+                        .filter(roleId -> roleId != null && roleId > 0)
+                        .distinct()
+                        .sorted()
+                        .toList();
+        if (enabled && normalized.isEmpty()) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "维护模式开启时至少要允许一个角色登录");
+        }
+        return normalized;
+    }
+
+    private List<Long> normalizeLegacyMaintenanceRoleIdsFromStoredValue(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of(MaintenanceLoginPolicyService.SEEDED_ADMIN_ROLE_ID);
+        }
+        try {
+            List<?> values = LEGACY_OBJECT_MAPPER.readValue(value, List.class);
+            return values.stream()
+                    .map(item -> item instanceof Number number ? number.longValue() : null)
+                    .filter(roleId -> roleId != null && roleId > 0)
+                    .distinct()
+                    .sorted()
+                    .toList();
+        } catch (Exception ignored) {
+            return List.of();
+        }
+    }
+
+    private String serializeLegacyMaintenanceRoleIds(List<Long> roleIds) {
+        try {
+            return LEGACY_OBJECT_MAPPER.writeValueAsString(roleIds == null ? List.of() : roleIds);
+        } catch (Exception exception) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "维护模式登录角色配置无法保存");
         }
     }
 

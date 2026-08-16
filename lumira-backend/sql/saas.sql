@@ -1561,7 +1561,7 @@ CREATE TABLE `sys_work_order_feedback` (
 
 CREATE TABLE `sys_user` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `uuid` char(36) NOT NULL,
+  `uuid` char(18) NOT NULL COMMENT 'Stable 18-digit numeric user UID',
   `username` varchar(64) NOT NULL,
   `nickname` varchar(64) DEFAULT NULL,
   `real_name` varchar(64) DEFAULT NULL,
@@ -1586,7 +1586,8 @@ CREATE TABLE `sys_user` (
   UNIQUE KEY `uk_sys_user_uuid` (`uuid`),
   UNIQUE KEY `uk_sys_user_username` (`username`),
   KEY `idx_sys_user_mobile` (`mobile`),
-  KEY `idx_sys_user_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
+  KEY `idx_sys_user_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
+  CONSTRAINT `chk_sys_user_uid_numeric_format` CHECK (`uuid` REGEXP '^[1-9][0-9]{17}$')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_user_department` (
@@ -1805,6 +1806,7 @@ CREATE TABLE `aiadc_activity` (
   `activity_time` varchar(64) NOT NULL,
   `location` varchar(255) NOT NULL,
   `featured` tinyint NOT NULL DEFAULT '0',
+  `registration_form_json` longtext,
   `created_by` bigint NOT NULL,
   `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2340,6 +2342,7 @@ CREATE TABLE `aiadc_activity_registration` (
   `organization` varchar(255) DEFAULT NULL,
   `position` varchar(128) DEFAULT NULL,
   `remark` varchar(1000) DEFAULT NULL,
+  `form_data_json` longtext,
   `status` varchar(32) NOT NULL DEFAULT 'SUBMITTED',
   `submitted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `owner_user_id` bigint NOT NULL,
@@ -2843,6 +2846,7 @@ VALUES
 ('DEFAULT','CONSENT','informed-consent','知情同意书','{}','请配置知情同意书内容。',20,1,1,0),
 ('DEFAULT','REQUIRED_FILE','work-file','作品文件','{"fileFormat":"ANY","accept":"*","maxSizeMb":100,"maxCount":1}',NULL,10,1,1,0),
 ('DEFAULT','TEAM_SETTINGS','team-size-limits','团队人数限制','{"teamMinMembers":1,"teamMaxMembers":20,"standardField":true}',NULL,0,0,1,0),
+('DEFAULT','AWARD_SETTINGS','award-rules','获奖设置','{"version":1,"rules":[{"awardName":"一等奖","quota":1},{"awardName":"二等奖","quota":2},{"awardName":"三等奖","quota":3},{"awardName":"优秀奖","quota":5}]}','按评审发布结果的最终排名生成获奖名单。',600,1,1,0),
 ('DEFAULT','TEAM_FIELD','teamName','团队名称','{"fieldType":"TEXT","placeholder":"请输入团队名称","validationRule":"DISPLAY_NAME","standardField":true}',NULL,10,1,1,0),
 ('DEFAULT','TEAM_FIELD','avatarUrl','团队头像','{"fieldType":"IMAGE","placeholder":"请上传团队头像","validationRule":"NONE","standardField":true}',NULL,20,0,1,0),
 ('DEFAULT','TEAM_FIELD','description','团队简介','{"fieldType":"TEXTAREA","placeholder":"请输入团队简介","validationRule":"NONE","standardField":true}',NULL,30,0,1,0),
@@ -3910,7 +3914,6 @@ VALUES
     (-1111, -1101, 'payment.status', 'Payment status query', 'MENU', '/payments/status', 'redirect:/payments/management', 'SearchOutlined', 4, 'payment:order:view', 'DISABLED', 0, 0, 1),
     (-1079, 0, 'certificate.root', '证书中心', 'CATALOG', '/certificates', 'redirect:/certificates/mine', 'FileProtectOutlined', 6, NULL, 'DISABLED', 0, 0, 1),
     (-1080, -1100, 'certificate.templates', '证书模板', 'MENU', '/certificates/templates', '@/pages/certificates/TemplatesPage', 'FileProtectOutlined', 6, 'aiadc:certificate-template:view', 'ENABLED', 0, 0, 0),
-    (-1081, -1100, 'certificate.generate', '跨赛事证书生成', 'MENU', '/certificates/generate', '@/pages/certificates/GeneratePage', 'FileDoneOutlined', 7, 'aiadc:certificate-batch:create', 'ENABLED', 0, 0, 0),
     (-1082, -1100, 'certificate.records', '全局证书记录', 'MENU', '/certificates/records', '@/pages/certificates/RecordsPage', 'AuditOutlined', 8, 'aiadc:certificate:view', 'ENABLED', 0, 0, 0),
     (-1072, -1071, 'competition.management.create', '新增赛事', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:competition:create', 'ENABLED', 0, 0, 0),
     (-1073, -1071, 'competition.management.update', '编辑赛事', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:competition:update', 'ENABLED', 0, 0, 0),
@@ -3919,7 +3922,6 @@ VALUES
     (-1084, -1080, 'certificate.templates.update', 'Update certificate template', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:certificate-template:update', 'ENABLED', 0, 0, 0),
     (-1085, -1080, 'certificate.templates.publish', 'Publish certificate template', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:certificate-template:publish', 'ENABLED', 0, 0, 0),
     (-1086, -1080, 'certificate.templates.delete', 'Archive certificate template', 'BUTTON', NULL, NULL, NULL, 4, 'aiadc:certificate-template:delete', 'ENABLED', 0, 0, 0),
-    (-1087, -1081, 'certificate.generate.create', 'Generate certificates', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:certificate-batch:create', 'ENABLED', 0, 0, 0),
     (-1088, -1082, 'certificate.records.download', 'Download certificate', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:certificate:download', 'ENABLED', 0, 0, 0),
     (-1089, -1082, 'certificate.records.regenerate', 'Regenerate certificate', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:certificate:regenerate', 'ENABLED', 0, 0, 0),
     (-1090, -1082, 'certificate.records.revoke', 'Revoke certificate', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:certificate:revoke', 'ENABLED', 0, 0, 0),
@@ -4457,6 +4459,7 @@ VALUES
     ('branding.maintenance-title', '维护模式标题', '马上回来，精彩不掉线', 'PLATFORM', 0, '维护模式页面标题', 0, 0, 0),
     ('branding.maintenance-message', '维护模式说明', '我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。', 'PLATFORM', 0, '维护模式页面说明', 0, 0, 0),
     ('branding.maintenance-end-at', '维护结束时间', '', 'PLATFORM', 0, '可选的维护倒计时结束时间，使用 ISO-8601 格式；留空不显示倒计时', 0, 0, 0),
+    ('branding.maintenance-allowed-role-ids', '维护模式允许登录角色', '[1001]', 'PLATFORM', 0, '维护模式开启后允许完成登录的角色 ID 列表，使用 JSON 数组保存', 0, 0, 0),
     ('agreement.user-agreement-markdown', '用户协议', '', 'PLATFORM', 0, '用户协议 Markdown', 0, 0, 0),
     ('agreement.privacy-agreement-markdown', '隐私协议', '', 'PLATFORM', 0, '隐私协议 Markdown', 0, 0, 0),
     ('account.activation.url', '账户激活地址', 'http://localhost:8000/account-activation', 'PLATFORM', 1, '前端账户激活页面地址', 0, 0, 0),
@@ -4519,6 +4522,7 @@ VALUES
     ('security.access-token-expire-seconds', 'Access Token 过期时间', '1800', 'PLATFORM', 1, 'Access token TTL seconds', 0, 0, 0),
     ('security.refresh-token-expire-seconds', 'Refresh Token 刷新时限', '604800', 'PLATFORM', 1, 'Refresh token TTL seconds', 0, 0, 0),
     ('security.allow-multi-device-login', 'Multi-device login', '1', 'PLATFORM', 1, 'Whether the same account can be online on multiple devices', 0, 0, 0),
+    ('security.registration-enabled', '允许用户注册', '0', 'PLATFORM', 1, '是否允许未注册手机号通过短信验证码创建普通用户', 0, 0, 0),
     ('security.captcha-enabled', 'Captcha enabled', '0', 'PLATFORM', 1, '是否开启登录时的人机验证码', 0, 0, 0),
     ('security.captcha-type', 'Captcha type', 'IMAGE', 'PLATFORM', 1, '验证码类型：IMAGE/SLIDER', 0, 0, 0),
     ('security.login-defense-window-minutes', '登录防御统计窗口', '5', 'PLATFORM', 1, 'Login defense statistics window in minutes', 0, 0, 0),
@@ -5595,6 +5599,7 @@ VALUES
     ('BRANDING','branding.maintenance-title','马上回来，精彩不掉线',150,'ENABLED',0,0,0),
     ('BRANDING','branding.maintenance-message','我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。',160,'ENABLED',0,0,0),
     ('BRANDING','branding.maintenance-end-at','',170,'ENABLED',0,0,0),
+    ('BRANDING','branding.maintenance-allowed-role-ids','[1001]',180,'ENABLED',0,0,0),
     ('AGREEMENT','agreement.user-agreement-markdown','',10,'ENABLED',0,0,0),
     ('AGREEMENT','agreement.privacy-agreement-markdown','',20,'ENABLED',0,0,0),
     ('SMTP','smtp.enabled','true',10,'ENABLED',0,0,0),

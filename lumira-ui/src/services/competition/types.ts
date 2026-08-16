@@ -51,6 +51,7 @@ export type CompetitionConfigItemType =
   | 'PAYMENT_SETTINGS'
   | 'REQUIRED_FILE'
   | 'STAGE_MATERIAL'
+  | 'AWARD_SETTINGS'
   | 'TIMELINE';
 
 export interface CompetitionConfigSet {
@@ -88,6 +89,7 @@ export interface CompetitionSettingsRecord {
   stageMaterials: CompetitionConfigItem[];
   timeline: CompetitionConfigItem[];
   payments: CompetitionConfigItem[];
+  awards: CompetitionConfigItem[];
 }
 
 export interface CompetitionUpsertPayload {

@@ -18,6 +18,8 @@ import com.lumira.saas.modules.competition.dto.CertificateDTO;
 import com.lumira.saas.modules.competition.vo.CertificateVO;
 import com.lumira.saas.modules.competition.repository.CertificateTemplateRepository;
 import com.lumira.saas.modules.competition.repository.CertificateRecordRepository;
+import com.lumira.saas.modules.competition.repository.CompetitionSettingsRepository;
+import com.lumira.saas.modules.competition.vo.CompetitionVO;
 import com.lumira.team.api.TeamInternalApi;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
@@ -96,6 +98,9 @@ public class CertificateAppService {
     private static final int MAX_SEARCH_TEXT_LENGTH = 128;
     private static final long MAX_PAGE_NO = 100000L;
     private static final long MAX_UPLOAD_BYTES = 10L * 1024L * 1024L;
+    private static final String COMPETITION_AWARD_SETTINGS_TYPE = "AWARD_SETTINGS";
+    private static final List<String> COMPETITION_AWARD_NAMES = List.of("一等奖", "二等奖", "三等奖", "优秀奖");
+    private static final List<Integer> DEFAULT_COMPETITION_AWARD_QUOTAS = List.of(1, 2, 3, 5);
 
     private final CertificateTemplateRepository templateRepository;
     private final CertificateRecordRepository recordRepository;
@@ -103,11 +108,11 @@ public class CertificateAppService {
     private final FileInternalApi fileInternalApi;
     private final CertificateRenderService renderService;
     private final TrustedCurrentUserResolver trustedCurrentUserResolver;
+    private final CompetitionSettingsRepository competitionSettingsRepository;
     private ObjectProvider<TeamInternalApi> teamInternalApiProvider;
     private ObjectProvider<PlatformSettingDefaultsPort> platformSettingDefaultsPortProvider;
     private final boolean enforceTrustedUserResolution;
 
-    @Autowired
     public CertificateAppService(
             CertificateTemplateRepository templateRepository,
             CertificateRecordRepository recordRepository,
@@ -123,6 +128,29 @@ public class CertificateAppService {
                 fileInternalApi,
                 renderService,
                 trustedCurrentUserResolver,
+                null,
+                true
+        );
+    }
+
+    @Autowired
+    public CertificateAppService(
+            CertificateTemplateRepository templateRepository,
+            CertificateRecordRepository recordRepository,
+            ObjectMapper objectMapper,
+            FileInternalApi fileInternalApi,
+            CertificateRenderService renderService,
+            TrustedCurrentUserResolver trustedCurrentUserResolver,
+            CompetitionSettingsRepository competitionSettingsRepository
+    ) {
+        this(
+                templateRepository,
+                recordRepository,
+                objectMapper,
+                fileInternalApi,
+                renderService,
+                trustedCurrentUserResolver,
+                competitionSettingsRepository,
                 true
         );
     }
@@ -136,12 +164,35 @@ public class CertificateAppService {
             TrustedCurrentUserResolver trustedCurrentUserResolver,
             boolean enforceTrustedUserResolution
     ) {
+        this(
+                templateRepository,
+                recordRepository,
+                objectMapper,
+                fileInternalApi,
+                renderService,
+                trustedCurrentUserResolver,
+                null,
+                enforceTrustedUserResolution
+        );
+    }
+
+    public CertificateAppService(
+            CertificateTemplateRepository templateRepository,
+            CertificateRecordRepository recordRepository,
+            ObjectMapper objectMapper,
+            FileInternalApi fileInternalApi,
+            CertificateRenderService renderService,
+            TrustedCurrentUserResolver trustedCurrentUserResolver,
+            CompetitionSettingsRepository competitionSettingsRepository,
+            boolean enforceTrustedUserResolution
+    ) {
         this.templateRepository = templateRepository;
         this.recordRepository = recordRepository;
         this.objectMapper = objectMapper;
         this.fileInternalApi = fileInternalApi;
         this.renderService = renderService;
         this.trustedCurrentUserResolver = trustedCurrentUserResolver;
+        this.competitionSettingsRepository = competitionSettingsRepository;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
@@ -426,6 +477,39 @@ public class CertificateAppService {
         return grants;
     }
 
+    @Transactional
+    public List<CertificateVO.AwardGrant> grantPublishedAwardsFromCompetitionSettings(
+            CurrentUser currentUser,
+            String competitionUuid,
+            Long reviewBatchId
+    ) {
+        requirePermission(currentUser, BATCH_CREATE);
+        requireRequest(competitionUuid, "Competition uuid is required");
+        requirePositiveId(reviewBatchId, "Review batch id is required");
+        CertificateDTO.AwardGrantRequest request = new CertificateDTO.AwardGrantRequest();
+        request.setReviewBatchId(reviewBatchId);
+        request.setRules(competitionAwardRules(competitionUuid).stream().map(rule -> {
+            CertificateDTO.AwardRuleRequest item = new CertificateDTO.AwardRuleRequest();
+            item.setAwardName(rule.awardName());
+            item.setMinRank(rule.minRank());
+            item.setMaxRank(rule.maxRank());
+            return item;
+        }).toList());
+        return grantPublishedAwards(currentUser, request);
+    }
+
+    public List<CertificateVO.AwardRule> listCompetitionAwardRules(CurrentUser currentUser, String competitionUuid) {
+        requirePermission(currentUser, BATCH_CREATE);
+        requireRequest(competitionUuid, "Competition uuid is required");
+        return competitionAwardRules(competitionUuid).stream().map(rule -> {
+            CertificateVO.AwardRule item = new CertificateVO.AwardRule();
+            item.setAwardName(rule.awardName());
+            item.setMinRank(rule.minRank());
+            item.setMaxRank(rule.maxRank());
+            return item;
+        }).toList();
+    }
+
     public List<CertificateVO.AwardSource> listPublishedAwardSources(CurrentUser currentUser) {
         requirePermission(currentUser, BATCH_CREATE);
         return recordRepository.findPublishedAwardSources();
@@ -536,6 +620,66 @@ public class CertificateAppService {
             previousMaxRank = rule.maxRank();
         }
         return rules;
+    }
+
+    private List<AwardRule> competitionAwardRules(String competitionUuid) {
+        if (competitionSettingsRepository == null) {
+            return defaultCompetitionAwardRules();
+        }
+        CompetitionVO.ConfigSet configSet = competitionSettingsRepository.findCurrentConfigSet(competitionUuid);
+        if (configSet == null || configSet.getId() == null) {
+            return defaultCompetitionAwardRules();
+        }
+        List<CompetitionVO.ConfigItem> items = competitionSettingsRepository.findConfigItems(
+                competitionUuid,
+                configSet.getId(),
+                Set.of(COMPETITION_AWARD_SETTINGS_TYPE)
+        );
+        CompetitionVO.ConfigItem settingsItem = items.stream()
+                .filter(item -> COMPETITION_AWARD_SETTINGS_TYPE.equals(item.getItemType()))
+                .findFirst()
+                .orElse(null);
+        if (settingsItem == null || !StringUtils.hasText(settingsItem.getContentJson())) {
+            return defaultCompetitionAwardRules();
+        }
+        try {
+            JsonNode metadata = objectMapper.readTree(settingsItem.getContentJson());
+            JsonNode rules = metadata.path("rules");
+            if (!rules.isArray() || rules.size() != COMPETITION_AWARD_NAMES.size()) {
+                throw biz(ErrorCode.BIZ_ERROR, "赛事获奖设置不完整，请先配置四档奖项");
+            }
+            List<AwardRule> result = new ArrayList<>();
+            int nextRank = 1;
+            for (int index = 0; index < COMPETITION_AWARD_NAMES.size(); index++) {
+                JsonNode rule = rules.get(index);
+                String awardName = rule.path("awardName").asText();
+                int quota = rule.path("quota").asInt(0);
+                if (!COMPETITION_AWARD_NAMES.get(index).equals(awardName) || quota < 1 || quota > 10000) {
+                    throw biz(ErrorCode.BIZ_ERROR, "赛事获奖设置无效，请检查四档奖项名额");
+                }
+                int minRank = nextRank;
+                int maxRank = minRank + quota - 1;
+                result.add(new AwardRule(awardName, minRank, maxRank));
+                nextRank = maxRank + 1;
+            }
+            return result;
+        } catch (BizException error) {
+            throw error;
+        } catch (Exception error) {
+            throw biz(ErrorCode.BIZ_ERROR, "赛事获奖设置格式不正确");
+        }
+    }
+
+    private List<AwardRule> defaultCompetitionAwardRules() {
+        int nextRank = 1;
+        List<AwardRule> result = new ArrayList<>();
+        for (int index = 0; index < COMPETITION_AWARD_NAMES.size(); index++) {
+            int minRank = nextRank;
+            int maxRank = minRank + DEFAULT_COMPETITION_AWARD_QUOTAS.get(index) - 1;
+            result.add(new AwardRule(COMPETITION_AWARD_NAMES.get(index), minRank, maxRank));
+            nextRank = maxRank + 1;
+        }
+        return result;
     }
 
     private record AwardRule(String awardName, int minRank, int maxRank) {}

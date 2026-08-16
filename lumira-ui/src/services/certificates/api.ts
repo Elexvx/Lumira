@@ -4,6 +4,7 @@ import type {
   CertificateGenerateResult,
   CertificateBatchRecord,
   CertificateAwardGrant,
+  CertificateAwardRule,
   CertificateAwardSource,
   AwardGrantPayload,
   AwardCertificateGeneratePayload,
@@ -97,6 +98,9 @@ export const revokeCertificate = (id: number, reason?: string) =>
 
 export const listCompetitionWorkspaceCertificateAwardSources = (competitionUuid: string) =>
   request<CertificateAwardSource[]>(`${workspaceApi(competitionUuid)}/certificate-award-sources`, { method: 'GET' });
+
+export const listCompetitionWorkspaceCertificateAwardRules = (competitionUuid: string) =>
+  request<CertificateAwardRule[]>(`${workspaceApi(competitionUuid)}/certificate-award-rules`, { method: 'GET' });
 
 export const grantCompetitionWorkspacePublishedAwards = (competitionUuid: string, data: AwardGrantPayload) =>
   request<CertificateAwardGrant[]>(`${workspaceApi(competitionUuid)}/certificate-awards/grant`, { method: 'POST', data });

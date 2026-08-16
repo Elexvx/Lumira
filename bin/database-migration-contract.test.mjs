@@ -444,6 +444,7 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   const dynamicParentRepair = read('deploy/migrations/V202608030003__repair_dynamic_registration_parent.sql');
   const navigationAuthorityRepair = read('deploy/migrations/V202608030005__repair_navigation_authority.sql');
   const certificateDataManagementMigration = read('deploy/migrations/V202608150004__move_certificate_management_into_data_management.sql');
+  const awardSettingsMigration = read('deploy/migrations/V202608160001__add_competition_award_settings.sql');
   const menuInsertStart = baseline.indexOf('INSERT INTO `sys_menu`');
   const menuInsertEnd = baseline.indexOf('ON DUPLICATE KEY UPDATE', menuInsertStart);
   const menuInsert = baseline.slice(menuInsertStart, menuInsertEnd);
@@ -466,9 +467,10 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   assert.equal(byCode.get('competition.review-results')?.parentId, '-1069');
   assert.equal(byCode.get('certificate.mine')?.id, '-1114');
   assert.equal(byCode.get('certificate.mine')?.parentId, '-1069');
-  for (const certificateMenuCode of ['certificate.templates', 'certificate.generate', 'certificate.records']) {
+  for (const certificateMenuCode of ['certificate.templates', 'certificate.records']) {
     assert.equal(byCode.get(certificateMenuCode)?.parentId, '-1100');
   }
+  assert.equal(byCode.has('certificate.generate'), false);
   assert.equal(byCode.get('expert.application')?.parentId, '-1068');
 
   for (const marker of [
@@ -513,6 +515,12 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   assert.match(certificateDataManagementMigration, /migration:V202608150004:certificate-data-management/);
   assert.doesNotMatch(certificateDataManagementMigration, /\bDELETE\s+FROM\b/i);
   assert.doesNotMatch(certificateDataManagementMigration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+  assert.match(awardSettingsMigration, /AWARD_SETTINGS/);
+  assert.match(awardSettingsMigration, /certificate\.generate/);
+  assert.match(awardSettingsMigration, /一等奖/);
+  assert.match(awardSettingsMigration, /优秀奖/);
+  assert.doesNotMatch(awardSettingsMigration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(awardSettingsMigration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
 
 test('platform event outbox audit identity repair matches the fresh bootstrap', () => {

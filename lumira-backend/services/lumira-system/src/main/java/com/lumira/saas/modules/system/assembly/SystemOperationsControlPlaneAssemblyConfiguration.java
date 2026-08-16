@@ -6,6 +6,7 @@ import com.lumira.saas.infrastructure.adapter.SystemDictionaryItemLookupAdapter;
 import com.lumira.saas.infrastructure.adapter.SystemAiSystemManagementToolPort;
 import com.lumira.saas.infrastructure.adapter.SystemAiSystemReadPort;
 import com.lumira.saas.infrastructure.adapter.SystemExpertAccountProvisioningPort;
+import com.lumira.saas.modules.system.app.MaintenanceLoginPolicyService;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.app.SystemInternalApiService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
@@ -103,6 +104,7 @@ import org.springframework.context.annotation.Import;
         JdbcInternalSystemRepository.class,
         InternalSystemApplicationService.class,
         InternalSystemController.class,
+        MaintenanceLoginPolicyService.class,
         OnlineSessionController.class,
         JdbcOnlineSessionUserRepository.class,
         OnlineSessionEventIdentityVerifier.class,

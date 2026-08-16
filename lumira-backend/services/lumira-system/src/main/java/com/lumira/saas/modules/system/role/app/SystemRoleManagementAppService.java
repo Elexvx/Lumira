@@ -215,6 +215,15 @@ public class SystemRoleManagementAppService {
         return page;
     }
 
+    public List<SystemVO.MaintenanceLoginRoleOptionVO> listMaintenanceLoginRoleOptions(CurrentUser currentUser) {
+        requirePermission(currentUser, "system:config:view");
+        return roleRepository.findActiveRoles().stream()
+                .map(role -> new SystemVO.MaintenanceLoginRoleOptionVO(
+                        role.getId(), role.getRoleCode(), role.getRoleName(), role.getRoleType()
+                ))
+                .toList();
+    }
+
     public SystemVO.RoleDetailVO getRole(CurrentUser currentUser, Long roleId) {
         requirePermission(currentUser, "system:role:view");
         requirePositiveId(roleId, "Role id is required");

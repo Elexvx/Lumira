@@ -1,0 +1,7 @@
+.competition-review-results__sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--saas-page-section-gap);
+  min-width: 0;
+  width: 100%;
+}

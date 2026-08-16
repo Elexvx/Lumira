@@ -142,6 +142,7 @@ class SystemPlatformSettingsAppServiceTest {
         assertThat(publicSettings.getMaintenanceMessage()).isEqualTo(adminSettings.getMaintenanceMessage());
         assertThat(publicSettings.getMaintenanceEndAt()).isEqualTo(adminSettings.getMaintenanceEndAt());
         assertThat(publicSettings.getWebsiteName()).isEqualTo(adminSettings.getWebsiteName());
+        assertThat(publicSettings.getMaintenanceAllowedRoleIds()).isNull();
     }
 
     @Test
@@ -815,7 +816,8 @@ class SystemPlatformSettingsAppServiceTest {
                     Map.entry("branding.maintenance-mode-enabled", "false"),
                     Map.entry("branding.maintenance-title", "马上回来，精彩不掉线"),
                     Map.entry("branding.maintenance-message", "我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。"),
-                    Map.entry("branding.maintenance-end-at", ""));
+                    Map.entry("branding.maintenance-end-at", ""),
+                    Map.entry("branding.maintenance-allowed-role-ids", "[1001]"));
             case "AGREEMENT" -> Map.of("agreement.user-agreement-markdown", "", "agreement.privacy-agreement-markdown", "");
             case "SMTP" -> Map.ofEntries(
                     Map.entry("smtp.enabled", "true"), Map.entry("smtp.host", ""), Map.entry("smtp.port", "25"),

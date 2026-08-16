@@ -75,6 +75,28 @@
   text-align: center;
 }
 
+.activity-registration-fields {
+  width: 100%;
+}
+
+.activity-registration-fields__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.activity-registration-field-card {
+  width: 100%;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.activity-registration-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+}
+
 .activity-search-hero {
   display: flex;
   flex-direction: column;
@@ -289,6 +311,10 @@
   .activity-form-row {
     grid-template-columns: 1fr;
     column-gap: 0;
+  }
+
+  .activity-registration-field-grid {
+    grid-template-columns: 1fr;
   }
 
   .activity-search-filter-row,

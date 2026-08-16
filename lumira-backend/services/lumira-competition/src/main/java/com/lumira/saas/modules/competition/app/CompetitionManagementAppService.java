@@ -71,8 +71,10 @@ public class CompetitionManagementAppService {
             "PAYMENT_SETTINGS",
             "REQUIRED_FILE",
             "STAGE_MATERIAL",
+            "AWARD_SETTINGS",
             "TIMELINE"
     );
+    private static final List<String> COMPETITION_AWARD_NAMES = List.of("一等奖", "二等奖", "三等奖", "优秀奖");
     private static final Set<String> COLLECTION_CONFIG_ITEM_TYPES = Set.of(
             "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD"
     );
@@ -83,6 +85,7 @@ public class CompetitionManagementAppService {
             "files", Set.of("REQUIRED_FILE"),
             "stage-materials", Set.of("STAGE_MATERIAL"),
             "materials", Set.of("REQUIRED_FILE", "STAGE_MATERIAL"),
+            "awards", Set.of("AWARD_SETTINGS"),
             "timeline", Set.of("TIMELINE")
     );
     private static final String COMPETITION_CATEGORY_DICT = "aiadc_competition_category";
@@ -252,6 +255,7 @@ public class CompetitionManagementAppService {
         settings.setFiles(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("files")));
         settings.setStageMaterials(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("stage-materials")));
         settings.setTimeline(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("timeline")));
+        settings.setAwards(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("awards")));
         return settings;
     }
 
@@ -1422,6 +1426,7 @@ public class CompetitionManagementAppService {
         normalized.setEnabled(request.getEnabled() == null || Boolean.TRUE.equals(request.getEnabled()));
         validateCollectedFieldConfigItem(normalized);
         validateMaterialConfigItem(normalized);
+        validateAwardSettingsConfigItem(normalized);
         return normalized;
     }
 
@@ -1481,6 +1486,34 @@ public class CompetitionManagementAppService {
         }
         if (!StringUtils.hasText(metadata.path("storageKey").asText(null))) {
             throw biz(ErrorCode.VALIDATION_ERROR, label + "必须选择保存位置");
+        }
+    }
+
+    private void validateAwardSettingsConfigItem(CompetitionDTO.ConfigItemRequest item) {
+        if (!"AWARD_SETTINGS".equals(item.getItemType())) {
+            return;
+        }
+        JsonNode metadata;
+        try {
+            metadata = StringUtils.hasText(item.getContentJson())
+                    ? OBJECT_MAPPER.readTree(item.getContentJson())
+                    : OBJECT_MAPPER.createObjectNode();
+        } catch (Exception error) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置格式不正确");
+        }
+        JsonNode rules = metadata.path("rules");
+        if (!rules.isArray() || rules.size() != COMPETITION_AWARD_NAMES.size()) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置必须包含一等奖、二等奖、三等奖和优秀奖");
+        }
+        for (int index = 0; index < COMPETITION_AWARD_NAMES.size(); index++) {
+            JsonNode rule = rules.get(index);
+            if (rule == null || !COMPETITION_AWARD_NAMES.get(index).equals(rule.path("awardName").asText())) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置奖项顺序不正确");
+            }
+            int quota = rule.path("quota").asInt(0);
+            if (quota < 1 || quota > 10000) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置名额必须在 1–10000 之间");
+            }
         }
     }
 

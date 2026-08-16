@@ -77,7 +77,6 @@ const DATA_MANAGEMENT_DIRECT_CHILD_PATHS = [
   '/activities/management',
   '/payments/management',
   '/certificates/templates',
-  '/certificates/generate',
   '/certificates/records',
   '/data-management/download-center',
 ];
@@ -1157,7 +1156,7 @@ const removeMenuPathsForLayout = (
     };
   });
 
-const buildDashboardMenuGroupForLayout = (
+const buildDashboardMenuItemForLayout = (
   fallbackByPath: Map<string, RuntimeMenuDataItem>,
   accessMap: Record<string, unknown>,
 ): RuntimeMenuDataItem | null => {
@@ -1176,16 +1175,21 @@ const buildDashboardMenuGroupForLayout = (
     hideInMenu: childMeta.hideInMenu,
   };
 
+  // The dashboard has one real destination. Keep it as a single first-level
+  // item so its icon and label use the same Ant Design menu slot as the other
+  // top-level entries instead of rendering an icon-bearing parent above an
+  // icon-less selected child.
   return {
-    path: DASHBOARD_GROUP_PATH,
-    name: resolveBuiltinMessage(
+    ...childMenu,
+    path: DASHBOARD_HOME_PATH,
+    name: resolveNavigationMenuName(
       groupMeta?.name || childMeta.name,
       groupMeta?.name || childMeta.name,
     ),
     locale: false as const,
-    icon: resolveNavigationIcon(groupMeta?.icon || childMeta.icon),
+    icon: resolveNavigationIcon(groupMeta?.icon || childMeta.icon) ?? resolveNavigationIcon(childMenu.icon),
     hideInMenu: false,
-    children: [{ ...childMenu, hideInMenu: false }],
+    children: undefined,
   };
 };
 
@@ -1421,7 +1425,7 @@ const buildMainMenuDataForLayout = (
     || DATA_MANAGEMENT_CONSOLIDATED_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path))
     || DATA_SOURCE_GROUP_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path));
   const dashboardMenu = allowMissingStableMenus || hasDashboardSource
-    ? buildDashboardMenuGroupForLayout(fallbackByPath, accessMap)
+    ? buildDashboardMenuItemForLayout(fallbackByPath, accessMap)
     : null;
   const dataManagementMenu = allowMissingStableMenus || hasDataManagementSource
     ? buildDataManagementMenuGroupForLayout(fallbackByPath, accessMap)
@@ -1430,7 +1434,7 @@ const buildMainMenuDataForLayout = (
     ? buildPersonalCenterMenuGroupForLayout(fallbackByPath, accessMap)
     : null;
   const pathsToRemove = new Set([
-    ...(dashboardMenu ? [DASHBOARD_HOME_PATH] : []),
+    ...(dashboardMenu ? [DASHBOARD_GROUP_PATH, DASHBOARD_HOME_PATH] : []),
     ...(dataManagementMenu
       ? [
           DATA_MANAGEMENT_GROUP_PATH,
@@ -1572,6 +1576,9 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     // navigation width. Keep the two responsive contracts aligned; only a
     // genuinely mobile viewport should start with a collapsed sider.
     defaultCollapsed: isMobile,
+    // Keep the app's tablet/desktop navigation expanded. ProLayout's default
+    // breakpoint would otherwise collapse the sider below its lg threshold.
+    breakpoint: false,
     layout: 'mix',
     token: {
       header: {

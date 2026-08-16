@@ -10,9 +10,11 @@ describe('login mode presentation', () => {
     expect(resolvePresentedLoginModes(false, ['password', 'sms', 'wechat', 'passkey'])).toEqual(['password', 'sms', 'wechat', 'passkey']);
   });
 
-  it('keeps wechat selectable when runtime capabilities are temporarily unavailable', () => {
-    expect(resolvePresentedLoginModes(false, ['password'])).toEqual(['password', 'wechat']);
-    expect(resolvePresentedLoginMode(false, 'wechat', ['password'])).toBe('wechat');
+  it('does not present disabled wechat when backend capabilities exclude it', () => {
+    expect(resolvePresentedLoginModes(false, ['password'])).toEqual(['password']);
+    expect(resolvePresentedLoginMode(false, 'wechat', ['password'])).toBe('password');
+    expect(resolvePresentedLoginModes(false, [])).toEqual(['password']);
+    expect(resolvePresentedLoginMode(false, 'wechat', [])).toBe('password');
   });
 
   it('keeps wechat when it is the only backend-enabled mode', () => {

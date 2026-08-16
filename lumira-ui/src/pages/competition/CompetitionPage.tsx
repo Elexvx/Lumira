@@ -172,6 +172,8 @@ import {
 } from '@/pages/competition/utils/competitionSettingsNavigation';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
 import { CompetitionPaymentStep } from '@/pages/competition/components/CompetitionPaymentStep';
+import CompetitionAwardSettingsPanel from '@/pages/competition/components/CompetitionAwardSettingsPanel';
+import type { CompetitionSettingsPanelHandle } from '@/pages/competition/components/CompetitionSettingsPanelHandle';
 import { message, modal } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, extractErrorMessage, showErrorMessage } from '@/utils/errorMessage';
 import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
@@ -191,7 +193,6 @@ import {
   type CompetitionScheduleFormItem,
   type CompetitionTimeMode,
 } from './competitionSchedulePayload';
-import { transitionAfterCompetitionSettingsSave } from './competitionSettingsPanelTransition';
 import './CompetitionPage.css';
 
 const detectPaymentClientType = (): 'DESKTOP' | 'MOBILE' | 'WECHAT' => {
@@ -4293,7 +4294,9 @@ const CompetitionRegistrationPage = () => {
             rowKey={(record) => record.isCurrentUserDraft ? `draft:${registrationDraftStorageKey}` : record.id}
             columns={registrationColumns}
             isMobile={responsive.isMobile}
-            scroll={{ x: 1360 }}
+            autoContentWidth
+            scroll={{ x: 'max-content' }}
+            tableLayout="auto"
             request={registrationTableRequest}
             pagination={{ pageSize: 10, showSizeChanger: true }}
             toolBarRender={() => [
@@ -5148,7 +5151,7 @@ const CompetitionRegistrationPage = () => {
   );
 };
 
-type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files';
+type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files' | 'awards';
 type CompetitionSettingsModuleKey = CompetitionSettingsSectionKey;
 type RegistrationFieldScope = Extract<
   CompetitionConfigItemType,
@@ -5231,6 +5234,7 @@ const localizeLegacyCompetitionSettings = (settings: CompetitionSettingsRecord):
   stageMaterials: settings.stageMaterials.map(localizeLegacyConfigItemTitle),
   payments: settings.payments.map(localizeLegacyConfigItemTitle),
   timeline: settings.timeline.map(localizeLegacyConfigItemTitle),
+  awards: (settings.awards || []).map(localizeLegacyConfigItemTitle),
 });
 
 const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
@@ -5266,6 +5270,14 @@ const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
     defaultDescription: 'Files participants must upload, including works, proof and authorization files.',
     itemTypes: ['REQUIRED_FILE', 'STAGE_MATERIAL'],
   },
+  {
+    key: 'awards',
+    labelId: 'page.competition.settings.module.awards',
+    defaultLabel: '获奖设置',
+    descriptionId: 'page.competition.settings.module.awards.description',
+    defaultDescription: '配置用于生成已发布排行获奖名单的四档奖项。',
+    itemTypes: ['AWARD_SETTINGS'],
+  },
 ];
 
 const getCompetitionSettingsModuleLabel = (module: CompetitionSettingsModuleConfig) =>
@@ -5291,6 +5303,7 @@ const competitionSettingsMenuItems = [
   { key: 'registration' as const, label: '报名设置' },
   { key: 'stages' as const, label: '赛程与材料' },
   { key: 'payments' as const, label: '费用设置' },
+  { key: 'awards' as const, label: '获奖设置' },
 ];
 
 const parseConfigItemMetadata = (contentJson?: string | null): ConfigItemMetadata => {
@@ -5579,6 +5592,9 @@ const getModuleItems = (settings: CompetitionSettingsRecord | undefined, key: Co
   if (key === 'payments') {
     return settings.payments || [];
   }
+  if (key === 'awards') {
+    return settings.awards || [];
+  }
   return [];
 };
 
@@ -5587,95 +5603,8 @@ const splitFileConfigItemsByModule = (items: CompetitionConfigItem[]) => ({
   stageMaterials: items.filter((item) => item.itemType === 'STAGE_MATERIAL'),
 });
 
-const AUTO_SAVE_DELAY_MS = 800;
-
 const isFormValidationError = (error: unknown) =>
   Boolean(error && typeof error === 'object' && 'errorFields' in error);
-
-type CompetitionSettingsPanelHandle = {
-  flushPendingSave: () => Promise<boolean>;
-  saveNow: () => Promise<boolean>;
-};
-
-const useDebouncedAutoSave = (save: () => Promise<boolean>) => {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const savingRef = useRef(false);
-  const pendingRef = useRef(false);
-  const activeSaveRef = useRef<Promise<boolean>>(Promise.resolve(true));
-
-  const runSave = useCallback(async (): Promise<boolean> => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = undefined;
-    }
-    if (savingRef.current) {
-      return activeSaveRef.current;
-    }
-    if (!pendingRef.current) {
-      return activeSaveRef.current;
-    }
-    savingRef.current = true;
-    pendingRef.current = false;
-    const task: Promise<boolean> = (async (): Promise<boolean> => {
-      let saved = false;
-      try {
-        saved = await save();
-      } catch (error) {
-        if (!isFormValidationError(error)) {
-          throw error;
-        }
-      } finally {
-        savingRef.current = false;
-      }
-      if (pendingRef.current) {
-        saved = await runSave();
-      }
-      if (!saved) {
-        pendingRef.current = true;
-      }
-      return saved;
-    })();
-    activeSaveRef.current = task;
-    return task;
-  }, [save]);
-
-  const scheduleSave = useCallback(() => {
-    pendingRef.current = true;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    timerRef.current = setTimeout(() => {
-      void runSave();
-    }, AUTO_SAVE_DELAY_MS);
-  }, [runSave]);
-
-  const flushPendingSave = useCallback(async () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = undefined;
-    }
-    if (!pendingRef.current && !savingRef.current) {
-      return true;
-    }
-    if (pendingRef.current) {
-      return runSave();
-    }
-    return activeSaveRef.current;
-  }, [runSave]);
-
-  const saveNow = useCallback(async () => {
-    pendingRef.current = true;
-    return runSave();
-  }, [runSave]);
-
-  useEffect(() => () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-  }, []);
-
-  return { scheduleSave, flushPendingSave, saveNow };
-};
 
 const renderConfigItemFields = (
   module: CompetitionSettingsModuleConfig,
@@ -5846,7 +5775,7 @@ const renderFieldSettingsTable = (
   add: (defaultValue?: EditableCompetitionConfigItem) => void,
   remove: (index: number | number[]) => void,
   scope: CompetitionConfigFieldScope,
-  scheduleSave: () => void,
+  markDraftChanged: () => void,
   reorderField: (fields: Array<{ key: number; name: number }>, fromIndex: number, toIndex: number) => void,
   openOptionsEditor: (fieldName: number, fieldTitle?: string, options?: string) => void,
   fieldGroupLabel?: string,
@@ -5980,7 +5909,7 @@ const renderFieldSettingsTable = (
                     cancelText="取消"
                     onConfirm={() => {
                       remove(field.name);
-                      scheduleSave();
+                      markDraftChanged();
                     }}
                   >
                     <Button
@@ -6010,7 +5939,7 @@ const renderFieldSettingsTable = (
               : undefined,
           };
           add(nextItem);
-          scheduleSave();
+          markDraftChanged();
         }}
       >
         新增{fieldGroupLabel || fieldScopeOptions.find((option) => option.value === scope)?.label}字段
@@ -6195,11 +6124,9 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       return false;
     }
   }, [competitionUuid, fieldGroupLabel, fieldScope, fileStageCode, form, items, module.key, onSaved]);
-  const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(save);
-  const markDraftChangedAndScheduleSave = useCallback(() => {
+  const markDraftChanged = useCallback(() => {
     draftRevisionRef.current += 1;
-    scheduleSave();
-  }, [scheduleSave]);
+  }, []);
 
   const reorderField = useCallback((
     scopedFields: Array<{ key: number; name: number }>,
@@ -6217,8 +6144,8 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       return;
     }
     form.setFieldValue('items', nextItems);
-    markDraftChangedAndScheduleSave();
-  }, [form, markDraftChangedAndScheduleSave]);
+    markDraftChanged();
+  }, [form, markDraftChanged]);
 
   const confirmOptionsEditor = useCallback(() => {
     if (!optionsEditor) {
@@ -6236,13 +6163,12 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     }
     form.setFieldValue(['items', optionsEditor.fieldName, 'metadata', 'options'], normalizedOptions);
     setOptionsEditor(undefined);
-    markDraftChangedAndScheduleSave();
-  }, [form, markDraftChangedAndScheduleSave, optionsEditor]);
+    markDraftChanged();
+  }, [form, markDraftChanged, optionsEditor]);
 
   useImperativeHandle(ref, () => ({
-    flushPendingSave,
-    saveNow,
-  }), [flushPendingSave, saveNow]);
+    saveNow: save,
+  }), [save]);
 
   return (
     <section className="competition-config-module">
@@ -6268,7 +6194,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
         form={form}
         layout="vertical"
         initialValues={getInitialValues()}
-        onValuesChange={markDraftChangedAndScheduleSave}
+        onValuesChange={markDraftChanged}
       >
         {module.key === 'fields' && fieldScope === 'TEAM_FIELD' ? (
           <Card className="competition-team-limits-card" title="团队人数设置">
@@ -6343,7 +6269,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                           add,
                           remove,
                           scopeOption.value,
-                          markDraftChangedAndScheduleSave,
+                          markDraftChanged,
                           reorderField,
                           (fieldName, fieldTitle, options) => setOptionsEditor({
                             fieldName,
@@ -6360,7 +6286,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                               add,
                               remove,
                               'MEMBER_FIELD',
-                              markDraftChangedAndScheduleSave,
+                              markDraftChanged,
                               reorderField,
                               (fieldName, fieldTitle, options) => setOptionsEditor({
                                 fieldName,
@@ -6475,7 +6401,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                       cancelText="取消"
                       onConfirm={() => {
                         remove(field.name);
-                        markDraftChangedAndScheduleSave();
+                        markDraftChanged();
                       }}
                     >
                       <Button danger>
@@ -6528,7 +6454,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     };
                   }
                   add(nextItem);
-                  markDraftChangedAndScheduleSave();
+                  markDraftChanged();
                 }}
               >
                 {formatMessage({ id: 'page.competition.settings.item.add', defaultMessage: 'Add item' })}
@@ -6605,12 +6531,9 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
       return false;
     }
   }, [competition, form, onSaved]);
-  const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(save);
-
   useImperativeHandle(ref, () => ({
-    flushPendingSave,
-    saveNow,
-  }), [flushPendingSave, saveNow]);
+    saveNow: save,
+  }), [save]);
 
   return (
     <section className="competition-config-module">
@@ -6619,7 +6542,7 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
           基础信息
         </Typography.Title>
       </div>
-      <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues} onValuesChange={scheduleSave}>
+      <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues}>
         <section className="competition-basic-section">
           <Typography.Title className="competition-basic-section__title" level={5}>
             基础信息
@@ -6664,7 +6587,6 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
                             icon={<PlusOutlined />}
                             onClick={() => {
                               add({ role: '', name: '' });
-                              scheduleSave();
                             }}
                           />
                         ) : null}
@@ -6675,7 +6597,6 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
                           disabled={fields.length <= 1}
                           onClick={() => {
                             remove(field.name);
-                            scheduleSave();
                           }}
                         />
                       </div>
@@ -6739,8 +6660,8 @@ const CompetitionPaymentSettingsPanel = forwardRef<CompetitionSettingsPanelHandl
     if (!isPaymentSettingsPageReadyToSave(form.getFieldsValue(true))) {
       return false;
     }
-    const values = await form.validateFields();
     try {
+      const values = await form.validateFields();
       const saved = await updateCompetition(competition.id, normalizePayload({
         ...defaultCompetitionFormValues,
         ...recordToFormValues(competition),
@@ -6749,24 +6670,25 @@ const CompetitionPaymentSettingsPanel = forwardRef<CompetitionSettingsPanelHandl
       onCompetitionSaved(saved);
       return true;
     } catch (error) {
+      if (isFormValidationError(error)) {
+        return false;
+      }
       showErrorMessage(error, '费用设置保存失败');
       return false;
     }
   }, [competition, form, onCompetitionSaved]);
-  const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(saveFeeSettings);
+  const saveNow = useCallback(async () => {
+    const feeSaved = await saveFeeSettings();
+    if (!feeSaved) {
+      return false;
+    }
+    const methodsSaved = await paymentMethodsRef.current?.saveNow() ?? true;
+    return methodsSaved;
+  }, [saveFeeSettings]);
 
   useImperativeHandle(ref, () => ({
-    flushPendingSave: async () => {
-      const feeSaved = await flushPendingSave();
-      const methodsSaved = await paymentMethodsRef.current?.flushPendingSave() ?? true;
-      return feeSaved && methodsSaved;
-    },
-    saveNow: async () => {
-      const feeSaved = await saveNow();
-      const methodsSaved = await paymentMethodsRef.current?.saveNow() ?? true;
-      return feeSaved && methodsSaved;
-    },
-  }), [flushPendingSave, saveNow]);
+    saveNow,
+  }), [saveNow]);
 
   return (
     <Space orientation="vertical" size={24} style={{ width: '100%' }}>
@@ -6776,7 +6698,7 @@ const CompetitionPaymentSettingsPanel = forwardRef<CompetitionSettingsPanelHandl
             费用设置
           </Typography.Title>
         </div>
-        <Form<CompetitionFormValues> form={form} layout="vertical" onValuesChange={scheduleSave}>
+        <Form<CompetitionFormValues> form={form} layout="vertical">
           <div className="competition-basic-section__grid">
             <Form.Item name="feeMode" label="收费方式" rules={[{ required: true, message: '请选择收费方式' }]}>
               <Select options={feeModeOptions} placeholder="请选择收费方式" />
@@ -6867,13 +6789,11 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
       return false;
     }
   }, [competition, form, onSaved]);
-  const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(save);
-
   const handleSaveSchedules = useCallback(async (scheduleKey: number) => {
     setSavingScheduleKey(scheduleKey);
     try {
       await form.validateFields();
-      const saved = await saveNow();
+      const saved = await save();
       if (saved) {
         message.success('竞赛安排已保存');
       }
@@ -6886,16 +6806,15 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
     } finally {
       setSavingScheduleKey(undefined);
     }
-  }, [form, saveNow]);
+  }, [form, save]);
 
   useImperativeHandle(ref, () => ({
-    flushPendingSave,
-    saveNow,
-  }), [flushPendingSave, saveNow]);
+    saveNow: save,
+  }), [save]);
 
   return (
     <section className="competition-config-module">
-      <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues} onValuesChange={scheduleSave}>
+      <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues}>
         <section className="competition-basic-section">
           <Typography.Title className="competition-basic-section__title" level={5}>
             报名时间
@@ -6940,11 +6859,9 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                         const currentSchedules = form.getFieldValue('schedules') || [];
                         if (nextMode === 'CONFIRMED') {
                           form.setFieldValue('schedules', [{ ...currentSchedules[0], timeMode: 'CONFIRMED' }]);
-                          scheduleSave();
                           return;
                         }
                         form.setFieldValue('schedules', [{ timeMode: 'TBD' }]);
-                        scheduleSave();
                       }}
                     />
                   </Form.Item>
@@ -7049,7 +6966,6 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                               cancelText="取消"
                               onConfirm={() => {
                                 remove(field.name);
-                                scheduleSave();
                               }}
                             >
                               <Button
@@ -7072,7 +6988,6 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                       disabled={savingScheduleKey !== undefined}
                       onClick={() => {
                         add({ timeMode: 'CONFIRMED', title: '' });
-                        scheduleSave();
                       }}
                     >
                       新增竞赛安排
@@ -7118,17 +7033,13 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
   const activeStage = materialStageTabs.find((stage) => stage.key === activeTab) || materialStageTabs[0];
 
   useImperativeHandle(ref, () => ({
-    flushPendingSave: async () => {
-      const timelineSaved = await timelineRef.current?.flushPendingSave() ?? true;
-      const materialsSaved = await materialsRef.current?.flushPendingSave() ?? true;
-      return timelineSaved && materialsSaved;
-    },
     saveNow: async () => {
-      const timelineSaved = await timelineRef.current?.saveNow() ?? true;
-      const materialsSaved = await materialsRef.current?.saveNow() ?? true;
-      return timelineSaved && materialsSaved;
+      if (activeTab === 'timeline') {
+        return timelineRef.current?.saveNow() ?? true;
+      }
+      return materialsRef.current?.saveNow() ?? true;
     },
-  }), []);
+  }), [activeTab]);
 
   return activeTab === 'timeline' ? (
     <CompetitionTimelineSettingsPanel ref={timelineRef} competition={competition} onSaved={onCompetitionSaved} />
@@ -7166,11 +7077,9 @@ const CompetitionSettingsPage = () => {
   const [stageDetail, setStageDetail] = useState<CompetitionSettingsStageTab>(initialNavigation.stageTab);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [transitioning, setTransitioning] = useState(false);
   const [storageSpaceOptions, setStorageSpaceOptions] = useState<StorageSpaceOption[]>([]);
   const [paymentProviderOptions, setPaymentProviderOptions] = useState<PaymentProviderOption[]>([]);
   const activePanelRef = useRef<CompetitionSettingsPanelHandle | null>(null);
-  const transitioningRef = useRef(false);
   const fallbackDictOptions = useCompetitionDictFallbackOptions();
   const { options: categoryOptions } = useDictOptions(COMPETITION_CATEGORY_DICT, fallbackDictOptions.categoryOptions);
   const { options: levelOptions } = useDictOptions(COMPETITION_LEVEL_DICT, fallbackDictOptions.levelOptions);
@@ -7197,32 +7106,6 @@ const CompetitionSettingsPage = () => {
     window.dispatchEvent(new PopStateEvent('popstate'));
   }, [location.pathname, location.search]);
 
-  const transitionFromPanel = useCallback(async (
-    panel: CompetitionSettingsPanelHandle | null,
-    transition: () => void,
-  ): Promise<boolean | undefined> => {
-    if (transitioningRef.current) {
-      return undefined;
-    }
-    transitioningRef.current = true;
-    setTransitioning(true);
-    setSaving(true);
-    try {
-      const transitioned = await transitionAfterCompetitionSettingsSave(panel, transition);
-      if (!transitioned) {
-        message.warning('当前设置未保存，请检查必填项或错误提示');
-      }
-      return transitioned;
-    } catch (error) {
-      showErrorMessage(error, '当前设置保存失败');
-      return false;
-    } finally {
-      transitioningRef.current = false;
-      setTransitioning(false);
-      setSaving(false);
-    }
-  }, []);
-
   useEffect(() => {
     if (!settings) {
       return;
@@ -7235,12 +7118,9 @@ const CompetitionSettingsPage = () => {
     if (!fallbackStageTab) {
       return;
     }
-    const previousPanel = activePanelRef.current;
-    void transitionFromPanel(previousPanel, () => {
-      setStageDetail(fallbackStageTab);
-      updateNavigationUrl('stages', fallbackStageTab, true);
-    });
-  }, [activeKey, materialStageTabs, settings, stageDetail, transitionFromPanel, updateNavigationUrl]);
+    setStageDetail(fallbackStageTab);
+    updateNavigationUrl('stages', fallbackStageTab, true);
+  }, [activeKey, materialStageTabs, settings, stageDetail, updateNavigationUrl]);
 
   useEffect(() => {
     const navigation = parseCompetitionSettingsNavigation(location.search);
@@ -7251,23 +7131,10 @@ const CompetitionSettingsPage = () => {
       return;
     }
 
-    const previousPanel = activePanelRef.current;
-    void (async () => {
-      const transitioned = await transitionFromPanel(previousPanel, () => {
-        setActiveKey(navigation.section);
-        setRegistrationDetail(navigation.registrationTab);
-        setStageDetail(navigation.stageTab);
-      });
-      if (transitioned === false) {
-        const currentDetail = activeKey === 'registration'
-          ? registrationDetail
-          : activeKey === 'stages'
-            ? stageDetail
-            : undefined;
-        updateNavigationUrl(activeKey, currentDetail, true);
-      }
-    })();
-  }, [activeKey, location.search, registrationDetail, stageDetail, transitioning, transitionFromPanel, updateNavigationUrl]);
+    setActiveKey(navigation.section);
+    setRegistrationDetail(navigation.registrationTab);
+    setStageDetail(navigation.stageTab);
+  }, [activeKey, location.search, registrationDetail, stageDetail]);
 
   useEffect(() => {
     let mounted = true;
@@ -7301,6 +7168,8 @@ const CompetitionSettingsPage = () => {
       ? 'files'
       : activeKey === 'payments'
         ? 'payments'
+        : activeKey === 'awards'
+          ? 'awards'
         : undefined;
   const activeModule = activeConfigModuleKey
     ? competitionSettingsModules.find((item) => item.key === activeConfigModuleKey)
@@ -7323,50 +7192,41 @@ const CompetitionSettingsPage = () => {
     }
   }, []);
 
-  const handleModuleChange = useCallback(async (nextKey: CompetitionSettingsModuleKey) => {
+  const handleModuleChange = useCallback((nextKey: CompetitionSettingsModuleKey) => {
     if (nextKey === activeKey) {
       return;
     }
-    const previousPanel = activePanelRef.current;
-    await transitionFromPanel(previousPanel, () => {
-      setActiveKey(nextKey);
-      if (nextKey === 'registration') {
-        setRegistrationDetail('MEMBER_FIELD');
-        updateNavigationUrl(nextKey, 'MEMBER_FIELD');
-        return;
-      }
-      if (nextKey === 'stages') {
-        setStageDetail('timeline');
-        updateNavigationUrl(nextKey, 'timeline');
-        return;
-      }
-      updateNavigationUrl(nextKey);
-    });
-  }, [activeKey, transitionFromPanel, updateNavigationUrl]);
+    setActiveKey(nextKey);
+    if (nextKey === 'registration') {
+      setRegistrationDetail('MEMBER_FIELD');
+      updateNavigationUrl(nextKey, 'MEMBER_FIELD');
+      return;
+    }
+    if (nextKey === 'stages') {
+      setStageDetail('timeline');
+      updateNavigationUrl(nextKey, 'timeline');
+      return;
+    }
+    updateNavigationUrl(nextKey);
+  }, [activeKey, updateNavigationUrl]);
 
-  const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
+  const handleRegistrationDetailChange = useCallback((nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsRegistrationTab;
     if (nextDetail === registrationDetail) {
       return;
     }
-    const previousPanel = activePanelRef.current;
-    await transitionFromPanel(previousPanel, () => {
-      setRegistrationDetail(nextDetail);
-      updateNavigationUrl('registration', nextDetail);
-    });
-  }, [registrationDetail, transitionFromPanel, updateNavigationUrl]);
+    setRegistrationDetail(nextDetail);
+    updateNavigationUrl('registration', nextDetail);
+  }, [registrationDetail, updateNavigationUrl]);
 
-  const handleStageDetailChange = useCallback(async (nextKey: string) => {
+  const handleStageDetailChange = useCallback((nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsStageTab;
     if (nextDetail === stageDetail) {
       return;
     }
-    const previousPanel = activePanelRef.current;
-    await transitionFromPanel(previousPanel, () => {
-      setStageDetail(nextDetail);
-      updateNavigationUrl('stages', nextDetail);
-    });
-  }, [stageDetail, transitionFromPanel, updateNavigationUrl]);
+    setStageDetail(nextDetail);
+    updateNavigationUrl('stages', nextDetail);
+  }, [stageDetail, updateNavigationUrl]);
 
   return (
     <CompetitionWorkspacePageFrame
@@ -7413,7 +7273,7 @@ const CompetitionSettingsPage = () => {
                   />
                   {activeModule ? (
                     <ConfigModulePanel
-                      key={activeModule.key}
+                      key={`${activeModule.key}-${registrationDetail}`}
                       ref={activePanelRef}
                       competitionUuid={settings.competition.uuid || competitionUuid}
                       module={activeModule}
@@ -7447,6 +7307,7 @@ const CompetitionSettingsPage = () => {
                       onChange={(key) => void handleStageDetailChange(key)}
                     />
                     <CompetitionStageAndMaterialPanel
+                      key={stageDetail}
                       ref={activePanelRef}
                       activeTab={stageDetail}
                       competition={settings.competition}
@@ -7474,12 +7335,19 @@ const CompetitionSettingsPage = () => {
                     : current)}
                   onSettingsSaved={setSettings}
                 />
+              ) : activeKey === 'awards' ? (
+                <CompetitionAwardSettingsPanel
+                  ref={activePanelRef}
+                  competitionUuid={settings.competition.uuid || competitionUuid}
+                  items={settings.awards || []}
+                  onSaved={setSettings}
+                />
               ) : null}
               <div className="competition-settings-content__footer">
                 <Button
                   type="primary"
                   loading={saving}
-                  disabled={loading || transitioning || !settings}
+                  disabled={loading || saving || !settings}
                   onClick={() => void handleSave()}
                 >
                   保存

@@ -23,7 +23,7 @@ public class MyBatisFileObjectRepository implements FileObjectRepository {
     public MyBatisFileObjectRepository(FileObjectMapper mapper) { this.mapper = mapper; }
 
     @Override public void insert(FileObjectEntity entity) { mapper.insert(entity); }
-    @Override public FileObjectEntity findById(Long id) { return mapper.selectById(id); }
+    @Override public FileObjectEntity findById(Long id) { return mapper.selectFreshById(id); }
 
     @Override
     public int softDelete(Long id, Long userId, String uuid, boolean requireOwner) {

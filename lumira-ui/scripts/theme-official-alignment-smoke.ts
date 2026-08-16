@@ -139,8 +139,20 @@ const assertOfficialTokenDerivation = () => {
   assert.notEqual(lightToken.controlHeight, compactToken.controlHeight, 'compact algorithm should change control sizing');
 };
 
+const assertCardHeadersUseAntdComponentTypography = () => {
+  const globalCss = readProjectFile('src/global.css');
+  const managementCardHeaderOverridePattern = /\.saas-management-page\s+\.ant-card-head-title[\s\S]*?\{[^}]*\bfont-size\s*:/;
+
+  assert.equal(
+    managementCardHeaderOverridePattern.test(globalCss),
+    false,
+    'management Card headers should inherit Ant Design headerFontSize/headerFontSizeSM tokens',
+  );
+};
+
 const run = () => {
   assertOfficialTokenDerivation();
+  assertCardHeadersUseAntdComponentTypography();
   assertNoLegacyThemePatterns();
   assertThemeSwitchDoesNotForcePageReload();
   assertRadiusTokensFollowOfficialTheme();

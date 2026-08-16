@@ -3,6 +3,7 @@ export const competitionSettingsSectionKeys = [
   'registration',
   'stages',
   'payments',
+  'awards',
 ] as const;
 
 export type CompetitionSettingsSectionKey = (typeof competitionSettingsSectionKeys)[number];
