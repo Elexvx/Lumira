@@ -191,11 +191,16 @@ const BuiltinMockPaymentCheckoutPage = () => {
   return (
     <main className="builtin-mock-checkout">
       <header className="builtin-mock-checkout__header">
-        <div className="builtin-mock-checkout__brand">
-          <span className="builtin-mock-checkout__brand-mark"><ExperimentOutlined /></span>
-          <span>Lumira</span>
+        <div className="builtin-mock-checkout__header-inner">
+          <div className="builtin-mock-checkout__brand">
+            <span className="builtin-mock-checkout__brand-mark"><ExperimentOutlined /></span>
+            <span className="builtin-mock-checkout__brand-copy">
+              <Typography.Text strong>Lumira</Typography.Text>
+              <Typography.Text type="secondary">内置模拟支付</Typography.Text>
+            </span>
+          </div>
+          <Tag color="gold">沙箱环境</Tag>
         </div>
-        <Tag color="orange">SANDBOX</Tag>
       </header>
 
       <section className="builtin-mock-checkout__content">
@@ -208,10 +213,13 @@ const BuiltinMockPaymentCheckoutPage = () => {
         />
 
         <div className="builtin-mock-checkout__grid">
-          <Card className="builtin-mock-checkout__card" bordered={false}>
+          <Card className="builtin-mock-checkout__card">
             <div className="builtin-mock-checkout__title-row">
               <div>
-                <Typography.Title level={2}>内置模拟支付</Typography.Title>
+                <Typography.Text className="builtin-mock-checkout__eyebrow" type="secondary">
+                  支付订单
+                </Typography.Text>
+                <Typography.Title level={3}>内置模拟支付</Typography.Title>
                 <Typography.Text type="secondary">仿支付宝电脑网站支付语义的系统调试收银台</Typography.Text>
               </div>
               <Tag color={successful ? 'success' : terminal ? 'default' : 'processing'}>
@@ -310,18 +318,21 @@ const BuiltinMockPaymentCheckoutPage = () => {
             )}
           </Card>
 
-          <aside className="builtin-mock-checkout__qr">
-            <Typography.Title level={4}>移动端继续</Typography.Title>
-            <QRCode value={currentUrl} size={188} bordered={false} />
-            <Typography.Paragraph type="secondary">
-              使用已登录 Lumira 的移动设备扫描二维码，打开同一笔模拟订单。
-            </Typography.Paragraph>
-            <div className="builtin-mock-checkout__security-note">
-              <Typography.Text strong>服务端可信结果</Typography.Text>
-              <Typography.Text type="secondary">
-                系统会校验 RSA2 签名、应用标识、订单号与金额，并对重复通知做幂等处理。
-              </Typography.Text>
-            </div>
+          <aside className="builtin-mock-checkout__qr" aria-label="移动端继续">
+            <Card className="builtin-mock-checkout__qr-card" title="移动端继续">
+              <div className="builtin-mock-checkout__qr-code">
+                <QRCode value={currentUrl} size={188} bordered={false} />
+              </div>
+              <Typography.Paragraph type="secondary">
+                使用已登录 Lumira 的移动设备扫描二维码，打开同一笔模拟订单。
+              </Typography.Paragraph>
+              <div className="builtin-mock-checkout__security-note">
+                <Typography.Text strong>服务端可信结果</Typography.Text>
+                <Typography.Text type="secondary">
+                  系统会校验 RSA2 签名、应用标识、订单号与金额，并对重复通知做幂等处理。
+                </Typography.Text>
+              </div>
+            </Card>
           </aside>
         </div>
       </section>

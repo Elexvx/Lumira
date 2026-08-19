@@ -16,22 +16,15 @@ import {
 import { listRegistrationPayments } from '@/services/payment/api';
 import { listCompetitionWorkspacePayments } from '@/services/competition/api';
 import type { RegistrationPaymentRecord } from '@/services/payment/types';
+import {
+  EMPTY_PAYMENT_VALUE,
+  PAYMENT_DETAIL_PROVIDER_ORDER_LABEL,
+  PAYMENT_IDENTIFIER_LABELS,
+  PAYMENT_STATUS_VALUE_ENUM,
+  formatPaymentIdentifier,
+  getPaymentStatusText,
+} from './paymentRecordPresentation';
 import './PaymentPage.css';
-
-const paymentStatusValueEnum = {
-  PENDING: { text: '待付款' },
-  PAID: { text: '已支付' },
-  SUCCESS: { text: '支付成功' },
-  SETTLED: { text: '已结算' },
-  CONFIRMED: { text: '已确认' },
-  REFUNDING: { text: '退款中' },
-  REFUNDED: { text: '已退款' },
-  FAILED: { text: '支付失败' },
-  CANCELLED: { text: '已取消' },
-  EXPIRED: { text: '已超时' },
-  CLOSED: { text: '已关闭' },
-  PENDING_PAYMENT: { text: '待生成订单' },
-};
 
 const providerValueEnum = {
   manual: { text: '线下确认' },
@@ -43,6 +36,7 @@ const providerValueEnum = {
 };
 
 const paymentStatusColor: Record<string, string> = {
+  NOT_REQUIRED: 'default',
   PENDING: 'processing',
   PENDING_PAYMENT: 'warning',
   PAID: 'success',
@@ -69,7 +63,9 @@ const paymentPageRegistrationStatusValueEnum = Object.fromEntries(
   Object.keys(registrationStatusColor).map((status) => [status, registrationStatusValueEnum[status]]),
 );
 
-const statusText = (value?: string | null, valueEnum?: Record<string, { text: string }>) => (value ? valueEnum?.[value]?.text || value : '-');
+const statusText = (value?: string | null, valueEnum?: Record<string, { text: string }>) => (
+  value ? valueEnum?.[value]?.text || value : EMPTY_PAYMENT_VALUE
+);
 
 const formatAmount = (amountMinor?: number | null, currency?: string | null) => {
   const amount = Number(amountMinor || 0) / 100;
@@ -79,12 +75,12 @@ const formatAmount = (amountMinor?: number | null, currency?: string | null) => 
 const formatTime = (value?: string | null) => (value ? value.replace('T', ' ') : '-');
 
 const renderIdentifier = (value?: string | null) => (
-  <Typography.Text ellipsis={{ tooltip: value || undefined }}>{value || '-'}</Typography.Text>
+  <Typography.Text ellipsis={{ tooltip: value || undefined }}>{formatPaymentIdentifier(value)}</Typography.Text>
 );
 
 const renderPaymentStatus = (status?: string | null) => {
   const normalized = status || 'PENDING_PAYMENT';
-  return <Tag color={paymentStatusColor[normalized] || 'default'}>{statusText(normalized, paymentStatusValueEnum)}</Tag>;
+  return <Tag color={paymentStatusColor[normalized] || 'default'}>{getPaymentStatusText(normalized)}</Tag>;
 };
 
 const renderRegistrationStatus = (status?: string | null) => {
@@ -113,8 +109,10 @@ const PaymentDetailDrawer = ({
         <Descriptions className="payment-detail-descriptions" column={responsive.isMobile ? 1 : 2} bordered size="small">
         <Descriptions.Item label="报名编号">{record.registrationNo}</Descriptions.Item>
         <Descriptions.Item label="参赛编号">{record.participantNo || '-'}</Descriptions.Item>
-        <Descriptions.Item label="订单号">{record.orderNo || '-'}</Descriptions.Item>
-        <Descriptions.Item label="渠道订单号">{record.providerOrderNo || '-'}</Descriptions.Item>
+        <Descriptions.Item label="订单号">{formatPaymentIdentifier(record.orderNo)}</Descriptions.Item>
+        <Descriptions.Item label={PAYMENT_DETAIL_PROVIDER_ORDER_LABEL}>
+          {formatPaymentIdentifier(record.providerOrderNo)}
+        </Descriptions.Item>
         <Descriptions.Item label="支付渠道">{statusText(record.providerCode, providerValueEnum)}</Descriptions.Item>
         <Descriptions.Item label="支付状态">{renderPaymentStatus(record.paymentStatus)}</Descriptions.Item>
         <Descriptions.Item label="报名状态">{renderRegistrationStatus(record.registrationStatus)}</Descriptions.Item>
@@ -166,7 +164,7 @@ const PaymentPage = () => {
   const columns = useMemo<ProColumns<RegistrationPaymentRecord>[]>(
     () => [
       {
-        title: '订单号',
+        title: PAYMENT_IDENTIFIER_LABELS.orderNo,
         dataIndex: 'keyword',
         width: 180,
         fieldProps: {
@@ -175,7 +173,15 @@ const PaymentPage = () => {
         render: (_, record) => renderIdentifier(record.orderNo),
       },
       {
-        title: '报名号',
+        title: PAYMENT_IDENTIFIER_LABELS.providerOrderNo,
+        dataIndex: 'providerOrderNo',
+        search: false,
+        width: 190,
+        ellipsis: true,
+        render: (_, record) => renderIdentifier(record.providerOrderNo),
+      },
+      {
+        title: PAYMENT_IDENTIFIER_LABELS.registrationNo,
         dataIndex: 'registrationNo',
         search: false,
         width: 190,
@@ -195,7 +201,7 @@ const PaymentPage = () => {
         title: '支付状态',
         dataIndex: 'paymentStatus',
         valueType: 'select',
-        valueEnum: paymentStatusValueEnum,
+        valueEnum: PAYMENT_STATUS_VALUE_ENUM,
         width: 96,
         render: (_, record) => renderPaymentStatus(record.paymentStatus),
       },

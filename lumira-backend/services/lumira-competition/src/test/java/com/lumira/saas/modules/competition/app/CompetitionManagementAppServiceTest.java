@@ -1268,6 +1268,35 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void teacherFieldsAreAllowedAndSameKeyAcrossParticipantScopesHasIndependentIdentity() throws Exception {
+        CompetitionManagementAppService service = service(new StubOperations());
+        CompetitionDTO.ConfigItemRequest teacherName = new CompetitionDTO.ConfigItemRequest();
+        teacherName.setItemType("TEACHER_FIELD");
+        teacherName.setItemKey("memberName");
+        teacherName.setTitle("指导老师姓名");
+        teacherName.setContentJson("{\"fieldType\":\"TEXT\",\"validationRule\":\"NONE\"}");
+
+        Method normalizeConfigItem = CompetitionManagementAppService.class
+                .getDeclaredMethod("normalizeConfigItem", CompetitionDTO.ConfigItemRequest.class);
+        normalizeConfigItem.setAccessible(true);
+        CompetitionDTO.ConfigItemRequest normalized = (CompetitionDTO.ConfigItemRequest) normalizeConfigItem
+                .invoke(service, teacherName);
+        assertThat(normalized.getItemType()).isEqualTo("TEACHER_FIELD");
+        assertThat(normalized.getContentJson())
+                .contains("\"fieldType\":\"TEXT\"")
+                .contains("\"validationRule\":\"PERSON_NAME\"")
+                .contains("\"standardField\":true");
+        assertThat(normalized.getRequiredFlag()).isTrue();
+        assertThat(normalized.getEnabled()).isTrue();
+
+        Method configItemIdentity = CompetitionManagementAppService.class
+                .getDeclaredMethod("configItemIdentity", String.class, String.class);
+        configItemIdentity.setAccessible(true);
+        assertThat(configItemIdentity.invoke(service, "MEMBER_FIELD", "memberName"))
+                .isNotEqualTo(configItemIdentity.invoke(service, "TEACHER_FIELD", "memberName"));
+    }
+
+    @Test
     void saveSettingsModuleShouldSynchronizeMaterialConfigIntoParticipantStageForm() {
         StubOperations jdbcTemplate = new StubOperations();
         CompetitionManagementAppService service = service(jdbcTemplate);

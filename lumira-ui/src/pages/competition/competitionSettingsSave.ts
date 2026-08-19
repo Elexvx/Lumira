@@ -46,6 +46,7 @@ export type CompetitionSettingsConfigItemDraft = {
 
 export type CompetitionSettingsConfigValidationScope = {
   fieldScope?: string | null;
+  fieldScopes?: readonly string[] | null;
   includeGroupLabel?: string | null;
   excludeGroupLabel?: string | null;
 };
@@ -251,15 +252,18 @@ const getConfigModuleItemsInValidationScope = (
   items: CompetitionSettingsConfigItemDraft[],
   validationScope?: CompetitionSettingsConfigValidationScope,
 ) => {
-  const fieldScope = trimOptional(validationScope?.fieldScope);
-  if (moduleKey !== 'fields' || !fieldScope) {
+  const fieldScopes = new Set([
+    ...(validationScope?.fieldScopes || []),
+    validationScope?.fieldScope,
+  ].map(trimOptional).filter((scope): scope is string => Boolean(scope)));
+  if (moduleKey !== 'fields' || !fieldScopes.size) {
     return items;
   }
   const includeGroupLabel = trimOptional(validationScope?.includeGroupLabel);
   const excludeGroupLabel = trimOptional(validationScope?.excludeGroupLabel);
   return items.filter((item) => {
     const itemScope = trimOptional(item.metadata?.fieldScope) || trimOptional(item.itemType);
-    if (itemScope !== fieldScope) {
+    if (!itemScope || !fieldScopes.has(itemScope)) {
       return false;
     }
     const groupLabel = trimOptional(item.metadata?.groupLabel);

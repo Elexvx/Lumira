@@ -15,6 +15,9 @@ class RegistrationFieldValidationPolicyTest {
                 "MEMBER_FIELD", "memberName", "TEXT", "NONE"
         )).isEqualTo("PERSON_NAME");
         assertThat(RegistrationFieldValidationPolicy.resolveValidationRule(
+                "TEACHER_FIELD", "memberName", "TEXT", "NONE"
+        )).isEqualTo("PERSON_NAME");
+        assertThat(RegistrationFieldValidationPolicy.resolveValidationRule(
                 "PROJECT_FIELD", "projectName", "TEXT", null
         )).isEqualTo("DISPLAY_NAME");
         assertThat(RegistrationFieldValidationPolicy.resolveValidationRule(

@@ -13,6 +13,7 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.iam.domain.model.IamDomainModels.RoleAggregate;
+import com.lumira.saas.modules.system.app.MaintenanceLoginPolicyService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.role.infrastructure.SystemRoleManagementPersistenceAdapters;
@@ -82,10 +83,16 @@ public class SystemRoleManagementAppService {
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private SystemConfigVersioningService configVersioningService;
+    private MaintenanceLoginPolicyService maintenanceLoginPolicyService;
 
     @Autowired
     public void setConfigVersioningService(SystemConfigVersioningService configVersioningService) {
         this.configVersioningService = configVersioningService;
+    }
+
+    @Autowired(required = false)
+    public void setMaintenanceLoginPolicyService(MaintenanceLoginPolicyService maintenanceLoginPolicyService) {
+        this.maintenanceLoginPolicyService = maintenanceLoginPolicyService;
     }
 
     @Autowired
@@ -350,6 +357,7 @@ public class SystemRoleManagementAppService {
         if (userCount > 0) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Role is assigned to users; remove user-role bindings first");
         }
+        requireMaintenanceLoginRoleMayBeDeleted(roleId);
         RoleAggregate roleAggregate = new RoleAggregate(roleId, new LinkedHashSet<>(role.getPermissionKeys()));
         roleAggregate.replacePermissions(Set.of(), currentUser.getUserId(), currentUser.getUserUuid());
         domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
@@ -366,6 +374,23 @@ public class SystemRoleManagementAppService {
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "delete", "DELETE", "SUCCESS", "删除角色: " + role.getRoleName());
         return true;
+    }
+
+    private void requireMaintenanceLoginRoleMayBeDeleted(Long roleId) {
+        if (maintenanceLoginPolicyService == null) {
+            return;
+        }
+        var policy = maintenanceLoginPolicyService.loadEffectivePolicy();
+        if (policy != null
+                && policy.enabled()
+                && policy.allowedRoleIds() != null
+                && policy.allowedRoleIds().size() == 1
+                && policy.allowedRoleIds().contains(roleId)) {
+            throw new BizException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "维护模式下不可删除最后一个允许登录的角色，请先调整维护登录角色配置"
+            );
+        }
     }
 
     private SystemVO.RoleDetailVO queryRoleDetail(Long roleId) {

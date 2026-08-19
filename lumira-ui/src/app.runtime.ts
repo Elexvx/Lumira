@@ -149,8 +149,18 @@ export const loadPublicBrandingSettings = () =>
 
 const BRANDING_SETTING_KEYS = Object.keys(DEFAULT_BRANDING_SETTINGS) as Array<keyof BrandingSettings>;
 
+const isSameBrandingValue = (
+  left: BrandingSettings[keyof BrandingSettings] | undefined,
+  right: BrandingSettings[keyof BrandingSettings],
+) => {
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return left.length === right.length && left.every((value, index) => Object.is(value, right[index]));
+  }
+  return Object.is(left, right);
+};
+
 const isSameBrandingSettings = (left: BrandingSettings | null, right: BrandingSettings) =>
-  Boolean(left) && BRANDING_SETTING_KEYS.every((key) => Object.is(left?.[key], right[key]));
+  Boolean(left) && BRANDING_SETTING_KEYS.every((key) => isSameBrandingValue(left?.[key], right[key]));
 
 interface PublicBrandingPollingOptions {
   intervalMs?: number;

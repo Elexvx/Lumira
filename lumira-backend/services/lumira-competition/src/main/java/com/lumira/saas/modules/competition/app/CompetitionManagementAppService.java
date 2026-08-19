@@ -65,6 +65,7 @@ public class CompetitionManagementAppService {
             "REGISTRATION_FIELD",
             "TEAM_FIELD",
             "MEMBER_FIELD",
+            "TEACHER_FIELD",
             "PROJECT_FIELD",
             "EXPERT_FIELD",
             "TEAM_SETTINGS",
@@ -76,11 +77,11 @@ public class CompetitionManagementAppService {
     );
     private static final List<String> COMPETITION_AWARD_NAMES = List.of("一等奖", "二等奖", "三等奖", "优秀奖");
     private static final Set<String> COLLECTION_CONFIG_ITEM_TYPES = Set.of(
-            "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD"
+            "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "TEACHER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD"
     );
     private static final Map<String, Set<String>> SETTINGS_MODULE_TYPES = Map.of(
             "documents", Set.of("AGREEMENT", "CONSENT"),
-            "fields", Set.of("TEAM_SETTINGS", "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD"),
+            "fields", Set.of("TEAM_SETTINGS", "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "TEACHER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD"),
             "payments", Set.of("PAYMENT_SETTINGS"),
             "files", Set.of("REQUIRED_FILE"),
             "stage-materials", Set.of("STAGE_MATERIAL"),
@@ -1025,7 +1026,7 @@ public class CompetitionManagementAppService {
             requirePublishText(missing, item.getItemKey(), itemReference + "标识不能为空");
             if ("AGREEMENT".equals(item.getItemType()) || "CONSENT".equals(item.getItemType())) {
                 requirePublishText(missing, item.getContentText(), itemReference + "必须填写内容");
-            } else if (Set.of("REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD").contains(item.getItemType())) {
+            } else if (Set.of("REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "TEACHER_FIELD", "PROJECT_FIELD", "EXPERT_FIELD").contains(item.getItemType())) {
                 requirePublishText(missing, fieldTypeForPublish(item), itemReference + "必须设置字段类型");
             } else if ("REQUIRED_FILE".equals(item.getItemType())) {
                 requirePublishText(missing, fileFormatForPublish(item), itemReference + "必须设置允许上传的文件格式");
@@ -1076,7 +1077,7 @@ public class CompetitionManagementAppService {
     private String configItemModuleLabel(String itemType) {
         return switch (itemType == null ? "" : itemType) {
             case "AGREEMENT", "CONSENT" -> "报名文书";
-            case "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD" -> "报名字段";
+            case "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "TEACHER_FIELD", "PROJECT_FIELD" -> "报名字段";
             case "EXPERT_FIELD" -> "专家字段";
             case "TEAM_SETTINGS" -> "团队设置";
             case "PAYMENT_SETTINGS" -> "支付设置";
@@ -1445,13 +1446,20 @@ public class CompetitionManagementAppService {
         if (!(parsed instanceof ObjectNode metadata)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "报名字段配置必须是 JSON 对象");
         }
-        String fieldType = RegistrationFieldValidationPolicy.normalizeFieldType(metadata.path("fieldType").asText("TEXT"));
+        String normalizedItemKey = item.getItemKey().replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+        boolean participantNameField = Set.of("MEMBER_FIELD", "TEACHER_FIELD").contains(item.getItemType())
+                && Set.of("membername", "teachername", "name").contains(normalizedItemKey);
+        String fieldType = participantNameField
+                ? "TEXT"
+                : RegistrationFieldValidationPolicy.normalizeFieldType(metadata.path("fieldType").asText("TEXT"));
         if (!RegistrationFieldValidationPolicy.FIELD_TYPES.contains(fieldType)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "不支持的报名字段类型：" + fieldType);
         }
-        String configuredRule = RegistrationFieldValidationPolicy.normalizeValidationRule(
-                metadata.path("validationRule").asText("NONE")
-        );
+        String configuredRule = participantNameField
+                ? "PERSON_NAME"
+                : RegistrationFieldValidationPolicy.normalizeValidationRule(
+                        metadata.path("validationRule").asText("NONE")
+                );
         if (!RegistrationFieldValidationPolicy.VALIDATION_RULES.contains(configuredRule)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "不支持的报名字段校验规则：" + configuredRule);
         }
@@ -1459,6 +1467,11 @@ public class CompetitionManagementAppService {
         metadata.put("validationRule", RegistrationFieldValidationPolicy.resolveValidationRule(
                 item.getItemType(), item.getItemKey(), fieldType, configuredRule
         ));
+        if (participantNameField) {
+            metadata.put("standardField", true);
+            item.setRequiredFlag(true);
+            item.setEnabled(true);
+        }
         item.setContentJson(metadata.toString());
     }
 
@@ -1501,6 +1514,46 @@ public class CompetitionManagementAppService {
         } catch (Exception error) {
             throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置格式不正确");
         }
+        JsonNode mainAwards = metadata.path("mainAwards");
+        if (mainAwards.isArray()) {
+            if (mainAwards.size() != 3) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置必须包含一等奖、二等奖和三等奖");
+            }
+            String mainQuotaType = awardQuotaType(metadata.path("mainQuotaType").asText("FIXED"));
+            Set<String> awardNames = new LinkedHashSet<>(COMPETITION_AWARD_NAMES);
+            for (int index = 0; index < 3; index++) {
+                JsonNode award = mainAwards.get(index);
+                if (award == null || !COMPETITION_AWARD_NAMES.get(index).equals(award.path("awardName").asText())) {
+                    throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置主奖项顺序不正确");
+                }
+                validateAwardQuota(award, mainQuotaType, "主奖项");
+            }
+            JsonNode excellence = metadata.path("excellence");
+            if (!excellence.isObject() || excellence.path("enabled").asBoolean(true)) {
+                validateAwardQuota(excellence, mainQuotaType, "优秀奖");
+            }
+            JsonNode specialAwards = metadata.path("specialAwards");
+            if (!specialAwards.isMissingNode() && !specialAwards.isArray()) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "专项奖项配置格式不正确");
+            }
+            if (specialAwards.isArray() && specialAwards.size() > 20) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "专项奖项最多配置 20 个");
+            }
+            if (specialAwards.isArray()) {
+                for (JsonNode special : specialAwards) {
+                    if (special == null || !special.isObject()) {
+                        throw biz(ErrorCode.VALIDATION_ERROR, "专项奖项配置格式不正确");
+                    }
+                    String awardName = special.path("awardName").asText().trim();
+                    if (!StringUtils.hasText(awardName) || !awardNames.add(awardName)) {
+                        throw biz(ErrorCode.VALIDATION_ERROR, "专项奖项名称不能为空且不能重复");
+                    }
+                    validateAwardQuota(special, awardQuotaType(special.path("quotaType").asText("FIXED")), "专项奖项");
+                }
+            }
+            return;
+        }
+
         JsonNode rules = metadata.path("rules");
         if (!rules.isArray() || rules.size() != COMPETITION_AWARD_NAMES.size()) {
             throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置必须包含一等奖、二等奖、三等奖和优秀奖");
@@ -1510,10 +1563,31 @@ public class CompetitionManagementAppService {
             if (rule == null || !COMPETITION_AWARD_NAMES.get(index).equals(rule.path("awardName").asText())) {
                 throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置奖项顺序不正确");
             }
-            int quota = rule.path("quota").asInt(0);
-            if (quota < 1 || quota > 10000) {
-                throw biz(ErrorCode.VALIDATION_ERROR, "获奖设置名额必须在 1–10000 之间");
+            validateAwardQuota(rule, awardQuotaType(rule.path("quotaType").asText("FIXED")), "获奖设置");
+        }
+    }
+
+    private String awardQuotaType(String value) {
+        String normalized = value == null ? "FIXED" : value.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("FIXED", "PERCENTAGE").contains(normalized)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "不支持的获奖计算方式");
+        }
+        return normalized;
+    }
+
+    private void validateAwardQuota(JsonNode rule, String quotaType, String label) {
+        if (rule == null || !rule.path("quota").isNumber()) {
+            throw biz(ErrorCode.VALIDATION_ERROR, label + "名额值不能为空");
+        }
+        JsonNode quota = rule.path("quota");
+        if ("PERCENTAGE".equals(quotaType)) {
+            if (!quota.isIntegralNumber() || quota.asInt(0) < 1 || quota.asInt(0) > 100) {
+                throw biz(ErrorCode.VALIDATION_ERROR, label + "比例必须在 1–100 之间");
             }
+            return;
+        }
+        if (!quota.isIntegralNumber() || quota.asInt(0) < 1 || quota.asInt(0) > 10000) {
+            throw biz(ErrorCode.VALIDATION_ERROR, label + "名额必须在 1–10000 之间");
         }
     }
 

@@ -1,6 +1,6 @@
 import { Button, Result, Space, Typography } from 'antd';
-import { history, useLocation } from '@umijs/max';
-import { useCallback, useEffect, useState } from 'react';
+import { history, useLocation, useModel } from '@umijs/max';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { getRegistration, getRegistrationPaymentStatus } from '@/services/competition/api';
@@ -13,12 +13,26 @@ import {
   parsePaymentResultRegistrationId,
 } from './utils/registrationCheckout';
 import { databaseMessage } from '@/i18n/databaseMessage';
+import { request } from '@/services/common/request';
+import { buildRegistrationDraftStorageKey } from './utils/registrationDraftStorageKey';
+import {
+  clearLocalRegistrationDraft,
+  isRegistrationDraftForRegistration,
+  readLocalRegistrationDraft,
+  type RegistrationDraftEnvelope,
+} from './utils/registrationDraftPersistence';
 
 const t = databaseMessage;
 
 const PaymentResultPage = () => {
+  const { initialState } = useModel('@@initialState');
   const location = useLocation();
   const registrationId = parsePaymentResultRegistrationId(location.search);
+  const registrationDraftStorageKey = useMemo(
+    () => buildRegistrationDraftStorageKey(initialState?.currentUser?.userId),
+    [initialState?.currentUser?.userId],
+  );
+  const clearedSuccessfulDraftRef = useRef(false);
   const [registration, setRegistration] = useState<CompetitionRegistrationRecord>();
   const [paymentOrder, setPaymentOrder] = useState<CompetitionPaymentOrderRecord>();
   const [loading, setLoading] = useState(true);
@@ -70,6 +84,31 @@ const PaymentResultPage = () => {
   }, [paymentOrder?.status, refresh, registration?.status, registrationId]);
 
   const successful = isRegistrationPaymentSuccessful(registration?.status);
+
+  useEffect(() => {
+    const currentUserId = initialState?.currentUser?.userId;
+    if (!successful || registrationId == null || currentUserId == null || clearedSuccessfulDraftRef.current) {
+      return;
+    }
+    clearedSuccessfulDraftRef.current = true;
+    const localDraft = readLocalRegistrationDraft<unknown>(currentUserId);
+    if (isRegistrationDraftForRegistration(localDraft, registrationId)) {
+      clearLocalRegistrationDraft(currentUserId);
+    }
+    void request<RegistrationDraftEnvelope<unknown> | null>(`/v2/user-drafts/${registrationDraftStorageKey}`, {
+      method: 'GET',
+      silent: true,
+    }).then((cloudDraft) => {
+      if (!isRegistrationDraftForRegistration(cloudDraft, registrationId)) {
+        return undefined;
+      }
+      return request<void>(`/v2/user-drafts/${registrationDraftStorageKey}`, {
+        method: 'DELETE',
+        silent: true,
+      });
+    }).catch(() => undefined);
+  }, [initialState?.currentUser?.userId, registrationDraftStorageKey, registrationId, successful]);
+
   const failed = loadError || isPaymentOrderFailed(paymentOrder?.status);
   const resultStatus = successful ? 'success' : failed ? 'error' : 'info';
   const title = successful

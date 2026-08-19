@@ -294,6 +294,25 @@ describe('competition settings page-level save guards', () => {
     expect(isConfigModuleReadyToSave('fields', items, { fieldScope: 'TEAM_FIELD' })).toBe(false);
   });
 
+  it('validates all scopes rendered by the combined team page', () => {
+    const items = [
+      { itemType: 'TEAM_FIELD', itemKey: 'teamName', title: '团队名称', metadata: { fieldType: 'TEXT' } },
+      { itemType: 'MEMBER_FIELD', itemKey: 'memberName', title: '学生姓名', metadata: { fieldType: 'TEXT' } },
+      { itemType: 'TEACHER_FIELD', itemKey: 'memberName', title: '指导老师姓名', metadata: { fieldType: 'TEXT' } },
+      { itemType: 'PROJECT_FIELD', itemKey: '', title: '', metadata: { fieldType: 'TEXT' } },
+    ];
+
+    expect(isConfigModuleReadyToSave('fields', items, {
+      fieldScopes: ['TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD'],
+    })).toBe(true);
+    expect(isConfigModuleReadyToSave('fields', [
+      ...items,
+      { itemType: 'TEACHER_FIELD', itemKey: '', title: '缺少标识', metadata: { fieldType: 'TEXT' } },
+    ], {
+      fieldScopes: ['TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD'],
+    })).toBe(false);
+  });
+
   it('validates project and intellectual-property groups as separate pages', () => {
     const items = [
       {

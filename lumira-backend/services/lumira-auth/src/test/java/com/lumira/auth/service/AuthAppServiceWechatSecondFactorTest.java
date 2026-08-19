@@ -3,6 +3,7 @@ package com.lumira.auth.service;
 import com.lumira.api.auth.LoginResponseDTO;
 import com.lumira.api.auth.WechatLoginRequest;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.auth.config.AuthSecurityProperties;
@@ -79,6 +80,8 @@ class AuthAppServiceWechatSecondFactorTest {
                 .thenReturn(new WechatLoginService.WechatOAuthUser("openid", "unionid", "snsapi_login"));
         when(systemInternalApi.resolveWechatLoginUser(any())).thenReturn(user);
         when(systemInternalApi.permissionSnapshot(user.userId(), user.userUuid())).thenReturn(snapshot);
+        when(systemInternalApi.maintenanceLoginPolicy())
+                .thenReturn(new MaintenanceLoginPolicyDTO(false, List.of(1001L)));
         when(systemInternalApi.listLoginSecondFactorOptions(user.userId(), user.userUuid())).thenReturn(List.of(option));
         when(clientIpResolver.resolve(request)).thenReturn("127.0.0.1");
         when(request.getHeader("User-Agent")).thenReturn("JUnit");

@@ -34,6 +34,12 @@ public interface CertificateRecordRepository {
                          String queryResult, String clientIp, String userAgent);
     long countCertificateNumbers(String prefixPattern);
     List<CertificateVO.AwardSource> findPublishedAwardSources();
+    Integer findPublishedReviewCandidateCount(Long reviewBatchId);
+    String findPublishedReviewAwardRulesJson(Long reviewBatchId);
+    int savePublishedReviewAwardRules(Long reviewBatchId, String awardRulesJson,
+                                      Long userId, String userUuid, LocalDateTime updatedAt);
+    int clearPublishedReviewAwardRules(Long reviewBatchId,
+                                       Long userId, String userUuid, LocalDateTime updatedAt);
     int revokeUnissuedAwardGrants(Long reviewBatchId, Long userId, String userUuid, LocalDateTime updatedAt);
     int grantPublishedAwards(Long reviewBatchId, String awardName, int minRank, int maxRank,
                              Long userId, String userUuid, LocalDateTime grantedAt);

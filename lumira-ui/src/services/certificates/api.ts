@@ -99,8 +99,25 @@ export const revokeCertificate = (id: number, reason?: string) =>
 export const listCompetitionWorkspaceCertificateAwardSources = (competitionUuid: string) =>
   request<CertificateAwardSource[]>(`${workspaceApi(competitionUuid)}/certificate-award-sources`, { method: 'GET' });
 
-export const listCompetitionWorkspaceCertificateAwardRules = (competitionUuid: string) =>
-  request<CertificateAwardRule[]>(`${workspaceApi(competitionUuid)}/certificate-award-rules`, { method: 'GET' });
+export const listCompetitionWorkspaceCertificateAwardRules = (competitionUuid: string, reviewBatchId?: number) =>
+  request<CertificateAwardRule[]>(`${workspaceApi(competitionUuid)}/certificate-award-rules`, {
+    method: 'GET',
+    params: reviewBatchId === undefined ? undefined : { reviewBatchId },
+  });
+
+export const saveCompetitionWorkspaceCertificateAwardRules = (
+  competitionUuid: string,
+  data: AwardGrantPayload,
+) => request<CertificateAwardRule[]>(`${workspaceApi(competitionUuid)}/certificate-award-rules`, {
+  method: 'PUT',
+  data,
+});
+
+export const clearCompetitionWorkspaceCertificateAwardRuleOverride = (competitionUuid: string, reviewBatchId: number) =>
+  request<CertificateAwardRule[]>(`${workspaceApi(competitionUuid)}/certificate-award-rules`, {
+    method: 'DELETE',
+    params: { reviewBatchId },
+  });
 
 export const grantCompetitionWorkspacePublishedAwards = (competitionUuid: string, data: AwardGrantPayload) =>
   request<CertificateAwardGrant[]>(`${workspaceApi(competitionUuid)}/certificate-awards/grant`, { method: 'POST', data });

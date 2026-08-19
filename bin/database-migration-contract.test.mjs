@@ -590,3 +590,48 @@ test('built-in administrator bootstrap is secret-driven and migration-backed', (
   assert.ok(flywayCall >= 0);
   assert.ok(bootstrapCall > flywayCall, 'credential bootstrap must run only after schema migration succeeds');
 });
+
+test('payment transaction numbers and legacy competition order ownership remain readable', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608190001__correct_payment_provider_transaction_number.sql');
+  const manualUpgrade = read('lumira-backend/sql/upgrade-payment-provider-transaction-number-v1.sql');
+
+  assert.match(
+    baseline,
+    /CREATE TABLE `payment_order`[\s\S]*?`provider_order_no` varchar\(128\) DEFAULT NULL/,
+  );
+  for (const source of [migration, manualUpgrade]) {
+    assert.match(source, /MODIFY COLUMN `provider_order_no` varchar\(128\) NULL DEFAULT NULL/);
+    assert.match(source, /SET `provider_order_no` = NULL/);
+    assert.match(source, /LEFT\([\s\S]*?CONCAT\(`provider_code`, '-', `order_no`, '-'\)/);
+    assert.match(source, /RIGHT\(`provider_order_no`, 12\) REGEXP '\^\[0-9a-f\]\{12\}\$'/);
+    assert.match(source, /JOIN `competition_registration` AS `registration`/);
+    assert.match(source, /`registration`\.`owner_user_id` = `payment`\.`created_by`/);
+    assert.match(source, /SET `payment`\.`created_by_uuid` = `registration`\.`owner_user_uuid`/);
+    assert.match(source, /WHERE `payment`\.`created_by_uuid` IS NULL/);
+    assert.doesNotMatch(source, /`request_json`|`response_json`/);
+    assert.doesNotMatch(source, /\bDELETE\s+FROM\b/i);
+    assert.doesNotMatch(source, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+  }
+});
+
+test('participant role settings migrate existing competitions without losing legacy team limits', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608190002__add_competition_participant_role_settings.sql');
+  const manualUpgrade = read('lumira-backend/sql/upgrade-competition-participant-role-settings-v1.sql');
+
+  for (const source of [baseline, migration, manualUpgrade]) {
+    assert.match(source, /'TEACHER_FIELD','memberName','指导老师姓名'/);
+    assert.match(source, /studentMinMembers/);
+    assert.match(source, /studentMaxMembers/);
+    assert.match(source, /teacherMinMembers/);
+    assert.match(source, /teacherMaxMembers/);
+  }
+  for (const source of [migration, manualUpgrade]) {
+    assert.match(source, /JSON_EXTRACT\(`content_json`, '\$\.teamMinMembers'\)/);
+    assert.match(source, /JSON_EXTRACT\(`content_json`, '\$\.teamMaxMembers'\)/);
+    assert.match(source, /NOT EXISTS[\s\S]*?'TEACHER_FIELD'[\s\S]*?'memberName'/);
+    assert.doesNotMatch(source, /\bDELETE\s+FROM\b/i);
+    assert.doesNotMatch(source, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+  }
+});

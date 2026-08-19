@@ -14,7 +14,11 @@ import com.lumira.saas.modules.competition.support.CompetitionSessionAuthenticat
 import com.lumira.saas.modules.competition.dto.CertificateDTO;
 import com.lumira.saas.modules.competition.infrastructure.JdbcCertificateTemplateRepository;
 import com.lumira.saas.modules.competition.infrastructure.JdbcCertificateRecordRepository;
+import com.lumira.saas.modules.competition.repository.CertificateRecordRepository;
+import com.lumira.saas.modules.competition.repository.CertificateTemplateRepository;
+import com.lumira.saas.modules.competition.repository.CompetitionSettingsRepository;
 import com.lumira.saas.modules.competition.vo.CertificateVO;
+import com.lumira.saas.modules.competition.vo.CompetitionVO;
 import com.lumira.saas.modules.competition.support.CompetitionPermissionSnapshotFixture;
 import com.lumira.saas.modules.competition.support.CompetitionTrustTestFixtures;
 import java.lang.reflect.Method;
@@ -694,6 +698,157 @@ class CertificateAppServiceTest {
                 });
 
         verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void saveCompetitionAwardRulesShouldAcceptMainExcellenceAndTwentySpecialAwards() {
+        CertificateRecordRepository recordRepository = mock(CertificateRecordRepository.class);
+        when(recordRepository.savePublishedReviewAwardRules(
+                eq(900L), anyString(), eq(1001L), eq("user-uuid-1001"), any()
+        )).thenReturn(1);
+        CertificateAppService service = new CertificateAppService(
+                mock(CertificateTemplateRepository.class),
+                recordRepository,
+                new ObjectMapper(),
+                mock(FileInternalApi.class),
+                mock(CertificateRenderService.class),
+                null,
+                mock(CompetitionSettingsRepository.class),
+                false
+        );
+        List<CertificateDTO.AwardRuleRequest> rules = new ArrayList<>();
+        for (int index = 1; index <= 24; index++) {
+            rules.add(awardRule("奖项" + index, index, index));
+        }
+
+        List<CertificateVO.AwardRule> saved = service.saveCompetitionAwardRules(
+                user(Set.of("aiadc:certificate-batch:create")), 900L, rules);
+
+        assertThat(saved).hasSize(24);
+        verify(recordRepository).savePublishedReviewAwardRules(
+                eq(900L), anyString(), eq(1001L), eq("user-uuid-1001"), any());
+    }
+
+    @Test
+    void competitionAwardRulesShouldConvertPercentageQuotaUsingPublishedCandidateCount() {
+        CompetitionSettingsRepository settingsRepository = mock(CompetitionSettingsRepository.class);
+        CertificateRecordRepository recordRepository = mock(CertificateRecordRepository.class);
+        CompetitionVO.ConfigSet configSet = new CompetitionVO.ConfigSet();
+        configSet.setId(11L);
+        CompetitionVO.ConfigItem settingsItem = new CompetitionVO.ConfigItem();
+        settingsItem.setItemType("AWARD_SETTINGS");
+        settingsItem.setItemKey("award-rules");
+        settingsItem.setContentJson("""
+                {"version":2,"mainQuotaType":"PERCENTAGE",
+                 "mainAwards":[
+                   {"awardName":"一等奖","quota":10},
+                   {"awardName":"二等奖","quota":20},
+                   {"awardName":"三等奖","quota":10}
+                 ],
+                 "excellence":{"enabled":true,"quota":20},
+                 "specialAwards":[]}
+                """);
+        when(settingsRepository.findCurrentConfigSet("competition-1")).thenReturn(configSet);
+        when(settingsRepository.findConfigItems("competition-1", 11L, Set.of("AWARD_SETTINGS")))
+                .thenReturn(List.of(settingsItem));
+        when(recordRepository.findPublishedReviewCandidateCount(900L)).thenReturn(25);
+        CertificateAppService service = new CertificateAppService(
+                mock(CertificateTemplateRepository.class),
+                recordRepository,
+                new ObjectMapper(),
+                mock(FileInternalApi.class),
+                mock(CertificateRenderService.class),
+                null,
+                settingsRepository,
+                false
+        );
+
+        List<CertificateVO.AwardRule> rules = service.listCompetitionAwardRules(
+                user(Set.of("aiadc:certificate-batch:create")), "competition-1", 900L);
+
+        assertThat(rules).extracting(CertificateVO.AwardRule::getMinRank, CertificateVO.AwardRule::getMaxRank)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(1, 3),
+                        org.assertj.core.groups.Tuple.tuple(4, 8),
+                        org.assertj.core.groups.Tuple.tuple(9, 11),
+                        org.assertj.core.groups.Tuple.tuple(12, 16)
+                );
+    }
+
+    @Test
+    void savedReviewBatchAwardRulesShouldOverrideCompetitionSettings() {
+        CompetitionSettingsRepository settingsRepository = mock(CompetitionSettingsRepository.class);
+        CertificateRecordRepository recordRepository = mock(CertificateRecordRepository.class);
+        when(recordRepository.findPublishedReviewAwardRulesJson(901L)).thenReturn("""
+                [{"awardName":"一等奖","minRank":1,"maxRank":2},
+                 {"awardName":"专项奖","minRank":4,"maxRank":4}]
+                """);
+        CertificateAppService service = new CertificateAppService(
+                mock(CertificateTemplateRepository.class),
+                recordRepository,
+                new ObjectMapper(),
+                mock(FileInternalApi.class),
+                mock(CertificateRenderService.class),
+                null,
+                settingsRepository,
+                false
+        );
+
+        List<CertificateVO.AwardRule> rules = service.listCompetitionAwardRules(
+                user(Set.of("aiadc:certificate-batch:create")), "competition-1", 901L);
+
+        assertThat(rules).extracting(CertificateVO.AwardRule::getAwardName,
+                        CertificateVO.AwardRule::getMinRank, CertificateVO.AwardRule::getMaxRank)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("一等奖", 1, 2),
+                        org.assertj.core.groups.Tuple.tuple("专项奖", 4, 4)
+                );
+        verifyNoInteractions(settingsRepository);
+    }
+
+    @Test
+    void legacyCompetitionAwardRulesShouldRemainFixedWhenQuotaTypeIsMissing() {
+        CompetitionSettingsRepository settingsRepository = mock(CompetitionSettingsRepository.class);
+        CertificateRecordRepository recordRepository = mock(CertificateRecordRepository.class);
+        CompetitionVO.ConfigSet configSet = new CompetitionVO.ConfigSet();
+        configSet.setId(12L);
+        CompetitionVO.ConfigItem settingsItem = new CompetitionVO.ConfigItem();
+        settingsItem.setItemType("AWARD_SETTINGS");
+        settingsItem.setItemKey("award-rules");
+        settingsItem.setContentJson("""
+                {"version":1,"rules":[
+                  {"awardName":"一等奖","quota":1},
+                  {"awardName":"二等奖","quota":2},
+                  {"awardName":"三等奖","quota":3},
+                  {"awardName":"优秀奖","quota":5}
+                ]}
+                """);
+        when(settingsRepository.findCurrentConfigSet("competition-2")).thenReturn(configSet);
+        when(settingsRepository.findConfigItems("competition-2", 12L, Set.of("AWARD_SETTINGS")))
+                .thenReturn(List.of(settingsItem));
+
+        CertificateAppService service = new CertificateAppService(
+                mock(CertificateTemplateRepository.class),
+                recordRepository,
+                new ObjectMapper(),
+                mock(FileInternalApi.class),
+                mock(CertificateRenderService.class),
+                null,
+                settingsRepository,
+                false
+        );
+
+        List<CertificateVO.AwardRule> rules = service.listCompetitionAwardRules(
+                user(Set.of("aiadc:certificate-batch:create")), "competition-2", null);
+
+        assertThat(rules).extracting(CertificateVO.AwardRule::getMinRank, CertificateVO.AwardRule::getMaxRank)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(1, 1),
+                        org.assertj.core.groups.Tuple.tuple(2, 3),
+                        org.assertj.core.groups.Tuple.tuple(4, 6),
+                        org.assertj.core.groups.Tuple.tuple(7, 11)
+                );
+        verifyNoInteractions(recordRepository);
     }
 
     @Test

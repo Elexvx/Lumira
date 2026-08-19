@@ -167,6 +167,9 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
             where.append(" and cr.status = ?");
             params.add(search.registrationStatus());
         }
+        if ("NOT_REQUIRED".equalsIgnoreCase(search.paymentStatus())) {
+            where.append(" and cr.payable_amount_minor = 0 and (cr.payment_order_no is null or cr.payment_order_no = '')");
+        }
         Long total = database.queryForObject("select count(1) " + where, Long.class, params.toArray());
         List<Object> selectParams = new ArrayList<>(params);
         selectParams.add(search.offset());
@@ -423,7 +426,7 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
                         join competition_config_item item
                           on item.config_set_id = config.id and item.competition_uuid = competition.uuid
                          and item.enabled = 1 and item.deleted = 0
-                         and item.item_type in ('REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD')
+                         and item.item_type in ('REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD', 'PROJECT_FIELD')
                         where competition.id = ? and competition.deleted = 0
                           and config.id = (
                               select max(current_config.id) from competition_config_set current_config
@@ -1134,7 +1137,12 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
                        null as providerCode, null as providerOrderNo,
                        null as subject, cr.payable_amount_minor as amountMinor,
                        cr.currency as currency,
-                       cr.status as paymentStatus,
+                       case
+                           when cr.payable_amount_minor = 0
+                                and (cr.payment_order_no is null or cr.payment_order_no = '')
+                               then 'NOT_REQUIRED'
+                           else cr.status
+                       end as paymentStatus,
                        null as paymentUrl, null as failureCode, null as failureMessage,
                        null as orderCreatedAt, null as paidAt,
                        cr.created_at as registrationCreatedAt,

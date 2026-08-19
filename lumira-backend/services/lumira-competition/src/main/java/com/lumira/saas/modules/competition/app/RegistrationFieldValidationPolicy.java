@@ -58,7 +58,8 @@ final class RegistrationFieldValidationPolicy {
         if ("TEAM_FIELD".equals(normalizedScope) && Set.of("teamname", "name").contains(normalizedKey)) {
             return "DISPLAY_NAME";
         }
-        if ("MEMBER_FIELD".equals(normalizedScope) && Set.of("membername", "name").contains(normalizedKey)) {
+        if (Set.of("MEMBER_FIELD", "TEACHER_FIELD").contains(normalizedScope)
+                && Set.of("membername", "name").contains(normalizedKey)) {
             return "PERSON_NAME";
         }
         if ("PROJECT_FIELD".equals(normalizedScope)

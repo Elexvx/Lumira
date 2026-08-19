@@ -1214,7 +1214,7 @@ const PlatformUpdateContent = () => {
         <Card title={t('ui.settings.monitoring.monitoring.updateTaskHistory')} loading={tasksQuery.isLoading && !tasksQuery.data}>
           <ManagementTable<PlatformUpdateTask>
             rowKey="id"
-            size="small"
+            defaultSize="small"
             search={false}
             isMobile={isMobile}
             onRefresh={() => {
@@ -1418,7 +1418,7 @@ const ServiceMonitorContent = () => {
       <Card title={t('ui.settings.monitoring.monitoring.serviceHealthApiDocs')} loading={query.isLoading && !service}>
         <ManagementTable<ServiceMonitorRow>
           rowKey="key"
-          size="small"
+          defaultSize="small"
           pagination={false}
           isMobile={isMobile}
           search={false}

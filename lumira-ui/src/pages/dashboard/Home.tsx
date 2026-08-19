@@ -282,7 +282,7 @@ const DashboardHomePage = () => {
                 children: (
                   <ManagementTable<AuditLogRecord>
                     className="saas-dashboard-home__activity-table"
-                    size="small"
+                    defaultSize="small"
                     rowKey="id"
                     pagination={false}
                     isMobile={responsive.isMobile}
@@ -304,7 +304,7 @@ const DashboardHomePage = () => {
                 children: (
                   <ManagementTable<AuditLogRecord>
                     className="saas-dashboard-home__activity-table"
-                    size="small"
+                    defaultSize="small"
                     rowKey="id"
                     pagination={false}
                     isMobile={responsive.isMobile}

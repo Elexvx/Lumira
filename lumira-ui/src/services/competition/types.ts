@@ -45,6 +45,7 @@ export type CompetitionConfigItemType =
   | 'REGISTRATION_FIELD'
   | 'TEAM_FIELD'
   | 'MEMBER_FIELD'
+  | 'TEACHER_FIELD'
   | 'PROJECT_FIELD'
   | 'EXPERT_FIELD'
   | 'TEAM_SETTINGS'

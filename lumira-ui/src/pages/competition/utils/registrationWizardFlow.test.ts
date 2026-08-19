@@ -38,6 +38,7 @@ describe('competition registration wizard flow', () => {
   it('moves legacy drafts to the matching content step after the order changes', () => {
     expect(normalizeRegistrationWizardDraftStep(2, undefined)).toBe(registrationWizardStep.projectEvidence);
     expect(normalizeRegistrationWizardDraftStep(3, 1)).toBe(registrationWizardStep.preliminaryMaterials);
+    expect(normalizeRegistrationWizardDraftStep(2, 2)).toBe(registrationWizardStep.preliminaryMaterials);
     expect(normalizeRegistrationWizardDraftStep(2, REGISTRATION_WIZARD_FLOW_VERSION)).toBe(
       registrationWizardStep.preliminaryMaterials,
     );

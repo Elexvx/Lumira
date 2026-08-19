@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.system.role.app;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.common.vo.PageResponse;
@@ -12,6 +13,7 @@ import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
+import com.lumira.saas.modules.system.app.MaintenanceLoginPolicyService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.role.dto.RoleDataScopeRequest;
@@ -688,6 +690,26 @@ class SystemRoleManagementAppServiceTest {
         assertTrue(jdbcTemplate.updateSql.get(dataScopeDeleteIndex).contains("set deleted = 1"));
         assertTrue(jdbcTemplate.updateSql.get(dataScopeDeleteIndex).contains("exists"));
         assertTrue(jdbcTemplate.updateSql.get(dataScopeDeleteIndex).contains("updated_by_uuid = ?"));
+    }
+
+    @Test
+    void deleteRoleShouldRejectTheLastMaintenanceLoginRole() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        jdbcTemplate.roleById = role(2001L, "auditor", "Auditor", "BUSINESS");
+        jdbcTemplate.userCountByRoleId.put(2001L, 0);
+        SystemRoleManagementAppService service = buildService(jdbcTemplate, mock(PermissionSnapshotService.class));
+        MaintenanceLoginPolicyService policyService = mock(MaintenanceLoginPolicyService.class);
+        when(policyService.loadEffectivePolicy())
+                .thenReturn(new MaintenanceLoginPolicyDTO(true, List.of(2001L)));
+        service.setMaintenanceLoginPolicyService(policyService);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.deleteRole(currentUser(), 2001L)
+        );
+
+        assertEquals(ErrorCode.VALIDATION_ERROR, exception.getErrorCode());
+        assertThat(jdbcTemplate.updateSql).noneMatch(sql -> sql.contains("update sys_role"));
     }
 
     private int indexOfSql(List<String> sqlList, String fragment) {

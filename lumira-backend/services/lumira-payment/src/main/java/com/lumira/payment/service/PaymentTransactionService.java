@@ -249,7 +249,7 @@ public class PaymentTransactionService {
         PaymentOrderRow row = new PaymentOrderRow();
         row.setOrderNo(normalizeIdentifier(request.orderNo()));
         row.setProviderCode(providerCatalog.normalize(request.providerCode()));
-        row.setProviderOrderNo(buildProviderOrderNo(request.providerCode(), request.orderNo()));
+        row.setProviderOrderNo(null);
         row.setSubject(normalizeText(request.subject()));
         row.setAmountMinor(request.amountMinor());
         row.setCurrency(normalizeText(request.currency()).toUpperCase(Locale.ROOT));
@@ -268,7 +268,6 @@ public class PaymentTransactionService {
         )));
         row.setResponseJson(serialize(Map.of(
                 "providerCode", row.getProviderCode(),
-                "providerOrderNo", row.getProviderOrderNo(),
                 "paymentUrl", row.getPaymentUrl()
         )));
         row.setIdempotencyKey(resolveIdempotencyKey(request.idempotencyKey(), row.getOrderNo()));
@@ -1081,10 +1080,6 @@ public class PaymentTransactionService {
         if (orderCurrency != null && !orderCurrency.equals(normalized)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Refund currency does not match original order");
         }
-    }
-
-    private String buildProviderOrderNo(String providerCode, String orderNo) {
-        return providerCatalog.normalize(providerCode) + "-" + normalizeIdentifier(orderNo) + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
     private String buildProviderRefundNo(String providerCode, String refundNo) {

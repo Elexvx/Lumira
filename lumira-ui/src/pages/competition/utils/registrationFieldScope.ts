@@ -2,7 +2,7 @@ import type { CompetitionConfigItem, CompetitionConfigItemType } from '@/service
 
 export type RegistrationFieldScope = Extract<
   CompetitionConfigItemType,
-  'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'
+  'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'TEACHER_FIELD' | 'PROJECT_FIELD'
 >;
 
 const normalizeFieldKey = (value?: string) => (value || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
@@ -49,6 +49,7 @@ export const resolveRegistrationFieldScope = (item: CompetitionConfigItem): Regi
     'REGISTRATION_FIELD',
     'TEAM_FIELD',
     'MEMBER_FIELD',
+    'TEACHER_FIELD',
     'PROJECT_FIELD',
   ].includes(metadataScope)
     ? metadataScope as RegistrationFieldScope

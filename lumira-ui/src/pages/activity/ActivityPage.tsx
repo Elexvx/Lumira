@@ -1,4 +1,4 @@
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
+import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, EditOutlined, PlusOutlined, RollbackOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Button, Card, DatePicker, Divider, Empty, Form, Image, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
@@ -204,6 +204,25 @@ const normalizePayload = (values: ActivityFormValues): ActivityUpsertPayload => 
     registrationFields: normalizeActivityRegistrationFields(values.registrationFields),
   };
 };
+
+const buildActivityPayloadFromRecord = (record: ActivityRecord, status = record.status): ActivityUpsertPayload => ({
+  code: trimOptional(record.code),
+  locale: record.locale,
+  title: record.title.trim(),
+  subtitle: trimOptional(record.subtitle || undefined),
+  description: trimOptional(record.description || undefined),
+  imageUrl: trimOptional(record.imageUrl || undefined),
+  sort: record.sort,
+  status,
+  tags: trimOptional(record.tags || undefined),
+  ctaLabel: trimOptional(record.ctaLabel || undefined),
+  ctaHref: trimOptional(record.ctaHref || undefined),
+  activityDate: record.activityDate,
+  activityTime: record.activityTime,
+  location: record.location.trim(),
+  featured: Boolean(record.featured),
+  registrationFields: normalizeActivityRegistrationFields(record.registrationFields),
+});
 
 const ActivityDateTimeRangePicker = ({
   value,
@@ -880,6 +899,17 @@ const ActivityManagementView = () => {
   const [editingRecord, setEditingRecord] = useState<ActivityRecord>();
   const [saving, setSaving] = useState(false);
 
+  const toggleActivityStatus = useCallback(async (record: ActivityRecord) => {
+    const nextStatus: ActivityStatus = record.status === 'published' ? 'draft' : 'published';
+    try {
+      await updateActivity(record.id, buildActivityPayloadFromRecord(record, nextStatus));
+      message.success(nextStatus === 'published' ? '活动已发布' : '活动已切换为草稿');
+      actionRef.current?.reload();
+    } catch (error) {
+      showErrorMessage(error, '状态切换失败');
+    }
+  }, []);
+
   const closeDrawer = () => {
     setDrawerOpen(false);
     setEditingRecord(undefined);
@@ -942,59 +972,27 @@ const ActivityManagementView = () => {
   const columns = useMemo<ProColumns<ActivityRecord>[]>(
     () => [
       {
-        title: '活动',
+        title: '活动查询',
         dataIndex: 'keyword',
-        render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text>,
-      },
-      {
-        title: '分类',
-        dataIndex: 'subtitle',
-        search: false,
-        render: (value) => value ? <Tag color="blue">{String(value)}</Tag> : '-',
-      },
-      {
-        title: '语言',
-        dataIndex: 'locale',
-        valueType: 'select',
-        valueEnum: {
-          zh: { text: '中文' },
-          en: { text: 'English' },
-        },
-        width: 96,
-        render: (value) => {
-          const locales = splitActivityLocales(typeof value === 'string' ? value : undefined);
-          if (!locales.length) return '-';
-          return <Space size={4} wrap>{locales.map((item) => <Tag key={item}>{item === 'zh' ? '中文' : item === 'en' ? 'English' : item}</Tag>)}</Space>;
+        hideInTable: true,
+        fieldProps: {
+          placeholder: '输入活动名称/编码/分类',
         },
       },
       {
-        title: '日期',
-        dataIndex: 'activityDate',
+        title: '编号',
+        dataIndex: 'code',
         search: false,
-        width: 128,
-      },
-      {
-        title: '时间',
-        dataIndex: 'activityTime',
-        search: false,
-        width: 140,
-      },
-      {
-        title: '地点',
-        dataIndex: 'location',
-        search: false,
+        width: 180,
         ellipsis: true,
+        render: (_, record) => record.code || '-',
       },
       {
-        title: '重点',
-        dataIndex: 'featured',
-        valueType: 'select',
-        valueEnum: {
-          true: { text: '是' },
-          false: { text: '否' },
-        },
-        width: 90,
-        render: (_, record) => (record.featured ? <Tag color="gold">重点</Tag> : <Tag>普通</Tag>),
+        title: '活动',
+        dataIndex: 'title',
+        search: false,
+        minWidth: 260,
+        render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text>,
       },
       {
         title: '状态',
@@ -1008,16 +1006,74 @@ const ActivityManagementView = () => {
         render: (_, record) => <Tag color={statusColor[record.status]}>{statusLabel[record.status]}</Tag>,
       },
       {
+        title: '分类',
+        dataIndex: 'subtitle',
+        search: false,
+        responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
+        render: (value) => value ? <Tag color="blue">{String(value)}</Tag> : '-',
+      },
+      {
+        title: '语言',
+        dataIndex: 'locale',
+        valueType: 'select',
+        valueEnum: {
+          zh: { text: '中文' },
+          en: { text: 'English' },
+        },
+        width: 96,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
+        render: (value) => {
+          const locales = splitActivityLocales(typeof value === 'string' ? value : undefined);
+          if (!locales.length) return '-';
+          return <Space size={4} wrap>{locales.map((item) => <Tag key={item}>{item === 'zh' ? '中文' : item === 'en' ? 'English' : item}</Tag>)}</Space>;
+        },
+      },
+      {
+        title: '日期',
+        dataIndex: 'activityDate',
+        search: false,
+        width: 128,
+        responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
+      },
+      {
+        title: '时间',
+        dataIndex: 'activityTime',
+        search: false,
+        width: 140,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
+      },
+      {
+        title: '地点',
+        dataIndex: 'location',
+        search: false,
+        responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
+        ellipsis: true,
+      },
+      {
+        title: '重点',
+        dataIndex: 'featured',
+        valueType: 'select',
+        valueEnum: {
+          true: { text: '是' },
+          false: { text: '否' },
+        },
+        width: 90,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
+        render: (_, record) => (record.featured ? <Tag color="gold">重点</Tag> : <Tag>普通</Tag>),
+      },
+      {
         title: '排序',
         dataIndex: 'sort',
         search: false,
         width: 80,
+        responsive: ['lg', 'xl', 'xxl'],
       },
       {
         title: '更新时间',
         dataIndex: 'updatedAt',
         search: false,
         width: 172,
+        responsive: ['xl', 'xxl'],
         render: (value) => value || '-',
       },
       {
@@ -1031,6 +1087,28 @@ const ActivityManagementView = () => {
           <TableActionBar
             isMobile={responsive.isMobile}
             items={actionPermission.buildTableActions([
+              {
+                key: 'status',
+                label: record.status === 'published' ? '撤回' : '发布',
+                icon: record.status === 'published' ? <RollbackOutlined /> : <CheckCircleOutlined />,
+                permission: 'aiadc:activity:update',
+                onClick: () => {
+                  if (record.status === 'published') {
+                    void toggleActivityStatus(record);
+                    return;
+                  }
+
+                  Modal.confirm({
+                    title: '确认发布该活动？',
+                    content: `发布后，活动「${record.title}」将出现在活动查询和用户入口中。`,
+                    okText: '确认发布',
+                    cancelText: '取消',
+                    onOk: async () => {
+                      await toggleActivityStatus(record);
+                    },
+                  });
+                },
+              },
               {
                 key: 'edit',
                 label: '编辑',
@@ -1062,7 +1140,7 @@ const ActivityManagementView = () => {
         ),
       },
     ],
-    [actionPermission, openEditDrawer, responsive.isDesktop, responsive.isMobile],
+    [actionPermission, openEditDrawer, responsive.isDesktop, responsive.isMobile, toggleActivityStatus],
   );
 
   return (
@@ -1072,6 +1150,8 @@ const ActivityManagementView = () => {
           actionRef={actionRef}
           rowKey="id"
           columns={columns}
+          adaptiveSpacing
+          containerResponsive
           isMobile={responsive.isMobile}
           autoContentWidth
           scroll={{ x: 'max-content' }}

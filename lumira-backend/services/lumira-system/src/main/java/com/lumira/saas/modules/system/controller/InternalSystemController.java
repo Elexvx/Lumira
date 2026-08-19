@@ -199,7 +199,7 @@ public class InternalSystemController {
         this.readModelVersionService = readModelVersionService;
     }
 
-    @Autowired
+    @Autowired(required = false)
     public void setMaintenanceLoginPolicyService(MaintenanceLoginPolicyService maintenanceLoginPolicyService) {
         this.maintenanceLoginPolicyService = maintenanceLoginPolicyService;
     }

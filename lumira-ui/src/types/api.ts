@@ -204,7 +204,7 @@ export interface PaymentCreateOrderRequest {
 export interface PaymentOrderRecord {
   orderNo: string;
   providerCode: string;
-  providerOrderNo: string;
+  providerOrderNo: string | null;
   subject: string;
   amountMinor: number;
   currency: string;
@@ -225,7 +225,7 @@ export type BuiltinMockPaymentOutcome = 'SUCCESS' | 'FAILURE' | 'CANCEL' | 'TIME
 
 export interface BuiltinMockPaymentCheckout {
   orderNo: string;
-  providerOrderNo: string;
+  providerOrderNo: string | null;
   subject: string;
   amountMinor: number;
   currency: string;

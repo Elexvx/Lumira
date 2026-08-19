@@ -1,4 +1,6 @@
-export const REGISTRATION_WIZARD_FLOW_VERSION = 2;
+export const REGISTRATION_WIZARD_FLOW_VERSION = 3;
+
+const REGISTRATION_WIZARD_CURRENT_STEP_ORDER_VERSION = 2;
 
 export const registrationWizardStep = {
   competition: 0,
@@ -95,7 +97,7 @@ export const normalizeRegistrationWizardDraftStep = (
   flowVersion: number | undefined,
 ) => {
   const normalizedStep = Math.min(Math.max(Number(currentStep) || 0, 0), registrationWizardStep.payment);
-  if ((flowVersion || 1) >= REGISTRATION_WIZARD_FLOW_VERSION) {
+  if ((flowVersion || 1) >= REGISTRATION_WIZARD_CURRENT_STEP_ORDER_VERSION) {
     return normalizedStep;
   }
   if (normalizedStep === registrationWizardStep.preliminaryMaterials) {

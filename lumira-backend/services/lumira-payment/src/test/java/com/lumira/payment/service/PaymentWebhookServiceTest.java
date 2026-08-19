@@ -180,6 +180,7 @@ class PaymentWebhookServiceTest {
         order.setId(501L);
         order.setOrderNo("REG-1-ABCD");
         order.setProviderCode("stripe");
+        order.setProviderOrderNo(null);
         order.setAmountMinor(8800L);
         order.setStatus("PENDING");
         order.setCreatedBy(1001L);

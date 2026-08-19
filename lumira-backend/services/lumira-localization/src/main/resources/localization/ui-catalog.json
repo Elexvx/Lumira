@@ -19324,8 +19324,8 @@
       "sourceType": "UI",
       "sourceRef": "src/pages/settings/components/payment/SandboxPaymentOrderTab.tsx",
       "translations": {
-        "zh-CN": "请先启用并完整配置支付宝或微信支付。",
-        "en-US": "Enable and configure Alipay or WeChat Pay first."
+        "zh-CN": "请先启用并完整配置支付宝、微信支付或内置模拟支付。",
+        "en-US": "Enable and configure Alipay, WeChat Pay, or the built-in mock payment first."
       }
     },
     {

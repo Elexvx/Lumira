@@ -1,6 +1,7 @@
-import { ProTable, type ProColumns, type ProTableProps } from '@ant-design/pro-components';
+import { ProTable, useIntl, type ActionType, type ProColumns, type ProTableProps } from '@ant-design/pro-components';
+import { ReloadOutlined } from '@ant-design/icons';
 import { Button, type TableProps } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { isValidElement, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
 import { normalizeTablePagination } from '@/features/table/tablePagination';
 import { TableSurface } from '@/features/table/TableSurface';
@@ -168,6 +169,7 @@ export interface ManagementTableProps<RecordType extends object = object, Params
   autoContentWidth?: boolean;
   adaptiveSpacing?: boolean;
   containerResponsive?: boolean;
+  surfaceClassName?: string;
   onRefresh?: () => void | Promise<unknown>;
 }
 
@@ -204,16 +206,60 @@ const buildManagementToolbar = <
 >(
   toolBarRender: ManagementTableProps<RecordType, Params>['toolBarRender'],
   onRefresh?: ManagementTableProps<RecordType, Params>['onRefresh'],
+  hasRequest = false,
 ): ManagementTableProps<RecordType, Params>['toolBarRender'] => {
-  if (toolBarRender !== undefined || !onRefresh) {
+  if (toolBarRender === false) {
+    return false;
+  }
+  if (!onRefresh && !hasRequest) {
     return toolBarRender;
   }
+  return (action, rows) => {
+    const customActions: ReactNode[] =
+      typeof toolBarRender === 'function' ? toolBarRender(action, rows) || [] : [];
+    const hasCustomRefresh = customActions.some(
+      (item) => isValidElement(item) && (item.key === 'refresh' || item.key === 'reload'),
+    );
 
-  return () => [
-    <Button key="refresh" onClick={() => void onRefresh()}>
-      Refresh
-    </Button>,
-  ];
+    if (hasCustomRefresh) {
+      return customActions;
+    }
+
+    return [
+      <ManagementTableRefreshButton key="management-table-refresh" action={action} onRefresh={onRefresh} />,
+      ...customActions,
+    ];
+  };
+};
+
+const ManagementTableRefreshButton = ({
+  action,
+  onRefresh,
+}: {
+  action?: ActionType;
+  onRefresh?: () => void | Promise<unknown>;
+}) => {
+  const intl = useIntl();
+  const [loading, setLoading] = useState(false);
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      if (onRefresh) {
+        await onRefresh();
+      } else {
+        await action?.reload?.();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button key="management-table-refresh" icon={<ReloadOutlined />} loading={loading} onClick={() => void handleRefresh()}>
+      {intl.getMessage('tableToolBar.reload', '刷新')}
+    </Button>
+  );
 };
 
 export const ManagementTable = <RecordType extends object = object, Params extends Record<string, unknown> = Record<string, unknown>>({
@@ -225,7 +271,9 @@ export const ManagementTable = <RecordType extends object = object, Params exten
   pagination = { showSizeChanger: true, defaultPageSize: DEFAULT_TABLE_PAGE_SIZE },
   options,
   onRefresh,
+  request,
   scroll,
+  surfaceClassName,
   tableLayout,
   toolBarRender,
   ...props
@@ -267,17 +315,18 @@ export const ManagementTable = <RecordType extends object = object, Params exten
     [autoContentWidth, isMobile, scroll, visibleColumns],
   );
   const normalizedToolbar = useMemo(
-    () => buildManagementToolbar(toolBarRender, onRefresh),
-    [onRefresh, toolBarRender],
+    () => buildManagementToolbar(toolBarRender, onRefresh, Boolean(request)),
+    [onRefresh, request, toolBarRender],
   );
 
   return (
-    <TableSurface ref={wrapperRef} adaptiveSpacing={adaptiveSpacing}>
+    <TableSurface ref={wrapperRef} adaptiveSpacing={adaptiveSpacing} className={surfaceClassName}>
       <ProTable<RecordType, Params>
         {...props}
         columns={normalizedColumns}
         options={normalizedOptions}
         pagination={normalizedPagination}
+        request={request}
         scroll={normalizedScroll}
         tableLayout={tableLayout}
         toolBarRender={normalizedToolbar}
