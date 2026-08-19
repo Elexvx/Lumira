@@ -23,5 +23,6 @@ test('scheduled lifecycle E2E uses the canonical frontend toolchain and local ta
   assert.match(lifecycle, /node-version: 24/);
   assert.match(lifecycle, /LIFECYCLE_BASE_URL=http:\/\/127\.0\.0\.1:8000/);
   assert.match(lifecycle, /test:competition-lifecycle/);
-  assert.match(lifecycle, /--project=quality --project=mobile-390/);
+  assert.match(lifecycle, /PLAYWRIGHT_ROLE_MATRIX=true/);
+  assert.match(lifecycle, /--project=role-access --project=quality --project=mobile-390/);
 });

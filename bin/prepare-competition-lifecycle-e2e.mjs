@@ -4,14 +4,17 @@ import crypto from 'node:crypto';
 
 const baseUrl = process.env.LIFECYCLE_BASE_URL || 'http://127.0.0.1:8000';
 const organizerUsername = process.env.LIFECYCLE_ORGANIZER_USERNAME || 'admin';
+const participantUsername = process.env.LIFECYCLE_PARTICIPANT_USERNAME || 'e2e_lifecycle_participant';
 const expertUsername = process.env.LIFECYCLE_EXPERT_USERNAME || 'e2e_lifecycle_expert';
 const finalPassword = process.env.LIFECYCLE_PASSWORD;
 const adminInitialPassword = process.env.LIFECYCLE_ADMIN_INITIAL_PASSWORD;
+const participantInitialPassword = process.env.LIFECYCLE_PARTICIPANT_INITIAL_PASSWORD;
 const expertInitialPassword = process.env.LIFECYCLE_EXPERT_INITIAL_PASSWORD;
 const smtpHost = process.env.LIFECYCLE_SMTP_SERVER_HOST || '127.0.0.1';
 const smtpPort = Number(process.env.LIFECYCLE_SMTP_SERVER_PORT || 2525);
 const timeoutMs = Number(process.env.LIFECYCLE_TIMEOUT_MS || 15_000);
 const expertName = process.env.LIFECYCLE_EXPERT_NAME || '赛事全流程验收专家';
+const participantName = process.env.LIFECYCLE_PARTICIPANT_NAME || '赛事全流程验收参赛者';
 
 if (!finalPassword) {
   throw new Error('Set LIFECYCLE_PASSWORD');
@@ -184,6 +187,36 @@ if (!availablePlugins.some((item) => item.pluginCode === 'builtin-mock-payment')
   );
 }
 
+console.log('[fixture] Resolving the lifecycle participant account.');
+const participantUsers = await api(
+  organizerToken,
+  `/api/v2/iam/users?username=${encodeURIComponent(participantUsername)}&pageNo=1&pageSize=20`,
+);
+let participantUser = (participantUsers?.records || []).find((item) => item.username === participantUsername);
+if (!participantUser) {
+  if (!participantInitialPassword) {
+    throw new Error('Set LIFECYCLE_PARTICIPANT_INITIAL_PASSWORD to create the isolated participant account');
+  }
+  const roles = await api(organizerToken, '/api/v2/iam/roles?roleCode=commonuser&pageNo=1&pageSize=20');
+  const participantRole = (roles?.records || []).find((item) => item.roleCode === 'commonuser');
+  if (!participantRole?.id) throw new Error('The commonuser role is missing from the E2E database');
+  participantUser = await api(organizerToken, '/api/v2/iam/users', {
+    method: 'POST',
+    body: {
+      username: participantUsername,
+      password: participantInitialPassword,
+      nickname: participantName,
+      realName: participantName,
+      email: 'e2e-participant@example.invalid',
+      status: 'ENABLED',
+      roleIds: [participantRole.id],
+      deptIds: [],
+    },
+  });
+}
+
+await resolvePassword(participantUsername, participantInitialPassword, finalPassword);
+
 console.log('[fixture] Resolving the lifecycle expert account.');
 const users = await api(
   organizerToken,
@@ -260,6 +293,7 @@ if (expert.approvalStatus !== 'APPROVED') {
 console.log(`LIFECYCLE_FIXTURE_READY ${JSON.stringify({
   baseUrl: base.origin,
   organizerUsername,
+  participantUsername,
   expertUsername,
   expertId: expert.id,
   pluginCount: availablePlugins.length,

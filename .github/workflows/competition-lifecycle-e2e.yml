@@ -37,15 +37,17 @@ jobs:
           const secret = (label) => `${label}!${crypto.randomBytes(24).toString('base64url')}9a`;
           const adminInitial = secret('AdminInitial');
           const resolvedPassword = secret('LifecycleResolved');
+          const participantInitial = secret('ParticipantInitial');
           const expertInitial = secret('ExpertInitial');
           const bootstrapFile = path.join(process.env.RUNNER_TEMP, 'lumira-bootstrap-admin-password');
           fs.writeFileSync(bootstrapFile, adminInitial, { mode: 0o600 });
-          for (const value of [adminInitial, resolvedPassword, expertInitial]) {
+          for (const value of [adminInitial, resolvedPassword, participantInitial, expertInitial]) {
             process.stdout.write(`::add-mask::${value}\n`);
           }
           fs.appendFileSync(process.env.GITHUB_ENV, [
             `LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE=${bootstrapFile}`,
             `LIFECYCLE_ADMIN_INITIAL_PASSWORD=${adminInitial}`,
+            `LIFECYCLE_PARTICIPANT_INITIAL_PASSWORD=${participantInitial}`,
             `LIFECYCLE_EXPERT_INITIAL_PASSWORD=${expertInitial}`,
             `LIFECYCLE_PASSWORD=${resolvedPassword}`,
             'LIFECYCLE_BASE_URL=http://127.0.0.1:8000',
@@ -56,6 +58,11 @@ jobs:
             'PLAYWRIGHT_ADMIN_USER=admin',
             `PLAYWRIGHT_ADMIN_PASSWORD=${resolvedPassword}`,
             `PLAYWRIGHT_NEW_PASSWORD=${resolvedPassword}`,
+            'PLAYWRIGHT_PARTICIPANT_USER=e2e_lifecycle_participant',
+            `PLAYWRIGHT_PARTICIPANT_PASSWORD=${resolvedPassword}`,
+            'PLAYWRIGHT_EXPERT_USER=e2e_lifecycle_expert',
+            `PLAYWRIGHT_EXPERT_PASSWORD=${resolvedPassword}`,
+            'PLAYWRIGHT_ROLE_MATRIX=true',
             'PLAYWRIGHT_BASE_URL=http://127.0.0.1:8000',
           ].join('\n') + '\n');
           NODE
@@ -96,9 +103,9 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm exec playwright install --with-deps chromium
 
-      - name: Run 390px and accessibility gates
+      - name: Run role, 390px, and accessibility gates
         working-directory: lumira-ui
-        run: pnpm exec playwright test --project=quality --project=mobile-390
+        run: pnpm exec playwright test --project=role-access --project=quality --project=mobile-390
 
       - name: Print lifecycle summary
         if: always()

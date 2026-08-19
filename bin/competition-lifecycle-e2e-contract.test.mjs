@@ -35,7 +35,9 @@ test('repository lifecycle E2E covers the complete competition business chain', 
 
 test('lifecycle fixture owns every prerequisite without embedding credentials', () => {
   assert.match(fixture, /LIFECYCLE_ADMIN_INITIAL_PASSWORD/);
+  assert.match(fixture, /LIFECYCLE_PARTICIPANT_INITIAL_PASSWORD/);
   assert.match(fixture, /LIFECYCLE_EXPERT_INITIAL_PASSWORD/);
+  assert.match(fixture, /roleCode=commonuser/);
   assert.match(fixture, /\/api\/v2\/iam\/users/);
   assert.match(fixture, /\/api\/v2\/workflows\/tasks\/\$\{task\.id\}\/approve/);
   assert.match(fixture, /builtin-mock-payment/);

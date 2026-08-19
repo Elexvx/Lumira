@@ -38,11 +38,20 @@ export default defineConfig({
     },
     {
       name: 'chromium',
-      testIgnore: [/.*\.setup\.ts/, /.*auth\.spec\.ts/, /.*\.mobile\.spec\.ts/, /.*\.quality\.spec\.ts/],
+      testIgnore: [/.*\.setup\.ts/, /.*auth\.spec\.ts/, /.*role-access\.spec\.ts/, /.*\.mobile\.spec\.ts/, /.*\.quality\.spec\.ts/],
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
         storageState: authFile,
+      },
+    },
+    {
+      name: 'role-access',
+      testMatch: /.*role-access\.spec\.ts/,
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: undefined,
       },
     },
     {
