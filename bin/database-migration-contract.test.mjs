@@ -615,6 +615,22 @@ test('payment transaction numbers and legacy competition order ownership remain 
   }
 });
 
+test('competition award batch rules migration is idempotent against the complete bootstrap', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608180001__add_competition_award_batch_rules.sql');
+
+  assert.match(
+    baseline,
+    /CREATE TABLE `competition_review_batch`[\s\S]*?`award_rules_json` longtext/,
+  );
+  assert.match(
+    migration,
+    /information_schema\.columns[\s\S]*?table_name = 'competition_review_batch'[\s\S]*?column_name = 'award_rules_json'/,
+  );
+  assert.match(migration, /PREPARE award_rules_json_statement FROM @award_rules_json_ddl/);
+  assert.match(migration, /DEALLOCATE PREPARE award_rules_json_statement/);
+});
+
 test('participant role settings migrate existing competitions without losing legacy team limits', () => {
   const baseline = read('lumira-backend/sql/saas.sql');
   const migration = read('deploy/migrations/V202608190002__add_competition_participant_role_settings.sql');
