@@ -260,6 +260,11 @@ test('database migrations require verified backup evidence for the configured da
   assert.match(deployScript, /--execute=SELECT @@server_uuid;/);
   assert.match(deployScript, /verifyBackupMatchesMigrationTarget\(backupEvidence, env\)/);
   assert.match(deployScript, /Backup server UUID .* does not match migration target UUID/);
+  assert.match(deployScript, /function isTransientMysqlReadinessError/);
+  assert.match(deployScript, /2002\|2003\|2005\|2013\|1049/);
+  assert.match(deployScript, /Migration target MySQL is not ready yet/);
+  assert.match(deployScript, /Atomics\.wait/);
+  assert.match(deployScript, /not retrying authentication, permission, or SQL failures/);
   assert.ok(
     deployScript.indexOf('createVerifiedDatabaseBackup({') < deployScript.indexOf("log('Database migrations completed before application startup.')"),
     'backup verification must happen before the migrator completes',

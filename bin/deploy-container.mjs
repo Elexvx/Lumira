@@ -1005,6 +1005,32 @@ function mysqlSslModeFromEnvironment(environment) {
   return 'PREFERRED';
 }
 
+function mysqlReadinessRetryConfig(environment) {
+  const attemptsText = String(environment.BACKUP_MYSQL_READY_ATTEMPTS || '12').trim();
+  const intervalSecondsText = String(environment.BACKUP_MYSQL_READY_INTERVAL_SECONDS || '5').trim();
+  if (!/^[1-9]\d*$/u.test(attemptsText)) {
+    throw new Error('BACKUP_MYSQL_READY_ATTEMPTS must be a positive integer.');
+  }
+  if (!/^\d+$/u.test(intervalSecondsText)) {
+    throw new Error('BACKUP_MYSQL_READY_INTERVAL_SECONDS must be a non-negative integer.');
+  }
+  return {
+    attempts: Number.parseInt(attemptsText, 10),
+    intervalMs: Number.parseInt(intervalSecondsText, 10) * 1_000,
+  };
+}
+
+function isTransientMysqlReadinessError(value) {
+  const errorText = String(value || '');
+  return /ERROR\s+(?:2002|2003|2005|2013|1049)\b/iu.test(errorText)
+    || /(?:can.t\s+connect|connection\s+refused|server\s+has\s+gone\s+away|is\s+restarting|is\s+not\s+running)/iu.test(errorText);
+}
+
+function waitSynchronously(milliseconds) {
+  if (milliseconds <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
 function verifyBackupMatchesMigrationTarget(evidence, environment) {
   const backupServerUuid = String(evidence?.serverUuid || '').trim().toLowerCase();
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(backupServerUuid)) {
@@ -1039,20 +1065,40 @@ function verifyBackupMatchesMigrationTarget(evidence, environment) {
   );
 
   const invocation = resolveDockerDirectInvocation(dockerArgs);
-  const result = spawnSync(invocation.command, invocation.args, {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    shell: false,
-    env: {
-      ...process.env,
-      MYSQL_PWD: password,
-      WSLENV: wslForwardedEnvironment(['MYSQL_PWD']),
-    },
-  });
-  if (result.status !== 0) {
-    if (result.stderr) process.stderr.write(result.stderr);
-    throw new Error('Unable to query the migration target MySQL server UUID; migrations were not started.');
+  const readiness = mysqlReadinessRetryConfig(environment);
+  let result;
+  for (let attempt = 1; attempt <= readiness.attempts; attempt += 1) {
+    result = spawnSync(invocation.command, invocation.args, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false,
+      env: {
+        ...process.env,
+        MYSQL_PWD: password,
+        WSLENV: wslForwardedEnvironment(['MYSQL_PWD']),
+      },
+    });
+    if (result.status === 0) break;
+
+    const failureDetails = String(result.stderr || result.error?.message || '').trim();
+    if (!isTransientMysqlReadinessError(failureDetails)) {
+      if (failureDetails) process.stderr.write(`${failureDetails}\n`);
+      throw new Error(
+        'Migration target MySQL identity query failed with a non-readiness error; '
+          + 'not retrying authentication, permission, or SQL failures.',
+      );
+    }
+    if (attempt < readiness.attempts) {
+      log(`Migration target MySQL is not ready yet (${attempt}/${readiness.attempts}); retrying.`);
+      waitSynchronously(readiness.intervalMs);
+    }
+  }
+  if (!result || result.status !== 0) {
+    if (result?.stderr) process.stderr.write(result.stderr);
+    throw new Error(
+      `Unable to query the migration target MySQL server UUID after ${readiness.attempts} attempts; migrations were not started.`,
+    );
   }
   const targetServerUuid = String(result.stdout || '').trim().split(/\r?\n/u).filter(Boolean).at(-1)?.toLowerCase() || '';
   if (targetServerUuid !== backupServerUuid) {
