@@ -75,6 +75,24 @@ async function api(token, pathname, options = {}) {
     : result.payload;
 }
 
+async function enabledDictValues(token, dictCode) {
+  const items = await api(
+    token,
+    `/api/v1/system/dict-items?dictCode=${encodeURIComponent(dictCode)}`,
+  );
+  const values = (Array.isArray(items) ? items : [])
+    .map((item) => String(item?.itemValue || '').trim())
+    .filter(Boolean);
+  if (values.length === 0) {
+    throw new Error(`Lifecycle fixture requires at least one enabled ${dictCode} dictionary item`);
+  }
+  return values;
+}
+
+function preferredDictValue(values, preferred) {
+  return values.includes(preferred) ? preferred : values[0];
+}
+
 async function encryptedPassword(value) {
   const keyResult = await api(undefined, '/api/v1/auth/login-encryption-key');
   if (!keyResult?.publicKey) throw new Error('Login encryption public key is missing');
@@ -257,16 +275,22 @@ let expertPage = await api(
 );
 let expert = (expertPage?.records || []).find((item) => item.name === expertName && item.userId === expertUserId);
 if (!expert) {
+  const [titleValues, positionValues, expertiseValues, tagValues] = await Promise.all([
+    enabledDictValues(expertToken, 'aiadc_expert_title'),
+    enabledDictValues(expertToken, 'aiadc_expert_position'),
+    enabledDictValues(expertToken, 'aiadc_expert_expertise'),
+    enabledDictValues(expertToken, 'aiadc_expert_tag'),
+  ]);
   expert = await api(expertToken, '/api/v2/experts', {
     method: 'POST',
     body: {
       name: expertName,
-      title: '高级评审',
+      title: preferredDictValue(titleValues, 'SENIOR_ENGINEER'),
       organization: 'Lumira E2E',
-      position: '评审专家',
-      expertise: '软件工程,产品设计',
+      position: preferredDictValue(positionValues, '技术负责人'),
+      expertise: preferredDictValue(expertiseValues, '人工智能'),
       email: 'e2e-expert@example.invalid',
-      tags: '评审专家',
+      tags: preferredDictValue(tagValues, '评审专家'),
       status: 'active',
       sort: 1,
     },

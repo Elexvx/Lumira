@@ -42,6 +42,11 @@ test('lifecycle fixture owns every prerequisite without embedding credentials', 
   assert.match(fixture, /\/api\/v2\/workflows\/tasks\/\$\{task\.id\}\/approve/);
   assert.match(fixture, /builtin-mock-payment/);
   assert.match(fixture, /\/api\/v1\/system\/smtp-settings/);
+  assert.match(fixture, /\/api\/v1\/system\/dict-items\?dictCode=/);
+  for (const dictCode of ['aiadc_expert_title', 'aiadc_expert_position', 'aiadc_expert_expertise', 'aiadc_expert_tag']) {
+    assert.match(fixture, new RegExp(dictCode));
+  }
+  assert.doesNotMatch(fixture, /高级评审|软件工程,产品设计/);
   assert.match(fixture, /only accepts a loopback base URL/);
   assert.doesNotMatch(fixture, /(?:Password|password)\s*=\s*['"][^'"]+['"]/);
 });
