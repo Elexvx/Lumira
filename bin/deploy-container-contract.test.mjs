@@ -703,7 +703,16 @@ test('api proxy keeps logical routes but rejects independent owner upstreams in 
 });
 
 test('api proxy routes control-plane jobs to the active control plane slot', () => {
-  for (const route of ['user-export', 'registration-export', 'reviews', 'competition']) {
+  for (const route of [
+    'outbox',
+    'online-session',
+    'event-catalog',
+    'export',
+    'user-export',
+    'registration-export',
+    'reviews',
+    'competition',
+  ]) {
     assert.match(
       apiNginx,
       new RegExp(`location \\^~ \\/internal\\/jobs\\/${route}[\\s\\S]*proxy_pass http:\\/\\/\\$system_upstream\\$request_uri`),
