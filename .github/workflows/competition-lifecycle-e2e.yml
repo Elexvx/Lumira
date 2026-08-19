@@ -100,6 +100,16 @@ jobs:
       - name: Run competition lifecycle fixture and E2E
         run: npm run test:competition-lifecycle
 
+      - name: Print lifecycle runtime diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          for container in lumira-api-proxy lumira-async lumira-server-blue; do
+            echo "::group::${container} recent logs"
+            docker logs --since 10m --tail 500 "${container}" 2>&1 || true
+            echo "::endgroup::"
+          done
+
       - name: Install browser quality dependencies
         working-directory: lumira-ui
         run: |

@@ -26,6 +26,10 @@ test('scheduled lifecycle E2E uses the canonical frontend toolchain and local ta
   assert.match(lifecycle, /BACKUP_ROOT:\s*\$\{\{ runner\.temp \}\}\/lumira-backups/);
   assert.match(lifecycle, /LIFECYCLE_BASE_URL=http:\/\/127\.0\.0\.1:8000/);
   assert.match(lifecycle, /test:competition-lifecycle/);
+  assert.match(lifecycle, /Print lifecycle runtime diagnostics[\s\S]*if: failure\(\)/);
+  for (const container of ['lumira-api-proxy', 'lumira-async', 'lumira-server-blue']) {
+    assert.match(lifecycle, new RegExp(container));
+  }
   assert.match(lifecycle, /PLAYWRIGHT_ROLE_MATRIX=true/);
   assert.match(lifecycle, /--project=role-access --project=quality --project=mobile-390/);
 });
