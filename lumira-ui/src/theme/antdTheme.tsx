@@ -66,7 +66,28 @@ const lightThemeToken: NonNullable<AntdThemeConfig>['token'] = {
   colorBgLayout: '#f5f5f5',
   colorTextBase: '#000000',
   colorText: 'rgba(0, 0, 0, 0.88)',
+  colorTextSecondary: '#595959',
+  colorTextTertiary: '#595959',
+  colorTextDescription: '#595959',
+  colorTextPlaceholder: '#595959',
   colorBorder: '#d9d9d9',
+  colorPrimary: '#0958d9',
+  colorPrimaryHover: '#003eb3',
+  colorPrimaryActive: '#002c8c',
+  colorPrimaryText: '#0958d9',
+  colorPrimaryTextHover: '#003eb3',
+  colorPrimaryTextActive: '#002c8c',
+  colorInfo: '#0958d9',
+  colorInfoText: '#0958d9',
+  colorInfoTextHover: '#003eb3',
+  colorInfoTextActive: '#002c8c',
+  colorLink: '#0958d9',
+  colorLinkHover: '#003eb3',
+  colorLinkActive: '#002c8c',
+  colorSuccess: '#237804',
+  colorSuccessBg: '#f6ffed',
+  colorSuccessText: '#237804',
+  green7: '#237804',
 };
 
 const darkThemeToken: NonNullable<AntdThemeConfig>['token'] = {
@@ -125,9 +146,9 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
     return {
       cssVar,
       token: {
+        ...baseThemeToken,
         ...lightThemeToken,
         ...globalSpacingToken,
-        ...baseThemeToken,
       },
       algorithm: [antdTheme.defaultAlgorithm],
     };
