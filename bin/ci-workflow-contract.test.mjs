@@ -28,11 +28,18 @@ test('scheduled lifecycle E2E uses the canonical frontend toolchain and local ta
   assert.match(lifecycle, /PLAYWRIGHT_BASE_URL=http:\/\/127\.0\.0\.1:8001/);
   assert.match(
     lifecycle,
+    /Rebuild an isolated local platform[\s\S]*CORS_ALLOWED_ORIGIN_PATTERNS:\s*http:\/\/127\.0\.0\.1:8001[\s\S]*reset-e2e-platform\.mjs/,
+  );
+  assert.match(
+    lifecycle,
     /Start isolated browser frontend[\s\S]*deploy-container\.mjs --rebuild --local-mysql --services lumira-ui --skip-migrations/,
   );
   assert.match(lifecycle, /curl --fail --silent http:\/\/127\.0\.0\.1:8001\/user\/login/);
   assert.match(lifecycle, /test:competition-lifecycle/);
-  assert.match(lifecycle, /Print lifecycle runtime diagnostics[\s\S]*if: failure\(\)/);
+  assert.match(
+    lifecycle,
+    /Run role, 390px, and accessibility gates[\s\S]*Print lifecycle runtime diagnostics[\s\S]*if: failure\(\)/,
+  );
   for (const container of ['lumira-ui', 'lumira-api-proxy', 'lumira-async', 'lumira-server-blue']) {
     assert.match(lifecycle, new RegExp(container));
   }

@@ -76,6 +76,7 @@ jobs:
           PLAYWRIGHT_ALLOW_DB_RESET: 'true'
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:8000
           DEPLOY_CHECK_BASE_URL: http://127.0.0.1:8000
+          CORS_ALLOWED_ORIGIN_PATTERNS: http://127.0.0.1:8001
         run: node bin/reset-e2e-platform.mjs
 
       - name: Start isolated browser frontend
@@ -115,16 +116,6 @@ jobs:
       - name: Run competition lifecycle fixture and E2E
         run: npm run test:competition-lifecycle
 
-      - name: Print lifecycle runtime diagnostics
-        if: failure()
-        shell: bash
-        run: |
-          for container in lumira-ui lumira-api-proxy lumira-async lumira-server-blue; do
-            echo "::group::${container} recent logs"
-            docker logs --since 10m --tail 500 "${container}" 2>&1 || true
-            echo "::endgroup::"
-          done
-
       - name: Install browser quality dependencies
         working-directory: lumira-ui
         run: |
@@ -134,6 +125,16 @@ jobs:
       - name: Run role, 390px, and accessibility gates
         working-directory: lumira-ui
         run: pnpm exec playwright test --project=role-access --project=quality --project=mobile-390
+
+      - name: Print lifecycle runtime diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          for container in lumira-ui lumira-api-proxy lumira-async lumira-server-blue; do
+            echo "::group::${container} recent logs"
+            docker logs --since 10m --tail 500 "${container}" 2>&1 || true
+            echo "::endgroup::"
+          done
 
       - name: Print lifecycle summary
         if: always()
