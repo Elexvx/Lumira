@@ -373,6 +373,27 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void listPublishedCompetitionsAllowsExpertViewPermission() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        jdbcTemplate.enqueue(List.of(competition("published")));
+
+        PageResponse<CompetitionVO.Competition> page = service.listCompetitions(
+                user("expert:view"),
+                null,
+                null,
+                "published",
+                null,
+                null,
+                1,
+                10
+        );
+
+        assertThat(page.getRecords()).hasSize(1);
+        assertThat(page.getRecords().get(0).getStatus()).isEqualTo("published");
+    }
+
+    @Test
     void getCompetitionSettingsShouldRequireViewPermissionBeforeLookup() {
         CompetitionSqlOperations jdbcTemplate = mock(CompetitionSqlOperations.class);
         CompetitionManagementAppService service = service(jdbcTemplate);
@@ -416,6 +437,28 @@ class CompetitionManagementAppServiceTest {
                 .extracting(CompetitionVO.ConfigItem::getItemKey)
                 .contains("teamName", "avatarUrl", "memberName", "title", "imageUrl", "intellectualPropertyType", "distributionRegions")
                 .doesNotContain("employeeNo", "departmentName", "role", "remark");
+    }
+
+    @Test
+    void getCompetitionSettingsAllowsExpertViewPermissionForPublishedCompetition() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        jdbcTemplate.enqueue(
+                List.of(competition("published")),
+                List.of(configSet()),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+
+        CompetitionVO.Settings settings = service.getCompetitionSettings(user("expert:view"), "competition-uuid");
+
+        assertThat(settings.getCompetition()).isNotNull();
+        assertThat(settings.getCompetition().getStatus()).isEqualTo("published");
     }
 
     @Test

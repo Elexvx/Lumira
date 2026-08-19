@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  initialReviewRosterExpertIds,
+  shouldLoadReviewAwardGrants,
   shouldReloadReviewPlans,
   shouldShowGlobalExpertTasks,
   shouldShowReviewAdminWorkbench,
@@ -36,5 +38,17 @@ describe('competition review workspace behavior', () => {
     expect(shouldShowReviewAdminWorkbench(true, true)).toBe(true);
     expect(shouldShowReviewAdminWorkbench(true, false)).toBe(false);
     expect(shouldShowReviewAdminWorkbench(false, true)).toBe(false);
+  });
+
+  it('does not implicitly select every eligible expert for an empty batch roster', () => {
+    expect(initialReviewRosterExpertIds([])).toEqual([]);
+    expect(initialReviewRosterExpertIds([{ expertId: 73 }, { expertId: 81 }])).toEqual([73, 81]);
+  });
+
+  it('loads certificate award grants only after the review batch is published', () => {
+    expect(shouldLoadReviewAwardGrants(true, 'READY')).toBe(false);
+    expect(shouldLoadReviewAwardGrants(true, 'IN_REVIEW')).toBe(false);
+    expect(shouldLoadReviewAwardGrants(true, 'PUBLISHED')).toBe(true);
+    expect(shouldLoadReviewAwardGrants(false, 'PUBLISHED')).toBe(false);
   });
 });

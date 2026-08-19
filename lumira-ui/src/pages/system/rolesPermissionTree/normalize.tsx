@@ -64,6 +64,17 @@ const CATALOG_LABEL_BY_RAW_NAME = new Map<string, string>([
   ['个人中心', 'nav.user.personalCenter'],
 ]);
 
+const REGISTRATION_ACTION_PERMISSIONS = [
+  { permissionKey: 'aiadc:registration:create', permissionName: '创建赛事报名' },
+  { permissionKey: 'aiadc:registration:update', permissionName: '编辑赛事报名' },
+  { permissionKey: 'aiadc:registration:pay', permissionName: '支付报名费用' },
+  { permissionKey: 'aiadc:material:view', permissionName: '查看报名材料' },
+  { permissionKey: 'aiadc:material:submit', permissionName: '提交报名材料' },
+  { permissionKey: 'aiadc:stage:view', permissionName: '查看赛事阶段' },
+  { permissionKey: 'aiadc:project:view', permissionName: 'View projects for registration' },
+  { permissionKey: 'aiadc:project:create', permissionName: 'Create projects for registration' },
+];
+
 const resolveCatalogMessageKey = (node: PermissionTreeRecord) => {
   const pageKeyMessageKey = node.pageKey ? CATALOG_LABEL_BY_PAGE_KEY.get(node.pageKey) : undefined;
   if (pageKeyMessageKey) {
@@ -90,13 +101,7 @@ const INFERRED_PAGE_PERMISSIONS = new Map<
     '/competitions/register',
     {
       permissionKey: 'aiadc:registration:view',
-      actionPermissions: [
-        { permissionKey: 'aiadc:registration:create', permissionName: '创建赛事报名' },
-        { permissionKey: 'aiadc:registration:update', permissionName: '编辑赛事报名' },
-        { permissionKey: 'aiadc:registration:pay', permissionName: '支付报名费用' },
-        { permissionKey: 'aiadc:project:view', permissionName: 'View projects for registration' },
-        { permissionKey: 'aiadc:project:create', permissionName: 'Create projects for registration' },
-      ],
+      actionPermissions: REGISTRATION_ACTION_PERMISSIONS,
     },
   ],
   [
@@ -219,13 +224,7 @@ export const normalizePermissionTree = (
         permissionGroup: 'aiadc',
         selectable: true,
         routeMatched: true,
-        actionPermissions: [
-          { permissionKey: 'aiadc:registration:create', permissionName: '创建赛事报名' },
-          { permissionKey: 'aiadc:registration:update', permissionName: '编辑赛事报名' },
-          { permissionKey: 'aiadc:registration:pay', permissionName: '支付报名费用' },
-          { permissionKey: 'aiadc:project:view', permissionName: 'View projects for registration' },
-          { permissionKey: 'aiadc:project:create', permissionName: 'Create projects for registration' },
-        ],
+        actionPermissions: REGISTRATION_ACTION_PERMISSIONS,
       });
     }
 

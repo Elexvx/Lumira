@@ -39,6 +39,8 @@ public class PaymentOutboxService {
     private static final String STATUS_DELIVERED = "DELIVERED";
     private static final String STATUS_FAILED = "FAILED";
     private static final String STATUS_DEAD_LETTER = "DEAD_LETTER";
+    private static final String PAID_ORDER_EVENT_TYPE = "PAYMENT_ORDER_PAID";
+    private static final String PAID_ORDER_EVENT_KEY_PREFIX = PAID_ORDER_EVENT_TYPE + ":payment.order:";
     private static final String WORKER_ID = "payment-outbox@" + ManagementFactory.getRuntimeMXBean().getName();
     private static final Pattern EVENT_TYPE_PATTERN = Pattern.compile("^[A-Za-z][A-Za-z0-9_.-]{1,127}$");
     private static final Pattern EVENT_KEY_PATTERN = Pattern.compile("^[A-Za-z0-9._:@/-]{1,128}$");
@@ -232,7 +234,12 @@ public class PaymentOutboxService {
 
     public boolean replayLatestPaidOrderEvent(String orderNo, PaymentOutboxDispatcher dispatcher) {
         String normalizedOrderNo = requireBoundedText(orderNo, "orderNo", MAX_EVENT_KEY_LENGTH);
-        PaymentOutboxRow row = findLatestByEvent("PAYMENT_ORDER_PAID", normalizedOrderNo);
+        String eventKey = requireBoundedText(
+                PAID_ORDER_EVENT_KEY_PREFIX + normalizedOrderNo,
+                "eventKey",
+                MAX_EVENT_KEY_LENGTH
+        );
+        PaymentOutboxRow row = findLatestByEvent(PAID_ORDER_EVENT_TYPE, eventKey);
         return row != null && replay(row.getId(), dispatcher);
     }
 

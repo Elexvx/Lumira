@@ -22,3 +22,12 @@ export const shouldShowReviewAdminWorkbench = (
   canManageReview: boolean,
   embeddedInCompetitionWorkspace: boolean,
 ) => canManageReview && embeddedInCompetitionWorkspace;
+
+export const initialReviewRosterExpertIds = (
+  roster: Array<{ expertId: number }>,
+) => roster.map((item) => item.expertId);
+
+export const shouldLoadReviewAwardGrants = (
+  canAccessAwards: boolean,
+  batchStatus?: string,
+) => canAccessAwards && batchStatus === 'PUBLISHED';

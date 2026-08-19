@@ -909,10 +909,8 @@ export const useAuthenticatorManagement = ({
     onAuthenticatorSaved: handleAuthenticatorSaved,
   });
   const configuredLoginModeOrder = useMemo(
-    () =>
-      verificationSettingsData?.loginModeOrder ??
-      (verificationForm.getFieldValue('loginModeOrder') as string[] | undefined),
-    [verificationForm, verificationSettingsData?.loginModeOrder],
+    () => verificationSettingsData?.loginModeOrder ?? DEFAULT_LOGIN_MODE_ORDER,
+    [verificationSettingsData?.loginModeOrder],
   );
   const authenticatorRows = useMemo<AuthenticatorRecord[]>(
     () =>

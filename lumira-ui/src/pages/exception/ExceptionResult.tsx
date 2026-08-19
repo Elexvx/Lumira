@@ -12,7 +12,7 @@ interface ExceptionResultProps {
 
 const ExceptionResult = ({ status, title, subTitle, extra }: ExceptionResultProps) => (
   <div className="saas-exception-page-shell">
-    <Card className="saas-exception-card" bordered={false}>
+    <Card className="saas-exception-card" variant="borderless">
       <Result
         className="saas-exception-result"
         status={status}

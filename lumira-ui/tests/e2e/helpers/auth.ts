@@ -51,6 +51,30 @@ const fillCaptchaIfPresent = async (page: Page) => {
   await captchaInput.fill(captchaCode);
 };
 
+const waitForApiReady = async (page: Page) => {
+  await expect
+    .poll(
+      async () => {
+        try {
+          const response = await page.request.get('/api/health', { timeout: 5_000 });
+          if (!response.ok()) {
+            return `HTTP ${response.status()}`;
+          }
+          const payload = (await response.json()) as { data?: { status?: string }; status?: string };
+          return payload.data?.status || payload.status || 'UNKNOWN';
+        } catch {
+          return 'UNAVAILABLE';
+        }
+      },
+      {
+        message: 'Wait for the application API proxy and backend to become ready before logging in.',
+        timeout: 60_000,
+        intervals: [250, 500, 1_000, 2_000],
+      },
+    )
+    .toBe('UP');
+};
+
 const waitForLoginOutcome = async (page: Page): Promise<LoginOutcome> => {
   const forcedPasswordInput = page.getByTestId('forced-password-new-input');
   return Promise.race([
@@ -60,6 +84,7 @@ const waitForLoginOutcome = async (page: Page): Promise<LoginOutcome> => {
 };
 
 const submitPasswordLogin = async (page: Page, username: string, password: string): Promise<LoginOutcome> => {
+  await waitForApiReady(page);
   await page.goto('/user/login');
   await ensurePasswordMode(page);
   await expect(page.getByTestId('login-account-input')).toBeVisible();

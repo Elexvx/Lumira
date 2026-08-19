@@ -6,6 +6,7 @@ import { useActionPermission } from '@/features/permissions/useActionPermission'
 import { useResponsive } from '@/hooks/useResponsive';
 import { DeleteOutlined, DownOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Form, Popconfirm, theme } from 'antd';
+import type { FormInstance } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthenticatorManagement } from './components/verification/hooks/useAuthenticatorManagement';
 import { DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
@@ -149,6 +150,35 @@ const resolveDrawerTitle = (mode: 'basic' | 'totp' | 'sms' | 'email' | 'wechat' 
   }
 };
 
+type VerificationDrawerMode = 'basic' | 'totp' | 'sms' | 'email' | 'wechat' | 'passkey' | null;
+
+const DormantVerificationForms = ({
+  mode,
+  verificationForm,
+  smsSettingsForm,
+  smtpSettingsForm,
+  smtpTestForm,
+  wechatSettingsForm,
+  passkeySettingsForm,
+}: {
+  mode: VerificationDrawerMode;
+  verificationForm: FormInstance<VerificationSettings>;
+  smsSettingsForm: FormInstance<SmsVerificationSettings>;
+  smtpSettingsForm: FormInstance<SmtpSettings>;
+  smtpTestForm: FormInstance<SmtpTestPayload>;
+  wechatSettingsForm: FormInstance<WechatLoginSettings>;
+  passkeySettingsForm: FormInstance<PasskeySettings & { allowedOriginsText?: string }>;
+}) => (
+  <>
+    {mode !== 'totp' ? <Form form={verificationForm} component={false} /> : null}
+    {mode !== 'sms' ? <Form form={smsSettingsForm} component={false} /> : null}
+    {mode !== 'email' ? <Form form={smtpSettingsForm} component={false} /> : null}
+    {mode !== 'email' ? <Form form={smtpTestForm} component={false} /> : null}
+    {mode !== 'wechat' ? <Form form={wechatSettingsForm} component={false} /> : null}
+    {mode !== 'passkey' ? <Form form={passkeySettingsForm} component={false} /> : null}
+  </>
+);
+
 const SystemVerificationPage = () => {
   const {
     tokenColorSuccess,
@@ -200,6 +230,7 @@ const SystemVerificationPage = () => {
     footerActions: drawerPack.drawerProps.resolveDrawerFooterActions(),
     children: drawerPack.drawerProps.configDrawerMode ? drawerPack.drawerProps.renderConfigDrawerContent() : null,
   };
+  const drawerMode = drawerPack.drawerProps.configDrawerMode;
 
   const verificationTableProps = {
     rowKey: 'key' as const,
@@ -257,6 +288,15 @@ const SystemVerificationPage = () => {
           ]}
         />
       </ManagementPageBody>
+      <DormantVerificationForms
+        mode={drawerMode}
+        verificationForm={verificationForm}
+        smsSettingsForm={smsSettingsForm}
+        smtpSettingsForm={smtpSettingsForm}
+        smtpTestForm={smtpTestForm}
+        wechatSettingsForm={wechatSettingsForm}
+        passkeySettingsForm={passkeySettingsForm}
+      />
       <ManagementDrawer {...drawerProps} />
     </ManagementPage>
   );

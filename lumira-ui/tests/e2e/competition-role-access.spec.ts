@@ -17,10 +17,15 @@ const expertPassword = process.env.PLAYWRIGHT_EXPERT_PASSWORD || '';
 const deniedSurfacePattern = /403|Forbidden|无权限|没有访问该页面的权限/i;
 const brokenSurfacePattern = /500|Internal Server Error|系统异常|TypeError:|ReferenceError:/i;
 
-const sidebarLink = (page: Page, pathname: string) => page.locator([
-  `.ant-layout-sider a[href="${pathname}"]`,
-  `.ant-pro-sider a[href="${pathname}"]`,
-].join(', '));
+const sidebarItemNames: Record<string, RegExp> = {
+  '/competitions/register': /赛事报名|Competition registration/i,
+  '/expert-review/reviews': /我的评审|My reviews/i,
+  '/settings/payment': /支付设置|Payment settings/i,
+};
+
+const sidebarItem = (page: Page, pathname: keyof typeof sidebarItemNames) => page
+  .getByRole('complementary')
+  .getByRole('menuitem', { name: sidebarItemNames[pathname] });
 
 const attachSurfaceMonitor = (page: Page) => {
   const pageErrors: string[] = [];
@@ -108,7 +113,7 @@ test.describe('competition role access matrix', () => {
       const assertHealthy = attachSurfaceMonitor(page);
       await expectAllowed(page, '/competitions/register');
       await expect(page.getByRole('button', { name: /新增报名|New registration/i })).toBeVisible();
-      await expect(sidebarLink(page, '/competitions/register')).toBeVisible();
+      await expect(sidebarItem(page, '/competitions/register')).toBeVisible();
       for (const pathname of [
         '/competitions/management',
         '/competitions/create',
@@ -130,7 +135,7 @@ test.describe('competition role access matrix', () => {
       const assertHealthy = attachSurfaceMonitor(page);
       await expectAllowed(page, '/expert-review/reviews');
       await expect(page.getByText(/我的评审|My reviews/i).first()).toBeVisible();
-      await expect(sidebarLink(page, '/expert-review/reviews')).toBeVisible();
+      await expect(sidebarItem(page, '/expert-review/reviews')).toBeVisible();
       await expect(page.getByRole('button', { name: /新增赛事|新增报名|Create competition|New registration/i })).toHaveCount(0);
       for (const pathname of [
         '/competitions/register',
@@ -153,21 +158,21 @@ test.describe('competition role access matrix', () => {
       const assertHealthy = attachSurfaceMonitor(page);
 
       await expectAllowed(page, '/settings/payment');
-      await expect(sidebarLink(page, '/settings/payment')).toBeVisible();
+      await expect(sidebarItem(page, '/settings/payment')).toBeVisible();
       await logout(page);
 
       await loginWithPassword(page, participantUser, participantPassword);
       await expectAllowed(page, '/competitions/register');
-      await expect(sidebarLink(page, '/competitions/register')).toBeVisible();
-      await expect(sidebarLink(page, '/settings/payment')).toHaveCount(0);
-      await expect(sidebarLink(page, '/expert-review/reviews')).toHaveCount(0);
+      await expect(sidebarItem(page, '/competitions/register')).toBeVisible();
+      await expect(sidebarItem(page, '/settings/payment')).toHaveCount(0);
+      await expect(sidebarItem(page, '/expert-review/reviews')).toHaveCount(0);
       await logout(page);
 
       await loginWithPassword(page, expertUser, expertPassword);
       await expectAllowed(page, '/expert-review/reviews');
-      await expect(sidebarLink(page, '/expert-review/reviews')).toBeVisible();
-      await expect(sidebarLink(page, '/competitions/register')).toHaveCount(0);
-      await expect(sidebarLink(page, '/settings/payment')).toHaveCount(0);
+      await expect(sidebarItem(page, '/expert-review/reviews')).toBeVisible();
+      await expect(sidebarItem(page, '/competitions/register')).toHaveCount(0);
+      await expect(sidebarItem(page, '/settings/payment')).toHaveCount(0);
       await logout(page);
 
       await loginWithPassword(page, adminUser, adminPassword);

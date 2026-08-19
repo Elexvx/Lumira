@@ -121,7 +121,11 @@ import {
   canMutateCompetitionWorkspace,
   isCompetitionWorkspaceReadOnly,
 } from '@/features/competition-workspace/competitionWorkspaceReadOnly';
-import { shouldReloadReviewPlans } from './reviewWorkspaceBehavior';
+import {
+  initialReviewRosterExpertIds,
+  shouldLoadReviewAwardGrants,
+  shouldReloadReviewPlans,
+} from './reviewWorkspaceBehavior';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
 
@@ -506,12 +510,15 @@ const ReviewAdminWorkbench = () => {
       setAppeals([]);
       return;
     }
+    const batchStatus = batches.find((item) => item.id === nextBatchId)?.status;
     const [nextCandidates, nextAssignments, nextRoster, nextAggregates, nextAwardGrants, nextAppeals] = await Promise.all([
       canAccessAssignments ? reviewApi.listCandidates(nextBatchId) : Promise.resolve([]),
       canAccessAssignments ? reviewApi.listAssignments(nextBatchId) : Promise.resolve([]),
       canAccessRoster ? reviewApi.listRoster(nextBatchId) : Promise.resolve([]),
       canAccessAggregates ? reviewApi.listAggregates(nextBatchId) : Promise.resolve([]),
-      canAccessAwards ? reviewApi.listAwardGrants(nextBatchId) : Promise.resolve([]),
+      shouldLoadReviewAwardGrants(canAccessAwards, batchStatus)
+        ? reviewApi.listAwardGrants(nextBatchId)
+        : Promise.resolve([]),
       canAccessAppeals ? reviewApi.listAppeals({ batchId: nextBatchId }) : Promise.resolve([]),
     ]);
     setCandidates(nextCandidates || []);
@@ -521,7 +528,7 @@ const ReviewAdminWorkbench = () => {
     setAggregates(nextAggregates || []);
     setAwardGrants(nextAwardGrants || []);
     setAppeals(nextAppeals || []);
-  }, [canAccessAggregates, canAccessAppeals, canAccessAssignments, canAccessAwards, canAccessRoster, reviewApi]);
+  }, [batches, canAccessAggregates, canAccessAppeals, canAccessAssignments, canAccessAwards, canAccessRoster, reviewApi]);
 
   const refreshWorkbench = useCallback(async () => {
     setLoading(true);
@@ -1236,9 +1243,7 @@ const ReviewAdminWorkbench = () => {
                 <Button
                   icon={<TeamOutlined />}
                   onClick={() => {
-                    setSelectedRosterExpertIds(
-                      roster.length ? roster.map((item) => item.expertId) : eligibleExperts.map((item) => item.id),
-                    );
+                    setSelectedRosterExpertIds(initialReviewRosterExpertIds(roster));
                     setRosterModalOpen(true);
                   }}
                 >
@@ -1619,6 +1624,13 @@ const ReviewAdminWorkbench = () => {
           />
         </Card>
       )}
+
+      {!planModalOpen ? <Form form={planForm} component={false} /> : null}
+      {!batchModalOpen ? <Form form={batchForm} component={false} /> : null}
+      {!assignmentModalOpen ? <Form form={assignmentForm} component={false} /> : null}
+      {!(selectedBatch && workspaceUuid && canAccessAwards && selectedBatch.status === 'PUBLISHED')
+        ? <Form form={awardRuleForm} component={false} />
+        : null}
 
       <Modal
         title="新建评审方案"

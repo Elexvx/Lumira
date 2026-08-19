@@ -51,6 +51,7 @@ public class CompetitionManagementAppService {
     private static final String COMPETITION_VIEW = "aiadc:competition:view";
     private static final String REGISTRATION_VIEW = "aiadc:registration:view";
     private static final String REGISTRATION_CREATE = "aiadc:registration:create";
+    private static final String EXPERT_VIEW = "expert:view";
     private static final String COMPETITION_CREATE = "aiadc:competition:create";
     private static final String COMPETITION_UPDATE = "aiadc:competition:update";
     private static final String COMPETITION_DELETE = "aiadc:competition:delete";
@@ -223,7 +224,7 @@ public class CompetitionManagementAppService {
         requirePositiveId(id, "Competition id is required");
         requireUserId(currentUser);
         boolean canViewCompetition = hasPermission(currentUser, COMPETITION_VIEW);
-        boolean canAccessPublishedCompetition = hasPermission(currentUser, REGISTRATION_VIEW) || hasPermission(currentUser, REGISTRATION_CREATE);
+        boolean canAccessPublishedCompetition = canAccessPublishedCompetition(currentUser);
         if (!canViewCompetition && !canAccessPublishedCompetition) {
             throw biz(ErrorCode.FORBIDDEN, "Missing permission: " + COMPETITION_VIEW);
         }
@@ -1663,7 +1664,7 @@ public class CompetitionManagementAppService {
             return;
         }
         boolean publishedOnly = "published".equalsIgnoreCase(status);
-        if (publishedOnly && (hasPermission(currentUser, REGISTRATION_VIEW) || hasPermission(currentUser, REGISTRATION_CREATE))) {
+        if (publishedOnly && canAccessPublishedCompetition(currentUser)) {
             return;
         }
         throw biz(ErrorCode.FORBIDDEN, "Missing permission: " + COMPETITION_VIEW);
@@ -1674,10 +1675,16 @@ public class CompetitionManagementAppService {
         if (hasPermission(currentUser, COMPETITION_VIEW)) {
             return requireCompetitionByUuid(competitionUuid);
         }
-        if (hasPermission(currentUser, REGISTRATION_VIEW) || hasPermission(currentUser, REGISTRATION_CREATE)) {
+        if (canAccessPublishedCompetition(currentUser)) {
             return requirePublishedCompetitionByUuid(competitionUuid);
         }
         throw biz(ErrorCode.FORBIDDEN, "Missing permission: " + COMPETITION_VIEW);
+    }
+
+    private boolean canAccessPublishedCompetition(CurrentUser currentUser) {
+        return hasPermission(currentUser, REGISTRATION_VIEW)
+                || hasPermission(currentUser, REGISTRATION_CREATE)
+                || hasPermission(currentUser, EXPERT_VIEW);
     }
 
     private boolean hasPermission(CurrentUser currentUser, String permissionKey) {

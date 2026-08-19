@@ -38,6 +38,7 @@ public class CompetitionV2Controller {
     private static final String VIEW = "aiadc:competition:view";
     private static final String REGISTRATION_VIEW = "aiadc:registration:view";
     private static final String REGISTRATION_CREATE = "aiadc:registration:create";
+    private static final String EXPERT_VIEW = "expert:view";
     private static final String CREATE = "aiadc:competition:create";
     private static final String UPDATE = "aiadc:competition:update";
     private static final String DELETE = "aiadc:competition:delete";
@@ -198,6 +199,7 @@ public class CompetitionV2Controller {
         if (publishedOnly && (
                 permissionGuard.hasPermission(currentUser, REGISTRATION_VIEW)
                         || permissionGuard.hasPermission(currentUser, REGISTRATION_CREATE)
+                        || permissionGuard.hasPermission(currentUser, EXPERT_VIEW)
         )) {
             return currentUser;
         }

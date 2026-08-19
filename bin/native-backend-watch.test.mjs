@@ -93,6 +93,16 @@ test('native full runtime routes async and owner jobs through the local control 
   assert.match(source, /SAAS_JOB_CONTROL_PLANE_BASE_URL:\s*backendUrl/);
   assert.match(source, /SAAS_JOB_ASYNC_RUNTIME_BASE_URL:\s*asyncUrl/);
   assert.match(source, /SAAS_JOB_BACKEND_BASE_URL:\s*asyncUrl/);
+  assert.match(
+    source,
+    /SAAS_EVENT_OUTBOX_RELAY_ENABLED:[\s\S]*?\?\? \(full \? 'true' : 'false'\)/,
+    'native full mode must enable owner outbox relay unless the operator explicitly overrides it',
+  );
+  assert.match(
+    source,
+    /SAAS_EVENT_OUTBOX_DISPATCHER:[\s\S]*?\?\? \(full \? 'redis-stream' : 'logging'\)/,
+    'native full mode must publish owner outbox events to Redis Streams',
+  );
   for (const variable of [
     'SAAS_JOB_SYSTEM_SERVICE_BASE_URL',
     'SAAS_JOB_MESSAGE_SERVICE_BASE_URL',

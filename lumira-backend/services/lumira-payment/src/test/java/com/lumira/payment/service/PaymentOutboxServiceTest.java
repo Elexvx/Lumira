@@ -535,6 +535,35 @@ class PaymentOutboxServiceTest {
     }
 
     @Test
+    void replayLatestPaidOrderEventUsesCanonicalDomainEventKey() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxRow delivered = outboxRow(12L, "DELIVERED", 0);
+        delivered.setEventType("PAYMENT_ORDER_PAID");
+        delivered.setEventKey("PAYMENT_ORDER_PAID:payment.order:REG-1205");
+        doReturn(delivered).when(jdbcTemplate).queryForObject(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq("payment"),
+                eq("PAYMENT_ORDER_PAID"),
+                eq("PAYMENT_ORDER_PAID:payment.order:REG-1205")
+        );
+        doReturn(delivered).when(jdbcTemplate).queryForObject(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq(12L),
+                eq("payment")
+        );
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxService service = service(jdbcTemplate);
+
+        boolean replayed = service.replayLatestPaidOrderEvent("REG-1205", dispatcher);
+
+        assertThat(replayed).isTrue();
+        verify(dispatcher).dispatch(delivered);
+    }
+
+    @Test
     void replayShouldNotDispatchWhenResetBoundaryMisses() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentOutboxRow deadLetter = outboxRow(12L, "DEAD_LETTER", 8);

@@ -35,6 +35,7 @@ import type {
 } from '@/services/review/types';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
+import { mergeReviewInvitationStatus } from './reviewInvitationState';
 
 type ScoreFormValues = {
   scores: Record<string, number>;
@@ -81,7 +82,7 @@ const ReviewInvitationPage = () => {
     if (!token) return;
     try {
       const status = await getReviewInvitationStatus(token);
-      setInvitation(status);
+      setInvitation((current) => mergeReviewInvitationStatus(current, status));
       if (status.checkinStatus === 'CHECKED_IN') {
         setTasks((await listReviewInvitationAssignments(token)) || []);
       }
@@ -221,7 +222,7 @@ const ReviewInvitationPage = () => {
     <div style={{ maxWidth: 1180, margin: '0 auto', padding: 24 }}>
       <Card title="专家评审签到" loading={loading}>
         {invitation ? (
-          <Space direction="vertical" size={18} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={18} style={{ width: '100%' }}>
             <Typography.Title level={3} style={{ margin: 0 }}>{invitation.batchName}</Typography.Title>
             <Typography.Text>专家：{invitation.expertName}</Typography.Text>
             {invitation.checkinStatus !== 'CHECKED_IN' ? (
@@ -273,6 +274,8 @@ const ReviewInvitationPage = () => {
           />
         </Card>
       ) : null}
+
+      {!activeTask ? <Form form={scoreForm} component={false} /> : null}
 
       <Modal
         title={`评审评分 · ${activeTask?.blindCode || `候选 #${activeTask?.candidateId || ''}`}`}

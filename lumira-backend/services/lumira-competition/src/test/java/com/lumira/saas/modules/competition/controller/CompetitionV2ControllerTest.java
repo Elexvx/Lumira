@@ -13,9 +13,32 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.saas.modules.competition.app.CompetitionManagementAppService;
+import com.lumira.common.vo.PageResponse;
 import org.junit.jupiter.api.Test;
 
 class CompetitionV2ControllerTest {
+
+    @Test
+    void listPublishedCompetitionsAllowsExpertViewPermission() {
+        CompetitionManagementAppService appService = mock(CompetitionManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        CurrentUser currentUser = trustedCurrentUser();
+        currentUser.setPermissions(java.util.Set.of("expert:view"));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(permissionGuard.hasPermission(currentUser, "expert:view")).thenReturn(true);
+        when(appService.listCompetitions(currentUser, null, null, "published", null, null, 1, 10))
+                .thenReturn(new PageResponse<>());
+        CompetitionV2Controller controller = new CompetitionV2Controller(
+                appService,
+                securityContextFacade,
+                permissionGuard
+        );
+
+        controller.competitions(null, null, "published", null, null, 1, 10);
+
+        verify(appService).listCompetitions(currentUser, null, null, "published", null, null, 1, 10);
+    }
 
     @Test
     void competitionAllowsRegistrationCreatePermissionForPublishedCompetitionLookup() {

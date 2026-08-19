@@ -214,6 +214,8 @@ const ExpertTaskWorkbench = () => {
         ]}
       />
 
+      {!activeTask ? <Form form={scoreForm} component={false} /> : null}
+
       <Modal
         title={`评审评分 · ${activeTask?.blindCode || `候选 #${activeTask?.candidateId || ''}`}`}
         width={900}

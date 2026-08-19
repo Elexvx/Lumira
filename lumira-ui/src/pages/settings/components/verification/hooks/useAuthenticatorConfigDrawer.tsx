@@ -205,7 +205,7 @@ const BasicDrawerContent = () => {
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
-    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Typography.Paragraph style={{ marginBottom: 0 }}>
         {t('ui.settings.verification.useauthenticatorconfig.passwordComplexityVerificationCodesAndLoginDefenseThresholds')}
       </Typography.Paragraph>
@@ -227,7 +227,7 @@ const TotpDrawerContent = ({
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
-    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...verificationFormProps}>
         <Form.Item
           name="enabled"
@@ -259,7 +259,7 @@ const SmsDrawerContent = ({
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
-    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...smsFormProps}>
         <Form.Item
           name="provider"
@@ -316,7 +316,7 @@ const SmsDrawerContent = ({
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
-    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Card title={t('ui.settings.verification.useauthenticatorconfig.emailAndSmtp')} loading={verificationLoading}>
         <div style={{ opacity: 1, transition: 'opacity 0.2s ease' }}>
       <Form {...smtpFormProps}>
@@ -411,7 +411,7 @@ const WechatDrawerContent = ({
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
-    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...wechatFormProps}>
         <Form.Item name="enabled" label={t('ui.settings.verification.useauthenticatorconfig.enableWechatLogin')} valuePropName="checked">
           <Switch disabled={!canManageSettings} />
@@ -462,7 +462,7 @@ const WechatDrawerContent = ({
   const currentOrigin = resolveCurrentPasskeyOrigin();
 
   return (
-    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...passkeyFormProps}>
         <Form.Item
           name="passwordlessEnabled"
