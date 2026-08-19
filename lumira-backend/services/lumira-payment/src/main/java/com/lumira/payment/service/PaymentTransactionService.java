@@ -42,6 +42,7 @@ public class PaymentTransactionService {
     private static final String PERMISSION_PAYMENT_ORDER_VIEW = "payment:order:view";
     private static final String PERMISSION_PAYMENT_REFUND_CREATE = "payment:refund:create";
     private static final String PERMISSION_PAYMENT_REFUND_VIEW = "payment:refund:view";
+    private static final String PENDING_PROVIDER_ORDER_NO = "";
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -249,7 +250,7 @@ public class PaymentTransactionService {
         PaymentOrderRow row = new PaymentOrderRow();
         row.setOrderNo(normalizeIdentifier(request.orderNo()));
         row.setProviderCode(providerCatalog.normalize(request.providerCode()));
-        row.setProviderOrderNo(null);
+        row.setProviderOrderNo(PENDING_PROVIDER_ORDER_NO);
         row.setSubject(normalizeText(request.subject()));
         row.setAmountMinor(request.amountMinor());
         row.setCurrency(normalizeText(request.currency()).toUpperCase(Locale.ROOT));
@@ -1020,7 +1021,7 @@ public class PaymentTransactionService {
         return new PaymentOrderDTO(
                 row.getOrderNo(),
                 row.getProviderCode(),
-                row.getProviderOrderNo(),
+                nullableProviderOrderNo(row.getProviderOrderNo()),
                 row.getSubject(),
                 row.getAmountMinor(),
                 row.getCurrency(),
@@ -1036,6 +1037,10 @@ public class PaymentTransactionService {
                 row.getUpdatedAt(),
                 row.getPaidAt()
         );
+    }
+
+    private String nullableProviderOrderNo(String providerOrderNo) {
+        return StringUtils.hasText(providerOrderNo) ? providerOrderNo.trim() : null;
     }
 
     private PaymentRefundDTO toRefundDto(PaymentRefundRow row) {

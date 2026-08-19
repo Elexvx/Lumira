@@ -598,11 +598,11 @@ test('payment transaction numbers and legacy competition order ownership remain 
 
   assert.match(
     baseline,
-    /CREATE TABLE `payment_order`[\s\S]*?`provider_order_no` varchar\(128\) DEFAULT NULL/,
+    /CREATE TABLE `payment_order`[\s\S]*?`provider_order_no` varchar\(128\) NOT NULL/,
   );
   for (const source of [migration, manualUpgrade]) {
-    assert.match(source, /MODIFY COLUMN `provider_order_no` varchar\(128\) NULL DEFAULT NULL/);
-    assert.match(source, /SET `provider_order_no` = NULL/);
+    assert.doesNotMatch(source, /\bMODIFY\s+(?:COLUMN\s+)?`?provider_order_no`?/i);
+    assert.match(source, /SET `provider_order_no` = ''/);
     assert.match(source, /LEFT\([\s\S]*?CONCAT\(`provider_code`, '-', `order_no`, '-'\)/);
     assert.match(source, /RIGHT\(`provider_order_no`, 12\) REGEXP '\^\[0-9a-f\]\{12\}\$'/);
     assert.match(source, /JOIN `competition_registration` AS `registration`/);

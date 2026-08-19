@@ -781,7 +781,7 @@ CREATE TABLE `payment_order` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `order_no` varchar(64) NOT NULL,
   `provider_code` varchar(64) NOT NULL,
-  `provider_order_no` varchar(128) DEFAULT NULL,
+  `provider_order_no` varchar(128) NOT NULL,
   `subject` varchar(255) NOT NULL,
   `amount_minor` bigint NOT NULL,
   `currency` varchar(16) NOT NULL,

@@ -409,7 +409,7 @@ class PaymentTransactionServiceTest {
         doThrow(new EmptyResultDataAccessException(1))
                 .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
         PaymentOrderRow persisted = orderRow(1001L);
-        persisted.setProviderOrderNo(null);
+        persisted.setProviderOrderNo("");
         doThrow(new EmptyResultDataAccessException(1))
                 .doReturn(persisted)
                 .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"));
@@ -429,7 +429,7 @@ class PaymentTransactionServiceTest {
         ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
         verify(jdbcTemplate).update(sqlCaptor.capture(), argsCaptor.capture());
         assertThat(sqlCaptor.getValue()).contains("insert into payment_order");
-        assertThat(argsCaptor.getValue()[2]).isNull();
+        assertThat(argsCaptor.getValue()[2]).isEqualTo("");
         assertThat(String.valueOf(argsCaptor.getValue()[12])).doesNotContain("providerOrderNo");
         verify(domainEventPublisher).publishAll(any());
     }

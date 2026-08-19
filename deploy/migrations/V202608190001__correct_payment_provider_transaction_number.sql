@@ -1,10 +1,9 @@
 SET NAMES utf8mb4;
 
-ALTER TABLE `payment_order`
-  MODIFY COLUMN `provider_order_no` varchar(128) NULL DEFAULT NULL;
-
+-- Preserve the legacy NOT NULL column contract during blue-green rollout;
+-- an empty value means the provider callback has not supplied a real transaction number yet.
 UPDATE `payment_order`
-SET `provider_order_no` = NULL
+SET `provider_order_no` = ''
 WHERE `provider_order_no` IS NOT NULL
   AND LEFT(
         `provider_order_no`,
