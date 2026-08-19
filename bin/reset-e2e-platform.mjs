@@ -13,7 +13,7 @@ const repoRoot = resolveRepoRoot(import.meta.url);
 const envPath = path.join(repoRoot, 'deploy', '.env');
 const resetConfirmPhrase = 'DELETE_LEGENDARY_DATA';
 const localBaseUrl = process.env.PLAYWRIGHT_BASE_URL || process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
-const localBackendUrl = process.env.DEPLOY_CHECK_BACKEND_URL || 'http://127.0.0.1:8080';
+const localBackendUrl = String(process.env.DEPLOY_CHECK_BACKEND_URL || '').trim();
 
 const env = existsSync(envPath) ? parseEnvFile(envPath) : {};
 
@@ -86,8 +86,8 @@ console.error('');
 const resetEnv = {
   DEPLOY_RESET_CONFIRM: resetConfirmPhrase,
   DEPLOY_CHECK_BASE_URL: localBaseUrl,
-  DEPLOY_CHECK_BACKEND_URL: localBackendUrl,
   PLAYWRIGHT_BASE_URL: localBaseUrl,
+  ...(localBackendUrl ? { DEPLOY_CHECK_BACKEND_URL: localBackendUrl } : {}),
 };
 
 log('Stopping deployment and deleting Docker volumes.');

@@ -8,6 +8,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const workflows = path.join(repoRoot, '.github', 'workflows');
 const ci = readFileSync(path.join(workflows, 'ci.yml'), 'utf8');
 const lifecycle = readFileSync(path.join(workflows, 'competition-lifecycle-e2e.yml'), 'utf8');
+const lifecycleReset = readFileSync(path.join(repoRoot, 'bin', 'reset-e2e-platform.mjs'), 'utf8');
 
 test('canonical CI owns frontend lint, typecheck, test, and build', () => {
   assert.equal(existsSync(path.join(workflows, 'frontend-build.yml')), false);
@@ -27,4 +28,16 @@ test('scheduled lifecycle E2E uses the canonical frontend toolchain and local ta
   assert.match(lifecycle, /test:competition-lifecycle/);
   assert.match(lifecycle, /PLAYWRIGHT_ROLE_MATRIX=true/);
   assert.match(lifecycle, /--project=role-access --project=quality --project=mobile-390/);
+});
+
+test('container lifecycle does not assume a host-published backend port', () => {
+  assert.doesNotMatch(lifecycle, /DEPLOY_CHECK_BACKEND_URL:\s*http:\/\/127\.0\.0\.1:8080/);
+  assert.doesNotMatch(
+    lifecycleReset,
+    /process\.env\.DEPLOY_CHECK_BACKEND_URL\s*\|\|\s*'http:\/\/127\.0\.0\.1:8080'/,
+  );
+  assert.match(
+    lifecycleReset,
+    /\.\.\.\(localBackendUrl \? \{ DEPLOY_CHECK_BACKEND_URL: localBackendUrl \} : \{\}\)/,
+  );
 });

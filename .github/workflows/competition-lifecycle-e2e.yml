@@ -76,7 +76,6 @@ jobs:
           PLAYWRIGHT_ALLOW_DB_RESET: 'true'
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:8000
           DEPLOY_CHECK_BASE_URL: http://127.0.0.1:8000
-          DEPLOY_CHECK_BACKEND_URL: http://127.0.0.1:8080
         run: node bin/reset-e2e-platform.mjs
 
       - name: Start isolated SMTP capture
