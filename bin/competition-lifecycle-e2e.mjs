@@ -12,6 +12,7 @@ const password = process.env.LIFECYCLE_PASSWORD;
 const round = process.env.LIFECYCLE_ROUND || '1';
 const timeoutMs = Number(process.env.LIFECYCLE_TIMEOUT_MS || 15_000);
 const smtpSinkUrl = process.env.LIFECYCLE_SMTP_SINK_URL || 'http://127.0.0.1:2526';
+const lifecycleTimeZone = process.env.LIFECYCLE_TIME_ZONE || 'Asia/Shanghai';
 
 if (!password) {
   throw new Error('Set LIFECYCLE_PASSWORD');
@@ -25,6 +26,16 @@ const smtpSink = new URL(smtpSinkUrl);
 if (!['localhost', '127.0.0.1', '::1'].includes(smtpSink.hostname)) {
   throw new Error(`Lifecycle E2E only accepts a loopback SMTP capture URL, got ${smtpSink.origin}`);
 }
+const lifecycleDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: lifecycleTimeZone,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
 
 const runId = `${new Date().toISOString().replace(/[-:.TZ]/g, '')}-${round}-${crypto.randomBytes(3).toString('hex')}`;
 const summary = { runId, baseUrl, steps: [], ids: {} };
@@ -39,16 +50,12 @@ process.on('exit', () => {
 
 function localDateTime(offsetMinutes = 0, separator = ' ') {
   const value = new Date(Date.now() + (offsetMinutes * 60_000));
-  const pad = (part) => String(part).padStart(2, '0');
-  return [
-    value.getFullYear(),
-    pad(value.getMonth() + 1),
-    pad(value.getDate()),
-  ].join('-') + separator + [
-    pad(value.getHours()),
-    pad(value.getMinutes()),
-    pad(value.getSeconds()),
-  ].join(':');
+  const parts = Object.fromEntries(
+    lifecycleDateFormatter.formatToParts(value)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}${separator}${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
 function scheduleForPhase(phase) {

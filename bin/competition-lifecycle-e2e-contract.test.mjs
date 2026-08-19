@@ -29,6 +29,9 @@ test('repository lifecycle E2E covers the complete competition business chain', 
   assert.match(lifecycle, /label: '初赛'/);
   assert.match(lifecycle, /label: '决赛'/);
   assert.match(lifecycle, /LIFECYCLE_SUMMARY_FILE/);
+  assert.match(lifecycle, /LIFECYCLE_TIME_ZONE \|\| 'Asia\/Shanghai'/);
+  assert.match(lifecycle, /timeZone: lifecycleTimeZone/);
+  assert.match(lifecycle, /lifecycleDateFormatter\.formatToParts/);
   assert.match(lifecycle, /only accepts a loopback base URL/);
   assert.doesNotMatch(lifecycle, /const password\s*=\s*['"][^'"]+['"]/);
 });
