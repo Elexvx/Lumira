@@ -87,7 +87,12 @@ const lightThemeToken: NonNullable<AntdThemeConfig>['token'] = {
   colorSuccess: '#237804',
   colorSuccessBg: '#f6ffed',
   colorSuccessText: '#237804',
-  green7: '#237804',
+};
+
+const lightThemeComponents: NonNullable<AntdThemeConfig>['components'] = {
+  Tag: {
+    green7: '#237804',
+  },
 };
 
 const darkThemeToken: NonNullable<AntdThemeConfig>['token'] = {
@@ -133,6 +138,7 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
   if (themePreference === 'compact') {
     return {
       cssVar,
+      components: lightThemeComponents,
       token: {
         ...baseThemeToken,
         ...lightThemeToken,
@@ -145,6 +151,7 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
   if (resolvedColorMode !== 'dark') {
     return {
       cssVar,
+      components: lightThemeComponents,
       token: {
         ...baseThemeToken,
         ...lightThemeToken,

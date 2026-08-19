@@ -35,6 +35,7 @@ describe('Ant Design light theme accessibility', () => {
       viewportTier: 'desktop',
     });
     const token = antdTheme.getDesignToken(config);
+    const tagToken = config?.components?.Tag;
     const white = '#ffffff';
 
     expect(contrastRatio(token.colorTextSecondary, white)).toBeGreaterThanOrEqual(4.5);
@@ -44,6 +45,7 @@ describe('Ant Design light theme accessibility', () => {
     expect(contrastRatio(white, token.colorPrimary)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(token.colorPrimaryHover, white)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(token.colorSuccess, token.colorSuccessBg)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(token.green7, token.green1)).toBeGreaterThanOrEqual(4.5);
+    expect(tagToken?.green7).toBeDefined();
+    expect(contrastRatio(tagToken!.green7!, token.green1)).toBeGreaterThanOrEqual(4.5);
   });
 });
