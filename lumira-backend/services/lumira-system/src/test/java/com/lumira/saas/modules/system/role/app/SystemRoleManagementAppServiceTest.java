@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.system.role.app;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.common.vo.PageResponse;
@@ -12,6 +13,7 @@ import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
+import com.lumira.saas.modules.system.app.MaintenanceLoginPolicyService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.role.dto.RoleDataScopeRequest;
@@ -88,6 +90,23 @@ class SystemRoleManagementAppServiceTest {
         assertEquals(7, page.getRecords().get(0).getUserCount());
         assertTrue(page.getRecords().get(0).getDefaultRegistrationRole());
         assertEquals(0, jdbcTemplate.roleListCountQueries);
+    }
+
+    @Test
+    void maintenanceLoginRoleOptionsShouldExposeActiveRoleIdentityFields() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemRoleManagementAppService service = buildService(jdbcTemplate, mock(PermissionSnapshotService.class));
+
+        List<SystemVO.MaintenanceLoginRoleOptionVO> options = service.listMaintenanceLoginRoleOptions(
+                userWithPermission("system:config:view")
+        );
+
+        assertThat(options)
+                .extracting(SystemVO.MaintenanceLoginRoleOptionVO::getId)
+                .containsExactly(1001L, 2001L);
+        assertThat(options.getFirst().getRoleCode()).isEqualTo("ADMIN");
+        assertThat(options.getFirst().getRoleName()).isEqualTo("管理员");
+        assertThat(options.getFirst().getRoleType()).isEqualTo("SYSTEM");
     }
 
     @Test
@@ -673,6 +692,26 @@ class SystemRoleManagementAppServiceTest {
         assertTrue(jdbcTemplate.updateSql.get(dataScopeDeleteIndex).contains("updated_by_uuid = ?"));
     }
 
+    @Test
+    void deleteRoleShouldRejectTheLastMaintenanceLoginRole() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        jdbcTemplate.roleById = role(2001L, "auditor", "Auditor", "BUSINESS");
+        jdbcTemplate.userCountByRoleId.put(2001L, 0);
+        SystemRoleManagementAppService service = buildService(jdbcTemplate, mock(PermissionSnapshotService.class));
+        MaintenanceLoginPolicyService policyService = mock(MaintenanceLoginPolicyService.class);
+        when(policyService.loadEffectivePolicy())
+                .thenReturn(new MaintenanceLoginPolicyDTO(true, List.of(2001L)));
+        service.setMaintenanceLoginPolicyService(policyService);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.deleteRole(currentUser(), 2001L)
+        );
+
+        assertEquals(ErrorCode.VALIDATION_ERROR, exception.getErrorCode());
+        assertThat(jdbcTemplate.updateSql).noneMatch(sql -> sql.contains("update sys_role"));
+    }
+
     private int indexOfSql(List<String> sqlList, String fragment) {
         for (int index = 0; index < sqlList.size(); index += 1) {
             if (sqlList.get(index).contains(fragment)) {
@@ -970,6 +1009,12 @@ class SystemRoleManagementAppServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
+            if (sql.contains("from sys_role") && SystemVO.RoleVO.class.equals(elementType)) {
+                return castList(List.of(
+                        role(1001L, "ADMIN", "管理员", "SYSTEM"),
+                        role(2001L, "commonuser", "普通用户", "BUSINESS")
+                ));
+            }
             if (sql.contains("from sys_role_permission") && String.class.equals(elementType)) {
                 rolePermissionLookupCount += 1;
                 if (rolePermissionKeys != null) {

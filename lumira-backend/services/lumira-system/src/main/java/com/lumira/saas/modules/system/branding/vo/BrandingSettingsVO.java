@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.system.branding.vo;
 
+import java.util.List;
+
 public class BrandingSettingsVO {
 
     private String websiteName;
@@ -19,6 +21,7 @@ public class BrandingSettingsVO {
     private String maintenanceTitle;
     private String maintenanceMessage;
     private String maintenanceEndAt;
+    private List<Long> maintenanceAllowedRoleIds;
 
     public String getWebsiteName() { return websiteName; }
     public void setWebsiteName(String websiteName) { this.websiteName = websiteName; }
@@ -54,4 +57,6 @@ public class BrandingSettingsVO {
     public void setMaintenanceMessage(String maintenanceMessage) { this.maintenanceMessage = maintenanceMessage; }
     public String getMaintenanceEndAt() { return maintenanceEndAt; }
     public void setMaintenanceEndAt(String maintenanceEndAt) { this.maintenanceEndAt = maintenanceEndAt; }
+    public List<Long> getMaintenanceAllowedRoleIds() { return maintenanceAllowedRoleIds; }
+    public void setMaintenanceAllowedRoleIds(List<Long> maintenanceAllowedRoleIds) { this.maintenanceAllowedRoleIds = maintenanceAllowedRoleIds; }
 }

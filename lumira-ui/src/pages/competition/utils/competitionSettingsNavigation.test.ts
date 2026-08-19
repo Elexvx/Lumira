@@ -39,10 +39,18 @@ describe('competition settings URL navigation', () => {
     });
   });
 
-  it('uses student settings as the registration section default', () => {
+  it('uses the combined team settings as the registration section default', () => {
     expect(parseCompetitionSettingsNavigation('?section=registration')).toEqual({
       section: 'registration',
-      registrationTab: 'MEMBER_FIELD',
+      registrationTab: 'TEAM_FIELD',
+      stageTab: 'timeline',
+    });
+  });
+
+  it('maps the removed student tab to combined team settings', () => {
+    expect(parseCompetitionSettingsNavigation('?section=registration&tab=students')).toEqual({
+      section: 'registration',
+      registrationTab: 'TEAM_FIELD',
       stageTab: 'timeline',
     });
   });
@@ -88,7 +96,6 @@ describe('competition settings URL navigation', () => {
   });
 
   it('writes stable query values for nested settings tabs', () => {
-    expect(createCompetitionSettingsSearch('', 'registration', 'MEMBER_FIELD')).toBe('?section=registration&tab=students');
     expect(createCompetitionSettingsSearch('', 'registration', 'TEAM_FIELD')).toBe('?section=registration&tab=team');
     expect(createCompetitionSettingsSearch('', 'registration', 'INTELLECTUAL_PROPERTY')).toBe('?section=registration&tab=intellectual-property');
     expect(createCompetitionSettingsSearch('', 'registration', 'EXPERT_FIELD')).toBe('?section=registration&tab=experts');
@@ -99,7 +106,6 @@ describe('competition settings URL navigation', () => {
 
   it('round-trips every registration page while switching forward and backward', () => {
     const switchSequence: CompetitionSettingsRegistrationTab[] = [
-      'MEMBER_FIELD',
       'TEAM_FIELD',
       'PROJECT_FIELD',
       'EXPERT_FIELD',
@@ -108,7 +114,7 @@ describe('competition settings URL navigation', () => {
       'INTELLECTUAL_PROPERTY',
       'PROJECT_FIELD',
       'TEAM_FIELD',
-      'MEMBER_FIELD',
+      'TEAM_FIELD',
     ];
 
     let search = '?from=settings';

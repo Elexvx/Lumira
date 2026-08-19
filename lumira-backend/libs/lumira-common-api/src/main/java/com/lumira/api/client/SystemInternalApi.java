@@ -11,6 +11,7 @@ import com.lumira.api.system.CaptchaValidationRequestDTO;
 import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.LoginCapabilitiesDTO;
+import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import com.lumira.api.system.PasskeyCredentialAssertionDTO;
@@ -173,6 +174,9 @@ public interface SystemInternalApi {
 
     @GetExchange("/internal/system/verification/wechat-settings")
     WechatLoginSettingsDTO wechatLoginSettings();
+
+    @GetExchange("/internal/system/maintenance-login-policy")
+    MaintenanceLoginPolicyDTO maintenanceLoginPolicy();
 
     @GetExchange("/internal/system/verification/passkey-settings")
     PasskeySettingsDTO passkeySettings();

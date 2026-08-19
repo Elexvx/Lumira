@@ -205,6 +205,7 @@ export const deleteProject = (id: number) =>
   });
 
 export type RegistrationSnapshotMemberPayload = {
+  participantType?: 'STUDENT' | 'TEACHER';
   memberName?: string;
   employeeNo?: string;
   departmentName?: string;

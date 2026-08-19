@@ -124,6 +124,7 @@ export interface SecuritySettings {
   accessTokenExpireSeconds: number;
   refreshTokenExpireSeconds: number;
   allowMultiDeviceLogin: boolean;
+  registrationEnabled: boolean;
   captchaEnabled: boolean;
   captchaType: CaptchaType;
   loginDefenseWindowMinutes: number;
@@ -203,7 +204,7 @@ export interface PaymentCreateOrderRequest {
 export interface PaymentOrderRecord {
   orderNo: string;
   providerCode: string;
-  providerOrderNo: string;
+  providerOrderNo: string | null;
   subject: string;
   amountMinor: number;
   currency: string;
@@ -224,7 +225,7 @@ export type BuiltinMockPaymentOutcome = 'SUCCESS' | 'FAILURE' | 'CANCEL' | 'TIME
 
 export interface BuiltinMockPaymentCheckout {
   orderNo: string;
-  providerOrderNo: string;
+  providerOrderNo: string | null;
   subject: string;
   amountMinor: number;
   currency: string;
@@ -331,6 +332,14 @@ export interface BrandingSettings {
   maintenanceTitle?: string;
   maintenanceMessage?: string;
   maintenanceEndAt?: string;
+  maintenanceAllowedRoleIds?: number[];
+}
+
+export interface MaintenanceLoginRoleOption {
+  id: number;
+  roleCode: string;
+  roleName: string;
+  roleType: string;
 }
 
 export interface HealthResponse {

@@ -17,6 +17,7 @@ import com.lumira.common.security.TrustedCurrentUserResolver;
 import com.lumira.api.event.EventCatalogEventTypes;
 import com.lumira.api.event.TransactionalEventOutboxPort;
 import com.lumira.saas.modules.activity.dto.ActivityDTO;
+import com.lumira.saas.modules.activity.model.ActivityRegistrationField;
 import com.lumira.saas.modules.activity.repository.ActivityRepository;
 import com.lumira.saas.modules.activity.vo.ActivityPageResponse;
 import com.lumira.saas.modules.activity.vo.ActivityVO;
@@ -130,12 +131,30 @@ class ActivityManagementAppServiceTest {
     }
 
     @Test
+    void activityWritesRejectDuplicateRegistrationFieldKeysBeforeRepositoryAccess() {
+        ActivityRepository repository = activityRepositoryWithDictionaries();
+        ActivityDTO.ActivityUpsertRequest invalid = request();
+        invalid.setRegistrationFields(List.of(
+                field("contactName", "联系人", "TEXT"),
+                field("CONTACTNAME", "备用联系人", "TEXT")
+        ));
+
+        assertThatThrownBy(() -> new ActivityManagementAppService(repository)
+                .createActivity(user(Set.of("aiadc:activity:create")), invalid))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verify(repository, never()).create(any(), any(), any());
+    }
+
+    @Test
     void publicCardsRetainPaginationAndRedactManagementFields() {
         ActivityRepository repository = activityRepositoryWithDictionaries();
         ActivityVO.Activity row = activity(41L);
         row.setCode("internal-code");
         row.setStatus("published");
         row.setSort(7);
+        row.setRegistrationFields(List.of(field("audience", "参会类型", "SELECT")));
         when(repository.search(any(), any(), any(), any(), anyLong(), anyLong()))
                 .thenReturn(new ActivityRepository.PageData(List.of(row), 12L));
 
@@ -148,6 +167,9 @@ class ActivityManagementAppServiceTest {
         assertThat(page.getRecords()).singleElement().satisfies(publicActivity -> {
             assertThat(publicActivity.getId()).isEqualTo(41L);
             assertThat(publicActivity.getTitle()).isEqualTo("Roadshow");
+            assertThat(publicActivity.getRegistrationFields())
+                    .extracting(ActivityRegistrationField::getFieldKey)
+                    .containsExactly("audience");
         });
     }
 
@@ -186,5 +208,15 @@ class ActivityManagementAppServiceTest {
         activity.setActivityTime("10:00");
         activity.setLocation("Shanghai");
         return activity;
+    }
+
+    private ActivityRegistrationField field(String key, String label, String type) {
+        ActivityRegistrationField field = new ActivityRegistrationField();
+        field.setFieldKey(key);
+        field.setLabel(label);
+        field.setFieldType(type);
+        field.setRequired(false);
+        field.setOptions("SELECT".equals(type) ? List.of("嘉宾", "观众") : List.of());
+        return field;
     }
 }

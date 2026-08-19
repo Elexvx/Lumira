@@ -533,7 +533,7 @@ public class BuiltinMockPaymentService {
                 : List.of();
         return new BuiltinMockPaymentCheckoutDTO(
                 order.getOrderNo(),
-                order.getProviderOrderNo(),
+                nullableProviderOrderNo(order.getProviderOrderNo()),
                 order.getSubject(),
                 order.getAmountMinor(),
                 order.getCurrency(),
@@ -553,11 +553,15 @@ public class BuiltinMockPaymentService {
 
     private PaymentOrderDTO toOrderDto(PaymentOrderRow row) {
         return new PaymentOrderDTO(
-                row.getOrderNo(), row.getProviderCode(), row.getProviderOrderNo(), row.getSubject(),
+                row.getOrderNo(), row.getProviderCode(), nullableProviderOrderNo(row.getProviderOrderNo()), row.getSubject(),
                 row.getAmountMinor(), row.getCurrency(), row.getStatus(), row.getPaymentUrl(), row.getClientIp(),
                 row.getNotifyUrl(), safeReturnUrl(row.getReturnUrl()), parseMetadata(row.getRequestJson()),
                 row.getFailureCode(), row.getFailureMessage(), row.getCreatedAt(), row.getUpdatedAt(), row.getPaidAt()
         );
+    }
+
+    private String nullableProviderOrderNo(String providerOrderNo) {
+        return StringUtils.hasText(providerOrderNo) ? providerOrderNo.trim() : null;
     }
 
     private Map<String, Object> parseMetadata(String requestJson) {

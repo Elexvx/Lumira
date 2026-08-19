@@ -45,12 +45,14 @@ export type CompetitionConfigItemType =
   | 'REGISTRATION_FIELD'
   | 'TEAM_FIELD'
   | 'MEMBER_FIELD'
+  | 'TEACHER_FIELD'
   | 'PROJECT_FIELD'
   | 'EXPERT_FIELD'
   | 'TEAM_SETTINGS'
   | 'PAYMENT_SETTINGS'
   | 'REQUIRED_FILE'
   | 'STAGE_MATERIAL'
+  | 'AWARD_SETTINGS'
   | 'TIMELINE';
 
 export interface CompetitionConfigSet {
@@ -88,6 +90,7 @@ export interface CompetitionSettingsRecord {
   stageMaterials: CompetitionConfigItem[];
   timeline: CompetitionConfigItem[];
   payments: CompetitionConfigItem[];
+  awards: CompetitionConfigItem[];
 }
 
 export interface CompetitionUpsertPayload {

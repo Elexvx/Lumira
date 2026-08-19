@@ -23,6 +23,7 @@ export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   maintenanceTitle: '马上回来，精彩不掉线',
   maintenanceMessage: '我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。',
   maintenanceEndAt: '',
+  maintenanceAllowedRoleIds: [1001],
 };
 
 export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> | null): BrandingSettings => {
@@ -48,6 +49,7 @@ export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> |
       DEFAULT_BRANDING_SETTINGS.maintenanceMessage || '我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。',
     ),
     maintenanceEndAt: normalizeDateTime(settings?.maintenanceEndAt),
+    maintenanceAllowedRoleIds: normalizeRoleIds(settings?.maintenanceAllowedRoleIds, DEFAULT_BRANDING_SETTINGS.maintenanceAllowedRoleIds || [1001]),
   };
 };
 
@@ -161,4 +163,13 @@ const normalizeBoolean = (value: unknown, fallback: boolean) => {
     return value.trim().toLowerCase() === 'true';
   }
   return fallback;
+};
+
+const normalizeRoleIds = (value: unknown, fallback: number[]) => {
+  if (!Array.isArray(value)) {
+    return [...fallback];
+  }
+  return [...new Set(value
+    .map((item) => (typeof item === 'number' ? item : Number(item)))
+    .filter((item) => Number.isInteger(item) && item > 0))].sort((left, right) => left - right);
 };

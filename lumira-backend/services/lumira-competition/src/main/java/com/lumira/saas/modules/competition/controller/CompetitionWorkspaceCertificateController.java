@@ -30,8 +30,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -75,6 +77,53 @@ public class CompetitionWorkspaceCertificateController {
         );
     }
 
+    @GetMapping("/certificate-award-rules")
+    public ApiResponse<List<CertificateVO.AwardRule>> awardRules(
+            @PathVariable String competitionUuid,
+            @RequestParam(value = "reviewBatchId", required = false) Long reviewBatchId
+    ) {
+        CurrentUser currentUser = requireTrustedUser();
+        CompetitionAccessDecision decision = accessPolicy.requireAccessibleCompetition(
+                currentUser, competitionUuid, CompetitionCapability.CERTIFICATE_MANAGE);
+        if (reviewBatchId != null) {
+            requirePublishedBatch(currentUser, reviewBatchId, decision.competition().id());
+        }
+        return ApiResponse.success(
+                certificateAppService.listCompetitionAwardRules(currentUser, competitionUuid, reviewBatchId),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PutMapping("/certificate-award-rules")
+    public ApiResponse<List<CertificateVO.AwardRule>> saveAwardRules(
+            @PathVariable String competitionUuid,
+            @Valid @RequestBody CertificateDTO.AwardGrantRequest request
+    ) {
+        CurrentUser currentUser = requireTrustedUser();
+        CompetitionAccessDecision decision = accessPolicy.requireAccessibleCompetition(
+                currentUser, competitionUuid, CompetitionCapability.CERTIFICATE_MANAGE);
+        requirePublishedBatch(currentUser, request.getReviewBatchId(), decision.competition().id());
+        return ApiResponse.success(
+                certificateAppService.saveCompetitionAwardRules(currentUser, request.getReviewBatchId(), request.getRules()),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @DeleteMapping("/certificate-award-rules")
+    public ApiResponse<List<CertificateVO.AwardRule>> clearAwardRules(
+            @PathVariable String competitionUuid,
+            @RequestParam("reviewBatchId") Long reviewBatchId
+    ) {
+        CurrentUser currentUser = requireTrustedUser();
+        CompetitionAccessDecision decision = accessPolicy.requireAccessibleCompetition(
+                currentUser, competitionUuid, CompetitionCapability.CERTIFICATE_MANAGE);
+        requirePublishedBatch(currentUser, reviewBatchId, decision.competition().id());
+        return ApiResponse.success(
+                certificateAppService.clearCompetitionAwardRules(currentUser, competitionUuid, reviewBatchId),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping("/certificate-awards/grant")
     @RepeatSubmit
     public ApiResponse<List<CertificateVO.AwardGrant>> grantAwards(
@@ -86,7 +135,7 @@ public class CompetitionWorkspaceCertificateController {
         Long competitionId = decision.competition().id();
         requirePublishedBatch(currentUser, request.getReviewBatchId(), competitionId);
         return ApiResponse.success(
-                certificateAppService.grantPublishedAwards(currentUser, request).stream()
+                certificateAppService.grantPublishedAwardsFromCompetitionSettings(currentUser, competitionUuid, request.getReviewBatchId()).stream()
                         .filter(grant -> Objects.equals(competitionId, grant.getCompetitionId()))
                         .toList(),
                 TraceContext.getRequestId()

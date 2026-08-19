@@ -64,7 +64,7 @@ public interface AiSystemManagementToolPort {
                 "websiteName", "websiteFaviconUrl", "websiteLogoUrl", "loginBackgroundUrl", "githubLinkEnabled",
                 "githubLinkUrl", "helpLinkEnabled", "helpLinkUrl", "companyName", "copyrightStartYear",
                 "footerIcp", "footerPoliceBeian", "footerCopyright", "maintenanceModeEnabled", "maintenanceTitle",
-                "maintenanceMessage", "maintenanceEndAt", "expectedConfigVersion", "changeReason")),
+                "maintenanceMessage", "maintenanceEndAt", "maintenanceAllowedRoleIds", "expectedConfigVersion", "changeReason")),
         UPDATE_AGREEMENT("system:config:update", fields(
                 "userAgreementMarkdown", "privacyAgreementMarkdown", "expectedConfigVersion", "changeReason")),
         UPDATE_WATERMARK("system:config:update", fields(

@@ -127,6 +127,64 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void createRegistrationCountsOnlyStudentsForMemberFeeAndPersistsTeacherType() throws Exception {
+        RegistrationSql sql = new RegistrationSql();
+        sql.competitionFeeMode = "MEMBER";
+        sql.competitionEntryFeeMinor = 5_000L;
+        CompetitionRegistrationDTO.RegistrationCreateRequest request = inlineRegistrationRequest();
+        CompetitionRegistrationDTO.MemberSnapshotRequest teacher = new CompetitionRegistrationDTO.MemberSnapshotRequest();
+        teacher.setParticipantType("TEACHER");
+        teacher.setMemberName("Carol");
+        request.setMembers(List.of(request.getMembers().get(0), request.getMembers().get(1), teacher));
+
+        CompetitionRegistrationVO.Registration registration = service(sql, teamApiRejectingLookup())
+                .createRegistration(student(), request);
+
+        assertThat(registration.getMemberCount()).isEqualTo(2);
+        assertThat(registration.getPayableAmountMinor()).isEqualTo(10_000L);
+        JsonNode participants = objectMapper.readTree(registration.getMemberSnapshotJson());
+        assertThat(participants).hasSize(3);
+        assertThat(participants.get(0).path("participantType").asText()).isEqualTo("STUDENT");
+        assertThat(participants.get(2).path("participantType").asText()).isEqualTo("TEACHER");
+    }
+
+    @Test
+    void createRegistrationValidatesStudentAndTeacherLimitsIndependently() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.teamSizeLimitsContentJson = """
+                {"studentMinMembers":1,"studentMaxMembers":2,"teacherMinMembers":1,"teacherMaxMembers":1,
+                 "teamMinMembers":1,"teamMaxMembers":2}
+                """;
+        CompetitionRegistrationDTO.RegistrationCreateRequest request = inlineRegistrationRequest();
+        CompetitionRegistrationDTO.MemberSnapshotRequest teacher = new CompetitionRegistrationDTO.MemberSnapshotRequest();
+        teacher.setParticipantType("TEACHER");
+        teacher.setMemberName("Carol");
+        request.setMembers(List.of(request.getMembers().get(0), request.getMembers().get(1), teacher));
+
+        CompetitionRegistrationVO.Registration registration = service(sql, teamApiRejectingLookup())
+                .createRegistration(student(), request);
+        assertThat(registration.getMemberCount()).isEqualTo(2);
+
+        RegistrationSql missingTeacherSql = new RegistrationSql();
+        missingTeacherSql.teamSizeLimitsContentJson = sql.teamSizeLimitsContentJson;
+        assertThatThrownBy(() -> service(missingTeacherSql, teamApiRejectingLookup())
+                .createRegistration(student(), inlineRegistrationRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getMessage()).contains("at least 1 teachers"));
+    }
+
+    @Test
+    void createRegistrationKeepsLegacyTeamLimitsAsStudentLimits() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.teamSizeLimitsContentJson = "{\"teamMinMembers\":2,\"teamMaxMembers\":20}";
+
+        CompetitionRegistrationVO.Registration registration = service(sql, teamApiRejectingLookup())
+                .createRegistration(student(), inlineRegistrationRequest());
+
+        assertThat(registration.getMemberCount()).isEqualTo(2);
+    }
+
+    @Test
     void createRegistrationPersistsCollectedMembersWithoutTeamModuleWrites() throws Exception {
         RegistrationSql sql = new RegistrationSql();
         sql.competitionFeeMode = "MEMBER";
@@ -178,7 +236,7 @@ class CompetitionRegistrationAppServiceTest {
         assertThat(members.get(0).path("extraValues").path("mobile").asText()).isEqualTo("13800138000");
         assertThat(project.path("extraValues").path("advisor").asText()).isEqualTo("李老师");
         assertThat(schema.toString()).contains(
-                "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD",
+                "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "TEACHER_FIELD", "PROJECT_FIELD",
                 "contactName", "campus", "mobile", "advisor"
         );
     }
@@ -339,7 +397,7 @@ class CompetitionRegistrationAppServiceTest {
         assertThatThrownBy(() -> service(unsafeMemberSql, teamApiRejectingLookup())
                 .createRegistration(student(), unsafeMember))
                 .isInstanceOfSatisfying(BizException.class, exception ->
-                        assertThat(exception.getMessage()).contains("成员姓名"));
+                        assertThat(exception.getMessage()).contains("学生姓名"));
 
         RegistrationSql unsafeProjectSql = new RegistrationSql();
         CompetitionRegistrationDTO.RegistrationCreateRequest unsafeProject = inlineRegistrationRequest();
@@ -1773,6 +1831,117 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void listPaymentRecordsKeepsPlatformOrderAndProviderTransactionNumbersIndependent() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "CONFIRMED", "ORDER-2026-001", 8_800L);
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("registrationId", 1L);
+        row.put("registrationNo", "REG-TEST");
+        row.put("competitionId", 11L);
+        row.put("teamId", 21L);
+        row.put("projectId", 31L);
+        row.put("ownerUserId", 1001L);
+        row.put("registrationStatus", "CONFIRMED");
+        row.put("payableAmountMinor", 8_800L);
+        row.put("orderNo", "ORDER-2026-001");
+        row.put("amountMinor", 8_800L);
+        row.put("currency", "CNY");
+        row.put("paymentStatus", "PENDING");
+        sql.paymentRecordRows = List.of(row);
+        PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
+        when(paymentInternalApi.getOrder(1001L, "user-uuid-1001", "ORDER-2026-001"))
+                .thenReturn(new PaymentOrderDTO(
+                        "ORDER-2026-001",
+                        "alipay",
+                        "2026081900000001",
+                        "Competition registration REG-TEST",
+                        8_800L,
+                        "CNY",
+                        "PAID",
+                        null,
+                        null,
+                        null,
+                        null,
+                        Map.of(),
+                        null,
+                        null,
+                        LocalDateTime.now().minusMinutes(2),
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                ));
+        CompetitionRegistrationAppService service = service(
+                sql,
+                teamApiWithMembers(1001L, 1),
+                paymentInternalApi
+        );
+
+        PageResponse<CompetitionRegistrationVO.PaymentRecord> page = service.listPaymentRecords(
+                paymentAdmin(), 1, 10, null, null, null, null
+        );
+
+        assertThat(page.getRecords()).singleElement().satisfies(record -> {
+            assertThat(record.getRegistrationNo()).isEqualTo("REG-TEST");
+            assertThat(record.getOrderNo()).isEqualTo("ORDER-2026-001");
+            assertThat(record.getProviderOrderNo()).isEqualTo("2026081900000001");
+            assertThat(record.getPaymentStatus()).isEqualTo("PAID");
+        });
+    }
+
+    @Test
+    void listPaymentRecordsDerivesNotRequiredWithoutCallingPaymentService() {
+        RegistrationSql sql = new RegistrationSql();
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("registrationId", 1L);
+        row.put("registrationNo", "REG-FREE");
+        row.put("competitionId", 11L);
+        row.put("teamId", 21L);
+        row.put("projectId", 31L);
+        row.put("ownerUserId", 1001L);
+        row.put("registrationStatus", "CONFIRMED");
+        row.put("payableAmountMinor", 0L);
+        row.put("orderNo", null);
+        row.put("providerCode", null);
+        row.put("providerOrderNo", null);
+        row.put("amountMinor", 0L);
+        row.put("currency", "CNY");
+        row.put("paymentStatus", "CONFIRMED");
+        sql.paymentRecordRows = List.of(row);
+        PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
+        CompetitionRegistrationAppService service = service(
+                sql,
+                teamApiWithMembers(1001L, 1),
+                paymentInternalApi
+        );
+
+        PageResponse<CompetitionRegistrationVO.PaymentRecord> page = service.listPaymentRecords(
+                paymentAdmin(),
+                1,
+                10,
+                null,
+                "NOT_REQUIRED",
+                null,
+                null
+        );
+
+        assertThat(page.getTotal()).isEqualTo(1);
+        assertThat(page.getRecords()).singleElement().satisfies(record -> {
+            assertThat(record.getRegistrationNo()).isEqualTo("REG-FREE");
+            assertThat(record.getOrderNo()).isNull();
+            assertThat(record.getProviderOrderNo()).isNull();
+            assertThat(record.getProviderCode()).isNull();
+            assertThat(record.getPaymentStatus()).isEqualTo("NOT_REQUIRED");
+        });
+        assertThat(sql.lastPaymentRecordCountSql)
+                .contains("cr.payable_amount_minor = 0")
+                .contains("cr.payment_order_no is null");
+        assertThat(sql.lastPaymentRecordQuerySql)
+                .contains("then 'NOT_REQUIRED'")
+                .contains("cr.payable_amount_minor = 0")
+                .contains("cr.payment_order_no is null");
+        verifyNoInteractions(paymentInternalApi);
+    }
+
+    @Test
     void listPaymentRecordsKeepsRegistrationFallbackWhenReferencedOrderIsMissing() {
         RegistrationSql sql = new RegistrationSql();
         sql.seedRegistration(1L, "PENDING_PAYMENT", "REG-1-ORPHAN", 8_800L);
@@ -2296,6 +2465,7 @@ class CompetitionRegistrationAppServiceTest {
         private Object[] lastRegistrationInsertArgs = new Object[0];
         private String lastRegistrationUpdateSql;
         private String lastCollectionFieldQuery;
+        private String teamSizeLimitsContentJson;
         private List<Object> lastRegistrationUpdateArgs = List.of();
         private String lastStageInsertSql;
         private List<Object> lastStageInsertArgs = List.of();
@@ -2659,6 +2829,12 @@ class CompetitionRegistrationAppServiceTest {
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             String normalized = sql.toLowerCase();
+            if (normalized.contains("item_type = 'team_settings'")
+                    && normalized.contains("item_key = 'team-size-limits'")) {
+                return teamSizeLimitsContentJson == null
+                        ? List.of()
+                        : List.of(Map.of("contentJson", teamSizeLimitsContentJson));
+            }
             if (normalized.contains("from aiadc_competition competition")
                     && normalized.contains("competition_config_item")) {
                 lastCollectionFieldQuery = normalized;

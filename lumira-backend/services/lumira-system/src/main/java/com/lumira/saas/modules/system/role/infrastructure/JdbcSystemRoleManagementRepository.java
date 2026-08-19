@@ -53,6 +53,22 @@ public class JdbcSystemRoleManagementRepository implements SystemRoleManagementR
     }
 
     @Override
+    public List<SystemVO.RoleVO> findActiveRoles() {
+        return database.queryForList(
+                """
+                        select r.id, r.role_code as roleCode, r.role_name as roleName,
+                               r.role_type as roleType, r.default_home_path as defaultHomePath,
+                               r.created_at as createdAt, r.updated_at as updatedAt
+                        from sys_role r
+                        where r.deleted = 0
+                        order by case when r.role_code = 'ADMIN' then 0 else 1 end,
+                                 r.role_name asc, r.id asc
+                        """,
+                SystemVO.RoleVO.class
+        );
+    }
+
+    @Override
     public SystemVO.RoleVO findActiveRoleById(Long roleId) {
         return queryOne(
                 """

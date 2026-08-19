@@ -80,9 +80,12 @@ public class CompetitionRegistrationAppService {
     private static final Set<String> FORM_STATUSES = Set.of("ENABLED", "DISABLED");
     private static final Set<String> FIELD_TYPES = Set.of("input", "textarea", "file");
     private static final long MAX_PAGE_SIZE = 100L;
-    private static final int MAX_INLINE_MEMBERS = 20;
-    private static final int DEFAULT_TEAM_MIN_MEMBERS = 1;
-    private static final int DEFAULT_TEAM_MAX_MEMBERS = 20;
+    private static final int MAX_PARTICIPANTS_PER_TYPE = 20;
+    private static final int MAX_INLINE_PARTICIPANTS = MAX_PARTICIPANTS_PER_TYPE * 2;
+    private static final int DEFAULT_STUDENT_MIN_MEMBERS = 1;
+    private static final int DEFAULT_STUDENT_MAX_MEMBERS = 15;
+    private static final int DEFAULT_TEACHER_MIN_MEMBERS = 0;
+    private static final int DEFAULT_TEACHER_MAX_MEMBERS = 3;
     private static final int MAX_SHORT_TEXT_LENGTH = 64;
     private static final int MAX_NAME_LENGTH = 128;
     private static final int MAX_DESCRIPTION_LENGTH = 1000;
@@ -417,8 +420,9 @@ public class CompetitionRegistrationAppService {
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
         List<CollectedFieldDefinition> fieldDefinitions = validateCollectedFields(competition.id(), request, team, project);
-        int memberCount = team.members().size();
-        validateTeamMemberCount(competition.id(), memberCount);
+        int memberCount = countParticipants(team.members(), "STUDENT");
+        int teacherCount = countParticipants(team.members(), "TEACHER");
+        validateParticipantCounts(competition.id(), memberCount, teacherCount);
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
         Long id = registrationWriteRepository.createRegistration(
                 new com.lumira.saas.modules.competition.repository.RegistrationPersistencePort.CreateRegistrationCommand(
@@ -458,8 +462,9 @@ public class CompetitionRegistrationAppService {
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
         List<CollectedFieldDefinition> fieldDefinitions = validateCollectedFields(competition.id(), request, team, project);
-        int memberCount = team.members().size();
-        validateTeamMemberCount(competition.id(), memberCount);
+        int memberCount = countParticipants(team.members(), "STUDENT");
+        int teacherCount = countParticipants(team.members(), "TEACHER");
+        validateParticipantCounts(competition.id(), memberCount, teacherCount);
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
         if (!Set.of("DRAFT", "PENDING_PAYMENT").contains(existing.getStatus())) {
             throw biz(ErrorCode.BIZ_ERROR, "Paid registrations cannot be changed");
@@ -1442,11 +1447,23 @@ public class CompetitionRegistrationAppService {
 
     private List<Map<String, Object>> normalizeInlineMembers(List<CompetitionRegistrationDTO.MemberSnapshotRequest> members) {
         List<Map<String, Object>> normalized = new ArrayList<>();
-        if (members != null && members.size() > MAX_INLINE_MEMBERS) {
+        if (members != null && members.size() > MAX_INLINE_PARTICIPANTS) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Too many registration members");
+        }
+        long studentCount = (members == null ? List.<CompetitionRegistrationDTO.MemberSnapshotRequest>of() : members)
+                .stream()
+                .filter(member -> "STUDENT".equals(normalizeParticipantType(member.getParticipantType())))
+                .count();
+        long teacherCount = (members == null ? List.<CompetitionRegistrationDTO.MemberSnapshotRequest>of() : members)
+                .stream()
+                .filter(member -> "TEACHER".equals(normalizeParticipantType(member.getParticipantType())))
+                .count();
+        if (studentCount > MAX_PARTICIPANTS_PER_TYPE || teacherCount > MAX_PARTICIPANTS_PER_TYPE) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Too many registration participants of one type");
         }
         for (CompetitionRegistrationDTO.MemberSnapshotRequest member : members == null ? List.<CompetitionRegistrationDTO.MemberSnapshotRequest>of() : members) {
             Map<String, Object> row = new LinkedHashMap<>();
+            row.put("participantType", normalizeParticipantType(member.getParticipantType()));
             row.put("memberName", trimToNull(member.getMemberName()));
             row.put("employeeNo", trimToNull(member.getEmployeeNo()));
             row.put("departmentName", trimToNull(member.getDepartmentName()));
@@ -1481,6 +1498,7 @@ public class CompetitionRegistrationAppService {
         List<Map<String, Object>> snapshots = new ArrayList<>();
         for (TeamMemberDTO member : members == null ? List.<TeamMemberDTO>of() : members) {
             Map<String, Object> snapshot = new LinkedHashMap<>();
+            snapshot.put("participantType", "STUDENT");
             snapshot.put("id", member.getId());
             snapshot.put("teamId", member.getTeamId());
             snapshot.put("userId", member.getUserId());
@@ -1644,10 +1662,22 @@ public class CompetitionRegistrationAppService {
             requireJsonSize(team.getExtraValues(), "Team extra values are too large");
         }
         List<CompetitionRegistrationDTO.MemberSnapshotRequest> members = request.getMembers();
-        if (members != null && members.size() > MAX_INLINE_MEMBERS) {
+        if (members != null && members.size() > MAX_INLINE_PARTICIPANTS) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Too many registration members");
         }
+        long studentCount = (members == null ? List.<CompetitionRegistrationDTO.MemberSnapshotRequest>of() : members)
+                .stream()
+                .filter(member -> "STUDENT".equals(normalizeParticipantType(member.getParticipantType())))
+                .count();
+        long teacherCount = (members == null ? List.<CompetitionRegistrationDTO.MemberSnapshotRequest>of() : members)
+                .stream()
+                .filter(member -> "TEACHER".equals(normalizeParticipantType(member.getParticipantType())))
+                .count();
+        if (studentCount > MAX_PARTICIPANTS_PER_TYPE || teacherCount > MAX_PARTICIPANTS_PER_TYPE) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Too many registration participants of one type");
+        }
         for (CompetitionRegistrationDTO.MemberSnapshotRequest member : members == null ? List.<CompetitionRegistrationDTO.MemberSnapshotRequest>of() : members) {
+            normalizeParticipantType(member.getParticipantType());
             requireLength(member.getMemberName(), MAX_NAME_LENGTH, "Member name is too large");
             requireLength(member.getEmployeeNo(), MAX_SHORT_TEXT_LENGTH, "Member employee no is too large");
             requireLength(member.getDepartmentName(), MAX_NAME_LENGTH, "Member department name is too large");
@@ -1677,13 +1707,15 @@ public class CompetitionRegistrationAppService {
 
         for (CompetitionRegistrationDTO.MemberSnapshotRequest member : request.getMembers() == null
                 ? List.<CompetitionRegistrationDTO.MemberSnapshotRequest>of() : request.getMembers()) {
+            String participantScope = "TEACHER".equals(normalizeParticipantType(member.getParticipantType()))
+                    ? "TEACHER_FIELD" : "MEMBER_FIELD";
             Map<String, Object> memberStandards = new LinkedHashMap<>();
             memberStandards.put("memberName", member.getMemberName());
             memberStandards.put("employeeNo", member.getEmployeeNo());
             memberStandards.put("departmentName", member.getDepartmentName());
             memberStandards.put("role", member.getRole());
             memberStandards.put("remark", member.getRemark());
-            validateScopeValues("MEMBER_FIELD", member.getExtraValues(), definitions, memberStandards);
+            validateScopeValues(participantScope, member.getExtraValues(), definitions, memberStandards);
         }
         Map<String, Object> projectSummary = toMutableMap(project.summary());
         Map<String, Object> projectStandards = new LinkedHashMap<>();
@@ -1731,7 +1763,8 @@ public class CompetitionRegistrationAppService {
             ));
         }
         ensureProtectedCollectedField(definitions, "TEAM_FIELD", "teamName", "团队名称", "DISPLAY_NAME");
-        ensureProtectedCollectedField(definitions, "MEMBER_FIELD", "memberName", "成员姓名", "PERSON_NAME");
+        ensureProtectedCollectedField(definitions, "MEMBER_FIELD", "memberName", "学生姓名", "PERSON_NAME");
+        ensureProtectedCollectedField(definitions, "TEACHER_FIELD", "memberName", "指导老师姓名", "PERSON_NAME");
         ensureProtectedCollectedField(definitions, "PROJECT_FIELD", "title", "项目名称", "DISPLAY_NAME");
         return definitions;
     }
@@ -1743,15 +1776,26 @@ public class CompetitionRegistrationAppService {
             String title,
             String validationRule
     ) {
-        boolean configured = definitions.stream()
-                .filter(field -> scope.equals(field.scope()))
-                .map(field -> resolveStandardCollectedFieldKey(scope, field.itemKey()))
-                .anyMatch(standardKey::equals);
-        if (!configured) {
-            definitions.add(new CollectedFieldDefinition(
-                    scope, standardKey, title, "TEXT", true, validationRule, "", ""
-            ));
+        for (int index = 0; index < definitions.size(); index += 1) {
+            CollectedFieldDefinition field = definitions.get(index);
+            if (scope.equals(field.scope())
+                    && standardKey.equals(resolveStandardCollectedFieldKey(scope, field.itemKey()))) {
+                definitions.set(index, new CollectedFieldDefinition(
+                        scope,
+                        field.itemKey(),
+                        StringUtils.hasText(field.title()) ? field.title() : title,
+                        "TEXT",
+                        true,
+                        validationRule,
+                        field.options(),
+                        field.groupLabel()
+                ));
+                return;
+            }
         }
+        definitions.add(new CollectedFieldDefinition(
+                scope, standardKey, title, "TEXT", true, validationRule, "", ""
+        ));
     }
 
     private void validateScopeValues(
@@ -1897,7 +1941,7 @@ public class CompetitionRegistrationAppService {
     }
 
     private boolean isYearOnlyMemberDateField(CollectedFieldDefinition field) {
-        return "MEMBER_FIELD".equals(field.scope())
+        return Set.of("MEMBER_FIELD", "TEACHER_FIELD").contains(field.scope())
                 && Set.of("enrollmentDate", "graduationDate").contains(field.itemKey());
     }
 
@@ -1928,7 +1972,7 @@ public class CompetitionRegistrationAppService {
 
     private String resolveStandardCollectedFieldKey(String scope, String itemKey) {
         // The configured registration role is distinct from the formal team membership role.
-        if ("MEMBER_FIELD".equals(scope) && "role".equals(itemKey)) {
+        if (Set.of("MEMBER_FIELD", "TEACHER_FIELD").contains(scope) && "role".equals(itemKey)) {
             return null;
         }
         String normalized = itemKey == null ? "" : itemKey.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
@@ -1943,6 +1987,13 @@ public class CompetitionRegistrationAppService {
                     "memberName", Set.of("membername", "name"),
                     "employeeNo", Set.of("employeeno", "studentno", "memberno"),
                     "departmentName", Set.of("departmentname", "department"),
+                    "role", Set.of("role"),
+                    "remark", Set.of("remark", "note")
+            );
+            case "TEACHER_FIELD" -> Map.of(
+                    "memberName", Set.of("membername", "teachername", "name"),
+                    "employeeNo", Set.of("employeeno", "teacherno", "memberno"),
+                    "departmentName", Set.of("departmentname", "department", "organization"),
                     "role", Set.of("role"),
                     "remark", Set.of("remark", "note")
             );
@@ -2072,7 +2123,15 @@ public class CompetitionRegistrationAppService {
     private CompetitionRegistrationVO.PaymentRecord hydratePaymentRecord(
             CompetitionRegistrationVO.PaymentRecord record
     ) {
-        if (record == null || !StringUtils.hasText(record.getOrderNo())) {
+        if (record == null) {
+            return null;
+        }
+        if (!StringUtils.hasText(record.getOrderNo())) {
+            if (Long.valueOf(0L).equals(record.getPayableAmountMinor())) {
+                record.setPaymentStatus("NOT_REQUIRED");
+                record.setProviderCode(null);
+                record.setProviderOrderNo(null);
+            }
             return record;
         }
         PaymentInternalApi paymentApi = paymentInternalApiProvider == null
@@ -2156,33 +2215,89 @@ public class CompetitionRegistrationAppService {
                 .anyMatch(value -> value.contains(normalizedKeyword));
     }
 
-    private void validateTeamMemberCount(Long competitionId, int memberCount) {
-        int minMembers = DEFAULT_TEAM_MIN_MEMBERS;
-        int maxMembers = DEFAULT_TEAM_MAX_MEMBERS;
+    private void validateParticipantCounts(Long competitionId, int studentCount, int teacherCount) {
+        int studentMinMembers = DEFAULT_STUDENT_MIN_MEMBERS;
+        int studentMaxMembers = DEFAULT_STUDENT_MAX_MEMBERS;
+        int teacherMinMembers = DEFAULT_TEACHER_MIN_MEMBERS;
+        int teacherMaxMembers = DEFAULT_TEACHER_MAX_MEMBERS;
         String contentJson = registrationQueryRepository.findTeamSizeLimitsConfiguration(competitionId);
         if (contentJson != null) {
             try {
                 JsonNode metadata = objectMapper.readTree(contentJson);
-                minMembers = normalizeConfiguredMemberLimit(metadata.path("teamMinMembers").asInt(DEFAULT_TEAM_MIN_MEMBERS), DEFAULT_TEAM_MIN_MEMBERS);
-                maxMembers = normalizeConfiguredMemberLimit(metadata.path("teamMaxMembers").asInt(DEFAULT_TEAM_MAX_MEMBERS), DEFAULT_TEAM_MAX_MEMBERS);
+                studentMinMembers = normalizeConfiguredParticipantLimit(
+                        metadata.has("studentMinMembers")
+                                ? metadata.path("studentMinMembers").asInt(DEFAULT_STUDENT_MIN_MEMBERS)
+                                : metadata.path("teamMinMembers").asInt(DEFAULT_STUDENT_MIN_MEMBERS),
+                        DEFAULT_STUDENT_MIN_MEMBERS,
+                        1
+                );
+                studentMaxMembers = normalizeConfiguredParticipantLimit(
+                        metadata.has("studentMaxMembers")
+                                ? metadata.path("studentMaxMembers").asInt(DEFAULT_STUDENT_MAX_MEMBERS)
+                                : metadata.path("teamMaxMembers").asInt(DEFAULT_STUDENT_MAX_MEMBERS),
+                        DEFAULT_STUDENT_MAX_MEMBERS,
+                        1
+                );
+                teacherMinMembers = normalizeConfiguredParticipantLimit(
+                        metadata.path("teacherMinMembers").asInt(DEFAULT_TEACHER_MIN_MEMBERS),
+                        DEFAULT_TEACHER_MIN_MEMBERS,
+                        0
+                );
+                teacherMaxMembers = normalizeConfiguredParticipantLimit(
+                        metadata.path("teacherMaxMembers").asInt(DEFAULT_TEACHER_MAX_MEMBERS),
+                        DEFAULT_TEACHER_MAX_MEMBERS,
+                        0
+                );
             } catch (Exception ignored) {
-                minMembers = DEFAULT_TEAM_MIN_MEMBERS;
-                maxMembers = DEFAULT_TEAM_MAX_MEMBERS;
+                studentMinMembers = DEFAULT_STUDENT_MIN_MEMBERS;
+                studentMaxMembers = DEFAULT_STUDENT_MAX_MEMBERS;
+                teacherMinMembers = DEFAULT_TEACHER_MIN_MEMBERS;
+                teacherMaxMembers = DEFAULT_TEACHER_MAX_MEMBERS;
             }
         }
-        if (minMembers > maxMembers) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid team member limits");
+        if (studentMinMembers > studentMaxMembers || teacherMinMembers > teacherMaxMembers) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid participant limits");
         }
-        if (memberCount < minMembers) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Team requires at least " + minMembers + " members");
+        if (studentCount < studentMinMembers) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration requires at least " + studentMinMembers + " students");
         }
-        if (memberCount > maxMembers) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Team allows at most " + maxMembers + " members");
+        if (studentCount > studentMaxMembers) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration allows at most " + studentMaxMembers + " students");
+        }
+        if (teacherCount < teacherMinMembers) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration requires at least " + teacherMinMembers + " teachers");
+        }
+        if (teacherCount > teacherMaxMembers) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration allows at most " + teacherMaxMembers + " teachers");
         }
     }
 
-    private int normalizeConfiguredMemberLimit(int value, int fallback) {
-        return value >= 1 && value <= MAX_INLINE_MEMBERS ? value : fallback;
+    private int normalizeConfiguredParticipantLimit(int value, int fallback, int minimum) {
+        return value >= minimum && value <= MAX_PARTICIPANTS_PER_TYPE ? value : fallback;
+    }
+
+    private int countParticipants(List<?> participants, String participantType) {
+        return (int) (participants == null ? List.of() : participants).stream()
+                .filter(participant -> {
+                    if (participant instanceof Map<?, ?> values) {
+                        return participantType.equals(normalizeParticipantType(
+                                values.get("participantType") == null ? null : String.valueOf(values.get("participantType"))
+                        ));
+                    }
+                    return "STUDENT".equals(participantType);
+                })
+                .count();
+    }
+
+    private String normalizeParticipantType(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "STUDENT";
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("STUDENT", "TEACHER").contains(normalized)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Unsupported participant type");
+        }
+        return normalized;
     }
 
     private Map<String, Object> toMutableMap(Object value) {

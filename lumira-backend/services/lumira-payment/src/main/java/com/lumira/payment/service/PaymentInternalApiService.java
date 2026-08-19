@@ -75,8 +75,10 @@ public class PaymentInternalApiService implements PaymentInternalApi {
 
     @Override
     public PaymentOrderDTO getOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
-        CurrentUser operator = resolveTrustedOperator(operatorId, operatorUuid, simulatedRoleId);
-        return paymentTransactionService.getOrderForUser(operator.getUserId(), operator.getUserUuid(), requireOrderNo(orderNo));
+        SystemUserSnapshotDTO owner = resolveKnownOperatorIdentity(operatorId, operatorUuid);
+        return paymentTransactionService.getOrderForUser(
+                owner.userId(), owner.userUuid().trim(), requireOrderNo(orderNo)
+        );
     }
 
     @Override
@@ -86,26 +88,8 @@ public class PaymentInternalApiService implements PaymentInternalApi {
     }
 
     private CurrentUser resolveTrustedOperator(Long operatorId, String operatorUuid, Long simulatedRoleId) {
-        if (operatorId == null || operatorId <= 0) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Valid operator is required");
-        }
-        if (!StringUtils.hasText(operatorUuid)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator userUuid is required");
-        }
-        SystemInternalApi systemInternalApi = systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable();
-        if (systemInternalApi == null) {
-            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Trusted operator resolver is unavailable");
-        }
-        SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(operatorId);
-        if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(operatorId)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator does not exist");
-        }
-        if (!StringUtils.hasText(snapshot.userUuid())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator userUuid is required");
-        }
-        if (!snapshot.userUuid().trim().equals(operatorUuid.trim())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator identity mismatch");
-        }
+        SystemUserSnapshotDTO snapshot = resolveKnownOperatorIdentity(operatorId, operatorUuid);
+        SystemInternalApi systemInternalApi = requireSystemInternalApi();
         if (!StringUtils.hasText(snapshot.username())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator username is required");
         }
@@ -141,6 +125,36 @@ public class PaymentInternalApiService implements PaymentInternalApi {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator is required");
         }
         return operator;
+    }
+
+    private SystemUserSnapshotDTO resolveKnownOperatorIdentity(Long operatorId, String operatorUuid) {
+        if (operatorId == null || operatorId <= 0) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Valid operator is required");
+        }
+        if (!StringUtils.hasText(operatorUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator userUuid is required");
+        }
+        SystemInternalApi systemInternalApi = requireSystemInternalApi();
+        SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(operatorId);
+        if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(operatorId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator does not exist");
+        }
+        if (!StringUtils.hasText(snapshot.userUuid())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator userUuid is required");
+        }
+        if (!snapshot.userUuid().trim().equals(operatorUuid.trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator identity mismatch");
+        }
+        return snapshot;
+    }
+
+    private SystemInternalApi requireSystemInternalApi() {
+        SystemInternalApi systemInternalApi = systemInternalApiProvider == null
+                ? null : systemInternalApiProvider.getIfAvailable();
+        if (systemInternalApi == null) {
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Trusted operator resolver is unavailable");
+        }
+        return systemInternalApi;
     }
 
     private Long normalizeSimulatedRoleId(Long simulatedRoleId) {

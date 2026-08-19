@@ -56,10 +56,7 @@ const TERMINAL_STATUSES = [...PAID_STATUSES, 'FAILED', 'CANCELLED', 'CLOSED', 'E
 const isPaid = (status?: string | null) => PAID_STATUSES.includes(status || '');
 const isPending = (status?: string | null) => !TERMINAL_STATUSES.includes(status || '');
 
-const providerName = (providerCode?: string | null) => paymentProviderDisplayName(
-  providerCode,
-  providerCode,
-);
+const providerName = (providerCode?: string | null) => paymentProviderDisplayName(providerCode, undefined);
 
 const statusColor = (status?: string | null) => (
   isPaid(status) ? 'success' : isPending(status) ? 'processing' : 'default'

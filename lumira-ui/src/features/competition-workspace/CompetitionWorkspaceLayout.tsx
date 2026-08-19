@@ -1,4 +1,4 @@
-import { AppstoreOutlined, ArrowLeftOutlined, AuditOutlined, BankOutlined, FileProtectOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, AuditOutlined, BankOutlined, FileProtectOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined } from '@ant-design/icons';
 import { Alert, Button, Space, Spin, Tag, Typography } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { history, Link, Outlet, useLocation } from '@umijs/max';
@@ -85,7 +85,6 @@ const WorkspaceFrame = () => {
           </div>
           <Button
             className="competition-workspace__back-to-list"
-            icon={<ArrowLeftOutlined />}
             onClick={() => history.push('/competitions/management')}
           >
             返回列表

@@ -9,6 +9,7 @@ import {
 } from '@/branding/settings';
 import { getStoredCurrentUser, subscribeSessionState } from '@/auth/sessionState';
 import { isLoggedIn, performLogout } from '@/auth/sessionLifecycle';
+import { databaseMessage } from '@/i18n/databaseMessage';
 import {
   MAINTENANCE_ADMIN_TARGET,
   MAINTENANCE_LOGIN_PATH,
@@ -24,6 +25,9 @@ const getLocationSnapshot = () =>
 
 const buildAdminLoginTarget = () =>
   `${MAINTENANCE_LOGIN_PATH}?redirect=${encodeURIComponent(MAINTENANCE_ADMIN_TARGET)}`;
+
+const maintenanceLoginEntryLabel = () =>
+  databaseMessage('ui.settings.personalization.maintenance.loginEntry');
 
 export const MaintenanceModeGate = ({ children }: { children: ReactNode }) => {
   const brandingSettings = useSyncExternalStore(
@@ -108,8 +112,8 @@ export const MaintenanceModeGate = ({ children }: { children: ReactNode }) => {
         type="primary"
         shape="circle"
         icon={<MoreOutlined />}
-        aria-label="管理员登录"
-        tooltip="管理员登录"
+        aria-label={maintenanceLoginEntryLabel()}
+        tooltip={maintenanceLoginEntryLabel()}
         onClick={openAdminLogin}
       />
     </main>

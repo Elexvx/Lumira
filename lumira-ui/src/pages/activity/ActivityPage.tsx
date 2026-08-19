@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
+import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, EditOutlined, PlusOutlined, RollbackOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Button, Card, DatePicker, Divider, Empty, Form, Image, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
@@ -17,8 +17,14 @@ import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { resolveActivityCtaTarget } from '@/pages/activity/utils/activityCtaTarget';
+import {
+  activityRegistrationFieldTypeOptions,
+  createDefaultActivityRegistrationFields,
+  isActivityRegistrationChoiceField,
+  normalizeActivityRegistrationFields,
+} from '@/pages/activity/utils/activityRegistrationForm';
 import { createActivity, deleteActivity, listActivities, updateActivity } from '@/services/activity/api';
-import type { ActivityLocale, ActivityRecord, ActivityStatus, ActivityUpsertPayload } from '@/services/activity/types';
+import type { ActivityLocale, ActivityRecord, ActivityRegistrationField, ActivityStatus, ActivityUpsertPayload } from '@/services/activity/types';
 import { request } from '@/services/common/request';
 import { message } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
@@ -115,6 +121,21 @@ type ActivityFormValues = Omit<ActivityUpsertPayload, 'code' | 'activityDate' | 
   activityDateTimeRange?: [Dayjs, Dayjs] | [string, string];
 };
 
+const createEmptyActivityRegistrationField = (fields?: ActivityRegistrationField[]): ActivityRegistrationField => {
+  const usedKeys = new Set((fields || []).map((field) => field.fieldKey));
+  let index = usedKeys.size + 1;
+  while (usedKeys.has(`field${index}`)) {
+    index += 1;
+  }
+  return {
+    fieldKey: `field${index}`,
+    label: '新字段',
+    fieldType: 'TEXT',
+    required: false,
+    options: [],
+  };
+};
+
 const trimOptional = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed || undefined;
@@ -180,8 +201,28 @@ const normalizePayload = (values: ActivityFormValues): ActivityUpsertPayload => 
     ctaHref: trimOptional(values.ctaHref),
     sort: values.sort ?? 100,
     featured: Boolean(values.featured),
+    registrationFields: normalizeActivityRegistrationFields(values.registrationFields),
   };
 };
+
+const buildActivityPayloadFromRecord = (record: ActivityRecord, status = record.status): ActivityUpsertPayload => ({
+  code: trimOptional(record.code),
+  locale: record.locale,
+  title: record.title.trim(),
+  subtitle: trimOptional(record.subtitle || undefined),
+  description: trimOptional(record.description || undefined),
+  imageUrl: trimOptional(record.imageUrl || undefined),
+  sort: record.sort,
+  status,
+  tags: trimOptional(record.tags || undefined),
+  ctaLabel: trimOptional(record.ctaLabel || undefined),
+  ctaHref: trimOptional(record.ctaHref || undefined),
+  activityDate: record.activityDate,
+  activityTime: record.activityTime,
+  location: record.location.trim(),
+  featured: Boolean(record.featured),
+  registrationFields: normalizeActivityRegistrationFields(record.registrationFields),
+});
 
 const ActivityDateTimeRangePicker = ({
   value,
@@ -343,6 +384,7 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
         featured: false,
         ctaLabel: '填写报名资料',
         ctaHref: '/activities/register?mode=wizard&step=1',
+        registrationFields: createDefaultActivityRegistrationFields(),
       }}
     >
       <Form.Item name="locale" label="语言" rules={[{ required: true }]}>
@@ -474,6 +516,130 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
           <Input maxLength={512} />
         </Form.Item>
       </Space>
+
+      <Divider titlePlacement="start">报名信息采集</Divider>
+      <Typography.Paragraph type="secondary">
+        每个活动可配置独立的报名字段；发布后，报名页会按这里的顺序动态生成表单。
+      </Typography.Paragraph>
+      <Form.List
+        name="registrationFields"
+        rules={[
+          {
+            validator: async (_, fields?: ActivityRegistrationField[]) => {
+              const normalizedKeys = (fields || []).map((field) => field?.fieldKey?.trim().toLocaleLowerCase()).filter(Boolean);
+              if (new Set(normalizedKeys).size !== normalizedKeys.length) {
+                throw new Error('字段标识不能重复');
+              }
+            },
+          },
+        ]}
+      >
+        {(fields, { add, remove, move }, { errors }) => (
+          <Space direction="vertical" size="middle" className="activity-registration-fields">
+            <div className="activity-registration-fields__header">
+              <Typography.Text strong>字段列表</Typography.Text>
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={() => add(createEmptyActivityRegistrationField(form.getFieldValue('registrationFields')))}
+              >
+                新增字段
+              </Button>
+            </div>
+            {fields.length === 0 ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前活动不采集额外信息，可直接报名" />
+            ) : null}
+            {fields.map((field, index) => (
+              <Card
+                key={field.key}
+                size="small"
+                className="activity-registration-field-card"
+                title={`字段 ${index + 1}`}
+                extra={(
+                  <Space size={4}>
+                    <Button
+                      type="text"
+                      size="small"
+                      aria-label={`上移字段 ${index + 1}`}
+                      icon={<ArrowUpOutlined />}
+                      disabled={index === 0}
+                      onClick={() => move(index, index - 1)}
+                    />
+                    <Button
+                      type="text"
+                      size="small"
+                      aria-label={`下移字段 ${index + 1}`}
+                      icon={<ArrowDownOutlined />}
+                      disabled={index === fields.length - 1}
+                      onClick={() => move(index, index + 1)}
+                    />
+                    <Button
+                      type="text"
+                      size="small"
+                      danger
+                      aria-label={`删除字段 ${index + 1}`}
+                      icon={<DeleteOutlined />}
+                      onClick={() => remove(index)}
+                    />
+                  </Space>
+                )}
+              >
+                <div className="activity-registration-field-grid">
+                  <Form.Item
+                    name={[field.name, 'label']}
+                    label="字段名称"
+                    rules={[{ required: true, whitespace: true, message: '请输入字段名称' }]}
+                  >
+                    <Input maxLength={128} placeholder="例如：参会人姓名" />
+                  </Form.Item>
+                  <Form.Item
+                    name={[field.name, 'fieldKey']}
+                    label="字段标识"
+                    rules={[
+                      { required: true, whitespace: true, message: '请输入字段标识' },
+                      { pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/, message: '需以字母开头，仅使用字母、数字、下划线或短横线' },
+                    ]}
+                  >
+                    <Input maxLength={64} placeholder="例如：attendeeName" />
+                  </Form.Item>
+                  <Form.Item
+                    name={[field.name, 'fieldType']}
+                    label="字段类型"
+                    rules={[{ required: true, message: '请选择字段类型' }]}
+                  >
+                    <Select options={activityRegistrationFieldTypeOptions} />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'required']} label="是否必填" valuePropName="checked">
+                    <Switch checkedChildren="必填" unCheckedChildren="选填" />
+                  </Form.Item>
+                </div>
+                <Form.Item name={[field.name, 'placeholder']} label="输入提示">
+                  <Input maxLength={255} placeholder="显示在输入框中的提示文字" />
+                </Form.Item>
+                <Form.Item name={[field.name, 'description']} label="字段说明">
+                  <Input.TextArea rows={2} maxLength={500} placeholder="向报名人说明该信息的用途" />
+                </Form.Item>
+                <Form.Item noStyle shouldUpdate={(previous, current) => (
+                  previous.registrationFields?.[field.name]?.fieldType !== current.registrationFields?.[field.name]?.fieldType
+                )}>
+                  {({ getFieldValue }) => isActivityRegistrationChoiceField(
+                    getFieldValue(['registrationFields', field.name, 'fieldType']),
+                  ) ? (
+                    <Form.Item
+                      name={[field.name, 'options']}
+                      label="可选项"
+                      rules={[{ required: true, message: '请至少配置一个可选项' }]}
+                    >
+                      <Select mode="tags" tokenSeparators={[',', '，']} placeholder="输入选项后按回车，可添加多个" />
+                    </Form.Item>
+                  ) : null}
+                </Form.Item>
+              </Card>
+            ))}
+            <Form.ErrorList errors={errors} />
+          </Space>
+        )}
+      </Form.List>
     </Form>
   );
 };
@@ -733,6 +899,17 @@ const ActivityManagementView = () => {
   const [editingRecord, setEditingRecord] = useState<ActivityRecord>();
   const [saving, setSaving] = useState(false);
 
+  const toggleActivityStatus = useCallback(async (record: ActivityRecord) => {
+    const nextStatus: ActivityStatus = record.status === 'published' ? 'draft' : 'published';
+    try {
+      await updateActivity(record.id, buildActivityPayloadFromRecord(record, nextStatus));
+      message.success(nextStatus === 'published' ? '活动已发布' : '活动已切换为草稿');
+      actionRef.current?.reload();
+    } catch (error) {
+      showErrorMessage(error, '状态切换失败');
+    }
+  }, []);
+
   const closeDrawer = () => {
     setDrawerOpen(false);
     setEditingRecord(undefined);
@@ -748,6 +925,7 @@ const ActivityManagementView = () => {
       featured: false,
       ctaLabel: '填写报名资料',
       ctaHref: '/activities/register?mode=wizard&step=1',
+      registrationFields: createDefaultActivityRegistrationFields(),
     });
     setDrawerOpen(true);
   };
@@ -766,6 +944,7 @@ const ActivityManagementView = () => {
       ctaHref: record.ctaHref || undefined,
       activityDateTimeRange: parseActivityDateTimeRange(record.activityDate, record.activityTime),
       featured: Boolean(record.featured),
+      registrationFields: record.registrationFields ?? createDefaultActivityRegistrationFields(),
     });
     setDrawerOpen(true);
   }, [form]);
@@ -793,59 +972,27 @@ const ActivityManagementView = () => {
   const columns = useMemo<ProColumns<ActivityRecord>[]>(
     () => [
       {
-        title: '活动',
+        title: '活动查询',
         dataIndex: 'keyword',
-        render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text>,
-      },
-      {
-        title: '分类',
-        dataIndex: 'subtitle',
-        search: false,
-        render: (value) => value ? <Tag color="blue">{String(value)}</Tag> : '-',
-      },
-      {
-        title: '语言',
-        dataIndex: 'locale',
-        valueType: 'select',
-        valueEnum: {
-          zh: { text: '中文' },
-          en: { text: 'English' },
-        },
-        width: 96,
-        render: (value) => {
-          const locales = splitActivityLocales(typeof value === 'string' ? value : undefined);
-          if (!locales.length) return '-';
-          return <Space size={4} wrap>{locales.map((item) => <Tag key={item}>{item === 'zh' ? '中文' : item === 'en' ? 'English' : item}</Tag>)}</Space>;
+        hideInTable: true,
+        fieldProps: {
+          placeholder: '输入活动名称/编码/分类',
         },
       },
       {
-        title: '日期',
-        dataIndex: 'activityDate',
+        title: '编号',
+        dataIndex: 'code',
         search: false,
-        width: 128,
-      },
-      {
-        title: '时间',
-        dataIndex: 'activityTime',
-        search: false,
-        width: 140,
-      },
-      {
-        title: '地点',
-        dataIndex: 'location',
-        search: false,
+        width: 180,
         ellipsis: true,
+        render: (_, record) => record.code || '-',
       },
       {
-        title: '重点',
-        dataIndex: 'featured',
-        valueType: 'select',
-        valueEnum: {
-          true: { text: '是' },
-          false: { text: '否' },
-        },
-        width: 90,
-        render: (_, record) => (record.featured ? <Tag color="gold">重点</Tag> : <Tag>普通</Tag>),
+        title: '活动',
+        dataIndex: 'title',
+        search: false,
+        minWidth: 260,
+        render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text>,
       },
       {
         title: '状态',
@@ -859,16 +1006,74 @@ const ActivityManagementView = () => {
         render: (_, record) => <Tag color={statusColor[record.status]}>{statusLabel[record.status]}</Tag>,
       },
       {
+        title: '分类',
+        dataIndex: 'subtitle',
+        search: false,
+        responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
+        render: (value) => value ? <Tag color="blue">{String(value)}</Tag> : '-',
+      },
+      {
+        title: '语言',
+        dataIndex: 'locale',
+        valueType: 'select',
+        valueEnum: {
+          zh: { text: '中文' },
+          en: { text: 'English' },
+        },
+        width: 96,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
+        render: (value) => {
+          const locales = splitActivityLocales(typeof value === 'string' ? value : undefined);
+          if (!locales.length) return '-';
+          return <Space size={4} wrap>{locales.map((item) => <Tag key={item}>{item === 'zh' ? '中文' : item === 'en' ? 'English' : item}</Tag>)}</Space>;
+        },
+      },
+      {
+        title: '日期',
+        dataIndex: 'activityDate',
+        search: false,
+        width: 128,
+        responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
+      },
+      {
+        title: '时间',
+        dataIndex: 'activityTime',
+        search: false,
+        width: 140,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
+      },
+      {
+        title: '地点',
+        dataIndex: 'location',
+        search: false,
+        responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
+        ellipsis: true,
+      },
+      {
+        title: '重点',
+        dataIndex: 'featured',
+        valueType: 'select',
+        valueEnum: {
+          true: { text: '是' },
+          false: { text: '否' },
+        },
+        width: 90,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
+        render: (_, record) => (record.featured ? <Tag color="gold">重点</Tag> : <Tag>普通</Tag>),
+      },
+      {
         title: '排序',
         dataIndex: 'sort',
         search: false,
         width: 80,
+        responsive: ['lg', 'xl', 'xxl'],
       },
       {
         title: '更新时间',
         dataIndex: 'updatedAt',
         search: false,
         width: 172,
+        responsive: ['xl', 'xxl'],
         render: (value) => value || '-',
       },
       {
@@ -882,6 +1087,28 @@ const ActivityManagementView = () => {
           <TableActionBar
             isMobile={responsive.isMobile}
             items={actionPermission.buildTableActions([
+              {
+                key: 'status',
+                label: record.status === 'published' ? '撤回' : '发布',
+                icon: record.status === 'published' ? <RollbackOutlined /> : <CheckCircleOutlined />,
+                permission: 'aiadc:activity:update',
+                onClick: () => {
+                  if (record.status === 'published') {
+                    void toggleActivityStatus(record);
+                    return;
+                  }
+
+                  Modal.confirm({
+                    title: '确认发布该活动？',
+                    content: `发布后，活动「${record.title}」将出现在活动查询和用户入口中。`,
+                    okText: '确认发布',
+                    cancelText: '取消',
+                    onOk: async () => {
+                      await toggleActivityStatus(record);
+                    },
+                  });
+                },
+              },
               {
                 key: 'edit',
                 label: '编辑',
@@ -913,7 +1140,7 @@ const ActivityManagementView = () => {
         ),
       },
     ],
-    [actionPermission, openEditDrawer, responsive.isDesktop, responsive.isMobile],
+    [actionPermission, openEditDrawer, responsive.isDesktop, responsive.isMobile, toggleActivityStatus],
   );
 
   return (
@@ -923,6 +1150,8 @@ const ActivityManagementView = () => {
           actionRef={actionRef}
           rowKey="id"
           columns={columns}
+          adaptiveSpacing
+          containerResponsive
           isMobile={responsive.isMobile}
           autoContentWidth
           scroll={{ x: 'max-content' }}

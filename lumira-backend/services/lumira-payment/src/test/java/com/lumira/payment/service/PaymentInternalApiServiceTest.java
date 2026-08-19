@@ -49,16 +49,19 @@ class PaymentInternalApiServiceTest {
     }
 
     @Test
-    void getOrderRejectsDisabledOperatorBeforeServiceLookup() {
+    void getOrderAllowsDisabledHistoricalOwnerWithinExactIdentityScope() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "DISABLED"));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
+        PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po-1", "subject", 100L, "CNY", "PAID", null, null, null, null, Map.of(), null, null, null, null, null);
+        when(transactionService.getOrderForUser(1001L, "user-uuid-1001", "ORD-1")).thenReturn(order);
 
-        assertThatThrownBy(() -> service.getOrder(1001L, "user-uuid-1001", "ORD-1"))
-                .isInstanceOf(com.lumira.common.exception.BizException.class);
+        PaymentOrderDTO result = service.getOrder(1001L, "user-uuid-1001", "ORD-1");
 
-        verify(transactionService, never()).getOrderForUser(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+        assertThat(result).isSameAs(order);
+        verify(transactionService).getOrderForUser(1001L, "user-uuid-1001", "ORD-1");
+        verify(systemInternalApi, never()).permissionSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test

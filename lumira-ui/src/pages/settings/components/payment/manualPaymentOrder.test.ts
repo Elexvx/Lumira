@@ -20,13 +20,14 @@ const setting = (overrides: Partial<PaymentProviderSettings>): PaymentProviderSe
 });
 
 describe('manualPaymentOrder', () => {
-  it('lists only enabled, configured providers with a real manual checkout flow', () => {
+  it('lists enabled and configured providers with a manual or simulated checkout flow', () => {
     expect(listManualPaymentProviders([
       setting({ providerCode: 'alipay' }),
       setting({ providerCode: 'wechat_pay' }),
+      setting({ providerCode: 'builtin_mock', providerName: '内置模拟支付', environment: 'SANDBOX' }),
       setting({ providerCode: 'stripe' }),
       setting({ providerCode: 'alipay', configured: false }),
-    ]).map((item) => item.providerCode)).toEqual(['alipay', 'wechat_pay']);
+    ]).map((item) => item.providerCode)).toEqual(['alipay', 'wechat_pay', 'builtin_mock']);
   });
 
   it('uses only enabled WeChat scenes and falls back to NATIVE', () => {

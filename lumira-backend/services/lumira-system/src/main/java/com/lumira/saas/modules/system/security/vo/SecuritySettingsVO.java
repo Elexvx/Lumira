@@ -6,6 +6,7 @@ public class SecuritySettingsVO {
     private Long accessTokenExpireSeconds;
     private Long refreshTokenExpireSeconds;
     private Boolean allowMultiDeviceLogin;
+    private Boolean registrationEnabled;
     private Boolean captchaEnabled;
     private String captchaType;
     private Long loginDefenseWindowMinutes;
@@ -27,6 +28,8 @@ public class SecuritySettingsVO {
     public void setRefreshTokenExpireSeconds(Long refreshTokenExpireSeconds) { this.refreshTokenExpireSeconds = refreshTokenExpireSeconds; }
     public Boolean getAllowMultiDeviceLogin() { return allowMultiDeviceLogin; }
     public void setAllowMultiDeviceLogin(Boolean allowMultiDeviceLogin) { this.allowMultiDeviceLogin = allowMultiDeviceLogin; }
+    public Boolean getRegistrationEnabled() { return registrationEnabled; }
+    public void setRegistrationEnabled(Boolean registrationEnabled) { this.registrationEnabled = registrationEnabled; }
     public Boolean getCaptchaEnabled() { return captchaEnabled; }
     public void setCaptchaEnabled(Boolean captchaEnabled) { this.captchaEnabled = captchaEnabled; }
     public String getCaptchaType() { return captchaType; }

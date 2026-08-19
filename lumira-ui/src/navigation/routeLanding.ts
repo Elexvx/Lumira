@@ -13,7 +13,6 @@ export const resolveDataManagementLandingPath = (access: unknown) => resolveFirs
   ['canVisitActivities', '/activities/management'],
   ['canVisitPaymentOrders', '/payments/management'],
   ['canVisitCertificateTemplates', '/certificates/templates'],
-  ['canVisitCertificateGenerate', '/certificates/generate'],
   ['canVisitCertificateRecords', '/certificates/records'],
   ['canVisitDownloadCenter', '/data-management/download-center'],
 ]);

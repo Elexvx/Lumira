@@ -1,7 +1,7 @@
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Button, Card, Descriptions, Form, Input, Result, Select, Space, Steps, Tag, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Descriptions, Form, Input, InputNumber, Result, Select, Space, Steps, Tag, Typography } from 'antd';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { history, useLocation } from '@umijs/max';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
@@ -9,19 +9,24 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useResponsive } from '@/hooks/useResponsive';
+import {
+  createDefaultActivityRegistrationFields,
+  formatActivityRegistrationValue,
+  normalizeActivityRegistrationAnswers,
+  summarizeActivityRegistrationAnswers,
+} from '@/pages/activity/utils/activityRegistrationForm';
 import { createActivityRegistration, listActivityRegistrations, listPublicActivities } from '@/services/activity/api';
-import type { ActivityRegistrationRecord as ActivityApplicationRecord, PublicActivityRecord } from '@/services/activity/types';
+import type {
+  ActivityRegistrationField,
+  ActivityRegistrationRecord as ActivityApplicationRecord,
+  PublicActivityRecord,
+} from '@/services/activity/types';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
 
 type ActivityRegistrationValues = {
   activityId?: number;
-  name?: string;
-  mobile?: string;
-  email?: string;
-  organization?: string;
-  position?: string;
-  remark?: string;
+  answers?: Record<string, unknown>;
 };
 
 type ActivityRegistrationFilterValues = {
@@ -61,6 +66,54 @@ const activityRegistrationBreadcrumb = {
 };
 
 const formatDateTime = (value?: string) => (value ? value.replace('T', ' ').slice(0, 19) : '-');
+
+const renderActivityRegistrationField = (field: ActivityRegistrationField) => {
+  const rules = [
+    ...(field.required ? [{ required: true, message: `请填写${field.label}` }] : []),
+    ...(field.fieldType === 'MOBILE' ? [{ pattern: /^1[3-9]\d{9}$/, message: '请输入有效的中国手机号' }] : []),
+    ...(field.fieldType === 'EMAIL' ? [{ type: 'email' as const, message: '请输入有效邮箱' }] : []),
+  ];
+  const commonProps = {
+    placeholder: field.placeholder || `请填写${field.label}`,
+  };
+  let input: ReactNode;
+  switch (field.fieldType) {
+    case 'TEXTAREA':
+      input = <Input.TextArea {...commonProps} rows={4} maxLength={5000} showCount />;
+      break;
+    case 'NUMBER':
+      input = <InputNumber {...commonProps} style={{ width: '100%' }} />;
+      break;
+    case 'DATE':
+      input = <DatePicker style={{ width: '100%' }} placeholder={field.placeholder || `请选择${field.label}`} />;
+      break;
+    case 'SELECT':
+      input = <Select {...commonProps} options={(field.options || []).map((option) => ({ label: option, value: option }))} />;
+      break;
+    case 'MULTI_SELECT':
+      input = <Select {...commonProps} mode="multiple" options={(field.options || []).map((option) => ({ label: option, value: option }))} />;
+      break;
+    case 'MOBILE':
+      input = <Input {...commonProps} inputMode="numeric" maxLength={11} />;
+      break;
+    case 'EMAIL':
+      input = <Input {...commonProps} type="email" maxLength={255} />;
+      break;
+    default:
+      input = <Input {...commonProps} maxLength={1000} />;
+  }
+  return (
+    <Form.Item
+      key={field.fieldKey}
+      name={['answers', field.fieldKey]}
+      label={field.label}
+      extra={field.description || undefined}
+      rules={rules}
+    >
+      {input}
+    </Form.Item>
+  );
+};
 
 const activityRegistrationColumns: ProColumns<ActivityApplicationRecord>[] = [
   {
@@ -103,6 +156,16 @@ const activityRegistrationColumns: ProColumns<ActivityApplicationRecord>[] = [
     render: (_, record) => record.mobile || '-',
   },
   {
+    title: '报名信息',
+    dataIndex: 'answers',
+    search: false,
+    width: 320,
+    render: (_, record) => {
+      const summary = summarizeActivityRegistrationAnswers(record.answers);
+      return summary ? <Typography.Text ellipsis={{ tooltip: summary }}>{summary}</Typography.Text> : '-';
+    },
+  },
+  {
     title: '状态',
     dataIndex: 'status',
     valueType: 'select',
@@ -134,7 +197,7 @@ const filterActivityRegistrations = (
   return records.filter((record) => (
     (!applicationNo || record.applicationNo.toLocaleLowerCase().includes(applicationNo))
       && (!activityTitle || record.activityTitle.toLocaleLowerCase().includes(activityTitle))
-      && (!name || record.name.toLocaleLowerCase().includes(name))
+      && (!name || record.name?.toLocaleLowerCase().includes(name))
       && (!mobile || record.mobile?.toLocaleLowerCase().includes(mobile))
       && (!filters.status || record.status === filters.status)
   ));
@@ -157,6 +220,12 @@ const ActivityRegistrationPage = () => {
   const selectedActivity = useMemo(
     () => activities.find((activity) => activity.id === selectedActivityId),
     [activities, selectedActivityId],
+  );
+  const selectedRegistrationFields = useMemo(
+    () => selectedActivity
+      ? selectedActivity.registrationFields ?? createDefaultActivityRegistrationFields()
+      : [],
+    [selectedActivity],
   );
 
   const setWizardStep = useCallback((nextStep: number, replace = true) => {
@@ -242,15 +311,25 @@ const ActivityRegistrationPage = () => {
     }
 
     if (step === 1) {
-      await form.validateFields(['name', 'mobile', 'email', 'organization', 'position', 'remark']);
+      if (!selectedActivity) {
+        message.error('请先选择活动');
+        setWizardStep(0);
+        return;
+      }
+      await form.validateFields(selectedRegistrationFields.map((field) => ['answers', field.fieldKey]));
       setWizardStep(2);
       return;
     }
 
     const values = form.getFieldsValue(true);
+    if (!selectedActivity || !values.activityId) {
+      message.error('请先选择活动');
+      setWizardStep(0);
+      return;
+    }
     const created = await createActivityRegistration({
-      activityId: values.activityId!, name: values.name!, mobile: values.mobile, email: values.email,
-      organization: values.organization, position: values.position, remark: values.remark,
+      activityId: values.activityId,
+      answers: normalizeActivityRegistrationAnswers(selectedRegistrationFields, values.answers),
     });
     setApplicationNo(created.applicationNo);
     message.success('活动报名已提交');
@@ -335,6 +414,10 @@ const ActivityRegistrationPage = () => {
                         value: activity.id,
                       }))}
                       placeholder="请选择要报名的活动"
+                      onChange={(activityId) => {
+                        setSelectedActivityId(activityId);
+                        form.setFieldValue('answers', undefined);
+                      }}
                     />
                   </Form.Item>
                   {selectedActivity ? (
@@ -350,37 +433,21 @@ const ActivityRegistrationPage = () => {
               ) : null}
 
               {step === 1 ? (
-                <div className="competition-application-grid">
-                  <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
-                    <Input maxLength={64} />
-                  </Form.Item>
-                  <Form.Item name="mobile" label="手机号" rules={[{ required: true, message: '请输入手机号' }]}>
-                    <Input maxLength={32} />
-                  </Form.Item>
-                  <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入有效邮箱' }]}>
-                    <Input maxLength={128} />
-                  </Form.Item>
-                  <Form.Item name="organization" label="单位">
-                    <Input maxLength={128} />
-                  </Form.Item>
-                  <Form.Item name="position" label="职务">
-                    <Input maxLength={64} />
-                  </Form.Item>
-                  <Form.Item name="remark" label="备注" className="competition-application-grid__full">
-                    <Input.TextArea rows={4} maxLength={500} showCount />
-                  </Form.Item>
+                <div className="competition-application-grid activity-registration-form-grid">
+                  {selectedRegistrationFields.length > 0
+                    ? selectedRegistrationFields.map(renderActivityRegistrationField)
+                    : <Alert type="info" showIcon title="本活动无需填写额外信息，可直接进入确认。" />}
                 </div>
               ) : null}
 
               {step === 2 ? (
                 <Descriptions column={1} bordered>
                   <Descriptions.Item label="活动">{selectedActivity?.title || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="姓名">{form.getFieldValue('name') || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="手机号">{form.getFieldValue('mobile') || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="邮箱">{form.getFieldValue('email') || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="单位">{form.getFieldValue('organization') || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="职务">{form.getFieldValue('position') || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="备注">{form.getFieldValue('remark') || '-'}</Descriptions.Item>
+                  {selectedRegistrationFields.map((field) => (
+                    <Descriptions.Item key={field.fieldKey} label={field.label}>
+                      {formatActivityRegistrationValue(form.getFieldValue(['answers', field.fieldKey]))}
+                    </Descriptions.Item>
+                  ))}
                 </Descriptions>
               ) : null}
 

@@ -444,6 +444,7 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   const dynamicParentRepair = read('deploy/migrations/V202608030003__repair_dynamic_registration_parent.sql');
   const navigationAuthorityRepair = read('deploy/migrations/V202608030005__repair_navigation_authority.sql');
   const certificateDataManagementMigration = read('deploy/migrations/V202608150004__move_certificate_management_into_data_management.sql');
+  const awardSettingsMigration = read('deploy/migrations/V202608160001__add_competition_award_settings.sql');
   const menuInsertStart = baseline.indexOf('INSERT INTO `sys_menu`');
   const menuInsertEnd = baseline.indexOf('ON DUPLICATE KEY UPDATE', menuInsertStart);
   const menuInsert = baseline.slice(menuInsertStart, menuInsertEnd);
@@ -466,9 +467,10 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   assert.equal(byCode.get('competition.review-results')?.parentId, '-1069');
   assert.equal(byCode.get('certificate.mine')?.id, '-1114');
   assert.equal(byCode.get('certificate.mine')?.parentId, '-1069');
-  for (const certificateMenuCode of ['certificate.templates', 'certificate.generate', 'certificate.records']) {
+  for (const certificateMenuCode of ['certificate.templates', 'certificate.records']) {
     assert.equal(byCode.get(certificateMenuCode)?.parentId, '-1100');
   }
+  assert.equal(byCode.has('certificate.generate'), false);
   assert.equal(byCode.get('expert.application')?.parentId, '-1068');
 
   for (const marker of [
@@ -513,6 +515,12 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   assert.match(certificateDataManagementMigration, /migration:V202608150004:certificate-data-management/);
   assert.doesNotMatch(certificateDataManagementMigration, /\bDELETE\s+FROM\b/i);
   assert.doesNotMatch(certificateDataManagementMigration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+  assert.match(awardSettingsMigration, /AWARD_SETTINGS/);
+  assert.match(awardSettingsMigration, /certificate\.generate/);
+  assert.match(awardSettingsMigration, /一等奖/);
+  assert.match(awardSettingsMigration, /优秀奖/);
+  assert.doesNotMatch(awardSettingsMigration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(awardSettingsMigration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
 
 test('platform event outbox audit identity repair matches the fresh bootstrap', () => {
@@ -581,4 +589,65 @@ test('built-in administrator bootstrap is secret-driven and migration-backed', (
   const bootstrapCall = entrypoint.indexOf('exec java -jar /opt/lumira/lumira-bootstrap-admin.jar');
   assert.ok(flywayCall >= 0);
   assert.ok(bootstrapCall > flywayCall, 'credential bootstrap must run only after schema migration succeeds');
+});
+
+test('payment transaction numbers and legacy competition order ownership remain readable', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608190001__correct_payment_provider_transaction_number.sql');
+  const manualUpgrade = read('lumira-backend/sql/upgrade-payment-provider-transaction-number-v1.sql');
+
+  assert.match(
+    baseline,
+    /CREATE TABLE `payment_order`[\s\S]*?`provider_order_no` varchar\(128\) NOT NULL/,
+  );
+  for (const source of [migration, manualUpgrade]) {
+    assert.doesNotMatch(source, /\bMODIFY\s+(?:COLUMN\s+)?`?provider_order_no`?/i);
+    assert.match(source, /SET `provider_order_no` = ''/);
+    assert.match(source, /LEFT\([\s\S]*?CONCAT\(`provider_code`, '-', `order_no`, '-'\)/);
+    assert.match(source, /RIGHT\(`provider_order_no`, 12\) REGEXP '\^\[0-9a-f\]\{12\}\$'/);
+    assert.match(source, /JOIN `competition_registration` AS `registration`/);
+    assert.match(source, /`registration`\.`owner_user_id` = `payment`\.`created_by`/);
+    assert.match(source, /SET `payment`\.`created_by_uuid` = `registration`\.`owner_user_uuid`/);
+    assert.match(source, /WHERE `payment`\.`created_by_uuid` IS NULL/);
+    assert.doesNotMatch(source, /`request_json`|`response_json`/);
+    assert.doesNotMatch(source, /\bDELETE\s+FROM\b/i);
+    assert.doesNotMatch(source, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+  }
+});
+
+test('competition award batch rules migration is idempotent against the complete bootstrap', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608180001__add_competition_award_batch_rules.sql');
+
+  assert.match(
+    baseline,
+    /CREATE TABLE `competition_review_batch`[\s\S]*?`award_rules_json` longtext/,
+  );
+  assert.match(
+    migration,
+    /information_schema\.columns[\s\S]*?table_name = 'competition_review_batch'[\s\S]*?column_name = 'award_rules_json'/,
+  );
+  assert.match(migration, /PREPARE award_rules_json_statement FROM @award_rules_json_ddl/);
+  assert.match(migration, /DEALLOCATE PREPARE award_rules_json_statement/);
+});
+
+test('participant role settings migrate existing competitions without losing legacy team limits', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608190002__add_competition_participant_role_settings.sql');
+  const manualUpgrade = read('lumira-backend/sql/upgrade-competition-participant-role-settings-v1.sql');
+
+  for (const source of [baseline, migration, manualUpgrade]) {
+    assert.match(source, /'TEACHER_FIELD','memberName','指导老师姓名'/);
+    assert.match(source, /studentMinMembers/);
+    assert.match(source, /studentMaxMembers/);
+    assert.match(source, /teacherMinMembers/);
+    assert.match(source, /teacherMaxMembers/);
+  }
+  for (const source of [migration, manualUpgrade]) {
+    assert.match(source, /JSON_EXTRACT\(`content_json`, '\$\.teamMinMembers'\)/);
+    assert.match(source, /JSON_EXTRACT\(`content_json`, '\$\.teamMaxMembers'\)/);
+    assert.match(source, /NOT EXISTS[\s\S]*?'TEACHER_FIELD'[\s\S]*?'memberName'/);
+    assert.doesNotMatch(source, /\bDELETE\s+FROM\b/i);
+    assert.doesNotMatch(source, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+  }
 });

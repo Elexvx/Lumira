@@ -325,6 +325,15 @@ public class SystemController {
         );
     }
 
+    @GetMapping("/maintenance-login-roles")
+    public ApiResponse<List<SystemVO.MaintenanceLoginRoleOptionVO>> maintenanceLoginRoles() {
+        CurrentUser currentUser = require("system:config:view");
+        return ApiResponse.success(
+                systemManagementAppService.listMaintenanceLoginRoleOptions(currentUser),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/roles/{id}")
     public ApiResponse<SystemVO.RoleDetailVO> role(@PathVariable("id") Long id) {
         CurrentUser currentUser = require("system:role:view");

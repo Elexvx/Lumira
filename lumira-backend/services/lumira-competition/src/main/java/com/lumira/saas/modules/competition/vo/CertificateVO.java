@@ -257,6 +257,19 @@ public final class CertificateVO {
         public void setIssuedCount(Integer issuedCount) { this.issuedCount = issuedCount; }
     }
 
+    public static class AwardRule {
+        private String awardName;
+        private Integer minRank;
+        private Integer maxRank;
+
+        public String getAwardName() { return awardName; }
+        public void setAwardName(String awardName) { this.awardName = awardName; }
+        public Integer getMinRank() { return minRank; }
+        public void setMinRank(Integer minRank) { this.minRank = minRank; }
+        public Integer getMaxRank() { return maxRank; }
+        public void setMaxRank(Integer maxRank) { this.maxRank = maxRank; }
+    }
+
     public static class Record {
         private Long id;
         private String certificateNo;

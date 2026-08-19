@@ -45,6 +45,7 @@ type LoginPageMainSectionProps = {
   pendingSecondFactorLogin: LoginResponse | null;
   pendingSecondFactorPrompt: string;
   agreementSettings: AgreementSettings;
+  registrationEnabled: boolean;
   securityCaptchaEnabled: boolean;
   securityCaptchaType: CaptchaChallenge['captchaType'];
   captchaChallenge: CaptchaChallenge | null;
@@ -71,7 +72,7 @@ type LoginPageMainSectionProps = {
   openPasswordReset: () => void;
 };
 
-const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, brandingFooterItems, submitButtonText, activeLoginMode, availableLoginModes, pendingSecondFactorLogin, pendingSecondFactorPrompt, agreementSettings, securityCaptchaEnabled, securityCaptchaType, captchaChallenge, captchaLoading, captchaImageLoadFailed, sendingLoginType, loginCodeChallenges, loginCodeCooldownSeconds, loginCapabilities, submitting, passkeySubmitting, setActiveLoginMode, openAgreementPreview, handleSendLoginCode, handleWechatLogin, handlePasskeyLogin, refreshCaptcha, setCaptchaImageLoadFailed, setCaptchaChallenge, handleSubmit, handleFinishFailed, setCaptchaProof, resetCaptchaProof, openPasswordReset }: LoginPageMainSectionProps) => {
+const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, brandingFooterItems, submitButtonText, activeLoginMode, availableLoginModes, pendingSecondFactorLogin, pendingSecondFactorPrompt, agreementSettings, registrationEnabled, securityCaptchaEnabled, securityCaptchaType, captchaChallenge, captchaLoading, captchaImageLoadFailed, sendingLoginType, loginCodeChallenges, loginCodeCooldownSeconds, loginCapabilities, submitting, passkeySubmitting, setActiveLoginMode, openAgreementPreview, handleSendLoginCode, handleWechatLogin, handlePasskeyLogin, refreshCaptcha, setCaptchaImageLoadFailed, setCaptchaChallenge, handleSubmit, handleFinishFailed, setCaptchaProof, resetCaptchaProof, openPasswordReset }: LoginPageMainSectionProps) => {
   const { message: messageApi } = App.useApp();
   const { resolvedColorMode, setThemePreference } = useThemePreference();
   const currentLocale = getLocale();
@@ -84,11 +85,7 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
     : nextColorMode === 'light'
       ? 'Switch to light mode'
       : 'Switch to dark mode';
-  const joinMode = availableLoginModes.includes('sms')
-    ? 'sms'
-    : availableLoginModes.includes('email')
-      ? 'email'
-      : null;
+  const joinMode = registrationEnabled && availableLoginModes.includes('sms') ? 'sms' : null;
 
   return (
     <div className="saas-login-page" style={loginPageStyle}>
@@ -145,6 +142,7 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
                 pendingSecondFactorLogin={pendingSecondFactorLogin}
                 pendingSecondFactorPrompt={pendingSecondFactorPrompt}
                 agreementSettings={agreementSettings}
+                registrationEnabled={registrationEnabled}
                 securityCaptchaEnabled={securityCaptchaEnabled}
                 securityCaptchaType={securityCaptchaType}
                 captchaChallenge={captchaChallenge}
@@ -514,6 +512,7 @@ const Login = () => {
         pendingSecondFactorLogin={loginFlow.viewState.pendingSecondFactorLogin}
         pendingSecondFactorPrompt={loginFlow.viewState.pendingSecondFactorPrompt}
         agreementSettings={loginFlow.agreementSettings}
+        registrationEnabled={loginFlow.viewState.securitySettings.registrationEnabled}
         securityCaptchaEnabled={loginFlow.viewState.securitySettings.captchaEnabled}
         securityCaptchaType={loginFlow.viewState.securitySettings.captchaType}
         captchaChallenge={loginFlow.viewState.captchaChallenge}

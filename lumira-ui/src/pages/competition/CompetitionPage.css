@@ -34,6 +34,10 @@
   grid-column: 1 / -1;
 }
 
+.activity-registration-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .competition-application-actions {
   display: flex;
   justify-content: center;
@@ -146,63 +150,14 @@
   margin-bottom: 6px !important;
 }
 
-.competition-registration-member-manager__table-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--ant-border-radius-lg);
-  background: var(--ant-color-bg-container);
-}
-
 .competition-registration-member-manager__table {
   width: 100%;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0;
 }
 
-.competition-registration-member-manager__table th,
-.competition-registration-member-manager__table td {
-  width: 140px;
-  min-width: 140px;
-  max-width: 140px;
-  padding: 14px 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-  vertical-align: top;
-  text-align: left;
-}
-
-.competition-registration-member-manager__table thead th {
-  border-top: 0;
-  background: var(--ant-color-fill-quaternary);
-  color: var(--ant-color-text-heading);
-  font-weight: 600;
-}
-
-.competition-registration-member-manager__table td {
-  background: var(--ant-color-bg-container);
-}
-
-.competition-registration-member-manager__actions {
-  position: sticky;
-  right: 0;
-  z-index: 1;
-  width: 148px;
-  min-width: 148px !important;
-  max-width: 148px;
-  padding-inline: 8px !important;
-  background: var(--ant-color-bg-container);
-  border-left: 1px solid var(--ant-color-border-secondary);
-  box-shadow: -8px 0 12px -12px rgb(0 0 0 / 35%);
-  white-space: nowrap;
-}
-
-.competition-registration-member-manager__table thead .competition-registration-member-manager__actions {
-  z-index: 2;
-  background: var(--ant-color-fill-quaternary);
-}
-
-.competition-registration-member-manager__editor {
-  min-width: 0;
+.competition-registration-member-manager .ant-table-container {
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg);
+  overflow: hidden;
 }
 
 .competition-registration-member-manager__required {
@@ -210,35 +165,41 @@
   color: var(--ant-color-error);
 }
 
-.competition-registration-member-manager__cell-text {
-  color: var(--ant-color-text);
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
+.competition-registration-table-cell {
+  display: block;
+  max-width: 220px;
 }
 
-.competition-registration-member-manager__editor .ant-input,
-.competition-registration-member-manager__editor .ant-input-number,
-.competition-registration-member-manager__editor .ant-picker,
-.competition-registration-member-manager__editor .ant-select {
+.competition-registration-table-image {
+  border-radius: var(--ant-border-radius-sm);
+  object-fit: cover;
+}
+
+.competition-registration-evidence-manager {
+  margin-top: 16px;
+}
+
+.competition-registration-editor-modal {
+  max-width: calc(100vw - 32px);
+}
+
+.competition-registration-editor-modal .ant-modal-body {
+  max-height: min(70vh, 680px);
+  overflow-y: auto;
+}
+
+.competition-registration-editor-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 20px;
+}
+
+.competition-registration-editor-modal__wide {
+  grid-column: 1 / -1;
+}
+
+.competition-award-special-award-modal .competition-award-special-award-form__quota .ant-space-compact {
   width: 100%;
-}
-
-.competition-registration-member-manager__cell-error {
-  margin-top: 6px;
-  color: var(--ant-color-error);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.competition-registration-member-manager__empty {
-  text-align: center;
-  color: var(--ant-color-text-tertiary);
-}
-
-.competition-registration-member-manager__add {
-  margin-top: 12px;
-  height: 44px;
 }
 
 .competition-create-page {
@@ -621,13 +582,25 @@
   }
 
   .competition-registration-member-manager {
-    padding: 16px;
+    padding: 0;
   }
 
-  .competition-registration-member-manager__table th,
-  .competition-registration-member-manager__table td {
-    min-width: 140px;
-    padding: 12px;
+  .competition-registration-member-manager__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .competition-registration-editor-modal {
+    width: calc(100vw - 24px) !important;
+    margin: 12px auto;
+  }
+
+  .competition-registration-editor-modal__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .competition-registration-editor-modal__wide {
+    grid-column: auto;
   }
 
   .competition-create-actions {
@@ -764,6 +737,23 @@
   width: 100%;
 }
 
+.competition-config-sections {
+  width: 100%;
+}
+
+.competition-config-section {
+  width: 100%;
+}
+
+.competition-config-section__title {
+  margin: 0 0 var(--saas-spacing-md) !important;
+}
+
+.competition-config-section__divider {
+  margin: var(--saas-spacing-lg) 0;
+  border-color: var(--ant-color-border-secondary);
+}
+
 .competition-config-module {
   width: 100%;
 }
@@ -857,7 +847,7 @@
 
 .competition-settings-content .competition-organizer-list .competition-dynamic-list__row {
   display: grid;
-  grid-template-columns: minmax(160px, 0.75fr) minmax(240px, 1fr) 72px;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1fr) 72px;
   align-items: start;
   gap: 0 24px;
   min-width: 0;

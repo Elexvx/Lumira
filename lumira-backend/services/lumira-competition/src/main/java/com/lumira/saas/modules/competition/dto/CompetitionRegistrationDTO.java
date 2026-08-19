@@ -138,6 +138,8 @@ public final class CompetitionRegistrationDTO {
     }
 
     public static class MemberSnapshotRequest {
+        @Pattern(regexp = "^(STUDENT|TEACHER)$", message = "Participant type must be STUDENT or TEACHER")
+        private String participantType;
         @Size(max = 128)
         @Pattern(regexp = "^[\\p{IsHan}A-Za-z·]{2,64}$", message = "Member name may only contain Chinese characters, English letters, or a middle dot")
         private String memberName;
@@ -151,6 +153,8 @@ public final class CompetitionRegistrationDTO {
         private String remark;
         private Map<String, Object> extraValues;
 
+        public String getParticipantType() { return participantType; }
+        public void setParticipantType(String participantType) { this.participantType = participantType; }
         public String getMemberName() { return memberName; }
         public void setMemberName(String memberName) { this.memberName = memberName; }
         public String getEmployeeNo() { return employeeNo; }

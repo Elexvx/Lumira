@@ -42,6 +42,23 @@ test('maintenance countdown setting is included in the versioned online migratio
   assert.doesNotMatch(upgrade, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
 
+test('maintenance login role policy is database-owned and idempotently upgraded', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608160003__add_maintenance_login_role_policy.sql');
+  const key = 'branding.maintenance-allowed-role-ids';
+
+  assert.match(baseline, new RegExp(key));
+  assert.match(baseline, /\[1001\]/);
+  assert.match(migration, new RegExp(key));
+  assert.match(migration, /migration:V202608160003:maintenance-login-role-policy/);
+  assert.match(migration, /sys_platform_setting_definition/);
+  assert.match(migration, /sys_config/);
+  assert.match(migration, /sys_config_metadata/);
+  assert.match(migration, /ON DUPLICATE KEY UPDATE/g);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+});
+
 test('creative maintenance copy upgrade preserves customized existing values', () => {
   const baseline = read('lumira-backend/sql/saas.sql');
   const upgrade = read('lumira-backend/sql/upgrade-maintenance-copy-v1.sql');

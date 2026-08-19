@@ -102,7 +102,53 @@ public class JdbcCertificateRecordRepository implements CertificateRecordReposit
                  where batch.status = 'PUBLISHED'
                    and batch.deleted = 0
                  order by batch.published_at desc, batch.id desc
-                """, new BeanPropertyRowMapper<>(CertificateVO.AwardSource.class));
+        """, new BeanPropertyRowMapper<>(CertificateVO.AwardSource.class));
+    }
+
+    @Override
+    public Integer findPublishedReviewCandidateCount(Long reviewBatchId) {
+        return database.queryForObject("""
+                select candidate_count
+                  from competition_review_batch
+                 where id = ? and status = 'PUBLISHED' and deleted = 0
+                """, Integer.class, reviewBatchId);
+    }
+
+    @Override
+    public String findPublishedReviewAwardRulesJson(Long reviewBatchId) {
+        return database.queryForObject("""
+                select award_rules_json
+                  from competition_review_batch
+                 where id = ? and status = 'PUBLISHED' and deleted = 0
+                """, String.class, reviewBatchId);
+    }
+
+    @Override
+    public int savePublishedReviewAwardRules(Long reviewBatchId, String awardRulesJson,
+                                             Long userId, String userUuid, LocalDateTime updatedAt) {
+        return database.update("""
+                update competition_review_batch
+                   set award_rules_json = ?,
+                       updated_by = ?,
+                       updated_by_uuid = ?,
+                       updated_at = ?,
+                       version = version + 1
+                 where id = ? and status = 'PUBLISHED' and deleted = 0
+                """, awardRulesJson, userId, userUuid, updatedAt, reviewBatchId);
+    }
+
+    @Override
+    public int clearPublishedReviewAwardRules(Long reviewBatchId,
+                                              Long userId, String userUuid, LocalDateTime updatedAt) {
+        return database.update("""
+                update competition_review_batch
+                   set award_rules_json = null,
+                       updated_by = ?,
+                       updated_by_uuid = ?,
+                       updated_at = ?,
+                       version = version + 1
+                 where id = ? and status = 'PUBLISHED' and deleted = 0
+                """, userId, userUuid, updatedAt, reviewBatchId);
     }
 
     @Override

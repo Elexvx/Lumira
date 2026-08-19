@@ -41,6 +41,17 @@ import {
   listCompetitions,
   listCompetitionStages,
 } from '@/services/competition/api';
+import {
+  clearCompetitionWorkspaceCertificateAwardRuleOverride,
+  grantCompetitionWorkspacePublishedAwards,
+  listCompetitionWorkspaceAwardGrants,
+  listCompetitionWorkspaceCertificateAwardRules,
+  saveCompetitionWorkspaceCertificateAwardRules,
+} from '@/services/certificates/api';
+import type {
+  CertificateAwardGrant,
+  CertificateAwardRule,
+} from '@/services/certificates/types';
 import type {
   CompetitionRecord,
   CompetitionStageRecord,
@@ -137,6 +148,7 @@ type BatchFormValues = {
   expertMaxAssignments: number;
 };
 type AssignmentFormValues = { candidateIds: number[]; expertIds: number[] };
+type AwardRuleFormValues = { rules: CertificateAwardRule[] };
 type ScoreFormValues = {
   scores: Record<string, number>;
   comments?: Record<string, string>;
@@ -307,6 +319,7 @@ const ReviewAdminWorkbench = () => {
   const [planForm] = Form.useForm<PlanFormValues>();
   const [batchForm] = Form.useForm<BatchFormValues>();
   const [assignmentForm] = Form.useForm<AssignmentFormValues>();
+  const [awardRuleForm] = Form.useForm<AwardRuleFormValues>();
   const [competitions, setCompetitions] = useState<CompetitionRecord[]>([]);
   const [competitionId, setCompetitionId] = useState<number>();
   const [stages, setStages] = useState<CompetitionStageRecord[]>([]);
@@ -319,6 +332,8 @@ const ReviewAdminWorkbench = () => {
   const [assignments, setAssignments] = useState<ReviewAdminAssignment[]>([]);
   const [roster, setRoster] = useState<ReviewRosterExpert[]>([]);
   const [aggregates, setAggregates] = useState<ReviewAggregate[]>([]);
+  const [awardRules, setAwardRules] = useState<CertificateAwardRule[]>([]);
+  const [awardGrants, setAwardGrants] = useState<CertificateAwardGrant[]>([]);
   const [appeals, setAppeals] = useState<ReviewAppeal[]>([]);
   const [experts, setExperts] = useState<ExpertRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -423,6 +438,21 @@ const ReviewAdminWorkbench = () => {
     revokeAssignment: (nextBatchId: number, assignmentId: number, reason: string) => workspaceUuid
       ? revokeWorkspaceReviewAssignment(workspaceUuid, nextBatchId, assignmentId, reason)
       : revokeReviewAssignment(nextBatchId, assignmentId, reason),
+    listAwardRules: (nextReviewBatchId?: number) => workspaceUuid && nextReviewBatchId
+      ? listCompetitionWorkspaceCertificateAwardRules(workspaceUuid, nextReviewBatchId)
+      : Promise.resolve([] as CertificateAwardRule[]),
+    saveAwardRules: (nextBatchId: number, rules: CertificateAwardRule[]) => workspaceUuid
+      ? saveCompetitionWorkspaceCertificateAwardRules(workspaceUuid, { reviewBatchId: nextBatchId, rules })
+      : Promise.resolve([] as CertificateAwardRule[]),
+    clearAwardRuleOverride: (nextBatchId: number) => workspaceUuid
+      ? clearCompetitionWorkspaceCertificateAwardRuleOverride(workspaceUuid, nextBatchId)
+      : Promise.resolve([] as CertificateAwardRule[]),
+    listAwardGrants: (nextBatchId: number) => workspaceUuid
+      ? listCompetitionWorkspaceAwardGrants(workspaceUuid, nextBatchId)
+      : Promise.resolve([] as CertificateAwardGrant[]),
+    grantAwards: (nextBatchId: number, rules: CertificateAwardRule[]) => workspaceUuid
+      ? grantCompetitionWorkspacePublishedAwards(workspaceUuid, { reviewBatchId: nextBatchId, rules })
+      : Promise.resolve([] as CertificateAwardGrant[]),
   }), [workspaceUuid]);
 
   const canManagePlans = access.hasPermission('review:plan:manage');
@@ -435,6 +465,7 @@ const ReviewAdminWorkbench = () => {
   const canFinalize = access.hasPermission('review:result:finalize');
   const canPublish = access.hasPermission('review:result:publish');
   const canManageAppeals = access.hasPermission('review:appeal:manage');
+  const canGenerateAwards = Boolean(workspaceUuid) && access.hasPermission('aiadc:certificate-batch:create');
   const selectedPlan = plans.find((item) => item.id === planId);
   const selectedBatch = batches.find((item) => item.id === batchId);
   const eligibleExperts = experts.filter((item) =>
@@ -473,14 +504,16 @@ const ReviewAdminWorkbench = () => {
       setAssignments([]);
       setRoster([]);
       setAggregates([]);
+      setAwardGrants([]);
       setAppeals([]);
       return;
     }
-    const [nextCandidates, nextAssignments, nextRoster, nextAggregates, nextAppeals] = await Promise.all([
+    const [nextCandidates, nextAssignments, nextRoster, nextAggregates, nextAwardGrants, nextAppeals] = await Promise.all([
       canManageAssignments ? reviewApi.listCandidates(nextBatchId) : Promise.resolve([]),
       canManageAssignments ? reviewApi.listAssignments(nextBatchId) : Promise.resolve([]),
       canManageRoster ? reviewApi.listRoster(nextBatchId) : Promise.resolve([]),
       canAggregate ? reviewApi.listAggregates(nextBatchId) : Promise.resolve([]),
+      canGenerateAwards ? reviewApi.listAwardGrants(nextBatchId) : Promise.resolve([]),
       canManageAppeals ? reviewApi.listAppeals({ batchId: nextBatchId }) : Promise.resolve([]),
     ]);
     setCandidates(nextCandidates || []);
@@ -488,8 +521,9 @@ const ReviewAdminWorkbench = () => {
     setRoster(nextRoster || []);
     setSelectedRosterExpertIds((nextRoster || []).map((item) => item.expertId));
     setAggregates(nextAggregates || []);
+    setAwardGrants(nextAwardGrants || []);
     setAppeals(nextAppeals || []);
-  }, [canAggregate, canManageAppeals, canManageAssignments, canManageRoster, reviewApi]);
+  }, [canAggregate, canGenerateAwards, canManageAppeals, canManageAssignments, canManageRoster, reviewApi]);
 
   const refreshWorkbench = useCallback(async () => {
     setLoading(true);
@@ -560,6 +594,21 @@ const ReviewAdminWorkbench = () => {
     void loadBatchDetails(batchId)
       .catch((error) => showErrorMessage(error, '评审批次详情加载失败'));
   }, [batchId, loadBatchDetails]);
+
+  useEffect(() => {
+    if (!canGenerateAwards || !selectedBatch || selectedBatch.status !== 'PUBLISHED') {
+      setAwardRules([]);
+      awardRuleForm.resetFields();
+      return;
+    }
+    void reviewApi.listAwardRules(selectedBatch.id)
+      .then((result) => {
+        const rules = result || [];
+        setAwardRules(rules);
+        awardRuleForm.setFieldsValue({ rules });
+      })
+      .catch((error) => showErrorMessage(error, '赛事获奖设置加载失败'));
+  }, [awardRuleForm, canGenerateAwards, reviewApi, selectedBatch]);
 
   useEffect(() => {
     if (!checkinModalOpen || !scannerActive) return undefined;
@@ -840,6 +889,82 @@ const ReviewAdminWorkbench = () => {
     );
     setCorrectionModalOpen(false);
     setCorrectionReason('');
+  };
+
+  const persistAwardRuleOverride = async (showSuccess = true) => {
+    if (!selectedBatch || selectedBatch.status !== 'PUBLISHED') {
+      message.warning('请先发布评审结果');
+      return undefined;
+    }
+    try {
+      const values = await awardRuleForm.validateFields();
+      const rules = values.rules.map((rule) => ({
+        awardName: rule.awardName.trim(),
+        minRank: Number(rule.minRank),
+        maxRank: Number(rule.maxRank),
+      }));
+      const names = new Set<string>();
+      let previousMaxRank = 0;
+      for (const rule of rules) {
+        if (!rule.awardName || names.has(rule.awardName)) {
+          throw new Error('奖项名称不能为空且不能重复');
+        }
+        if (rule.minRank < 1 || rule.maxRank < rule.minRank || rule.maxRank > 10000 || rule.minRank <= previousMaxRank) {
+          throw new Error('名次范围必须按顺序排列且不能重叠');
+        }
+        names.add(rule.awardName);
+        previousMaxRank = rule.maxRank;
+      }
+      const saved = await reviewApi.saveAwardRules(selectedBatch.id, rules);
+      setAwardRules(saved || rules);
+      awardRuleForm.setFieldsValue({ rules: saved || rules });
+      if (showSuccess) message.success('当前评审批次的奖项名次范围已保存');
+      return saved || rules;
+    } catch (error) {
+      if (error && typeof error === 'object' && 'errorFields' in error) {
+        return undefined;
+      }
+      showErrorMessage(error, '奖项名次范围保存失败');
+      return undefined;
+    }
+  };
+
+  const clearAwardRuleOverride = async () => {
+    if (!selectedBatch || selectedBatch.status !== 'PUBLISHED') return;
+    setActionLoading('award-rules-clear');
+    try {
+      const rules = await reviewApi.clearAwardRuleOverride(selectedBatch.id);
+      setAwardRules(rules || []);
+      awardRuleForm.setFieldsValue({ rules: rules || [] });
+      message.success('已恢复按赛事设置自动计算的名次范围');
+    } catch (error) {
+      showErrorMessage(error, '恢复自动名次范围失败');
+    } finally {
+      setActionLoading(undefined);
+    }
+  };
+
+  const generateAwardList = async () => {
+    if (!selectedBatch || selectedBatch.status !== 'PUBLISHED') {
+      message.warning('请先发布评审结果');
+      return;
+    }
+    if (!awardRules.length) {
+      message.warning('当前赛事没有可用的获奖设置');
+      return;
+    }
+    setActionLoading('award-list');
+    try {
+      const savedRules = await persistAwardRuleOverride(false);
+      if (!savedRules) return;
+      const nextGrants = await reviewApi.grantAwards(selectedBatch.id, savedRules);
+      setAwardGrants(nextGrants || []);
+      message.success(`已按赛事设置生成 ${nextGrants?.length || 0} 条获奖名单`);
+    } catch (error) {
+      showErrorMessage(error, '获奖名单生成失败');
+    } finally {
+      setActionLoading(undefined);
+    }
   };
 
   const assignmentCountByCandidate = useMemo(() => {
@@ -1346,9 +1471,99 @@ const ReviewAdminWorkbench = () => {
         </Card>
       )}
 
+      {selectedBatch && workspaceUuid && canGenerateAwards && selectedBatch.status === 'PUBLISHED' && (
+        <Card
+          title="5. 获奖名单生成"
+          extra={<Tag color={awardGrants.length ? 'success' : 'default'}>已生成 {awardGrants.length} 条</Tag>}
+        >
+          <Alert
+            type="info"
+            showIcon
+            title="名次范围可按当前评审批次调整"
+            description="系统会先按赛事设置生成连续名次范围；保存后的手工调整仅作用于当前评审批次，重新生成会撤销本批次尚未制证的旧名单，已经制证的记录会保留。"
+            style={{ marginBottom: 16 }}
+          />
+          <Form form={awardRuleForm} layout="vertical">
+            <Space orientation="vertical" size={10} style={{ width: '100%', marginBottom: 16 }}>
+              {awardRules.map((rule, index) => (
+                <Space key={`${rule.awardName}-${index}`} align="end" wrap>
+                  <Form.Item name={['rules', index, 'awardName']} hidden>
+                    <Input />
+                  </Form.Item>
+                  <Form.Item label={index === 0 ? '奖项' : undefined} style={{ marginBottom: 0 }}>
+                    <Typography.Text strong style={{ display: 'inline-block', minWidth: 110 }}>
+                      {rule.awardName}
+                    </Typography.Text>
+                  </Form.Item>
+                  <Form.Item
+                    name={['rules', index, 'minRank']}
+                    label={index === 0 ? '起始名次' : undefined}
+                    rules={[{ required: true, type: 'number', min: 1, max: 10000, message: '请输入有效起始名次' }]}
+                    style={{ marginBottom: 0 }}
+                  >
+                    <InputNumber min={1} max={10000} addonAfter="名" />
+                  </Form.Item>
+                  <Form.Item
+                    name={['rules', index, 'maxRank']}
+                    label={index === 0 ? '结束名次' : undefined}
+                    rules={[{ required: true, type: 'number', min: 1, max: 10000, message: '请输入有效结束名次' }]}
+                    style={{ marginBottom: 0 }}
+                  >
+                    <InputNumber min={1} max={10000} addonAfter="名" />
+                  </Form.Item>
+                </Space>
+              ))}
+            </Space>
+          </Form>
+          <Space style={{ marginBottom: 16 }}>
+            <Button
+              loading={actionLoading === 'award-rules-save'}
+              disabled={!awardRules.length}
+              onClick={() => {
+                setActionLoading('award-rules-save');
+                void persistAwardRuleOverride().finally(() => setActionLoading(undefined));
+              }}
+            >
+              保存名次范围
+            </Button>
+            <Button
+              loading={actionLoading === 'award-rules-clear'}
+              disabled={!awardRules.length}
+              onClick={() => void clearAwardRuleOverride()}
+            >
+              恢复自动计算
+            </Button>
+            <Button
+              type="primary"
+              loading={actionLoading === 'award-list'}
+              disabled={!awardRules.length}
+              onClick={() => void generateAwardList()}
+            >
+              根据赛事设置生成获奖名单
+            </Button>
+            <Typography.Text type="secondary">生成后可在赛事“证书”页继续制证。</Typography.Text>
+          </Space>
+          <DataTable<CertificateAwardGrant>
+            rowKey="id"
+            isMobile={responsive.isMobile}
+            size="small"
+            pagination={{ pageSize: 10 }}
+            dataSource={awardGrants}
+            columns={[
+              { title: '排名', dataIndex: 'rankNo', width: 80 },
+              { title: '奖项', dataIndex: 'awardName', width: 110 },
+              { title: '获奖人', dataIndex: 'recipientName', width: 130 },
+              { title: '团队', dataIndex: 'teamName', width: 180, render: (value) => value || '-' },
+              { title: '项目', dataIndex: 'projectName', width: 180, render: (value) => value || '-' },
+              { title: '状态', dataIndex: 'status', width: 100, render: (value: string) => statusTag(value, { GRANTED: { color: 'processing', text: '待制证' }, ISSUED: { color: 'success', text: '已制证' }, REVOKED: { color: 'default', text: '已取消' } }) },
+            ]}
+          />
+        </Card>
+      )}
+
       {selectedBatch && canManageAppeals && (
         <Card
-          title="5. 结果申诉处理"
+          title="6. 结果申诉处理"
           extra={<Tag color={appeals.some((item) => item.status === 'SUBMITTED') ? 'processing' : 'default'}>
             待处理 {appeals.filter((item) => item.status === 'SUBMITTED').length}
           </Tag>}

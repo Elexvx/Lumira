@@ -1,6 +1,9 @@
 package com.lumira.saas.modules.activity.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.lumira.saas.modules.activity.model.ActivityRegistrationAnswer;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class ActivityRegistrationVO {
     private Long id;
@@ -17,6 +20,9 @@ public class ActivityRegistrationVO {
     private LocalDateTime submittedAt;
     private Long ownerUserId;
     private String ownerUsername;
+    @JsonIgnore
+    private String formDataJson;
+    private List<ActivityRegistrationAnswer> answers;
     public Long getId() { return id; } public void setId(Long value) { id = value; }
     public String getApplicationNo() { return applicationNo; } public void setApplicationNo(String value) { applicationNo = value; }
     public Long getActivityId() { return activityId; } public void setActivityId(Long value) { activityId = value; }
@@ -31,4 +37,6 @@ public class ActivityRegistrationVO {
     public LocalDateTime getSubmittedAt() { return submittedAt; } public void setSubmittedAt(LocalDateTime value) { submittedAt = value; }
     public Long getOwnerUserId() { return ownerUserId; } public void setOwnerUserId(Long value) { ownerUserId = value; }
     public String getOwnerUsername() { return ownerUsername; } public void setOwnerUsername(String value) { ownerUsername = value; }
+    public String getFormDataJson() { return formDataJson; } public void setFormDataJson(String value) { formDataJson = value; }
+    public List<ActivityRegistrationAnswer> getAnswers() { return answers; } public void setAnswers(List<ActivityRegistrationAnswer> value) { answers = value; }
 }

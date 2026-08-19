@@ -399,6 +399,42 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
+    void createOrderShouldLeaveProviderTransactionNumberEmptyUntilSuccessfulCallback() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(providerSettings());
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("idem-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        PaymentOrderRow persisted = orderRow(1001L);
+        persisted.setProviderOrderNo("");
+        doThrow(new EmptyResultDataAccessException(1))
+                .doReturn(persisted)
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"));
+        doReturn(1).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        PaymentTransactionService service = service(
+                jdbcTemplate,
+                managementAppService,
+                mock(PaymentOutboxService.class),
+                domainEventPublisher
+        );
+
+        PaymentOrderDTO order = service.createOrder(currentUser(), orderRequest("ORD-1", "idem-1"));
+
+        assertThat(order.orderNo()).isEqualTo("ORD-1");
+        assertThat(order.providerOrderNo()).isNull();
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbcTemplate).update(sqlCaptor.capture(), argsCaptor.capture());
+        assertThat(sqlCaptor.getValue()).contains("insert into payment_order");
+        assertThat(argsCaptor.getValue()[2]).isEqualTo("");
+        assertThat(String.valueOf(argsCaptor.getValue()[12])).doesNotContain("providerOrderNo");
+        verify(domainEventPublisher).publishAll(any());
+    }
+
+    @Test
     void createOrderShouldRejectOrderNoOwnedByAnotherUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);

@@ -5,6 +5,7 @@ import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.LoginCapabilitiesDTO;
+import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.PasswordLoginVerificationDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -340,10 +341,13 @@ public class AuthAppService {
             }
             boolean requiresPasswordChange = Boolean.TRUE.equals(verification.requiresPasswordChange());
 
-            CompletableFuture<List<LoginResponseDTO.SecondFactorOptionDTO>> secondFactorOptionsFuture =
-                    supplyBlockingIo(() -> loadLoginSecondFactorOptions(user.userId(), user.userUuid()));
             CompletableFuture<PermissionSnapshotDTO> snapshotFuture =
                     supplyBlockingIo(() -> systemInternalApi.permissionSnapshot(user.userId(), user.userUuid()));
+            PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(snapshotFuture.join());
+            requireMaintenanceLoginAllowed(user, snapshot, "PASSWORD", loginIp, userAgent);
+            cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
+            CompletableFuture<List<LoginResponseDTO.SecondFactorOptionDTO>> secondFactorOptionsFuture =
+                    supplyBlockingIo(() -> loadLoginSecondFactorOptions(user.userId(), user.userUuid()));
             List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = secondFactorOptionsFuture.join();
             if (secondFactorOptions != null && !secondFactorOptions.isEmpty()) {
                 LoginResponseDTO response = new LoginResponseDTO();
@@ -352,9 +356,6 @@ public class AuthAppService {
                 recordLoginAudit(user.userId(), user.userUuid(), user.username(), "PASSWORD", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
                 return response;
             }
-
-            PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(snapshotFuture.join());
-            cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
 
             AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresPasswordChange, "PASSWORD");
             saveSessionWithMultiDevicePolicy(session);
@@ -489,13 +490,14 @@ public class AuthAppService {
             throw new BizException(ErrorCode.ACCOUNT_DISABLED, "Login failed: account is disabled: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
         }
         CompletableFuture<PermissionSnapshotDTO> snapshotFuture = supplyBlockingIo(() -> systemInternalApi.permissionSnapshot(user.userId(), user.userUuid()));
+        PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(snapshotFuture.join());
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String userAgent = httpServletRequest.getHeader("User-Agent");
+        requireMaintenanceLoginAllowed(user, snapshot, "WECHAT", loginIp, userAgent);
+        cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
         CompletableFuture<List<LoginResponseDTO.SecondFactorOptionDTO>> secondFactorOptionsFuture = supplyBlockingIo(
                 () -> loadLoginSecondFactorOptions(user.userId(), user.userUuid())
         );
-        PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(snapshotFuture.join());
-        cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
-        String loginIp = clientIpResolver.resolve(httpServletRequest);
-        String userAgent = httpServletRequest.getHeader("User-Agent");
         List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = secondFactorOptionsFuture.join();
         if (!secondFactorOptions.isEmpty()) {
             recordLoginAudit(user.userId(), user.userUuid(), user.username(), "WECHAT", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
@@ -862,13 +864,74 @@ public class AuthAppService {
             throw new BizException(ErrorCode.ACCOUNT_DISABLED, "Verified login user is disabled: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
         }
         PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(systemInternalApi.permissionSnapshot(user.userId(), user.userUuid()));
-        cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
         String loginIp = clientIpResolver.resolve(request);
         String userAgent = request.getHeader("User-Agent");
+        requireMaintenanceLoginAllowed(user, snapshot, loginType, loginIp, userAgent);
+        cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
         AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user), loginType);
         saveSessionWithMultiDevicePolicy(session);
         recordLoginAudit(user.userId(), user.userUuid(), user.username(), loginType, "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
+    }
+
+    private void requireMaintenanceLoginAllowed(
+            SystemUserSnapshotDTO user,
+            PermissionSnapshotDTO snapshot,
+            String loginType,
+            String loginIp,
+            String userAgent
+    ) {
+        MaintenanceLoginPolicyDTO policy;
+        try {
+            policy = systemInternalApi.maintenanceLoginPolicy();
+        } catch (RuntimeException exception) {
+            recordLoginAudit(
+                    user == null ? null : user.userId(),
+                    user == null ? null : user.userUuid(),
+                    user == null ? null : user.username(),
+                    loginType,
+                    "FAIL",
+                    "MAINTENANCE_POLICY_UNAVAILABLE",
+                    loginIp,
+                    userAgent
+            );
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "维护模式登录策略暂时不可用");
+        }
+        if (policy == null) {
+            recordLoginAudit(
+                    user == null ? null : user.userId(),
+                    user == null ? null : user.userUuid(),
+                    user == null ? null : user.username(),
+                    loginType,
+                    "FAIL",
+                    "MAINTENANCE_POLICY_UNAVAILABLE",
+                    loginIp,
+                    userAgent
+            );
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "维护模式登录策略暂时不可用");
+        }
+        if (!policy.enabled()) {
+            return;
+        }
+        List<Long> roleIds = snapshot == null ? List.of() : snapshot.roleIds();
+        List<Long> allowedRoleIds = policy.allowedRoleIds();
+        boolean roleAllowed = roleIds != null
+                && allowedRoleIds != null
+                && roleIds.stream().anyMatch(allowedRoleIds::contains);
+        if (roleAllowed) {
+            return;
+        }
+        recordLoginAudit(
+                user == null ? null : user.userId(),
+                user == null ? null : user.userUuid(),
+                user == null ? null : user.username(),
+                loginType,
+                "FAIL",
+                "MAINTENANCE_ROLE_NOT_ALLOWED",
+                loginIp,
+                userAgent
+        );
+        throw new BizException(ErrorCode.FORBIDDEN, "维护模式下当前角色不允许登录");
     }
 
     private Long requireVerifiedLoginUserId(Long userId, String userUuid) {

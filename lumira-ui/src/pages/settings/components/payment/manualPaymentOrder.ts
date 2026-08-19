@@ -17,7 +17,7 @@ export type ManualPaymentFormValues = {
   productionConfirmed?: boolean;
 };
 
-export const MANUAL_PAYMENT_PROVIDER_CODES = ['alipay', 'wechat_pay'] as const;
+export const MANUAL_PAYMENT_PROVIDER_CODES = ['alipay', 'wechat_pay', 'builtin_mock'] as const;
 
 export const listManualPaymentProviders = (settings: PaymentProviderSettings[]) =>
   settings.filter((item) => (

@@ -1,5 +1,33 @@
 export type ActivityLocale = 'zh' | 'en';
 export type ActivityStatus = 'draft' | 'published';
+export type ActivityRegistrationFieldType =
+  | 'TEXT'
+  | 'TEXTAREA'
+  | 'NUMBER'
+  | 'DATE'
+  | 'SELECT'
+  | 'MULTI_SELECT'
+  | 'MOBILE'
+  | 'EMAIL';
+
+export interface ActivityRegistrationField {
+  fieldKey: string;
+  label: string;
+  fieldType: ActivityRegistrationFieldType;
+  placeholder?: string | null;
+  description?: string | null;
+  required: boolean;
+  options?: string[];
+}
+
+export type ActivityRegistrationValue = string | number | string[] | null;
+
+export interface ActivityRegistrationAnswer {
+  fieldKey: string;
+  label: string;
+  fieldType: ActivityRegistrationFieldType;
+  value: ActivityRegistrationValue;
+}
 
 export interface ActivityRecord {
   id: number;
@@ -18,6 +46,7 @@ export interface ActivityRecord {
   activityTime: string;
   location: string;
   featured: boolean;
+  registrationFields: ActivityRegistrationField[];
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -36,6 +65,7 @@ export interface PublicActivityRecord {
   activityTime: string;
   location: string;
   featured: boolean;
+  registrationFields: ActivityRegistrationField[];
 }
 
 export interface ActivityUpsertPayload {
@@ -54,6 +84,7 @@ export interface ActivityUpsertPayload {
   activityTime: string;
   location: string;
   featured?: boolean;
+  registrationFields?: ActivityRegistrationField[];
 }
 
 export interface ActivityQueryParams {
@@ -67,7 +98,8 @@ export interface ActivityQueryParams {
 
 export interface ActivityRegistrationPayload {
   activityId: number;
-  name: string;
+  answers: Record<string, ActivityRegistrationValue>;
+  name?: string;
   mobile?: string;
   email?: string;
   organization?: string;
@@ -75,7 +107,7 @@ export interface ActivityRegistrationPayload {
   remark?: string;
 }
 
-export interface ActivityRegistrationRecord extends ActivityRegistrationPayload {
+export interface ActivityRegistrationRecord extends Omit<ActivityRegistrationPayload, 'answers'> {
   id: number;
   applicationNo: string;
   activityTitle: string;
@@ -83,6 +115,7 @@ export interface ActivityRegistrationRecord extends ActivityRegistrationPayload 
   submittedAt: string;
   ownerUserId?: number | null;
   ownerUsername?: string | null;
+  answers: ActivityRegistrationAnswer[];
 }
 
 export interface PageResponse<T> {

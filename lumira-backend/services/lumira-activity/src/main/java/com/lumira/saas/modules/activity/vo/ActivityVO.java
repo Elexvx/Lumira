@@ -1,6 +1,9 @@
 package com.lumira.saas.modules.activity.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.lumira.saas.modules.activity.model.ActivityRegistrationField;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public final class ActivityVO {
     private ActivityVO() {
@@ -23,6 +26,9 @@ public final class ActivityVO {
         private String activityTime;
         private String location;
         private Boolean featured;
+        @JsonIgnore
+        private String registrationFormJson;
+        private List<ActivityRegistrationField> registrationFields;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -58,6 +64,10 @@ public final class ActivityVO {
         public void setLocation(String location) { this.location = location; }
         public Boolean getFeatured() { return featured; }
         public void setFeatured(Boolean featured) { this.featured = featured; }
+        public String getRegistrationFormJson() { return registrationFormJson; }
+        public void setRegistrationFormJson(String registrationFormJson) { this.registrationFormJson = registrationFormJson; }
+        public List<ActivityRegistrationField> getRegistrationFields() { return registrationFields; }
+        public void setRegistrationFields(List<ActivityRegistrationField> registrationFields) { this.registrationFields = registrationFields; }
         public LocalDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
         public LocalDateTime getUpdatedAt() { return updatedAt; }
@@ -78,6 +88,7 @@ public final class ActivityVO {
         private String activityTime;
         private String location;
         private Boolean featured;
+        private List<ActivityRegistrationField> registrationFields;
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
@@ -105,5 +116,7 @@ public final class ActivityVO {
         public void setLocation(String location) { this.location = location; }
         public Boolean getFeatured() { return featured; }
         public void setFeatured(Boolean featured) { this.featured = featured; }
+        public List<ActivityRegistrationField> getRegistrationFields() { return registrationFields; }
+        public void setRegistrationFields(List<ActivityRegistrationField> registrationFields) { this.registrationFields = registrationFields; }
     }
 }

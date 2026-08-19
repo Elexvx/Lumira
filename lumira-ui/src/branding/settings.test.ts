@@ -68,4 +68,13 @@ describe('applyBrandingRuntime', () => {
       normalizeBrandingSettings({ maintenanceEndAt: '2026-08-07T12:00:00+08:00' }).maintenanceEndAt,
     ).toBe('2026-08-07T04:00:00.000Z');
   });
+
+  it('defaults and normalizes maintenance login role ids', () => {
+    expect(DEFAULT_BRANDING_SETTINGS.maintenanceAllowedRoleIds).toEqual([1001]);
+    expect(normalizeBrandingSettings().maintenanceAllowedRoleIds).toEqual([1001]);
+    expect(
+      normalizeBrandingSettings({ maintenanceAllowedRoleIds: [3002, 1001, 3002, -1] }).maintenanceAllowedRoleIds,
+    ).toEqual([1001, 3002]);
+    expect(normalizeBrandingSettings({ maintenanceAllowedRoleIds: [] }).maintenanceAllowedRoleIds).toEqual([]);
+  });
 });

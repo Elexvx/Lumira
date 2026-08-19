@@ -937,13 +937,6 @@ body.saas-login-viewport {
   height: 100%;
   overflow: hidden;
   background-image:
-    linear-gradient(
-      90deg,
-      rgba(5, 12, 20, 0.48),
-      rgba(5, 12, 20, 0.18) 52%,
-      rgba(5, 12, 20, 0.42)
-    ),
-    linear-gradient(180deg, rgba(4, 10, 18, 0.12), rgba(4, 10, 18, 0.44)),
     var(
       --saas-login-background-image,
       url("../../assets/login-cloud-platform.jpg")
@@ -954,17 +947,7 @@ body.saas-login-viewport {
 }
 
 .saas-login-page__hero::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  pointer-events: none;
-  background:
-    radial-gradient(
-      circle at 50% 48%,
-      rgba(34, 211, 238, 0.08),
-      transparent 34%
-    ),
-    linear-gradient(180deg, transparent 54%, rgba(4, 10, 18, 0.2));
+  display: none;
 }
 
 .saas-login-page__auth-shell {
@@ -977,13 +960,7 @@ body.saas-login-viewport {
   align-items: center;
   overflow: hidden;
   color: #f5f7fa;
-  background:
-    radial-gradient(
-      circle at 96% 88%,
-      color-mix(in srgb, var(--ant-color-primary) 8%, transparent),
-      transparent 30%
-    ),
-    #090b0f;
+  background: #090b0f;
   scrollbar-width: none;
 }
 
@@ -1316,9 +1293,7 @@ html[data-theme="light"] .saas-login-page {
 
 html[data-theme="light"] .saas-login-page__auth-shell {
   color: #172033;
-  background:
-    radial-gradient(circle at 96% 88%, color-mix(in srgb, var(--ant-color-primary) 8%, transparent), transparent 30%),
-    #f7f9fc;
+  background: #f7f9fc;
 }
 
 html[data-theme="light"] .saas-login-page__locale-switch.ant-btn,
