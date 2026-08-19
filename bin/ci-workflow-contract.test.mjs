@@ -22,6 +22,7 @@ test('scheduled lifecycle E2E uses the canonical frontend toolchain and local ta
   assert.match(lifecycle, /version: 10\.33\.0/);
   assert.match(lifecycle, /node-version: 24/);
   assert.match(lifecycle, /docker network inspect 1panel-network[\s\S]*docker network create 1panel-network/);
+  assert.match(lifecycle, /BACKUP_ROOT:\s*\$\{\{ runner\.temp \}\}\/lumira-backups/);
   assert.match(lifecycle, /LIFECYCLE_BASE_URL=http:\/\/127\.0\.0\.1:8000/);
   assert.match(lifecycle, /test:competition-lifecycle/);
   assert.match(lifecycle, /PLAYWRIGHT_ROLE_MATRIX=true/);

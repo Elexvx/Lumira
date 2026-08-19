@@ -72,6 +72,7 @@ jobs:
 
       - name: Rebuild an isolated local platform
         env:
+          BACKUP_ROOT: ${{ runner.temp }}/lumira-backups
           PLAYWRIGHT_ALLOW_DB_RESET: 'true'
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:8000
           DEPLOY_CHECK_BASE_URL: http://127.0.0.1:8000
