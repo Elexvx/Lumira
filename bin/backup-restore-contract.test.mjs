@@ -99,6 +99,11 @@ test('backup credentials, readiness, GTID, retention, upload, TLS, and metrics r
   assert.match(backupScript, /MySQL metadata query failed with a non-readiness error/);
   assert.match(
     backupScript,
+    /-z "\$\{MYSQL_ERROR\/\/\[\[:space:\]\]\/\}"/,
+    'a compose exec interrupted by the official image restart must remain retryable without weakening error checks',
+  );
+  assert.match(
+    backupScript,
     /mysql --batch --raw --skip-column-names --protocol=TCP --get-server-public-key -h127\.0\.0\.1 -P3306/,
     'compose backup readiness must ignore the socket-only temporary initialization server',
   );

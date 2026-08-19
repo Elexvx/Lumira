@@ -246,7 +246,11 @@ for ((attempt = 1; attempt <= BACKUP_MYSQL_READY_ATTEMPTS; attempt++)); do
     break
   fi
   MYSQL_ERROR="$(<"${MYSQL_READY_ERROR}")"
-  if [[ "${MYSQL_ERROR}" =~ ERROR[[:space:]]+(2002|2003|2005|2013|1049) ]] || [[ "${MYSQL_ERROR}" =~ ([Cc]an.t[[:space:]]connect|[Cc]onnection[[:space:]]refused|server[[:space:]]has[[:space:]]gone[[:space:]]away|is[[:space:]]restarting|is[[:space:]]not[[:space:]]running) ]]; then
+  # docker compose exec can exit without stderr when the official image stops
+  # its socket-only initialization server. Treat only that empty result and
+  # explicit connection/readiness errors as transient; authentication,
+  # permission, and SQL errors still fail closed below.
+  if [[ -z "${MYSQL_ERROR//[[:space:]]/}" ]] || [[ "${MYSQL_ERROR}" =~ ERROR[[:space:]]+(2002|2003|2005|2013|1049) ]] || [[ "${MYSQL_ERROR}" =~ ([Cc]an.t[[:space:]]connect|[Cc]onnection[[:space:]]refused|server[[:space:]]has[[:space:]]gone[[:space:]]away|is[[:space:]]restarting|is[[:space:]]not[[:space:]]running) ]]; then
     if [[ "${attempt}" -lt "${BACKUP_MYSQL_READY_ATTEMPTS}" ]]; then
       echo "MySQL is not ready yet (${attempt}/${BACKUP_MYSQL_READY_ATTEMPTS}); retrying..."
       sleep "${BACKUP_MYSQL_READY_INTERVAL_SECONDS}"
