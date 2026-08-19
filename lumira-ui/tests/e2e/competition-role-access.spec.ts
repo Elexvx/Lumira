@@ -152,11 +152,12 @@ test.describe('competition role access matrix', () => {
   });
 
   test.describe('role transitions', () => {
-    test.use({ storageState: authFile });
+    test.use({ storageState: { cookies: [], origins: [] } });
 
     test('logout and relogin immediately replace the previous role menu', async ({ page }) => {
       const assertHealthy = attachSurfaceMonitor(page);
 
+      await loginWithPassword(page, adminUser, adminPassword);
       await expectAllowed(page, '/settings/payment');
       await expect(sidebarItem(page, '/settings/payment')).toBeVisible();
       await logout(page);
