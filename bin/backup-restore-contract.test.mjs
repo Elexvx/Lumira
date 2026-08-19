@@ -97,6 +97,16 @@ test('backup credentials, readiness, GTID, retention, upload, TLS, and metrics r
   assert.match(backupScript, /--set-gtid-purged=OFF/g);
   assert.match(backupScript, /BACKUP_ALLOW_EMPTY_DATABASE:-0/);
   assert.match(backupScript, /MySQL metadata query failed with a non-readiness error/);
+  assert.match(
+    backupScript,
+    /mysql --batch --raw --skip-column-names --protocol=TCP --get-server-public-key -h127\.0\.0\.1 -P3306/,
+    'compose backup readiness must ignore the socket-only temporary initialization server',
+  );
+  assert.match(
+    backupScript,
+    /mysqldump --single-transaction[\s\S]{0,300}--protocol=TCP --get-server-public-key -h127\.0\.0\.1 -P3306/,
+    'compose dumps must stay bound to the final TCP-serving MySQL instance',
+  );
   assert.match(backupScript, /Redis authentication failed; not retrying/);
   assert.match(backupScript, /"\$\{DB_HOST\}" == "\$\{MYSQL_SERVICE\}" \|\| "\$\{DB_HOST\}" == "mysql" \|\| "\$\{DB_HOST\}" == "lumira-mysql"/);
   assert.match(backupScript, /BACKUP_RETENTION_DAYS:-0/);

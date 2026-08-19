@@ -176,12 +176,17 @@ mysql_client() {
   local database="$1"
   shift
   if [[ "${MYSQL_MODE}" == "compose" ]]; then
+    # The official image uses a temporary --skip-networking server while it
+    # initializes a fresh data directory. TCP avoids treating that short-lived
+    # socket-only server as the final migration target.
     if [[ -n "${database}" ]]; then
       MYSQL_PWD="${MYSQL_PASSWORD}" docker compose -f "${COMPOSE_FILE}" exec -T -e MYSQL_PWD "${MYSQL_SERVICE}" \
-        mysql --batch --raw --skip-column-names "${MYSQL_TLS_ARGS[@]}" -u"${MYSQL_USER}" "$@" "${database}"
+        mysql --batch --raw --skip-column-names --protocol=TCP --get-server-public-key -h127.0.0.1 -P3306 \
+        "${MYSQL_TLS_ARGS[@]}" -u"${MYSQL_USER}" "$@" "${database}"
     else
       MYSQL_PWD="${MYSQL_PASSWORD}" docker compose -f "${COMPOSE_FILE}" exec -T -e MYSQL_PWD "${MYSQL_SERVICE}" \
-        mysql --batch --raw --skip-column-names "${MYSQL_TLS_ARGS[@]}" -u"${MYSQL_USER}" "$@"
+        mysql --batch --raw --skip-column-names --protocol=TCP --get-server-public-key -h127.0.0.1 -P3306 \
+        "${MYSQL_TLS_ARGS[@]}" -u"${MYSQL_USER}" "$@"
     fi
   else
     if [[ -n "${database}" ]]; then
@@ -203,7 +208,8 @@ mysql_dump() {
     MYSQL_PWD="${MYSQL_PASSWORD}" docker compose -f "${COMPOSE_FILE}" exec -T -e MYSQL_PWD "${MYSQL_SERVICE}" \
       mysqldump --single-transaction --quick --routines --triggers --events --hex-blob \
       --default-character-set=utf8mb4 --no-tablespaces --set-gtid-purged=OFF \
-      "${MYSQL_TLS_ARGS[@]}" -u"${MYSQL_USER}" "${MYSQL_DATABASE}" > "${output}"
+      --protocol=TCP --get-server-public-key -h127.0.0.1 -P3306 "${MYSQL_TLS_ARGS[@]}" \
+      -u"${MYSQL_USER}" "${MYSQL_DATABASE}" > "${output}"
   else
     MYSQL_PWD="${MYSQL_PASSWORD}" docker run --rm --network "${DB_BACKUP_NETWORK}" \
       --add-host host.docker.internal:host-gateway -e MYSQL_PWD "${MYSQL_DOCKER_MOUNT_ARGS[@]}" "${MYSQL_CLIENT_IMAGE}" \
