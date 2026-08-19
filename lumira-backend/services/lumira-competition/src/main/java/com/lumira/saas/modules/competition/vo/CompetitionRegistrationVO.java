@@ -11,6 +11,7 @@ public final class CompetitionRegistrationVO {
         private Long id;
         private String registrationNo;
         private Long competitionId;
+        private String competitionTitle;
         private Long teamId;
         private Long projectId;
         private Long ownerUserId;
@@ -41,6 +42,8 @@ public final class CompetitionRegistrationVO {
         public void setRegistrationNo(String registrationNo) { this.registrationNo = registrationNo; }
         public Long getCompetitionId() { return competitionId; }
         public void setCompetitionId(Long competitionId) { this.competitionId = competitionId; }
+        public String getCompetitionTitle() { return competitionTitle; }
+        public void setCompetitionTitle(String competitionTitle) { this.competitionTitle = competitionTitle; }
         public Long getTeamId() { return teamId; }
         public void setTeamId(Long teamId) { this.teamId = teamId; }
         public Long getProjectId() { return projectId; }

@@ -45,6 +45,18 @@ public class InternalJobController {
         return ApiResponse.success(paymentOutboxRelay.replay(id), null);
     }
 
+    @PostMapping("/outbox/payment-orders/{orderNo}/replay")
+    public ApiResponse<Boolean> replayPaidOrderEvent(
+            @PathVariable("orderNo") String orderNo,
+            @RequestHeader(name = "X-Job-Token", required = false) String token
+    ) {
+        ensureAuthorized(token);
+        if (orderNo == null || orderNo.isBlank() || orderNo.length() > 64) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Valid payment order number is required");
+        }
+        return ApiResponse.success(paymentOutboxRelay.replayPaidOrderEvent(orderNo.trim()), null);
+    }
+
     private void ensureAuthorized(String token) {
         String requiredToken = paymentInternalToken;
         if (!InternalJobTokenValidator.isConfigured(requiredToken)) {

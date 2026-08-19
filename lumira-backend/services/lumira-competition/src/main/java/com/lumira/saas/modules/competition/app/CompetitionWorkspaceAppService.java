@@ -113,11 +113,13 @@ public class CompetitionWorkspaceAppService {
         workspace.setCode(competition.code());
         workspace.setTitle(competition.title());
         workspace.setStatus(competition.status());
+        workspace.setReadOnly(competition.archived());
         workspace.setActiveRegistrationCount(
                 competition.id() == null ? 0L : competitionRepository.countActiveRegistrations(competition.id())
         );
-        workspace.setCapabilities(accessPolicy.wireCapabilities(capabilities));
-        workspace.setAllowedModules(accessPolicy.allowedModules(capabilities));
+        Set<CompetitionCapability> effectiveCapabilities = accessPolicy.effectiveCapabilities(competition, capabilities);
+        workspace.setCapabilities(accessPolicy.wireCapabilities(effectiveCapabilities));
+        workspace.setAllowedModules(accessPolicy.allowedModules(effectiveCapabilities));
         return workspace;
     }
 

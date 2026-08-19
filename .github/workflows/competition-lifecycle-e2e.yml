@@ -1,0 +1,117 @@
+name: Competition Lifecycle E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 18 * * 1'
+
+concurrency:
+  group: competition-lifecycle-e2e
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    name: Local Full Lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+
+      - name: Create ephemeral local-only credentials
+        shell: bash
+        run: |
+          node <<'NODE'
+          const crypto = require('node:crypto');
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const secret = (label) => `${label}!${crypto.randomBytes(24).toString('base64url')}9a`;
+          const adminInitial = secret('AdminInitial');
+          const resolvedPassword = secret('LifecycleResolved');
+          const expertInitial = secret('ExpertInitial');
+          const bootstrapFile = path.join(process.env.RUNNER_TEMP, 'lumira-bootstrap-admin-password');
+          fs.writeFileSync(bootstrapFile, adminInitial, { mode: 0o600 });
+          for (const value of [adminInitial, resolvedPassword, expertInitial]) {
+            process.stdout.write(`::add-mask::${value}\n`);
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV, [
+            `LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE=${bootstrapFile}`,
+            `LIFECYCLE_ADMIN_INITIAL_PASSWORD=${adminInitial}`,
+            `LIFECYCLE_EXPERT_INITIAL_PASSWORD=${expertInitial}`,
+            `LIFECYCLE_PASSWORD=${resolvedPassword}`,
+            'LIFECYCLE_BASE_URL=http://127.0.0.1:8000',
+            'LIFECYCLE_SMTP_SINK_URL=http://127.0.0.1:2526',
+            'LIFECYCLE_SMTP_SERVER_HOST=host.docker.internal',
+            'LIFECYCLE_SMTP_SERVER_PORT=2525',
+            `LIFECYCLE_SUMMARY_FILE=${path.join(process.env.RUNNER_TEMP, 'competition-lifecycle-summary.json')}`,
+            'PLAYWRIGHT_ADMIN_USER=admin',
+            `PLAYWRIGHT_ADMIN_PASSWORD=${resolvedPassword}`,
+            `PLAYWRIGHT_NEW_PASSWORD=${resolvedPassword}`,
+            'PLAYWRIGHT_BASE_URL=http://127.0.0.1:8000',
+          ].join('\n') + '\n');
+          NODE
+
+      - name: Rebuild an isolated local platform
+        env:
+          PLAYWRIGHT_ALLOW_DB_RESET: 'true'
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8000
+          DEPLOY_CHECK_BASE_URL: http://127.0.0.1:8000
+          DEPLOY_CHECK_BACKEND_URL: http://127.0.0.1:8080
+        run: node bin/reset-e2e-platform.mjs
+
+      - name: Start isolated SMTP capture
+        shell: bash
+        env:
+          SMTP_SINK_HOST: 0.0.0.0
+          SMTP_SINK_PORT: '2525'
+          SMTP_SINK_HTTP_HOST: 127.0.0.1
+          SMTP_SINK_HTTP_PORT: '2526'
+        run: |
+          node bin/lib/smtp-sink.mjs > "${RUNNER_TEMP}/lumira-smtp-sink.log" 2>&1 &
+          echo "SMTP_SINK_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:2526/health >/dev/null; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+          cat "${RUNNER_TEMP}/lumira-smtp-sink.log"
+          exit 1
+
+      - name: Run competition lifecycle fixture and E2E
+        run: npm run test:competition-lifecycle
+
+      - name: Install browser quality dependencies
+        working-directory: lumira-ui
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+
+      - name: Run 390px and accessibility gates
+        working-directory: lumira-ui
+        run: pnpm exec playwright test --project=quality --project=mobile-390
+
+      - name: Print lifecycle summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f "${LIFECYCLE_SUMMARY_FILE}" ]]; then
+            cat "${LIFECYCLE_SUMMARY_FILE}"
+          fi
+
+      - name: Stop SMTP capture
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${SMTP_SINK_PID:-}" ]]; then
+            kill "${SMTP_SINK_PID}" 2>/dev/null || true
+          fi

@@ -15,7 +15,9 @@
     "stop:local": "node bin/stop-local.mjs",
     "stop:production": "node bin/start-platform.mjs production --stop",
     "test": "node --test bin/*.test.mjs",
-    "test:competition-load": "node bin/competition-workflow-load-smoke.mjs"
+    "test:competition-load": "node bin/competition-workflow-load-smoke.mjs",
+    "test:competition-lifecycle:prepare": "node bin/prepare-competition-lifecycle-e2e.mjs",
+    "test:competition-lifecycle": "node bin/prepare-competition-lifecycle-e2e.mjs && node bin/competition-lifecycle-e2e.mjs"
   },
   "engines": {
     "node": ">=22"

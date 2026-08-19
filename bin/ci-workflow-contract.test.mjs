@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const workflows = path.join(repoRoot, '.github', 'workflows');
+const ci = readFileSync(path.join(workflows, 'ci.yml'), 'utf8');
+const lifecycle = readFileSync(path.join(workflows, 'competition-lifecycle-e2e.yml'), 'utf8');
+
+test('canonical CI owns frontend lint, typecheck, test, and build', () => {
+  assert.equal(existsSync(path.join(workflows, 'frontend-build.yml')), false);
+  assert.match(ci, /version: 10\.33\.0/);
+  assert.match(ci, /node-version: 24/);
+  for (const command of ['pnpm run lint', 'pnpm run typecheck', 'pnpm run test', 'pnpm run build']) {
+    assert.match(ci, new RegExp(command.replaceAll(' ', '\\s+')));
+  }
+});
+
+test('scheduled lifecycle E2E uses the canonical frontend toolchain and local targets', () => {
+  assert.match(lifecycle, /version: 10\.33\.0/);
+  assert.match(lifecycle, /node-version: 24/);
+  assert.match(lifecycle, /LIFECYCLE_BASE_URL=http:\/\/127\.0\.0\.1:8000/);
+  assert.match(lifecycle, /test:competition-lifecycle/);
+  assert.match(lifecycle, /--project=quality --project=mobile-390/);
+});

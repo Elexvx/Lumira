@@ -114,6 +114,7 @@ public class CompetitionWorkspaceAccessPolicy {
         boolean hasAnyWorkspacePermission = false;
         if (has(currentUser, COMPETITION_VIEW)) {
             capabilities.add(CompetitionCapability.WORKSPACE_VIEW);
+            capabilities.add(CompetitionCapability.SETTINGS_READ);
             hasAnyWorkspacePermission = true;
         }
         if (hasAny(currentUser, REGISTRATION_VIEW, MATERIAL_VIEW, MATERIAL_DOWNLOAD, DATASET_VIEW, DATASET_EXPORT)) {
@@ -150,6 +151,7 @@ public class CompetitionWorkspaceAccessPolicy {
             hasAnyWorkspacePermission = true;
         }
         if (has(currentUser, COMPETITION_UPDATE)) {
+            capabilities.add(CompetitionCapability.SETTINGS_READ);
             capabilities.add(CompetitionCapability.SETTINGS_MANAGE);
             capabilities.add(CompetitionCapability.WORKSPACE_VIEW);
             hasAnyWorkspacePermission = true;
@@ -175,6 +177,19 @@ public class CompetitionWorkspaceAccessPolicy {
                 .toList();
     }
 
+    public Set<CompetitionCapability> effectiveCapabilities(
+            CompetitionRef competition,
+            Set<CompetitionCapability> capabilities
+    ) {
+        EnumSet<CompetitionCapability> effective = capabilities == null || capabilities.isEmpty()
+                ? EnumSet.noneOf(CompetitionCapability.class)
+                : EnumSet.copyOf(capabilities);
+        if (competition != null && competition.archived()) {
+            effective.removeIf(CompetitionCapability::isWrite);
+        }
+        return Collections.unmodifiableSet(effective);
+    }
+
     public List<String> allowedModules(Set<CompetitionCapability> capabilities) {
         LinkedHashSet<String> modules = new LinkedHashSet<>();
         if (capabilities.contains(CompetitionCapability.WORKSPACE_VIEW)) {
@@ -195,7 +210,8 @@ public class CompetitionWorkspaceAccessPolicy {
                 || capabilities.contains(CompetitionCapability.CERTIFICATE_MANAGE)) {
             modules.add("certificates");
         }
-        if (capabilities.contains(CompetitionCapability.SETTINGS_MANAGE)) {
+        if (capabilities.contains(CompetitionCapability.SETTINGS_READ)
+                || capabilities.contains(CompetitionCapability.SETTINGS_MANAGE)) {
             modules.add("settings");
         }
         if (capabilities.contains(CompetitionCapability.AUDIT_READ)) {

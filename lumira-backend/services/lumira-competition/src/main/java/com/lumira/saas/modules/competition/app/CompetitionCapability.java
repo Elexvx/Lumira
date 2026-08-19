@@ -16,6 +16,7 @@ public enum CompetitionCapability {
     PAYMENT_READ("payment.read", false),
     CERTIFICATE_READ("certificate.read", false),
     CERTIFICATE_MANAGE("certificate.manage", true),
+    SETTINGS_READ("settings.read", false),
     SETTINGS_MANAGE("settings.manage", true),
     AUDIT_READ("audit.read", false);
 

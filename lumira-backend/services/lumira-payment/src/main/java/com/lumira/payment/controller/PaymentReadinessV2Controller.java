@@ -51,7 +51,8 @@ public class PaymentReadinessV2Controller {
                         "/api/v2/payment/refunds/{refundNo}",
                         "/api/v2/payment/webhooks/{providerCode}",
                         "/payment/internal/jobs/outbox/relay",
-                        "/payment/internal/jobs/outbox/{id}/replay"
+                        "/payment/internal/jobs/outbox/{id}/replay",
+                        "/payment/internal/jobs/outbox/payment-orders/{orderNo}/replay"
                 ),
                 List.of(
                         "PaymentOrderCreated",

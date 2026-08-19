@@ -145,7 +145,22 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
   for (const worker of ['async', 'job']) {
     for (const state of ['pending', 'processing', 'done', 'duplicates']) mkdirSync(path.join(queueRoot, worker, state), { recursive: true });
   }
-  writeFileSync(path.join(deployDir, 'backup-platform.sh'), '#!/bin/sh\nset -eu\necho "Backup completed: /tmp/lumira-e2e-backup"\n', { mode: 0o755 });
+  writeFileSync(path.join(deployDir, 'backup-platform.sh'), [
+    '#!/bin/sh',
+    'set -eu',
+    'backup=/tmp/lumira-e2e-backup',
+    'rm -rf "$backup"',
+    'mkdir -p "$backup"',
+    'i=0; while [ "$i" -lt 64 ]; do printf "CREATE TABLE example_%s (id bigint);\\n" "$i"; i=$((i + 1)); done > "$backup/mysql-saas.sql"',
+    'hash=$(sha256sum "$backup/mysql-saas.sql" | awk \"{print \\\$1}\")',
+    'size=$(wc -c < "$backup/mysql-saas.sql" | tr -d " ")',
+    'created=$(date -u +%Y-%m-%dT%H:%M:%SZ)',
+    'printf \"{\\\"schemaVersion\\\":1,\\\"status\\\":\\\"complete\\\",\\\"secretsIncluded\\\":false,\\\"backupId\\\":\\\"docker-e2e\\\",\\\"createdAt\\\":\\\"%s\\\",\\\"databaseName\\\":\\\"saas\\\",\\\"mysql\\\":{\\\"path\\\":\\\"mysql-saas.sql\\\",\\\"sha256\\\":\\\"%s\\\",\\\"size\\\":%s,\\\"serverVersion\\\":\\\"8.4-test\\\",\\\"serverUuid\\\":null,\\\"gtidExecuted\\\":null,\\\"binlogFile\\\":null,\\\"binlogPosition\\\":null,\\\"databaseVersion\\\":null,\\\"tableCount\\\":64,\\\"schemaFingerprint\\\":\\\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\"}}\\n\" "$created" "$hash" "$size" > "$backup/manifest.json"',
+    'printf \"%s  mysql-saas.sql\\n\" "$hash" > "$backup/SHA256SUMS"',
+    ': > "$backup/.complete"',
+    'echo "Backup completed: $backup"',
+    '',
+  ].join('\n'), { mode: 0o755 });
   writeFileSync(path.join(deployDir, 'nginx.conf'), `events {}\nhttp {\n  keepalive_timeout 1s;\n  keepalive_time 2s;\n  keepalive_requests 20;\n  server {\n    listen 80;\n    resolver 127.0.0.11 valid=1s ipv6=off;\n    include /etc/nginx/lumira-upstreams/active-upstreams.conf;\n    location / { proxy_http_version 1.1; proxy_set_header X-E2E-Public true; proxy_pass http://$gateway_upstream$request_uri; }\n  }\n}\n`);
   writeFileSync(composeFile, `services:
   lumira-server-blue: &server

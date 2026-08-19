@@ -25,6 +25,15 @@ services:
     command:
     - --character-set-server=utf8mb4
     - --collation-server=utf8mb4_unicode_ci
+    - --server-id=${MYSQL_SERVER_ID:-1}
+    - --log-bin=${MYSQL_LOG_BIN_BASENAME:-mysql-bin}
+    - --binlog-format=${MYSQL_BINLOG_FORMAT:-ROW}
+    - --gtid-mode=${MYSQL_GTID_MODE:-ON}
+    - --enforce-gtid-consistency=${MYSQL_ENFORCE_GTID_CONSISTENCY:-ON}
+    - --binlog-expire-logs-seconds=${MYSQL_BINLOG_EXPIRE_LOGS_SECONDS:-1209600}
+    - --sync-binlog=${MYSQL_SYNC_BINLOG:-1}
+    - --innodb-flush-log-at-trx-commit=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-1}
+    - --performance-schema=${MYSQL_PERFORMANCE_SCHEMA:-ON}
     volumes:
     - mysql_data:/var/lib/mysql
     - ../lumira-backend/sql/saas.sql:/docker-entrypoint-initdb.d/001-saas.sql:ro
@@ -160,7 +169,122 @@ services:
     - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     - prometheus_data:/prometheus
     depends_on:
-    - lumira-server
+      mysqld-exporter:
+        condition: service_started
+      backup-metrics-exporter:
+        condition: service_started
+  mysqld-exporter:
+    profiles:
+    - observability
+    image: ${MYSQLD_EXPORTER_IMAGE:-prom/mysqld-exporter@sha256:eacb4b18e2ec1e0abdf2d64851b68526c964f6d9cb3e9458fb5d5f5062ea94c1}
+    container_name: lumira-mysqld-exporter
+    restart: unless-stopped
+    logging: *id001
+    mem_limit: ${MYSQLD_EXPORTER_MEM_LIMIT:-128m}
+    cpus: ${MYSQLD_EXPORTER_CPUS:-0.25}
+    # Compose file-backed secrets retain root-only host permissions. Start only the
+    # fixed bootstrap shell as root, copy TLS material into an in-memory directory,
+    # then drop permanently to the image's nobody user before starting the exporter.
+    user: "0:0"
+    read_only: true
+    tmpfs:
+    - /run/mysqld-exporter:rw,noexec,nosuid,nodev,mode=0700
+    security_opt:
+    - no-new-privileges:true
+    cap_drop:
+    - ALL
+    cap_add:
+    - CHOWN
+    - DAC_READ_SEARCH
+    - SETGID
+    - SETUID
+    entrypoint:
+    - /bin/sh
+    - -ec
+    - |
+      MYSQLD_EXPORTER_PASSWORD="$$(cat /run/secrets/mysql_exporter_password)"
+      export MYSQLD_EXPORTER_PASSWORD
+      if grep -Eq '^[[:space:]]*\[client\][[:space:]]*$' /run/secrets/mysql_exporter_config; then
+        if grep -Eiq '^[[:space:]]*ssl-skip-veri?fication[[:space:]]*=' /run/secrets/mysql_exporter_config; then
+          echo 'mysql exporter TLS certificate verification cannot be disabled' >&2
+          exit 1
+        fi
+        if ! grep -Eq '^[[:space:]]*ssl-ca[[:space:]]*=[[:space:]]*"?/run/secrets/mysql_exporter_ca"?[[:space:]]*$' /run/secrets/mysql_exporter_config; then
+          echo 'managed MySQL exporter config must use ssl-ca=/run/secrets/mysql_exporter_ca' >&2
+          exit 1
+        fi
+        if ! grep -Eiq '^[[:space:]]*tls[[:space:]]*=[[:space:]]*"?custom"?[[:space:]]*$' /run/secrets/mysql_exporter_config; then
+          echo 'managed MySQL exporter config must use tls=custom' >&2
+          exit 1
+        fi
+        install -m 0400 /run/secrets/mysql_exporter_ca /run/mysqld-exporter/mysql_exporter_ca
+        chown 65534:65534 /run/mysqld-exporter/mysql_exporter_ca
+        printf '%s\n' '[client]' 'ssl-ca=/run/mysqld-exporter/mysql_exporter_ca' 'tls=custom' > /run/mysqld-exporter/mysql_exporter.cnf
+        chmod 0400 /run/mysqld-exporter/mysql_exporter.cnf
+        chown 65534:65534 /run/mysqld-exporter/mysql_exporter.cnf
+        chmod 0700 /run/mysqld-exporter
+        chown 65534:65534 /run/mysqld-exporter
+        exec /bin/chpst -u nobody:nobody /bin/mysqld_exporter --config.my-cnf=/run/mysqld-exporter/mysql_exporter.cnf "$$@"
+      fi
+      exec /bin/chpst -u nobody:nobody /bin/mysqld_exporter "$$@"
+    - --
+    command:
+    # mysql:3306 is only the bundled --local-mysql default. Deployment validation must
+    # set MYSQLD_EXPORTER_ADDRESS to the DB_URL host:port for every external database.
+    - --mysqld.address=${MYSQLD_EXPORTER_ADDRESS:-mysql:3306}
+    - --mysqld.username=${MYSQLD_EXPORTER_USERNAME:-exporter}
+    - --collect.info_schema.innodb_metrics
+    - --collect.info_schema.innodb_tablespaces
+    - --collect.info_schema.processlist
+    - --collect.info_schema.tables
+    - --collect.info_schema.tables.databases=${MYSQL_DATABASE:-saas}
+    - --collect.perf_schema.eventsstatements
+    - --collect.perf_schema.eventsstatements.limit=${MYSQLD_EXPORTER_EVENTSSTATEMENTS_LIMIT:-100}
+    - --collect.perf_schema.tablelocks
+    - --collect.perf_schema.replication_group_members
+    - --collect.perf_schema.replication_group_member_stats
+    - --collect.perf_schema.replication_applier_status_by_worker
+    - --web.listen-address=0.0.0.0:9104
+    expose:
+    - '9104'
+    secrets:
+    - source: mysql_exporter_password
+      target: mysql_exporter_password
+    - source: mysql_exporter_config
+      target: mysql_exporter_config
+    - source: mysql_exporter_ca
+      target: mysql_exporter_ca
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -qO- http://127.0.0.1:9104/metrics | grep -Eq '^mysql_up(\{[^}]*\})?[[:space:]]+1([.]0+)?([eE][+]?[0]+)?[[:space:]]*$'
+      interval: ${MYSQLD_EXPORTER_HEALTH_INTERVAL:-15s}
+      timeout: ${MYSQLD_EXPORTER_HEALTH_TIMEOUT:-5s}
+      retries: ${MYSQLD_EXPORTER_HEALTH_RETRIES:-5}
+      start_period: ${MYSQLD_EXPORTER_HEALTH_START_PERIOD:-10s}
+  backup-metrics-exporter:
+    profiles:
+    - observability
+    image: ${NODE_EXPORTER_IMAGE:-prom/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0}
+    container_name: lumira-backup-metrics-exporter
+    restart: unless-stopped
+    logging: *id001
+    mem_limit: ${BACKUP_METRICS_EXPORTER_MEM_LIMIT:-64m}
+    cpus: ${BACKUP_METRICS_EXPORTER_CPUS:-0.10}
+    read_only: true
+    security_opt:
+    - no-new-privileges:true
+    cap_drop:
+    - ALL
+    command:
+    - --collector.disable-defaults
+    - --collector.textfile
+    - --collector.textfile.directory=/var/lib/node-exporter/textfile
+    - --web.listen-address=0.0.0.0:9100
+    expose:
+    - '9100'
+    volumes:
+    - ./.generated/backup-metrics:/var/lib/node-exporter/textfile:ro
   loki:
     profiles:
     - observability
@@ -577,3 +701,14 @@ volumes:
 networks:
   1panel-network:
     external: true
+secrets:
+  mysql_exporter_password:
+    file: ${MYSQLD_EXPORTER_PASSWORD_FILE:-./.generated/secrets/mysql-exporter-password}
+  # Managed MySQL must supply a [client] my.cnf with a host matching the certificate SAN,
+  # ssl-ca=/run/secrets/mysql_exporter_ca and tls=custom. Certificate verification is mandatory.
+  # mysqld_exporter v0.19 has no explicit server-name or TLS-version configuration keys.
+  # Local MySQL reuses the password file here; the entrypoint ignores it unless it contains [client].
+  mysql_exporter_config:
+    file: ${MYSQLD_EXPORTER_CONFIG_FILE:-${MYSQLD_EXPORTER_PASSWORD_FILE:-./.generated/secrets/mysql-exporter-password}}
+  mysql_exporter_ca:
+    file: ${MYSQLD_EXPORTER_CA_FILE:-${MYSQLD_EXPORTER_PASSWORD_FILE:-./.generated/secrets/mysql-exporter-password}}

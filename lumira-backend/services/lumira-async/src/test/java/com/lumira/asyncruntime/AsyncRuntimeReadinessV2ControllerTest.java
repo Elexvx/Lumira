@@ -27,7 +27,36 @@ class AsyncRuntimeReadinessV2ControllerTest {
         assertThat(health.status()).isEqualTo("UP");
         assertThat(health.healthChecks())
                 .extracting(check -> check.name())
-                .contains("async.control-plane-base-url.configured", "async.scoped-internal-tokens.configured");
+                .contains(
+                        "async.control-plane-base-url.configured",
+                        "async.scoped-internal-tokens.configured",
+                        "async.redis.connected",
+                        "async.payment-consumer.running"
+                );
+    }
+
+    @Test
+    void healthDegradesUntilRedisAndPaymentConsumerAreActuallyReady() {
+        AsyncRuntimeReadinessV2Controller controller = new AsyncRuntimeReadinessV2Controller(
+                "http://api-proxy:80",
+                "file-token",
+                "message-token",
+                "payment-token",
+                "plugin-token",
+                "job-token",
+                () -> false,
+                () -> false
+        );
+
+        assertThat(controller.health().getData().status()).isEqualTo("DEGRADED");
+        assertThat(controller.health().getData().healthChecks()).anySatisfy(check -> {
+            assertThat(check.name()).isEqualTo("async.redis.connected");
+            assertThat(check.status()).isEqualTo("UNAVAILABLE");
+        });
+        assertThat(controller.health().getData().healthChecks()).anySatisfy(check -> {
+            assertThat(check.name()).isEqualTo("async.payment-consumer.running");
+            assertThat(check.status()).isEqualTo("STOPPED");
+        });
     }
 
     @Test

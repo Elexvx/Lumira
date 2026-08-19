@@ -81,6 +81,10 @@ public class PaymentOutboxRelay {
         return paymentOutboxService.replay(id, paymentOutboxDispatcher);
     }
 
+    public boolean replayPaidOrderEvent(String orderNo) {
+        return paymentOutboxService.replayLatestPaidOrderEvent(orderNo, paymentOutboxDispatcher);
+    }
+
     private void validateBatchSize() {
         if (batchSize < 1 || batchSize > PaymentOutboxService.MAX_DISPATCH_LIMIT) {
             throw new IllegalStateException("Payment outbox batch size must be between 1 and " + PaymentOutboxService.MAX_DISPATCH_LIMIT);

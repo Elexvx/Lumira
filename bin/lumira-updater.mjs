@@ -16,11 +16,13 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { parseEnvFile, setEnvValue } from './lib/env-utils.mjs';
 import { probeHttp, sleep } from './lib/http-utils.mjs';
 import { runManagedCommand } from './lib/managed-command.mjs';
+import { validateBackupEvidence } from './lib/platform-backup-contract.mjs';
 import {
   TERMINAL_UPDATE_STATUSES,
   UPDATER_PROTOCOL_VERSION,
@@ -141,6 +143,77 @@ function setPhase(task, phase, message) {
 function toWslPath(value) {
   const match = String(value).match(/^([a-zA-Z]):[\\/](.*)$/);
   return match ? `/mnt/${match[1].toLowerCase()}/${match[2].replaceAll('\\', '/')}` : value;
+}
+
+function toHostReadablePath(value) {
+  const normalized = String(value || '').trim();
+  if (process.platform !== 'win32' || !normalized.startsWith('/')) return normalized;
+  const mountedDrive = normalized.match(/^\/mnt\/([a-zA-Z])\/(.*)$/u);
+  if (mountedDrive) return `${mountedDrive[1].toUpperCase()}:\\${mountedDrive[2].replaceAll('/', '\\')}`;
+  const distro = process.env.LUMIRA_WSL_DISTRO;
+  const prefix = distro ? ['-d', distro, '-u', 'root', '--'] : ['--'];
+  const conversion = spawnSync('wsl.exe', [...prefix, 'wslpath', '-w', normalized], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: 'pipe',
+    shell: false,
+  });
+  if (conversion.status === 0 && conversion.stdout.trim()) return conversion.stdout.trim();
+  return distro ? `\\\\wsl.localhost\\${distro}${normalized.replaceAll('/', '\\')}` : normalized;
+}
+
+function configuredDatabaseName(environment) {
+  const jdbcUrl = String(environment.DB_URL || '');
+  const pathMatch = jdbcUrl.match(/^jdbc:mysql:\/\/[^/]+\/([^?;]+)/iu);
+  if (pathMatch) {
+    try {
+      return decodeURIComponent(pathMatch[1]);
+    } catch {
+      return pathMatch[1];
+    }
+  }
+  return String(environment.MYSQL_DATABASE || environment.DB_NAME || '').trim() || null;
+}
+
+function configuredDatabaseEndpoint(environment) {
+  const match = String(environment.DB_URL || '').match(
+    /^jdbc:mysql:\/\/(?:\[([^\]]+)\]|([^/:?]+))(?::(\d+))?\//iu,
+  );
+  const host = String(match ? match[1] || match[2] : environment.DB_HOST || 'mysql').trim();
+  const port = String(match?.[3] || environment.DB_PORT || '3306').trim();
+  if (!host || /[\s,]/u.test(host) || !/^\d{1,5}$/u.test(port) || Number(port) > 65_535) {
+    throw new Error('Unable to derive a safe MySQL host and port for backup identity verification.');
+  }
+  return { host, port };
+}
+
+function configuredMysqlSslMode(environment) {
+  const explicit = String(environment.MYSQL_SSL_MODE || '').trim().toUpperCase();
+  if (explicit) return explicit;
+  const url = String(environment.DB_URL || '');
+  const configured = url.match(/[?&]sslMode=([^&]+)/iu)?.[1];
+  if (configured) return decodeURIComponent(configured).toUpperCase();
+  if (/[?&]useSSL=false(?:&|$)/iu.test(url)) return 'DISABLED';
+  if (/[?&]useSSL=true(?:&|$)/iu.test(url)) return 'REQUIRED';
+  return 'PREFERRED';
+}
+
+function wslForwardedEnvironment(variableNames, pathVariableNames = []) {
+  const existing = String(process.env.WSLENV || '').split(':').map((entry) => entry.trim()).filter(Boolean);
+  const indexes = new Map(existing.map((entry, index) => [entry.split('/')[0].toUpperCase(), index]));
+  const translatedPaths = new Set(pathVariableNames.map((name) => name.toUpperCase()));
+  for (const variableName of variableNames) {
+    const normalizedName = variableName.toUpperCase();
+    const entry = `${variableName}/${translatedPaths.has(normalizedName) ? 'p' : 'u'}`;
+    const existingIndex = indexes.get(normalizedName);
+    if (existingIndex === undefined) {
+      indexes.set(normalizedName, existing.length);
+      existing.push(entry);
+    } else if (translatedPaths.has(normalizedName)) {
+      existing[existingIndex] = entry;
+    }
+  }
+  return existing.join(':');
 }
 
 function commandInvocation(command, args) {
@@ -454,6 +527,21 @@ async function createPreflight(request) {
     if (image && !imageHostAllowed(image)) report.blockers.push(`Image registry is not allowed: ${image}`);
   }
   if (!backupDirectoryWritable()) report.blockers.push('The backup directory is not writable.');
+  const deploymentEnv = parseEnvFile(envPath);
+  const databaseUsername = deploymentEnv.DB_USERNAME || 'root';
+  if (databaseUsername.toLowerCase() === 'root') {
+    report.warnings.push('The application database account is root; provision a least-privilege DB_USERNAME before the next credential rotation.');
+  }
+  if (!deploymentEnv.DB_MIGRATION_USERNAME || !deploymentEnv.DB_MIGRATION_PASSWORD) {
+    report.warnings.push('Dedicated DB_MIGRATION_USERNAME/DB_MIGRATION_PASSWORD are not configured; migrations will fall back to the application database account.');
+  }
+  const databaseUrl = String(deploymentEnv.DB_URL || '');
+  const databaseHost = databaseUrl.match(/^jdbc:mysql:\/\/([^/:?]+)/iu)?.[1]?.toLowerCase();
+  const localDatabaseHosts = new Set(['mysql', 'localhost', '127.0.0.1', 'host.docker.internal']);
+  if (databaseHost && !localDatabaseHosts.has(databaseHost)
+      && !/[?&]sslMode=VERIFY_IDENTITY(?:&|$)/iu.test(databaseUrl)) {
+    report.warnings.push('The external DB_URL does not enforce sslMode=VERIFY_IDENTITY; enable verified database TLS before HA cutover.');
+  }
   if (!topology.slotRunning) report.blockers.push(`The active ${normalizeSlot(state.activeSlot)} slot is not running.`);
   if (!topology.databaseReachable) report.blockers.push('Database connectivity could not be verified through active-slot health.');
   if (!await migrationNetworkReachable(manifest, state)) report.blockers.push('The migration network cannot resolve the configured database host.');
@@ -594,7 +682,54 @@ async function migrate(task, manifest) {
     ...secretArgs,
     '-e', `DATABASE_TARGET_VERSION=${manifest.database.targetVersion}`,
     manifest.images.migrator,
-  ], { env: { DB_URL: env.DB_URL || '', DB_USERNAME: env.DB_USERNAME || 'root', DB_PASSWORD: env.DB_PASSWORD || '' } });
+  ], {
+    env: {
+      DB_URL: env.DB_URL || '',
+      DB_USERNAME: env.DB_MIGRATION_USERNAME || env.DB_USERNAME || 'root',
+      DB_PASSWORD: env.DB_MIGRATION_PASSWORD || env.DB_PASSWORD || '',
+      WSLENV: wslForwardedEnvironment(['DB_URL', 'DB_USERNAME', 'DB_PASSWORD']),
+    },
+  });
+}
+
+async function verifyBackupMatchesMigrationTarget(task, evidence, environment) {
+  const backupServerUuid = String(evidence?.serverUuid || '').trim().toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(backupServerUuid)) {
+    throw new Error('Verified backup evidence does not contain a valid MySQL server UUID.');
+  }
+  const { host: databaseHost, port: databasePort } = configuredDatabaseEndpoint(environment);
+  const network = environment.DB_MIGRATION_NETWORK || environment.DB_BACKUP_NETWORK || 'deploy_default';
+  const username = environment.DB_MIGRATION_USERNAME || environment.DB_USERNAME || 'root';
+  const password = environment.DB_MIGRATION_PASSWORD || environment.DB_PASSWORD || '';
+  const clientImage = environment.MYSQL_CLIENT_IMAGE || 'mysql:8.4';
+  const sslMode = configuredMysqlSslMode(environment);
+  const dockerArgs = ['run', '--rm', '--network', network, '-e', 'MYSQL_PWD'];
+  const configuredCaPath = String(environment.MYSQL_SSL_CA_FILE || '').trim();
+  if (configuredCaPath) {
+    const absoluteCaPath = path.resolve(repoRoot, configuredCaPath);
+    if (!existsSync(absoluteCaPath)) throw new Error(`MYSQL_SSL_CA_FILE does not exist: ${absoluteCaPath}`);
+    dockerArgs.push('-v', `${absoluteCaPath}:/run/lumira/mysql-ca.pem:ro`);
+  }
+  dockerArgs.push(
+    clientImage,
+    'mysql', '--batch', '--skip-column-names', '--connect-timeout=10',
+    `--host=${databaseHost}`, `--port=${databasePort}`, `--user=${username}`, `--ssl-mode=${sslMode}`,
+    ...(configuredCaPath ? ['--ssl-ca=/run/lumira/mysql-ca.pem'] : []),
+    '--execute=SELECT @@server_uuid;',
+  );
+  const output = await runCommand(task, 'docker', dockerArgs, {
+    env: {
+      MYSQL_PWD: password,
+      WSLENV: wslForwardedEnvironment(['MYSQL_PWD']),
+    },
+  });
+  const targetServerUuid = String(output || '').trim().split(/\r?\n/u).filter(Boolean).at(-1)?.toLowerCase() || '';
+  if (targetServerUuid !== backupServerUuid) {
+    throw new Error(
+      `Backup server UUID ${backupServerUuid} does not match migration target UUID ${targetServerUuid || 'unknown'}; migrations were not started.`,
+    );
+  }
+  appendLog(task, `Backup evidence is bound to migration target MySQL server UUID ${targetServerUuid}.`);
 }
 
 async function updateWorker(task, service, imageKey, image) {
@@ -685,7 +820,64 @@ async function runInstall(task, request) {
   let localFrontendRunning = false;
   try {
     setPhase(task, 'BACKUP', 'Creating a platform backup before the online update.');
-    await runCommand(task, 'bash', [path.join(deployDir, 'backup-platform.sh')]);
+    const deploymentEnv = parseEnvFile(envPath);
+    const backupEndpoint = configuredDatabaseEndpoint(deploymentEnv);
+    const backupDatabaseName = configuredDatabaseName(deploymentEnv);
+    const effectiveBackupEnvironment = {
+      ...deploymentEnv,
+      DB_HOST: backupEndpoint.host,
+      DB_PORT: backupEndpoint.port,
+      ...(backupDatabaseName ? { MYSQL_DATABASE: backupDatabaseName, DB_NAME: backupDatabaseName } : {}),
+    };
+    const backupForwardedVariables = [
+      'BACKUP_ROOT', 'BACKUP_ID', 'BACKUP_RETENTION_DAYS', 'BACKUP_UPLOAD_HOOK', 'BACKUP_METRICS_FILE',
+      'BACKUP_ALLOW_EMPTY_DATABASE', 'BACKUP_REDIS', 'BACKUP_MYSQL_READY_ATTEMPTS',
+      'BACKUP_MYSQL_READY_INTERVAL_SECONDS', 'BACKUP_REDIS_READY_ATTEMPTS', 'BACKUP_REDIS_READY_INTERVAL_SECONDS',
+      'MYSQL_BACKUP_USERNAME', 'MYSQL_BACKUP_PASSWORD', 'MYSQL_CLIENT_IMAGE', 'MYSQL_SERVICE', 'REDIS_SERVICE',
+      'DB_BACKUP_NETWORK', 'DB_URL', 'DB_HOST', 'DB_PORT', 'MYSQL_DATABASE', 'DB_NAME', 'DB_USERNAME', 'DB_USER',
+      'DB_PASSWORD', 'MYSQL_SSL_MODE', 'MYSQL_SSL_CA_FILE', 'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD',
+    ];
+    const backupOutput = await runCommand(task, 'bash', [path.join(deployDir, 'backup-platform.sh')], {
+      env: {
+        ...effectiveBackupEnvironment,
+        WSLENV: wslForwardedEnvironment(
+          backupForwardedVariables,
+          ['BACKUP_ROOT', 'BACKUP_UPLOAD_HOOK', 'BACKUP_METRICS_FILE', 'MYSQL_SSL_CA_FILE'],
+        ),
+      },
+    });
+    if (!dryRun) {
+      const reportedPath = task.backupPath
+        || String(backupOutput || '').match(/Backup completed:\s*(.+)$/mu)?.[1]?.trim();
+      const configuredEvidenceAgeMs = Number(deploymentEnv.BACKUP_EVIDENCE_MAX_AGE_MS || 6 * 60 * 60_000);
+      const maximumEvidenceAgeMs = Number.isFinite(configuredEvidenceAgeMs) && configuredEvidenceAgeMs > 0
+        ? Math.max(15 * 60_000, configuredEvidenceAgeMs)
+        : 6 * 60 * 60_000;
+      const backupEvidence = validateBackupEvidence(toHostReadablePath(reportedPath), {
+        maxAgeMs: maximumEvidenceAgeMs,
+        expectedDatabaseName: configuredDatabaseName(deploymentEnv),
+      });
+      task.backupPath = path.dirname(backupEvidence.manifestPath);
+      task.backupEvidence = {
+        backupId: backupEvidence.backupId,
+        createdAt: backupEvidence.createdAt,
+        databaseName: backupEvidence.databaseName,
+        dumpSize: backupEvidence.dumpSize,
+        dumpSha256: backupEvidence.dumpSha256,
+        serverVersion: backupEvidence.serverVersion,
+        serverUuid: backupEvidence.serverUuid,
+        gtidExecuted: backupEvidence.gtidExecuted,
+        binlogFile: backupEvidence.binlogFile,
+        binlogPosition: backupEvidence.binlogPosition,
+        databaseVersion: backupEvidence.databaseVersion,
+        tableCount: backupEvidence.tableCount,
+        schemaFingerprint: backupEvidence.schemaFingerprint,
+      };
+      appendLog(task, `Backup evidence verified: ${backupEvidence.backupId} (${backupEvidence.dumpSize} bytes).`);
+      if (manifest.database.mode !== 'none' && manifest.images.migrator) {
+        await verifyBackupMatchesMigrationTarget(task, backupEvidence, deploymentEnv);
+      }
+    }
     checkCancellation(task);
 
     setPhase(task, 'PULLING', 'Pulling digest-pinned release images.');

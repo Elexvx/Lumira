@@ -68,6 +68,7 @@ import {
   downloadReadyRegistrationExport,
   type ReadyRegistrationExportDownload,
 } from "./registrationExportDownload";
+import { splitRegistrationMemberSnapshots } from "./registrationMemberSnapshots";
 import "./CompetitionRegistrationDataPage.css";
 
 type JsonRecord = Record<string, unknown>;
@@ -730,6 +731,8 @@ const CompetitionRegistrationDataPage = () => {
   const teamValues = parseJson<JsonRecord>(detail?.teamSnapshotJson, {});
   const projectValues = parseJson<JsonRecord>(detail?.projectSnapshotJson, {});
   const memberValues = parseJson<JsonRecord[]>(detail?.memberSnapshotJson, []);
+  const { students: studentMemberValues, teachers: teacherMemberValues } =
+    splitRegistrationMemberSnapshots(memberValues);
   const exportScope = resolveRegistrationExportScope({
     hasCompetition: true,
     filteredCount: resultTotal,
@@ -857,6 +860,7 @@ const CompetitionRegistrationDataPage = () => {
       "REGISTRATION_FIELD",
       "TEAM_FIELD",
       "MEMBER_FIELD",
+      "TEACHER_FIELD",
       "PROJECT_FIELD",
     ];
     return scopes.reduce<Record<string, SnapshotFieldDefinition[]>>(
@@ -871,7 +875,7 @@ const CompetitionRegistrationDataPage = () => {
     );
   }, [collectionSchemaSnapshot]);
 
-  const memberFieldDefinitions = useMemo(() => {
+  const studentMemberFieldDefinitions = useMemo(() => {
     const definitions = [
       ...(fieldDefinitionsByScope.MEMBER_FIELD || []),
     ];
@@ -887,19 +891,45 @@ const CompetitionRegistrationDataPage = () => {
     ));
   }, [fieldDefinitionsByScope]);
 
+  const teacherMemberFieldDefinitions = useMemo(() => {
+    const definitions = [
+      ...(fieldDefinitionsByScope.TEACHER_FIELD || []),
+    ];
+    if (!definitions.some((field) => field.itemKey === "memberName")) {
+      definitions.unshift({
+        scope: "TEACHER_FIELD",
+        itemKey: "memberName",
+        title: "姓名",
+      });
+    }
+    return definitions.filter((field, index, fields) => (
+      fields.findIndex((candidate) => candidate.itemKey === field.itemKey) === index
+    ));
+  }, [fieldDefinitionsByScope]);
+
   const registrationFieldDefinitions =
     fieldDefinitionsByScope.REGISTRATION_FIELD || [];
   const teamFieldDefinitions = fieldDefinitionsByScope.TEAM_FIELD || [];
   const projectFieldDefinitions = fieldDefinitionsByScope.PROJECT_FIELD || [];
 
-  const memberColumns = useMemo<TableColumnsType<JsonRecord>>(
-    () => memberFieldDefinitions.map(({ itemKey, title }) => ({
+  const studentMemberColumns = useMemo<TableColumnsType<JsonRecord>>(
+    () => studentMemberFieldDefinitions.map(({ itemKey, title }) => ({
       key: itemKey,
       title,
       dataIndex: itemKey,
       render: (_value, member) => valueText(readMemberFieldValue(member, itemKey)),
     })),
-    [memberFieldDefinitions],
+    [studentMemberFieldDefinitions],
+  );
+
+  const teacherMemberColumns = useMemo<TableColumnsType<JsonRecord>>(
+    () => teacherMemberFieldDefinitions.map(({ itemKey, title }) => ({
+      key: itemKey,
+      title,
+      dataIndex: itemKey,
+      render: (_value, member) => valueText(readMemberFieldValue(member, itemKey)),
+    })),
+    [teacherMemberFieldDefinitions],
   );
 
   const detailDrawer = (
@@ -1021,15 +1051,26 @@ const CompetitionRegistrationDataPage = () => {
               values={projectValues}
               fieldDefinitions={projectFieldDefinitions}
             />
-            <DetailSection title={`学生成员（${memberValues.length}）`}>
+            <DetailSection title={`学生成员（${studentMemberValues.length}）`}>
               <DataTable<JsonRecord>
                 rowKey={(_, index) => String(index)}
                 isMobile={responsive.isMobile}
                 size="small"
                 pagination={false}
-                scroll={memberColumns.length > 4 ? { x: 900 } : undefined}
-                dataSource={memberValues}
-                columns={memberColumns}
+                scroll={studentMemberColumns.length > 4 ? { x: 900 } : undefined}
+                dataSource={studentMemberValues}
+                columns={studentMemberColumns}
+              />
+            </DetailSection>
+            <DetailSection title={`指导教师（${teacherMemberValues.length}）`}>
+              <DataTable<JsonRecord>
+                rowKey={(_, index) => String(index)}
+                isMobile={responsive.isMobile}
+                size="small"
+                pagination={false}
+                scroll={teacherMemberColumns.length > 4 ? { x: 900 } : undefined}
+                dataSource={teacherMemberValues}
+                columns={teacherMemberColumns}
               />
             </DetailSection>
             <DetailSection title={`阶段材料（${materials.length} 次提交）`}>

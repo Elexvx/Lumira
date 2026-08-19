@@ -38,10 +38,31 @@ export default defineConfig({
     },
     {
       name: 'chromium',
-      testIgnore: [/.*\.setup\.ts/, /.*auth\.spec\.ts/],
+      testIgnore: [/.*\.setup\.ts/, /.*auth\.spec\.ts/, /.*\.mobile\.spec\.ts/, /.*\.quality\.spec\.ts/],
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
+        storageState: authFile,
+      },
+    },
+    {
+      name: 'quality',
+      testMatch: /.*\.quality\.spec\.ts/,
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: authFile,
+      },
+    },
+    {
+      name: 'mobile-390',
+      testMatch: /.*\.mobile\.spec\.ts/,
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        isMobile: true,
         storageState: authFile,
       },
     },

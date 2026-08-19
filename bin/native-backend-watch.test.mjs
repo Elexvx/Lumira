@@ -61,6 +61,9 @@ test('native local rebuild skips test compilation and isolates the JVM from in-p
   assert.match(source, /Timed out waiting for the restarted backend runtime\(s\) to listen/);
   assert.match(source, /delayMs: 5_000/);
   assert.match(source, /Backend runtime is ready; live compile is now armed/);
+  assert.match(source, /Waiting up to .* for business readiness/);
+  assert.match(source, /Local native environment is business-ready/);
+  assert.match(source, /waitForLocalReadiness/);
   assert.match(source, /Queued .* backend change\(s\) until the initial Java runtime is ready/);
   assert.match(source, /PLATFORM_UPDATE_TASK_RECONCILE_INITIAL_DELAY_MS/);
 });

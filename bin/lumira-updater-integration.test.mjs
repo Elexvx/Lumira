@@ -64,6 +64,25 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
   assert.equal(preflight.body.targetSlot, 'green');
   assert.equal(preflight.body.migrationMode, 'expand-only');
   assert.equal(preflight.body.databaseTargetVersion, '202607140001');
+  assert.match(preflight.body.warnings.join(' '), /database account is root/);
+  assert.match(preflight.body.warnings.join(' '), /DB_MIGRATION_USERNAME/);
+
+  writeFileSync(path.join(deployDir, '.env'), [
+    'LUMIRA_ACTIVE_SLOT=blue',
+    'DB_USERNAME=lumira_app',
+    'DB_PASSWORD=application-secret',
+    'DB_MIGRATION_USERNAME=lumira_migrator',
+    'DB_MIGRATION_PASSWORD=migration-secret',
+    'DB_URL=jdbc:mysql://ha-db.internal:3306/saas?useSSL=false',
+    '',
+  ].join('\n'));
+  const insecureExternalPreflight = await call('/v1/update/preflight', {
+    method: 'POST',
+    body: JSON.stringify({ manifest }),
+  });
+  assert.equal(insecureExternalPreflight.body.ready, true);
+  assert.match(insecureExternalPreflight.body.warnings.join(' '), /sslMode=VERIFY_IDENTITY/);
+  assert.doesNotMatch(insecureExternalPreflight.body.warnings.join(' '), /database account is root|DB_MIGRATION_USERNAME/);
 
   const domesticManifest = {
     ...manifest,

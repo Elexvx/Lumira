@@ -176,6 +176,10 @@ public class PaymentEventStreamConsumer {
         }
     }
 
+    boolean isRunning() {
+        return container != null && container.isRunning();
+    }
+
     void onMessage(MapRecord<String, String, String> message) {
         try {
             Map<String, String> values = message.getValue();

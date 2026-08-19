@@ -13,6 +13,7 @@ public final class CompetitionWorkspaceVO {
         private String code;
         private String title;
         private String status;
+        private boolean readOnly;
         private Long activeRegistrationCount;
         private List<String> capabilities = List.of();
         private List<String> allowedModules = List.of();
@@ -27,6 +28,8 @@ public final class CompetitionWorkspaceVO {
         public void setTitle(String title) { this.title = title; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+        public boolean isReadOnly() { return readOnly; }
+        public void setReadOnly(boolean readOnly) { this.readOnly = readOnly; }
         public Long getActiveRegistrationCount() { return activeRegistrationCount; }
         public void setActiveRegistrationCount(Long activeRegistrationCount) { this.activeRegistrationCount = activeRegistrationCount; }
         public List<String> getCapabilities() { return capabilities; }

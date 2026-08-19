@@ -104,6 +104,45 @@ class CompetitionWorkspaceAccessPolicyTest {
                 .containsExactly("registrations");
     }
 
+    @Test
+    void archivedWorkspaceKeepsReadCapabilitiesAndFiltersEveryWriteCapability() {
+        CompetitionWorkspaceAccessPolicy policy = new CompetitionWorkspaceAccessPolicy(
+                mock(CompetitionManagementRepository.class),
+                mock(PermissionGuard.class)
+        );
+
+        Set<CompetitionCapability> effective = policy.effectiveCapabilities(
+                CompetitionRef.from(competition("archived")),
+                Set.of(
+                        CompetitionCapability.WORKSPACE_VIEW,
+                        CompetitionCapability.REGISTRATION_READ,
+                        CompetitionCapability.REGISTRATION_MANAGE,
+                        CompetitionCapability.REVIEW_READ,
+                        CompetitionCapability.REVIEW_MANAGE,
+                        CompetitionCapability.CERTIFICATE_READ,
+                        CompetitionCapability.CERTIFICATE_MANAGE,
+                        CompetitionCapability.SETTINGS_READ,
+                        CompetitionCapability.SETTINGS_MANAGE
+                )
+        );
+
+        assertThat(effective)
+                .contains(
+                        CompetitionCapability.WORKSPACE_VIEW,
+                        CompetitionCapability.REGISTRATION_READ,
+                        CompetitionCapability.REVIEW_READ,
+                        CompetitionCapability.CERTIFICATE_READ,
+                        CompetitionCapability.SETTINGS_READ
+                )
+                .doesNotContain(
+                        CompetitionCapability.REGISTRATION_MANAGE,
+                        CompetitionCapability.REVIEW_MANAGE,
+                        CompetitionCapability.CERTIFICATE_MANAGE,
+                        CompetitionCapability.SETTINGS_MANAGE
+                );
+        assertThat(policy.allowedModules(effective)).contains("settings", "registrations", "reviews", "certificates");
+    }
+
     private static CurrentUser user(String permission) {
         CurrentUser user = new CurrentUser(1L, "operator", "session", 1, true, Set.of(permission));
         user.setUserUuid("user-uuid");

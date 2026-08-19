@@ -12,9 +12,29 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - lumira-server:8080
+          - lumira-server-blue:8080
         labels:
           service_name: lumira-server
+          slot: blue
+      - targets:
+          - lumira-server-green:8080
+        labels:
+          service_name: lumira-server
+          slot: green
+
+  - job_name: mysql
+    static_configs:
+      - targets:
+          - mysqld-exporter:9104
+        labels:
+          service_name: mysql
+
+  - job_name: backup-metrics
+    static_configs:
+      - targets:
+          - backup-metrics-exporter:9100
+        labels:
+          service_name: mysql-backup
 
   - job_name: lumira-job-executor
     metrics_path: /actuator/prometheus

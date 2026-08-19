@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.competition.infrastructure;
 
 import com.lumira.saas.modules.competition.infrastructure.persistence.CompetitionSqlOperations;
+import com.lumira.saas.modules.competition.infrastructure.persistence.RowMapper;
 import com.lumira.saas.modules.competition.repository.RegistrationQueryRepository;
 import com.lumira.saas.modules.competition.repository.RegistrationWriteRepository;
 import java.math.BigDecimal;
@@ -76,6 +77,33 @@ class JdbcRegistrationPersistenceAdapterTest {
         ));
     }
 
+    @Test
+    void registrationListIncludesTheCompetitionTitleAfterArchival() {
+        RecordingDatabase database = new RecordingDatabase();
+        JdbcRegistrationPersistenceAdapter adapter = new JdbcRegistrationPersistenceAdapter(database);
+
+        adapter.findRegistrations(new RegistrationQueryRepository.RegistrationSearch(
+                1001L, "user-uuid-1001", null, null, null, false, 0, 20));
+
+        assertThat(database.lastQuerySql)
+                .contains("from aiadc_competition competition")
+                .contains("as competitionTitle");
+    }
+
+    @Test
+    void stalePaymentConsistencyQueryStaysInsideTheCompetitionOwnerBoundary() {
+        RecordingDatabase database = new RecordingDatabase();
+        JdbcRegistrationPersistenceAdapter adapter = new JdbcRegistrationPersistenceAdapter(database);
+
+        adapter.findStalePendingPaymentCandidates(LocalDateTime.of(2026, 8, 20, 0, 0), 100);
+
+        assertThat(database.lastQuerySql)
+                .contains("from competition_registration cr")
+                .contains("cr.status = 'PENDING_PAYMENT'")
+                .contains("cr.payment_order_no is not null")
+                .doesNotContain("from payment_order", "join payment_order", "payment_event_outbox");
+    }
+
     private RegistrationWriteRepository.CreateStageCommand stageCommand() {
         return new RegistrationWriteRepository.CreateStageCommand(
                 11L,
@@ -102,6 +130,7 @@ class JdbcRegistrationPersistenceAdapterTest {
         private Object[] lastUpdateArgs = new Object[0];
         private int lastInsertIdQueryCount;
         private List<Map<String, Object>> taskRows = List.of();
+        private String lastQuerySql;
 
         @Override
         public int update(String sql, Object... args) {
@@ -122,6 +151,12 @@ class JdbcRegistrationPersistenceAdapterTest {
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             return sql.contains("from competition_payment_order_task") ? taskRows : List.of();
+        }
+
+        @Override
+        public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+            lastQuerySql = sql;
+            return List.of();
         }
     }
 }

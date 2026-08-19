@@ -6,7 +6,11 @@ import com.lumira.common.api.ApiResponse;
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.function.BooleanSupplier;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,6 +27,8 @@ public class AsyncRuntimeReadinessV2Controller {
 
     private final String controlPlaneBaseUrl;
     private final List<String> scopedTokens;
+    private final BooleanSupplier redisAvailable;
+    private final BooleanSupplier paymentConsumerRunning;
 
     public AsyncRuntimeReadinessV2Controller(
             @Value("${lumira.async.owner-relay.control-plane-base-url:${LUMIRA_ASYNC_CONTROL_PLANE_BASE_URL:http://api-proxy:80}}")
@@ -33,8 +39,59 @@ public class AsyncRuntimeReadinessV2Controller {
             @Value("${saas.internal.plugin-token:${SAAS_INTERNAL_PLUGIN_TOKEN:}}") String pluginToken,
             @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobToken
     ) {
+        this(
+                controlPlaneBaseUrl,
+                fileToken,
+                messageToken,
+                paymentToken,
+                pluginToken,
+                jobToken,
+                () -> true,
+                () -> true
+        );
+    }
+
+    @Autowired
+    public AsyncRuntimeReadinessV2Controller(
+            @Value("${lumira.async.owner-relay.control-plane-base-url:${LUMIRA_ASYNC_CONTROL_PLANE_BASE_URL:http://api-proxy:80}}")
+            String controlPlaneBaseUrl,
+            @Value("${saas.internal.file-token:${SAAS_INTERNAL_FILE_TOKEN:}}") String fileToken,
+            @Value("${saas.internal.message-token:${SAAS_INTERNAL_MESSAGE_TOKEN:}}") String messageToken,
+            @Value("${saas.internal.payment-token:${SAAS_INTERNAL_PAYMENT_TOKEN:}}") String paymentToken,
+            @Value("${saas.internal.plugin-token:${SAAS_INTERNAL_PLUGIN_TOKEN:}}") String pluginToken,
+            @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobToken,
+            RedisConnectionFactory redisConnectionFactory,
+            ObjectProvider<PaymentEventStreamConsumer> paymentConsumerProvider
+    ) {
+        this(
+                controlPlaneBaseUrl,
+                fileToken,
+                messageToken,
+                paymentToken,
+                pluginToken,
+                jobToken,
+                () -> redisPing(redisConnectionFactory),
+                () -> {
+                    PaymentEventStreamConsumer consumer = paymentConsumerProvider.getIfAvailable();
+                    return consumer != null && consumer.isRunning();
+                }
+        );
+    }
+
+    AsyncRuntimeReadinessV2Controller(
+            String controlPlaneBaseUrl,
+            String fileToken,
+            String messageToken,
+            String paymentToken,
+            String pluginToken,
+            String jobToken,
+            BooleanSupplier redisAvailable,
+            BooleanSupplier paymentConsumerRunning
+    ) {
         this.controlPlaneBaseUrl = controlPlaneBaseUrl;
         this.scopedTokens = List.of(fileToken, messageToken, paymentToken, pluginToken, jobToken);
+        this.redisAvailable = redisAvailable;
+        this.paymentConsumerRunning = paymentConsumerRunning;
     }
 
     @GetMapping("/readiness")
@@ -56,6 +113,8 @@ public class AsyncRuntimeReadinessV2Controller {
                 List.of(
                         "async.control-plane-base-url.configured",
                         "async.scoped-internal-tokens.configured",
+                        "async.redis.connected",
+                        "async.payment-consumer.running",
                         "async.no-datasource-or-owner-beans"
                 ),
                 List.of(
@@ -102,6 +161,16 @@ public class AsyncRuntimeReadinessV2Controller {
                                 "Each owner relay and the recovery endpoint use scoped internal tokens."
                         ),
                         healthCheck(
+                                "async.redis.connected",
+                                isRedisAvailable() ? "CONNECTED" : "UNAVAILABLE",
+                                "Redis must accept commands before event relay and consumption are ready."
+                        ),
+                        healthCheck(
+                                "async.payment-consumer.running",
+                                isPaymentConsumerRunning() ? "RUNNING" : "STOPPED",
+                                "The competition payment Redis Stream consumer must be actively polling."
+                        ),
+                        healthCheck(
                                 "async.no-datasource-or-owner-beans",
                                 "CONFIGURED",
                                 "The runtime is assembled from narrow remote ports and Redis only."
@@ -117,11 +186,41 @@ public class AsyncRuntimeReadinessV2Controller {
     }
 
     private boolean healthy() {
-        return StringUtils.hasText(controlPlaneBaseUrl) && scopedTokensConfigured();
+        return StringUtils.hasText(controlPlaneBaseUrl)
+                && scopedTokensConfigured()
+                && isRedisAvailable()
+                && isPaymentConsumerRunning();
     }
 
     private boolean scopedTokensConfigured() {
         return scopedTokens.stream().allMatch(StringUtils::hasText);
+    }
+
+    private boolean isRedisAvailable() {
+        return safeBoolean(redisAvailable);
+    }
+
+    private boolean isPaymentConsumerRunning() {
+        return safeBoolean(paymentConsumerRunning);
+    }
+
+    private boolean safeBoolean(BooleanSupplier supplier) {
+        try {
+            return supplier != null && supplier.getAsBoolean();
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    private static boolean redisPing(RedisConnectionFactory connectionFactory) {
+        if (connectionFactory == null) {
+            return false;
+        }
+        try (var connection = connectionFactory.getConnection()) {
+            return "PONG".equalsIgnoreCase(connection.ping());
+        } catch (RuntimeException exception) {
+            return false;
+        }
     }
 
     private OwnerObservabilityDTO.HealthCheckDTO healthCheck(String name, String status, String description) {

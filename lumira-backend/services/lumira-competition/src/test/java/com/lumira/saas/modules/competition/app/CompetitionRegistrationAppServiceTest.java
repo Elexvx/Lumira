@@ -1498,6 +1498,11 @@ class CompetitionRegistrationAppServiceTest {
             public PaymentOrderDTO cancelOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
                 return getOrder(operatorId, operatorUuid, simulatedRoleId, orderNo);
             }
+
+            @Override
+            public boolean replayPaidOrderEvent(String orderNo) {
+                return false;
+            }
         };
         CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1), paymentInternalApi);
 
@@ -1571,6 +1576,11 @@ class CompetitionRegistrationAppServiceTest {
             @Override
             public PaymentOrderDTO cancelOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
                 return getOrder(operatorId, operatorUuid, simulatedRoleId, orderNo);
+            }
+
+            @Override
+            public boolean replayPaidOrderEvent(String orderNo) {
+                return false;
             }
         };
         CompetitionRegistrationDTO.PaymentOrderRequest request = new CompetitionRegistrationDTO.PaymentOrderRequest();
@@ -1657,6 +1667,11 @@ class CompetitionRegistrationAppServiceTest {
             @Override
             public PaymentOrderDTO cancelOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
                 return getOrder(operatorId, operatorUuid, simulatedRoleId, orderNo);
+            }
+
+            @Override
+            public boolean replayPaidOrderEvent(String orderNo) {
+                return false;
             }
         };
         CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1), paymentInternalApi);
@@ -2776,7 +2791,8 @@ class CompetitionRegistrationAppServiceTest {
         @Override
         public <T> T queryForObject(String sql, RowMapper<T> rowMapper, Object... args) {
             String normalized = sql.toLowerCase();
-            if (normalized.contains("from aiadc_competition")) {
+            if (normalized.contains("from aiadc_competition")
+                    && !normalized.contains("from competition_registration")) {
                 return map(rowMapper, Map.of(
                         "id", 11L,
                         "code", "AIADC2026",

@@ -75,6 +75,17 @@ class PaymentOutboxRelayTest {
     }
 
     @Test
+    void replayPaidOrderEventShouldUseTheOwnerEventKey() {
+        PaymentOutboxService service = mock(PaymentOutboxService.class);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxRelay relay = new PaymentOutboxRelay(service, dispatcher, false, 100, 4);
+        when(service.replayLatestPaidOrderEvent("PAY-2026-1", dispatcher)).thenReturn(true);
+
+        assertThat(relay.replayPaidOrderEvent("PAY-2026-1")).isTrue();
+        verify(service).replayLatestPaidOrderEvent("PAY-2026-1", dispatcher);
+    }
+
+    @Test
     void dispatchPendingEventsShouldExpandBurstRoundsWhenDispatchableBacklogIsHigh() {
         PaymentOutboxService service = mock(PaymentOutboxService.class);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);

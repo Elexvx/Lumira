@@ -63,4 +63,7 @@ public interface PaymentInternalApi {
             @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId,
             @PathVariable("orderNo") String orderNo
     );
+
+    @PostExchange("/internal/payment/orders/{orderNo}/paid-event/replay")
+    boolean replayPaidOrderEvent(@PathVariable("orderNo") String orderNo);
 }

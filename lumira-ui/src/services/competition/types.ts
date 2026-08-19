@@ -143,6 +143,7 @@ export type CompetitionWorkspaceCapability =
   | 'payment.read'
   | 'certificate.read'
   | 'certificate.manage'
+  | 'settings.read'
   | 'settings.manage'
   | 'audit.read';
 
@@ -161,6 +162,7 @@ export interface CompetitionWorkspaceRecord {
   code?: string | null;
   title: string;
   status: CompetitionStatus;
+  readOnly: boolean;
   activeRegistrationCount?: number;
   capabilities: CompetitionWorkspaceCapability[];
   allowedModules: CompetitionWorkspaceModule[];
@@ -260,6 +262,7 @@ export interface CompetitionRegistrationRecord {
   id: number;
   registrationNo: string;
   competitionId: number;
+  competitionTitle?: string | null;
   teamId: number;
   projectId: number;
   ownerUserId?: number;

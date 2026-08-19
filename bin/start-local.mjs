@@ -21,6 +21,10 @@ import {
   parseJdbcEndpoint,
 } from './lib/local-admin-bootstrap.mjs';
 import { createChangeBatcher } from './lib/native-backend-watch.mjs';
+import {
+  createLocalReadinessTargets,
+  waitForLocalReadiness,
+} from './lib/local-readiness.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const backendRoot = path.join(repoRoot, 'lumira-backend');
@@ -50,6 +54,7 @@ Options:
   --frontend-port <port>     Umi development port (default: 8000).
   --async-port <port>        Async worker port in --full mode (default: 8081).
   --job-port <port>          Job worker port in --full mode (default: 8082).
+  --ready-timeout <seconds>  Business-readiness timeout (default: 180).
   --env-file <path>          Local backend env file (default: lumira-backend/.env).
   --allow-remote-services    Allow a non-loopback MySQL or Redis endpoint.
   -h, --help                 Show this help message.
@@ -73,6 +78,14 @@ function parsePort(value, fallback, label) {
     throw new Error(`${label} must be an integer between 1 and 65535.`);
   }
   return port;
+}
+
+function parsePositiveSeconds(value, fallback, label) {
+  const seconds = Number(value ?? fallback);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    throw new Error(`${label} must be a positive number of seconds.`);
+  }
+  return Math.round(seconds * 1_000);
 }
 
 function localRuntimeSecret(...configuredValues) {
@@ -292,11 +305,19 @@ let backendPort;
 let frontendPort;
 let asyncPort;
 let jobPort;
+let readinessTimeoutMs;
 try {
   backendPort = parsePort(optionValue('--backend-port') || process.env.LUMIRA_LOCAL_BACKEND_PORT || fileEnv.SERVER_PORT, 8080, 'Backend port');
   frontendPort = parsePort(optionValue('--frontend-port') || process.env.LUMIRA_LOCAL_FRONTEND_PORT || fileEnv.LUMIRA_UI_PORT, 8000, 'Frontend port');
   asyncPort = parsePort(optionValue('--async-port') || process.env.LUMIRA_LOCAL_ASYNC_PORT || fileEnv.LUMIRA_ASYNC_PORT, 8081, 'Async port');
   jobPort = parsePort(optionValue('--job-port') || process.env.LUMIRA_LOCAL_JOB_PORT || fileEnv.LUMIRA_JOB_PORT, 8082, 'Job port');
+  readinessTimeoutMs = parsePositiveSeconds(
+    optionValue('--ready-timeout')
+      || process.env.LUMIRA_LOCAL_READINESS_TIMEOUT_SECONDS
+      || fileEnv.LUMIRA_LOCAL_READINESS_TIMEOUT_SECONDS,
+    180,
+    'Readiness timeout',
+  );
 } catch (error) {
   console.error(`[local] ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
@@ -310,6 +331,14 @@ if (localProfile.split(',').map((item) => item.trim().toLowerCase()).includes('p
 
 const backendUrl = `http://127.0.0.1:${backendPort}`;
 const asyncUrl = `http://127.0.0.1:${asyncPort}`;
+const readinessTargets = createLocalReadinessTargets({
+  backendPort,
+  frontendPort,
+  asyncPort,
+  jobPort,
+  includeFrontend: startFrontend,
+  includeWorkers: full,
+});
 const localEnv = {
   ...process.env,
   ...fileEnv,
@@ -679,6 +708,11 @@ async function startBackendProcessesAfterBuild() {
       backendSpecs.map((spec) => isPortOpen('127.0.0.1', spec.port, 500)),
     )).every(Boolean);
     if (ready) {
+      await waitForLocalReadiness({
+        targets: readinessTargets.filter((target) => target.label !== 'lumira-ui'),
+        timeoutMs: Math.min(readinessTimeoutMs, 120_000),
+        cancelled: () => shuttingDown,
+      });
       console.log('[local:watch] Native Java runtime(s) restarted. Umi HMR remained online.');
       return;
     }
@@ -747,6 +781,19 @@ async function armBackendWatchWhenReady() {
   }
 }
 
+const exitCodePromise = new Promise((resolve) => {
+  resolveMain = resolve;
+});
+
+process.once('SIGINT', () => {
+  stopAll();
+  finishMain(130);
+});
+process.once('SIGTERM', () => {
+  stopAll();
+  finishMain(143);
+});
+
 for (const spec of backendSpecs) {
   startManagedProcess(spec);
 }
@@ -793,20 +840,26 @@ if (startBackend && watchBackend) {
   }
 }
 
-console.log('[local] Local native environment is running. Umi HMR is enabled. Press Ctrl+C to stop every process.');
-
-const exitCodePromise = new Promise((resolve) => {
-  resolveMain = resolve;
-});
-
-process.once('SIGINT', () => {
-  stopAll();
-  finishMain(130);
-});
-process.once('SIGTERM', () => {
-  stopAll();
-  finishMain(143);
-});
+try {
+  console.log(`[local] Waiting up to ${Math.round(readinessTimeoutMs / 1_000)}s for business readiness...`);
+  await waitForLocalReadiness({
+    targets: readinessTargets,
+    timeoutMs: readinessTimeoutMs,
+    cancelled: () => shuttingDown || mainResolved,
+    onProgress: ({ label, url, detail }) => {
+      console.log(`[local] Ready: ${label} (${detail}) ${url}`);
+    },
+  });
+  if (!mainResolved) {
+    console.log('[local] Local native environment is business-ready. Umi HMR is enabled. Press Ctrl+C to stop every process.');
+  }
+} catch (error) {
+  if (!mainResolved) {
+    console.error(`[local] ${error instanceof Error ? error.message : String(error)}`);
+    stopAll();
+    finishMain(1);
+  }
+}
 
 const exitCode = await exitCodePromise;
 process.exit(exitCode);

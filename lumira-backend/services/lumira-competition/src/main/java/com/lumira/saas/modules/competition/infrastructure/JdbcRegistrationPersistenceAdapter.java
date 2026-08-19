@@ -500,6 +500,66 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
     }
 
     @Override
+    public List<PendingPaymentCandidate> findStalePendingPaymentCandidates(LocalDateTime updatedBefore, int limit) {
+        return database.query(
+                """
+                        select cr.id as registration_id, cr.registration_no, cr.competition_id,
+                               c.title as competition_title, cr.payment_order_no,
+                               cr.owner_user_id, cr.owner_user_uuid, cr.updated_at
+                        from competition_registration cr
+                        join aiadc_competition c on c.id = cr.competition_id and c.deleted = 0
+                        where cr.deleted = 0
+                          and cr.status = 'PENDING_PAYMENT'
+                          and cr.payment_order_no is not null
+                          and cr.payment_order_no <> ''
+                          and cr.updated_at <= ?
+                        order by cr.updated_at asc, cr.id asc
+                        limit ?
+                        """,
+                (row, rowNum) -> new PendingPaymentCandidate(
+                        row.getLong("registration_id"),
+                        row.getString("registration_no"),
+                        row.getLong("competition_id"),
+                        row.getString("competition_title"),
+                        row.getString("payment_order_no"),
+                        row.getLong("owner_user_id"),
+                        row.getString("owner_user_uuid"),
+                        row.getTimestamp("updated_at").toLocalDateTime()
+                ),
+                updatedBefore,
+                Math.max(1, Math.min(limit, 500))
+        );
+    }
+
+    @Override
+    public PendingPaymentCandidate findPendingPaymentCandidateByOrder(String paymentOrderNo) {
+        return database.queryForObject(
+                """
+                        select cr.id as registration_id, cr.registration_no, cr.competition_id,
+                               c.title as competition_title, cr.payment_order_no,
+                               cr.owner_user_id, cr.owner_user_uuid, cr.updated_at
+                        from competition_registration cr
+                        join aiadc_competition c on c.id = cr.competition_id and c.deleted = 0
+                        where cr.deleted = 0
+                          and cr.status = 'PENDING_PAYMENT'
+                          and cr.payment_order_no = ?
+                        limit 1
+                        """,
+                (row, rowNum) -> new PendingPaymentCandidate(
+                        row.getLong("registration_id"),
+                        row.getString("registration_no"),
+                        row.getLong("competition_id"),
+                        row.getString("competition_title"),
+                        row.getString("payment_order_no"),
+                        row.getLong("owner_user_id"),
+                        row.getString("owner_user_uuid"),
+                        row.getTimestamp("updated_at").toLocalDateTime()
+                ),
+                paymentOrderNo
+        );
+    }
+
+    @Override
     public CompetitionRegistrationVO.Stage findStage(Long stageId) {
         return database.queryForObject(
                 stageSelect() + " from competition_stage where id = ? and deleted = 0 limit 1",
@@ -1062,6 +1122,11 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
     private static String registrationSelect() {
         return """
                 select id, registration_no as registrationNo, competition_id as competitionId,
+                       (select competition.title
+                          from aiadc_competition competition
+                         where competition.id = competition_registration.competition_id
+                           and competition.deleted = 0
+                         limit 1) as competitionTitle,
                        team_id as teamId, project_id as projectId, owner_user_id as ownerUserId,
                        owner_user_uuid as ownerUserUuid, status,
                        fee_mode as feeMode, entry_fee_minor as entryFeeMinor, member_count as memberCount,
@@ -1086,6 +1151,11 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
                 : "";
         return """
                 select id, registration_no as registrationNo, competition_id as competitionId,
+                       (select competition.title
+                          from aiadc_competition competition
+                         where competition.id = competition_registration.competition_id
+                           and competition.deleted = 0
+                         limit 1) as competitionTitle,
                        team_id as teamId, project_id as projectId, owner_user_id as ownerUserId,
                        owner_user_uuid as ownerUserUuid, status,
                        fee_mode as feeMode, entry_fee_minor as entryFeeMinor, member_count as memberCount,

@@ -230,6 +230,12 @@ public class PaymentOutboxService {
         return dispatchSingle(row, dispatcher);
     }
 
+    public boolean replayLatestPaidOrderEvent(String orderNo, PaymentOutboxDispatcher dispatcher) {
+        String normalizedOrderNo = requireBoundedText(orderNo, "orderNo", MAX_EVENT_KEY_LENGTH);
+        PaymentOutboxRow row = findLatestByEvent("PAYMENT_ORDER_PAID", normalizedOrderNo);
+        return row != null && replay(row.getId(), dispatcher);
+    }
+
     public long pendingBacklog() {
         return snapshot().pendingBacklog();
     }
@@ -383,6 +389,31 @@ public class PaymentOutboxService {
                     new BeanPropertyRowMapper<>(PaymentOutboxRow.class),
                     id,
                     SOURCE_TYPE_PAYMENT
+            );
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private PaymentOutboxRow findLatestByEvent(String eventType, String eventKey) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    """
+                            select id, user_id as userId, user_uuid as userUuid, source_type as sourceType, event_type as eventType,
+                                   event_key as eventKey, payload_json as payloadJson, status, retry_count as retryCount,
+                                   next_retry_at as nextRetryAt, last_error_message as lastErrorMessage, created_by as createdBy,
+                                   created_by_uuid as createdByUuid, created_at as createdAt, updated_by as updatedBy,
+                                   updated_by_uuid as updatedByUuid, updated_at as updatedAt, deleted,
+                                   claimed_by as claimedBy, claim_token as claimToken, claim_expires_at as claimExpiresAt
+                            from payment_event_outbox
+                            where deleted = 0 and source_type = ? and event_type = ? and event_key = ?
+                            order by id desc
+                            limit 1
+                            """,
+                    new BeanPropertyRowMapper<>(PaymentOutboxRow.class),
+                    SOURCE_TYPE_PAYMENT,
+                    eventType,
+                    eventKey
             );
         } catch (Exception ignored) {
             return null;

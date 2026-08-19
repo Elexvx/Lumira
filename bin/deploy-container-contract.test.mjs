@@ -235,6 +235,79 @@ test('Windows WSL Docker deployments forward migration credentials without putti
   );
 });
 
+test('Windows WSL backups receive the effective database target and translate path variables', () => {
+  for (const variableName of [
+    'DB_URL', 'DB_HOST', 'DB_PORT', 'MYSQL_DATABASE', 'DB_USERNAME', 'DB_PASSWORD',
+    'MYSQL_SSL_MODE', 'MYSQL_SSL_CA_FILE', 'MYSQL_BACKUP_USERNAME', 'MYSQL_BACKUP_PASSWORD',
+  ]) {
+    assert.match(deployScript, new RegExp(`'${variableName}'`), `${variableName} must cross the WSL backup boundary`);
+  }
+  assert.match(deployScript, /\.\.\.effectiveBackupEnvironment,\s*BACKUP_ALLOW_EMPTY_DATABASE:/s);
+  assert.match(deployScript, /const backupEndpoint = databaseEndpointFromEnvironment\(environment\)/);
+  assert.match(deployScript, /MYSQL_DATABASE: backupDatabaseName, DB_NAME: backupDatabaseName/);
+  assert.match(
+    deployScript,
+    /\['BACKUP_ROOT', 'BACKUP_UPLOAD_HOOK', 'BACKUP_METRICS_FILE', 'MYSQL_SSL_CA_FILE'\]/,
+    'Windows backup paths must use WSL path translation',
+  );
+});
+
+test('database migrations require verified backup evidence for the configured database', () => {
+  assert.match(deployScript, /createVerifiedDatabaseBackup\(\{/);
+  assert.match(deployScript, /validateBackupEvidence\(hostReadableBackupPath\(reportedPath\)/);
+  assert.match(deployScript, /expectedDatabaseName:\s*databaseNameFromEnvironment\(environment\)/);
+  assert.match(deployScript, /Database backup evidence validation failed/);
+  assert.match(deployScript, /--execute=SELECT @@server_uuid;/);
+  assert.match(deployScript, /verifyBackupMatchesMigrationTarget\(backupEvidence, env\)/);
+  assert.match(deployScript, /Backup server UUID .* does not match migration target UUID/);
+  assert.ok(
+    deployScript.indexOf('createVerifiedDatabaseBackup({') < deployScript.indexOf("log('Database migrations completed before application startup.')"),
+    'backup verification must happen before the migrator completes',
+  );
+});
+
+test('online updater binds backup evidence to the exact migration server', () => {
+  assert.match(updater, /await verifyBackupMatchesMigrationTarget\(task, backupEvidence, deploymentEnv\)/);
+  assert.match(updater, /if \(manifest\.database\.mode !== 'none' && manifest\.images\.migrator\)/);
+  assert.match(updater, /--execute=SELECT @@server_uuid;/);
+  assert.match(updater, /Backup server UUID .* does not match migration target UUID/);
+  assert.match(updater, /effectiveBackupEnvironment/);
+  assert.match(updater, /WSLENV: wslForwardedEnvironment\(/);
+});
+
+test('observability materializes exporter credentials without exposing the password in container argv', () => {
+  assert.match(deployScript, /MYSQLD_EXPORTER_PASSWORD:\s*randomSecret\('mysql-exporter'\)/);
+  assert.match(deployScript, /ensureMysqlExporterSecret\(env\)/);
+  assert.match(deployScript, /atomicWriteProtectedFile\(secretPath/);
+  assert.match(deployScript, /provisionLocalMysqlExporterAccount\(\)/);
+  assert.match(deployScript, /mysqlAuthenticated/);
+  assert.match(deployScript, /mysql_up%7Bjob%3D%22mysql%22%7D/);
+  assert.doesNotMatch(deployScript, /'-e',\s*`?MYSQLD_EXPORTER_PASSWORD=/);
+  assert.doesNotMatch(composeProd, /\$\{MYSQLD_EXPORTER_PASSWORD(?::[^}]*)?\}/);
+  assert.match(deployScript, /External MYSQLD_EXPORTER_ADDRESS must exactly match the DB_URL target/);
+  assert.match(installScript, /External MYSQLD_EXPORTER_ADDRESS must exactly match the DB_URL target/);
+  assert.match(deployScript, /directives\.length !== 3/);
+  assert.match(installScript, /directives\.length !== 3/);
+});
+
+test('local MySQL exporter provisioning converges privileges and is part of installer readiness', () => {
+  for (const [label, source] of [
+    ['deploy-container', deployScript],
+    ['install-platform', installScript],
+  ]) {
+    assert.match(source, /readMysqlExporterPassword\(resolveMysqlExporterSecretPath\(environment\)\)/, `${label} must provision from the mounted secret source`);
+    assert.match(source, /REVOKE ALL PRIVILEGES, GRANT OPTION FROM/, `${label} must remove stale privileges before granting the monitoring set`);
+    assert.match(source, /SHOW GRANTS FOR/, `${label} must verify the converged account grants`);
+    assert.doesNotMatch(source, /Skipping automatic local exporter-account provisioning/, `${label} must not confuse an external password file with an existing DB account`);
+  }
+
+  assert.match(deployScript, /await ensureLocalMysqlExporterAccount\(\);\s*await runDatabaseMigrations\(\);/);
+  assert.match(installScript, /composeUp\(options, 'infrastructure',[\s\S]*?await provisionLocalMysqlExporterAccount\(options\);/);
+  assert.match(installScript, /\['mysqld-exporter', 'backup-metrics-exporter', 'prometheus'/);
+  assert.match(installScript, /mysql_up%7Bjob%3D%22mysql%22%7D/);
+  assert.match(installScript, /MySQL observability is not ready/);
+});
+
 test('admin bootstrap credential is mounted into the one-shot migrator and never injected into the business runtime', () => {
   assert.match(
     envExample,

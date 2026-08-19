@@ -1,21 +1,26 @@
-import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EyeOutlined, ReloadOutlined, SyncOutlined, WarningOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Descriptions, Tag, Typography } from 'antd';
+import { Alert, App, Button, Descriptions, Popconfirm, Space, Tag, Typography } from 'antd';
 import { useLocation } from '@umijs/max';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
 import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { StandardDrawer } from '@/features/management/StandardDrawer';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildTableRequest } from '@/features/table/proTableRequest';
 import { useResponsive } from '@/hooks/useResponsive';
 import {
   getRegistrationStatusLabel,
   registrationStatusValueEnum,
 } from '@/pages/competition/utils/registrationStatus';
-import { listRegistrationPayments } from '@/services/payment/api';
+import {
+  getPaymentConsistency,
+  listRegistrationPayments,
+  replayPaymentRegistrationConfirmation,
+} from '@/services/payment/api';
 import { listCompetitionWorkspacePayments } from '@/services/competition/api';
-import type { RegistrationPaymentRecord } from '@/services/payment/types';
+import type { PaymentConsistencySnapshot, RegistrationPaymentRecord } from '@/services/payment/types';
 import {
   EMPTY_PAYMENT_VALUE,
   PAYMENT_DETAIL_PROVIDER_ORDER_LABEL,
@@ -24,6 +29,7 @@ import {
   formatPaymentIdentifier,
   getPaymentStatusText,
 } from './paymentRecordPresentation';
+import { isPaymentRegistrationMismatch } from './paymentConsistency';
 import './PaymentPage.css';
 
 const providerValueEnum = {
@@ -135,14 +141,54 @@ const PaymentDetailDrawer = ({
 };
 
 const PaymentPage = () => {
+  const { message } = App.useApp();
   const location = useLocation();
   const workspace = useOptionalCompetitionWorkspace();
+  const actionPermission = useActionPermission();
   const responsive = useResponsive();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const [detailRecord, setDetailRecord] = useState<RegistrationPaymentRecord>();
+  const [consistency, setConsistency] = useState<PaymentConsistencySnapshot>();
+  const [consistencyError, setConsistencyError] = useState<string>();
+  const [consistencyLoading, setConsistencyLoading] = useState(false);
+  const [replayingOrderNo, setReplayingOrderNo] = useState<string>();
   const isStatusQuery = location.pathname === '/payments/status';
   const workspaceUuid = workspace?.competitionUuid;
   const workspaceTitle = workspace?.workspace?.title;
+  const canViewConsistency = actionPermission.can('payment:order:view')
+    && actionPermission.can('aiadc:registration:view');
+  const canReplayConsistency = canViewConsistency && actionPermission.can('payment:webhook:retry');
+
+  const refreshConsistency = useCallback(async () => {
+    if (workspaceUuid || !canViewConsistency) return;
+    setConsistencyLoading(true);
+    setConsistencyError(undefined);
+    try {
+      setConsistency(await getPaymentConsistency());
+    } catch (error) {
+      setConsistencyError(error instanceof Error ? error.message : '支付与报名一致性检查失败');
+    } finally {
+      setConsistencyLoading(false);
+    }
+  }, [canViewConsistency, workspaceUuid]);
+
+  useEffect(() => {
+    void refreshConsistency();
+  }, [refreshConsistency]);
+
+  const replayRegistrationConfirmation = useCallback(async (orderNo: string) => {
+    setReplayingOrderNo(orderNo);
+    try {
+      await replayPaymentRegistrationConfirmation(orderNo);
+      message.success('支付成功事件已安全重放，报名状态将由异步消费者确认');
+      actionRef.current?.reload();
+      await refreshConsistency();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '事件重放失败');
+    } finally {
+      setReplayingOrderNo(undefined);
+    }
+  }, [message, refreshConsistency]);
 
   const tableRequest = useMemo(
     () => buildTableRequest<RegistrationPaymentRecord>(async (params) => {
@@ -275,16 +321,33 @@ const PaymentPage = () => {
         title: '操作',
         valueType: 'option',
         fixed: responsive.isDesktop ? 'right' : undefined,
-        width: 80,
+        width: canReplayConsistency ? 176 : 80,
         align: 'right',
         render: (_, record) => (
-          <Button type="text" icon={<EyeOutlined />} onClick={() => setDetailRecord(record)}>
-            详情
-          </Button>
+          <Space size={4}>
+            <Button type="text" icon={<EyeOutlined />} onClick={() => setDetailRecord(record)}>
+              详情
+            </Button>
+            {canReplayConsistency && isPaymentRegistrationMismatch(record) && record.orderNo ? (
+              <Popconfirm
+                title="安全重放支付成功事件"
+                description="不会直接修改报名或支付表，由幂等异步消费者重新确认报名。"
+                onConfirm={() => replayRegistrationConfirmation(record.orderNo as string)}
+              >
+                <Button
+                  type="link"
+                  icon={<SyncOutlined />}
+                  loading={replayingOrderNo === record.orderNo}
+                >
+                  重放确认
+                </Button>
+              </Popconfirm>
+            ) : null}
+          </Space>
         ),
       },
     ],
-    [responsive.isDesktop, workspaceTitle],
+    [canReplayConsistency, replayRegistrationConfirmation, replayingOrderNo, responsive.isDesktop, workspaceTitle],
   );
 
   const tableColumns = useMemo(
@@ -299,6 +362,29 @@ const PaymentPage = () => {
       showWorkspaceHeader={Boolean(workspaceUuid)}
       workspaceVariant="table"
     >
+      {!workspaceUuid && consistency?.mismatchCount ? (
+        <Alert
+          type="warning"
+          showIcon
+          icon={<WarningOutlined />}
+          title={`检测到 ${consistency.mismatchCount} 条支付成功但报名仍待支付的记录`}
+          description="系统只提供幂等事件重放，不会直接跨域修改数据库状态。"
+          action={(
+            <Button loading={consistencyLoading} onClick={() => void refreshConsistency()}>
+              重新检查
+            </Button>
+          )}
+        />
+      ) : null}
+      {!workspaceUuid && consistencyError ? (
+        <Alert
+          type="error"
+          showIcon
+          title="支付与报名一致性检查失败"
+          description={consistencyError}
+          action={<Button loading={consistencyLoading} onClick={() => void refreshConsistency()}>重试</Button>}
+        />
+      ) : null}
       <ManagementTable<RegistrationPaymentRecord>
           actionRef={actionRef}
           rowKey="registrationId"
@@ -314,6 +400,16 @@ const PaymentPage = () => {
             <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reload()}>
               刷新
             </Button>,
+            ...(!workspaceUuid && canViewConsistency ? [
+              <Button
+                key="consistency"
+                icon={<SyncOutlined />}
+                loading={consistencyLoading}
+                onClick={() => void refreshConsistency()}
+              >
+                一致性检查
+              </Button>,
+            ] : []),
           ]}
       />
       <PaymentDetailDrawer record={detailRecord} onClose={() => setDetailRecord(undefined)} />

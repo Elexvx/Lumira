@@ -29,23 +29,26 @@ public class PaymentInternalApiService implements PaymentInternalApi {
     private final PaymentTransactionService paymentTransactionService;
     private final PaymentManagementAppService paymentManagementAppService;
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final ObjectProvider<PaymentOutboxRelay> paymentOutboxRelayProvider;
 
     @Autowired
     public PaymentInternalApiService(
             PaymentTransactionService paymentTransactionService,
             PaymentManagementAppService paymentManagementAppService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            ObjectProvider<PaymentOutboxRelay> paymentOutboxRelayProvider
     ) {
         this.paymentTransactionService = paymentTransactionService;
         this.paymentManagementAppService = paymentManagementAppService;
         this.systemInternalApiProvider = systemInternalApiProvider;
+        this.paymentOutboxRelayProvider = paymentOutboxRelayProvider;
     }
 
     public PaymentInternalApiService(
             PaymentTransactionService paymentTransactionService,
             ObjectProvider<SystemInternalApi> systemInternalApiProvider
     ) {
-        this(paymentTransactionService, null, systemInternalApiProvider);
+        this(paymentTransactionService, null, systemInternalApiProvider, null);
     }
 
     @Override
@@ -86,6 +89,16 @@ public class PaymentInternalApiService implements PaymentInternalApi {
     public PaymentOrderDTO cancelOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
         CurrentUser operator = resolveTrustedOperator(operatorId, operatorUuid, simulatedRoleId);
         return paymentTransactionService.cancelPendingOrderForTrustedOwner(operator, requireOrderNo(orderNo));
+    }
+
+    @Override
+    public boolean replayPaidOrderEvent(String orderNo) {
+        PaymentOutboxRelay paymentOutboxRelay = paymentOutboxRelayProvider == null
+                ? null : paymentOutboxRelayProvider.getIfAvailable();
+        if (paymentOutboxRelay == null) {
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Payment outbox replay is unavailable");
+        }
+        return paymentOutboxRelay.replayPaidOrderEvent(requireOrderNo(orderNo));
     }
 
     private CurrentUser resolveTrustedOperator(Long operatorId, String operatorUuid, Long simulatedRoleId) {

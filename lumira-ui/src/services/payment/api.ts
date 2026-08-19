@@ -1,5 +1,11 @@
 import { request } from '@/services/common/request';
-import type { PageResponse, RegistrationPaymentQueryParams, RegistrationPaymentRecord } from './types';
+import type {
+  PageResponse,
+  PaymentConsistencyReplayResult,
+  PaymentConsistencySnapshot,
+  RegistrationPaymentQueryParams,
+  RegistrationPaymentRecord,
+} from './types';
 import type {
   BuiltinMockPaymentCheckout,
   BuiltinMockPaymentSimulationRequest,
@@ -13,6 +19,18 @@ export const listRegistrationPayments = (params: RegistrationPaymentQueryParams)
     method: 'GET',
     params,
   });
+
+export const getPaymentConsistency = () =>
+  request<PaymentConsistencySnapshot>('/v2/aiadc/payment-consistency', {
+    method: 'GET',
+    params: { _t: Date.now() },
+  });
+
+export const replayPaymentRegistrationConfirmation = (orderNo: string) =>
+  request<PaymentConsistencyReplayResult>(
+    `/v2/aiadc/payment-consistency/${encodeURIComponent(orderNo)}/replay`,
+    { method: 'POST' },
+  );
 
 export const createSandboxPaymentOrder = (data: PaymentCreateOrderRequest) =>
   request<PaymentOrderRecord>('/v1/payment/sandbox/orders', {

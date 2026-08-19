@@ -38,6 +38,16 @@ class InternalJobControllerTest {
     }
 
     @Test
+    void replayPaidOrderEvent_shouldRequireTokenAndDelegateByOrderNumber() {
+        PaymentOutboxRelay relay = mock(PaymentOutboxRelay.class);
+        when(relay.replayPaidOrderEvent("PAY-2026-1")).thenReturn(true);
+        InternalJobController controller = new InternalJobController(relay, "payment-secret");
+
+        assertThat(controller.replayPaidOrderEvent("PAY-2026-1", "payment-secret").getData()).isTrue();
+        verify(relay).replayPaidOrderEvent("PAY-2026-1");
+    }
+
+    @Test
     void replayOutbox_shouldRejectInvalidToken() {
         InternalJobController controller = new InternalJobController(mock(PaymentOutboxRelay.class), "payment-secret");
 

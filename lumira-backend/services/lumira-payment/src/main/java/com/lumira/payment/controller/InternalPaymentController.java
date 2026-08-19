@@ -73,6 +73,12 @@ public class InternalPaymentController {
         return paymentInternalApiService.cancelOrder(operatorId, operatorUuid, simulatedRoleId, orderNo);
     }
 
+    @PostMapping("/orders/{orderNo}/paid-event/replay")
+    public boolean replayPaidOrderEvent(@PathVariable String orderNo) {
+        requireInternalServicePrincipal();
+        return paymentInternalApiService.replayPaidOrderEvent(orderNo);
+    }
+
     private void requireInternalServicePrincipal() {
         if (!AuthenticationTrustSupport.isInternalServiceAuthentication(SecurityContextHolder.getContext().getAuthentication())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Internal service token is required");

@@ -4,6 +4,7 @@ import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.modules.competition.app.CertificateAppService;
 import com.lumira.saas.modules.competition.app.CertificateRenderService;
 import com.lumira.saas.modules.competition.app.CompetitionManagementAppService;
+import com.lumira.saas.modules.competition.app.CompetitionPaymentConsistencyService;
 import com.lumira.saas.modules.competition.app.CompetitionRegistrationAppService;
 import com.lumira.saas.modules.competition.app.CompetitionRegistrationExportAppService;
 import com.lumira.saas.modules.competition.app.CompetitionRegistrationExportTaskWorkerService;
@@ -11,6 +12,7 @@ import com.lumira.saas.modules.competition.app.CompetitionWorkspaceAccessPolicy;
 import com.lumira.saas.modules.competition.app.CompetitionWorkspaceAppService;
 import com.lumira.saas.modules.competition.controller.CertificateV2Controller;
 import com.lumira.saas.modules.competition.controller.CompetitionRegistrationV2Controller;
+import com.lumira.saas.modules.competition.controller.CompetitionPaymentConsistencyController;
 import com.lumira.saas.modules.competition.controller.CompetitionV2Controller;
 import com.lumira.saas.modules.competition.controller.CompetitionWorkspaceAuditController;
 import com.lumira.saas.modules.competition.controller.CompetitionWorkspaceCertificateController;
@@ -59,6 +61,7 @@ import org.springframework.context.annotation.Import;
         CompetitionExcelExportService.class,
         CertificateAppService.class,
         CompetitionManagementAppService.class,
+        CompetitionPaymentConsistencyService.class,
         CompetitionRegistrationAppService.class,
         CompetitionRegistrationExportAppService.class,
         CompetitionRegistrationExportTaskWorkerService.class,
@@ -68,6 +71,7 @@ import org.springframework.context.annotation.Import;
         CompetitionPaymentEventHandler.class,
         CertificateV2Controller.class,
         CompetitionRegistrationV2Controller.class,
+        CompetitionPaymentConsistencyController.class,
         CompetitionV2Controller.class,
         CompetitionWorkspaceAuditController.class,
         CompetitionWorkspaceCertificateController.class,

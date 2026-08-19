@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.competition.repository;
 
 import com.lumira.saas.modules.competition.vo.CompetitionRegistrationVO;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -45,6 +46,10 @@ public interface RegistrationQueryRepository {
 
     CompetitionRegistrationVO.Registration findRegistrationByPaymentOrder(String paymentOrderNo);
 
+    List<PendingPaymentCandidate> findStalePendingPaymentCandidates(LocalDateTime updatedBefore, int limit);
+
+    PendingPaymentCandidate findPendingPaymentCandidateByOrder(String paymentOrderNo);
+
     CompetitionRegistrationVO.Stage findStage(Long stageId);
 
     CompetitionRegistrationVO.StageForm findStageForm(Long stageId);
@@ -84,6 +89,18 @@ public interface RegistrationQueryRepository {
     }
 
     record PaymentRecordPage(List<CompetitionRegistrationVO.PaymentRecord> records, long total) {
+    }
+
+    record PendingPaymentCandidate(
+            Long registrationId,
+            String registrationNo,
+            Long competitionId,
+            String competitionTitle,
+            String paymentOrderNo,
+            Long ownerUserId,
+            String ownerUserUuid,
+            LocalDateTime updatedAt
+    ) {
     }
 
     record CompetitionDefinition(

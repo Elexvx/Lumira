@@ -67,7 +67,7 @@ public class CompetitionWorkspaceCertificateController {
     @GetMapping("/certificate-award-sources")
     public ApiResponse<List<CertificateVO.AwardSource>> awardSources(@PathVariable String competitionUuid) {
         CurrentUser currentUser = requireTrustedUser();
-        CompetitionAccessDecision decision = accessPolicy.requireAccessibleCompetition(currentUser, competitionUuid, CompetitionCapability.CERTIFICATE_MANAGE);
+        CompetitionAccessDecision decision = accessPolicy.requireAccessibleCompetition(currentUser, competitionUuid, CompetitionCapability.CERTIFICATE_READ);
         Long competitionId = decision.competition().id();
         return ApiResponse.success(
                 certificateAppService.listPublishedAwardSources(currentUser).stream()
@@ -84,7 +84,7 @@ public class CompetitionWorkspaceCertificateController {
     ) {
         CurrentUser currentUser = requireTrustedUser();
         CompetitionAccessDecision decision = accessPolicy.requireAccessibleCompetition(
-                currentUser, competitionUuid, CompetitionCapability.CERTIFICATE_MANAGE);
+                currentUser, competitionUuid, CompetitionCapability.CERTIFICATE_READ);
         if (reviewBatchId != null) {
             requirePublishedBatch(currentUser, reviewBatchId, decision.competition().id());
         }

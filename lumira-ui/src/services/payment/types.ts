@@ -45,3 +45,31 @@ export interface RegistrationPaymentRecord {
   registrationCreatedAt?: string | null;
   updatedAt?: string | null;
 }
+
+export interface PaymentRegistrationMismatch {
+  registrationId: number;
+  registrationNo: string;
+  competitionId: number;
+  competitionTitle?: string | null;
+  paymentOrderNo: string;
+  paymentStatus: string;
+  registrationUpdatedAt?: string | null;
+  ageSeconds: number;
+}
+
+export interface PaymentConsistencySnapshot {
+  status: 'UP' | 'DEGRADED' | 'NOT_CHECKED';
+  checkedAt?: string | null;
+  graceSeconds: number;
+  candidatesChecked: number;
+  mismatchCount: number;
+  dependencyFailureCount: number;
+  mismatches: PaymentRegistrationMismatch[];
+}
+
+export interface PaymentConsistencyReplayResult {
+  registrationId: number;
+  registrationNo: string;
+  paymentOrderNo: string;
+  status: 'REPLAYED';
+}

@@ -15,6 +15,7 @@ import { Alert, Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
 import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
+import { isCompetitionWorkspaceReadOnly } from '@/features/competition-workspace/competitionWorkspaceReadOnly';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
@@ -422,6 +423,10 @@ export const TemplatesManagementPage = () => {
 export const GenerateManagementPage = () => {
   const workspace = useOptionalCompetitionWorkspace();
   const workspaceUuid = workspace?.competitionUuid;
+  const workspaceReadOnly = isCompetitionWorkspaceReadOnly(
+    workspace?.workspace?.status,
+    workspace?.workspace?.readOnly,
+  );
   const responsive = useResponsive();
   const [templates, setTemplates] = useState<CertificateTemplateRecord[]>([]);
   const [versions, setVersions] = useState<CertificateTemplateVersionRecord[]>([]);
@@ -517,6 +522,7 @@ export const GenerateManagementPage = () => {
     reviewBatchId?: number,
     currentGrants: CertificateAwardGrant[] = awardGrants,
   ) => {
+    if (workspaceReadOnly) return;
     const values = await awardForm.validateFields();
     const rules = values.awardRules as CertificateAwardRule[];
     const targetReviewBatchId = reviewBatchId ?? values.reviewBatchId;
@@ -550,6 +556,7 @@ export const GenerateManagementPage = () => {
   };
 
   const generateAwardBatch = async () => {
+    if (workspaceReadOnly) return;
     const values = await templateForm.validateFields(['templateId', 'templateVersionId', 'batchName']);
     if (!selectedGrantIds.length) {
       message.warning('请选择尚未制证的授奖记录');
@@ -591,6 +598,15 @@ export const GenerateManagementPage = () => {
       bodyClassName="certificate-generate-page"
       workspaceVariant="content"
     >
+        {workspaceReadOnly ? (
+          <Alert
+            type="info"
+            showIcon
+            title="赛事已归档，证书数据仅供查看"
+            description="授奖规则和已生成证书均已锁定。"
+            style={{ marginBottom: 16 }}
+          />
+        ) : null}
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={6}>
             <Card className="certificate-side-card">
@@ -615,7 +631,7 @@ export const GenerateManagementPage = () => {
                 description="选择已发布评审批次并设置奖项名次规则，系统会从评审发布结果自动匹配并加载获奖数据，无需手动录入或导入 CSV。生成时会绑定具体模板版本，后续模板修改不会影响已生成证书。"
               />
               <Card title="模板与批次" className="certificate-section-card">
-                <Form form={templateForm} layout="vertical">
+                <Form form={templateForm} layout="vertical" disabled={workspaceReadOnly}>
                   <Row gutter={16}>
                     <Col xs={24} md={8}>
                       <Form.Item name="templateId" label="证书模板" rules={[{ required: true, message: '请选择证书模板' }]}>
@@ -651,6 +667,7 @@ export const GenerateManagementPage = () => {
                 <Form
                   form={awardForm}
                   layout="vertical"
+                  disabled={workspaceReadOnly}
                   initialValues={{
                     awardRules: [
                       { awardName: '一等奖', minRank: 1, maxRank: 1 },
@@ -711,7 +728,7 @@ export const GenerateManagementPage = () => {
                             }
                             void loadAwardGrants(reviewBatchId)
                               .then((grants) => {
-                                if (!grants.length) {
+                                if (!grants.length && !workspaceReadOnly) {
                                   return confirmAwardGrants(reviewBatchId, grants);
                                 }
                                 return undefined;
@@ -800,12 +817,12 @@ export const GenerateManagementPage = () => {
                       </>
                     )}
                   </Form.List>
-                  <Space wrap style={{ marginBottom: 16 }}>
+                  {!workspaceReadOnly ? <Space wrap style={{ marginBottom: 16 }}>
                     <Button onClick={() => void confirmAwardGrants()} loading={generating}>重新应用奖项设置</Button>
                     <Button type="primary" onClick={() => void generateAwardBatch()} loading={generating}>
                       为已加载的获奖数据生成证书
                     </Button>
-                  </Space>
+                  </Space> : null}
                 </Form>
                 {selectedReviewBatchId && (
                   <Alert
@@ -828,7 +845,7 @@ export const GenerateManagementPage = () => {
                     selectedRowKeys: selectedGrantIds,
                     onChange: (keys) => setSelectedGrantIds(keys.map(Number)),
                     getCheckboxProps: (grant) => ({
-                      disabled: grant.status !== 'GRANTED' || Boolean(grant.certificateRecordId),
+                      disabled: workspaceReadOnly || grant.status !== 'GRANTED' || Boolean(grant.certificateRecordId),
                     }),
                   }}
                   columns={[
@@ -899,6 +916,10 @@ export const GenerateManagementPage = () => {
 export const RecordsManagementPage = () => {
   const workspace = useOptionalCompetitionWorkspace();
   const workspaceUuid = workspace?.competitionUuid;
+  const workspaceReadOnly = isCompetitionWorkspaceReadOnly(
+    workspace?.workspace?.status,
+    workspace?.workspace?.readOnly,
+  );
   const actionRef = useRef<ActionType | null>(null);
   const responsive = useResponsive();
   const actionPermission = useActionPermission();
@@ -1015,6 +1036,7 @@ export const RecordsManagementPage = () => {
                   message.success('查询链接已复制');
                 },
               },
+              ...(!workspaceReadOnly ? [
               {
                 key: 'regenerate',
                 label: '重新生成',
@@ -1049,12 +1071,13 @@ export const RecordsManagementPage = () => {
                   });
                 },
               },
+              ] : []),
             ])}
           />
         ),
       },
     ],
-    [actionPermission, responsive.isDesktop, responsive.isMobile, workspaceUuid],
+    [actionPermission, responsive.isDesktop, responsive.isMobile, workspaceReadOnly, workspaceUuid],
   );
 
   const tableRequest = useMemo(
@@ -1082,6 +1105,15 @@ export const RecordsManagementPage = () => {
       bodyClassName="certificate-management-page"
       workspaceVariant="table"
     >
+        {workspaceReadOnly ? (
+          <Alert
+            type="info"
+            showIcon
+            title="赛事已归档，证书记录仅供查看"
+            description="仍可查看、下载和复制查询链接；重新生成与撤销操作已锁定。"
+            style={{ marginBottom: 16 }}
+          />
+        ) : null}
         <ManagementTable<CertificateRecord>
           actionRef={actionRef}
           rowKey="id"

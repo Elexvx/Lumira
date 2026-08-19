@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash, randomBytes } from 'node:crypto';
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,7 @@ import readline from 'node:readline';
 import { parseEnvFile, randomSecret } from './lib/env-utils.mjs';
 import { run as execRun, output as execOutput, optionalOutput as execOptionalOutput, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
 import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
+import { validateBackupEvidence } from './lib/platform-backup-contract.mjs';
 import { normalizeSlot, renderActiveUpstreams } from './lib/platform-update-contract.mjs';
 const log = createLogger('deploy');
 const repoRoot = resolveRepoRoot(import.meta.url);
@@ -20,6 +21,9 @@ const buildIdentityPath = process.env.BUILD_IDENTITY_FILE || path.join(repoRoot,
 const composeFile = path.join(repoRoot, 'deploy', 'docker-compose.prod.yml');
 const alertRulesPath = path.join(repoRoot, 'deploy', 'observability', 'grafana', 'provisioning', 'alerting', 'rules.yml');
 const generatedAlertingDir = path.join(repoRoot, 'deploy', '.generated', 'grafana-alerting');
+const generatedSecretsDir = path.join(repoRoot, 'deploy', '.generated', 'secrets');
+const defaultMysqlExporterSecretPath = path.join(generatedSecretsDir, 'mysql-exporter-password');
+const generatedBackupMetricsDir = path.join(repoRoot, 'deploy', '.generated', 'backup-metrics');
 const generatedDatabaseVersionSqlPath = path.join(repoRoot, 'deploy', '.generated', 'database-version', '002-database-version.sql');
 const edgeTlsDir = path.join(repoRoot, 'deploy', 'data', 'tls');
 const edgeTlsFiles = ['fullchain.pem', 'privkey.pem'];
@@ -65,6 +69,8 @@ const allowedServices = new Set([
   'tempo',
   'alloy',
   'grafana',
+  'mysqld-exporter',
+  'backup-metrics-exporter',
 ]);
 const appWritableDockerVolumes = [
   { key: 'upload_data', mountPath: '/mnt/upload_data' },
@@ -74,6 +80,7 @@ const appWritableDockerVolumes = [
 const appRuntimeUid = process.env.LEGENDARY_APP_UID || '100';
 const appRuntimeGid = process.env.LEGENDARY_APP_GID || '101';
 let dockerDirectInvocation;
+let localMysqlDataVolumeWasPresent = true;
 
 
 function parseServiceNames(argv) {
@@ -534,6 +541,11 @@ function generatedEnvDefaults() {
     ALLOY_IMAGE: 'grafana/alloy@sha256:51aeb9d829239345070619dad3edd6873186f913c84f45b365b74574fcb38ec0',
     GRAFANA_ADMIN_USER: 'admin',
     GRAFANA_ADMIN_PASSWORD: randomSecret('grafana'),
+    MYSQLD_EXPORTER_USERNAME: 'exporter',
+    MYSQLD_EXPORTER_PASSWORD: randomSecret('mysql-exporter'),
+    MYSQLD_EXPORTER_ADDRESS: 'mysql:3306',
+    BACKUP_METRICS_FILE: 'deploy/.generated/backup-metrics/lumira-mysql.prom',
+    BACKUP_EVIDENCE_MAX_AGE_MS: '21600000',
     GRAFANA_ALERT_EMAIL_ENABLED: 'false',
     GRAFANA_ALERT_EMAIL_TO: '',
     GRAFANA_SMTP_HOST: '',
@@ -704,6 +716,140 @@ function resolveComposeVolumeName(volumeKey) {
   return `${resolveComposeProjectName()}_${volumeKey}`;
 }
 
+function atomicWriteProtectedFile(filePath, content) {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  const temporaryPath = path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`,
+  );
+  try {
+    writeFileSync(temporaryPath, content, { mode: 0o600, flag: 'wx' });
+    chmodSync(temporaryPath, 0o600);
+    renameSync(temporaryPath, filePath);
+    chmodSync(filePath, 0o600);
+  } finally {
+    rmSync(temporaryPath, { force: true });
+  }
+}
+
+function resolveMysqlExporterSecretPath(environment) {
+  const configuredPath = String(environment.MYSQLD_EXPORTER_PASSWORD_FILE || '').trim();
+  return configuredPath
+    ? path.resolve(path.dirname(composeFile), configuredPath)
+    : defaultMysqlExporterSecretPath;
+}
+
+function readMysqlExporterPassword(secretPath) {
+  if (!existsSync(secretPath)) {
+    throw new Error(`MySQL exporter password file does not exist: ${secretPath}`);
+  }
+  const metadata = lstatSync(secretPath);
+  if (metadata.isSymbolicLink() || !metadata.isFile()) {
+    throw new Error('MySQL exporter password file must be a regular non-symlink file.');
+  }
+  if (metadata.size > 4096) {
+    throw new Error('MySQL exporter password file is unexpectedly large.');
+  }
+  const raw = readFileSync(secretPath, 'utf8');
+  if (raw.includes('\0') || raw.includes('\r')) {
+    throw new Error('MySQL exporter password file must contain one UTF-8 line without NUL or CR characters.');
+  }
+  const password = raw.endsWith('\n') ? raw.slice(0, -1) : raw;
+  if (!password || password.includes('\n') || password.startsWith('change-me')) {
+    throw new Error('MySQL exporter password file must contain exactly one non-placeholder password line.');
+  }
+  return password;
+}
+
+function resolveComposeSecretSource(configuredPath) {
+  return path.resolve(path.dirname(composeFile), String(configuredPath).trim());
+}
+
+function requireRegularSecretSource(configuredPath, variableName) {
+  const secretPath = resolveComposeSecretSource(configuredPath);
+  if (!existsSync(secretPath)) throw new Error(`${variableName} does not exist: ${secretPath}`);
+  const metadata = lstatSync(secretPath);
+  if (metadata.isSymbolicLink() || !metadata.isFile()) {
+    throw new Error(`${variableName} must be a regular non-symlink file.`);
+  }
+  return secretPath;
+}
+
+function validateManagedMysqlExporterTls(environment) {
+  const address = String(environment.MYSQLD_EXPORTER_ADDRESS || 'mysql:3306').trim();
+  const addressMatch = address.match(/^(?:\[([^\]]+)\]|([^:]+)):(\d+)$/u);
+  if (!addressMatch) throw new Error('MYSQLD_EXPORTER_ADDRESS must use host:port syntax.');
+  const host = (addressMatch[1] || addressMatch[2]).toLowerCase();
+  const port = addressMatch[3];
+  if (localMysql) {
+    if (!['mysql', 'lumira-mysql'].includes(host) || port !== '3306') {
+      throw new Error('Bundled --local-mysql observability requires MYSQLD_EXPORTER_ADDRESS=mysql:3306.');
+    }
+    return;
+  }
+
+  const databaseEndpoint = databaseEndpointFromEnvironment(environment);
+  if (host !== databaseEndpoint.host.toLowerCase() || port !== databaseEndpoint.port) {
+    throw new Error(
+      `External MYSQLD_EXPORTER_ADDRESS must exactly match the DB_URL target ${databaseEndpoint.host}:${databaseEndpoint.port}.`,
+    );
+  }
+
+  const configSetting = String(environment.MYSQLD_EXPORTER_CONFIG_FILE || '').trim();
+  const caSetting = String(environment.MYSQLD_EXPORTER_CA_FILE || '').trim();
+  if (!configSetting || !caSetting) {
+    throw new Error('External MySQL observability requires MYSQLD_EXPORTER_CONFIG_FILE and MYSQLD_EXPORTER_CA_FILE for verified TLS.');
+  }
+  const configPath = requireRegularSecretSource(configSetting, 'MYSQLD_EXPORTER_CONFIG_FILE');
+  const caPath = requireRegularSecretSource(caSetting, 'MYSQLD_EXPORTER_CA_FILE');
+  const config = readFileSync(configPath, 'utf8');
+  const ca = readFileSync(caPath, 'utf8');
+  const directives = config
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#') && !line.startsWith(';'));
+  if (directives.length !== 3
+      || directives.filter((line) => /^\[client\]$/iu.test(line)).length !== 1
+      || directives.filter((line) => /^ssl-ca\s*=\s*"?\/run\/secrets\/mysql_exporter_ca"?$/iu.test(line)).length !== 1
+      || directives.filter((line) => /^tls\s*=\s*"?custom"?$/iu.test(line)).length !== 1) {
+    throw new Error(
+      'MYSQLD_EXPORTER_CONFIG_FILE may contain only [client], ssl-ca=/run/secrets/mysql_exporter_ca, and tls=custom; address, username and password come from validated deployment settings.',
+    );
+  }
+  if (!/-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----/u.test(ca)) {
+    throw new Error('MYSQLD_EXPORTER_CA_FILE does not contain a PEM certificate.');
+  }
+  log(`Verified TLS configuration for external MySQL exporter target ${address}.`);
+}
+
+function ensureMysqlExporterSecret(environment) {
+  const configuredPath = String(environment.MYSQLD_EXPORTER_PASSWORD_FILE || '').trim();
+  const secretPath = resolveMysqlExporterSecretPath(environment);
+  if (configuredPath) {
+    readMysqlExporterPassword(secretPath);
+    log(`Using the secret-manager-provisioned MySQL exporter password file: ${secretPath}`);
+    return secretPath;
+  }
+
+  const password = String(environment.MYSQLD_EXPORTER_PASSWORD || '');
+  if (!password || password.startsWith('change-me')) {
+    throw new Error('MYSQLD_EXPORTER_PASSWORD must be a non-placeholder secret when observability is enabled.');
+  }
+  atomicWriteProtectedFile(secretPath, `${password}\n`);
+  readMysqlExporterPassword(secretPath);
+  log(`Prepared the file-backed MySQL exporter secret at ${secretPath}.`);
+  return secretPath;
+}
+
+function dockerVolumeExists(volumeName) {
+  const invocation = resolveDockerDirectInvocation(['volume', 'inspect', volumeName]);
+  return spawnSync(invocation.command, invocation.args, {
+    cwd: repoRoot,
+    stdio: 'ignore',
+    shell: false,
+  }).status === 0;
+}
+
 function ensureDockerVolumeOwnership() {
   if (!shouldPrepareAppWritableVolumes()) {
     return;
@@ -764,20 +910,348 @@ function migrationAdminSecretArgs(env) {
   ];
 }
 
-function wslForwardedEnvironment(variableNames) {
+function wslForwardedEnvironment(variableNames, pathVariableNames = []) {
   const existing = String(process.env.WSLENV || '')
     .split(':')
     .map((entry) => entry.trim())
     .filter(Boolean);
-  const forwardedNames = new Set(
-    existing.map((entry) => entry.split('/')[0].toUpperCase())
+  const forwardedIndexes = new Map(
+    existing.map((entry, index) => [entry.split('/')[0].toUpperCase(), index])
   );
+  const translatedPaths = new Set(pathVariableNames.map((name) => name.toUpperCase()));
   for (const variableName of variableNames) {
-    if (!forwardedNames.has(variableName.toUpperCase())) {
-      existing.push(`${variableName}/u`);
+    const normalizedName = variableName.toUpperCase();
+    const entry = `${variableName}/${translatedPaths.has(normalizedName) ? 'p' : 'u'}`;
+    const existingIndex = forwardedIndexes.get(normalizedName);
+    if (existingIndex === undefined) {
+      forwardedIndexes.set(normalizedName, existing.length);
+      existing.push(entry);
+    } else if (translatedPaths.has(normalizedName)) {
+      // A Windows path must be translated for the WSL process. Do not retain a
+      // caller-provided /u-only entry that would forward the raw drive path.
+      existing[existingIndex] = entry;
     }
   }
   return existing.join(':');
+}
+
+function backupCommandInvocation(scriptPath) {
+  if (process.platform !== 'win32') {
+    return { command: 'bash', args: [scriptPath] };
+  }
+  const dockerInvocation = resolveDockerWrapperInvocation();
+  if (dockerInvocation.command !== 'wsl.exe') {
+    return { command: 'bash', args: [scriptPath] };
+  }
+  return {
+    command: 'wsl.exe',
+    args: [
+      ...dockerInvocation.prefixArgs.slice(0, -1),
+      'bash',
+      dockerBindSource(scriptPath),
+    ],
+  };
+}
+
+function hostReadableBackupPath(reportedPath) {
+  const normalized = String(reportedPath || '').trim();
+  if (process.platform !== 'win32' || !normalized.startsWith('/')) return normalized;
+  const mountedDrive = normalized.match(/^\/mnt\/([a-zA-Z])\/(.*)$/u);
+  if (mountedDrive) return `${mountedDrive[1].toUpperCase()}:\\${mountedDrive[2].replaceAll('/', '\\')}`;
+  const dockerInvocation = resolveDockerWrapperInvocation();
+  if (dockerInvocation.command !== 'wsl.exe') return normalized;
+  const conversion = spawnSync(
+    'wsl.exe',
+    [...dockerInvocation.prefixArgs.slice(0, -1), 'wslpath', '-w', normalized],
+    { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe', shell: false },
+  );
+  return conversion.status === 0 && conversion.stdout.trim() ? conversion.stdout.trim() : normalized;
+}
+
+function databaseNameFromEnvironment(environment) {
+  const match = String(environment.DB_URL || '').match(/^jdbc:mysql:\/\/[^/]+\/([^?;]+)/iu);
+  if (match) {
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return match[1];
+    }
+  }
+  return firstDeployText(environment.MYSQL_DATABASE, environment.DB_NAME);
+}
+
+function databaseEndpointFromEnvironment(environment) {
+  const match = String(environment.DB_URL || '').match(
+    /^jdbc:mysql:\/\/(?:\[([^\]]+)\]|([^/:?]+))(?::(\d+))?\//iu,
+  );
+  let host = match ? match[1] || match[2] : firstDeployText(environment.DB_HOST);
+  let port = match?.[3] || firstDeployText(environment.DB_PORT);
+  host ||= 'mysql';
+  port ||= '3306';
+  if (!host || /[\s,]/u.test(host) || !/^\d{1,5}$/u.test(port) || Number(port) > 65_535) {
+    throw new Error('Unable to derive a safe MySQL host and port for backup identity verification.');
+  }
+  return { host, port };
+}
+
+function mysqlSslModeFromEnvironment(environment) {
+  const explicit = String(environment.MYSQL_SSL_MODE || '').trim().toUpperCase();
+  if (explicit) return explicit;
+  const url = String(environment.DB_URL || '');
+  const configured = url.match(/[?&]sslMode=([^&]+)/iu)?.[1];
+  if (configured) return decodeURIComponent(configured).toUpperCase();
+  if (/[?&]useSSL=false(?:&|$)/iu.test(url)) return 'DISABLED';
+  if (/[?&]useSSL=true(?:&|$)/iu.test(url)) return 'REQUIRED';
+  return 'PREFERRED';
+}
+
+function verifyBackupMatchesMigrationTarget(evidence, environment) {
+  const backupServerUuid = String(evidence?.serverUuid || '').trim().toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(backupServerUuid)) {
+    throw new Error('Verified backup evidence does not contain a valid MySQL server UUID.');
+  }
+
+  const { host, port } = databaseEndpointFromEnvironment(environment);
+  const network = environment.DB_MIGRATION_NETWORK
+    || environment.DB_BACKUP_NETWORK
+    || `${resolveComposeProjectName()}_default`;
+  const username = String(environment.DB_MIGRATION_USERNAME || environment.DB_USERNAME || 'root');
+  const password = String(environment.DB_MIGRATION_PASSWORD || environment.DB_PASSWORD || '');
+  const clientImage = String(environment.MYSQL_CLIENT_IMAGE || 'mysql:8.4');
+  const sslMode = mysqlSslModeFromEnvironment(environment);
+  const dockerArgs = ['run', '--rm', '--network', network, '-e', 'MYSQL_PWD'];
+  const caSetting = String(environment.MYSQL_SSL_CA_FILE || '').trim();
+  if (caSetting) {
+    const caPath = path.resolve(repoRoot, caSetting);
+    if (!existsSync(caPath)) throw new Error(`MYSQL_SSL_CA_FILE does not exist: ${caPath}`);
+    const metadata = lstatSync(caPath);
+    if (metadata.isSymbolicLink() || !metadata.isFile()) {
+      throw new Error('MYSQL_SSL_CA_FILE must be a regular non-symlink file.');
+    }
+    dockerArgs.push('-v', `${dockerBindSource(caPath)}:/run/lumira/mysql-ca.pem:ro`);
+  }
+  dockerArgs.push(
+    clientImage,
+    'mysql', '--batch', '--skip-column-names', '--connect-timeout=10',
+    `--host=${host}`, `--port=${port}`, `--user=${username}`, `--ssl-mode=${sslMode}`,
+    ...(caSetting ? ['--ssl-ca=/run/lumira/mysql-ca.pem'] : []),
+    '--execute=SELECT @@server_uuid;',
+  );
+
+  const invocation = resolveDockerDirectInvocation(dockerArgs);
+  const result = spawnSync(invocation.command, invocation.args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: false,
+    env: {
+      ...process.env,
+      MYSQL_PWD: password,
+      WSLENV: wslForwardedEnvironment(['MYSQL_PWD']),
+    },
+  });
+  if (result.status !== 0) {
+    if (result.stderr) process.stderr.write(result.stderr);
+    throw new Error('Unable to query the migration target MySQL server UUID; migrations were not started.');
+  }
+  const targetServerUuid = String(result.stdout || '').trim().split(/\r?\n/u).filter(Boolean).at(-1)?.toLowerCase() || '';
+  if (targetServerUuid !== backupServerUuid) {
+    throw new Error(
+      `Backup server UUID ${backupServerUuid} does not match migration target UUID ${targetServerUuid || 'unknown'}; migrations were not started.`,
+    );
+  }
+  log(`Backup evidence is bound to migration target MySQL server UUID ${targetServerUuid}.`);
+}
+
+function createVerifiedDatabaseBackup({ allowFreshLocalDatabase = false } = {}) {
+  const backupScript = path.join(repoRoot, 'deploy', 'backup-platform.sh');
+  if (!existsSync(backupScript)) {
+    console.error(`[deploy] Required database backup script is missing: ${backupScript}`);
+    process.exit(1);
+  }
+  const environment = mergedEnv();
+  const allowEmptyDatabase = allowFreshLocalDatabase || isEnabled(environment.BACKUP_ALLOW_EMPTY_DATABASE);
+  const forwardedVariables = [
+    'BACKUP_ROOT',
+    'BACKUP_ID',
+    'BACKUP_RETENTION_DAYS',
+    'BACKUP_UPLOAD_HOOK',
+    'BACKUP_METRICS_FILE',
+    'BACKUP_ALLOW_EMPTY_DATABASE',
+    'BACKUP_REDIS',
+    'BACKUP_MYSQL_READY_ATTEMPTS',
+    'BACKUP_MYSQL_READY_INTERVAL_SECONDS',
+    'BACKUP_REDIS_READY_ATTEMPTS',
+    'BACKUP_REDIS_READY_INTERVAL_SECONDS',
+    'MYSQL_BACKUP_USERNAME',
+    'MYSQL_BACKUP_PASSWORD',
+    'MYSQL_CLIENT_IMAGE',
+    'MYSQL_SERVICE',
+    'REDIS_SERVICE',
+    'DB_BACKUP_NETWORK',
+    'DB_URL',
+    'DB_HOST',
+    'DB_PORT',
+    'MYSQL_DATABASE',
+    'DB_NAME',
+    'DB_USERNAME',
+    'DB_USER',
+    'DB_PASSWORD',
+    'MYSQL_SSL_MODE',
+    'MYSQL_SSL_CA_FILE',
+    'REDIS_HOST',
+    'REDIS_PORT',
+    'REDIS_PASSWORD',
+  ];
+  const invocation = backupCommandInvocation(backupScript);
+  const backupEndpoint = databaseEndpointFromEnvironment(environment);
+  const backupDatabaseName = databaseNameFromEnvironment(environment);
+  const effectiveBackupEnvironment = {
+    ...environment,
+    DB_HOST: backupEndpoint.host,
+    DB_PORT: backupEndpoint.port,
+    ...(backupDatabaseName ? { MYSQL_DATABASE: backupDatabaseName, DB_NAME: backupDatabaseName } : {}),
+  };
+  log(`Creating a verified database backup before migrations${allowFreshLocalDatabase ? ' (fresh local database)' : ''}.`);
+  const result = spawnSync(invocation.command, invocation.args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: 'pipe',
+    shell: false,
+    env: {
+      ...process.env,
+      ...effectiveBackupEnvironment,
+      BACKUP_ALLOW_EMPTY_DATABASE: allowEmptyDatabase ? '1' : '0',
+      WSLENV: wslForwardedEnvironment(
+        forwardedVariables,
+        ['BACKUP_ROOT', 'BACKUP_UPLOAD_HOOK', 'BACKUP_METRICS_FILE', 'MYSQL_SSL_CA_FILE'],
+      ),
+    },
+  });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.status !== 0) {
+    if (result.stderr) process.stderr.write(result.stderr);
+    console.error(`[deploy] Database backup failed with exit code ${result.status ?? 1}; migrations were not started.`);
+    process.exit(result.status ?? 1);
+  }
+  const reportedPath = String(result.stdout || '').match(/Backup completed:\s*(.+)$/mu)?.[1]?.trim();
+  const configuredMaxAgeMs = Number(environment.BACKUP_EVIDENCE_MAX_AGE_MS || 6 * 60 * 60_000);
+  const maxAgeMs = Number.isFinite(configuredMaxAgeMs) && configuredMaxAgeMs > 0
+    ? Math.max(15 * 60_000, configuredMaxAgeMs)
+    : 6 * 60 * 60_000;
+  let evidence;
+  try {
+    evidence = validateBackupEvidence(hostReadableBackupPath(reportedPath), {
+      maxAgeMs,
+      expectedDatabaseName: databaseNameFromEnvironment(environment),
+    });
+  } catch (error) {
+    console.error(`[deploy] Database backup evidence validation failed: ${error.message}`);
+    console.error('[deploy] Migrations were not started. Resolve the backup failure before retrying deployment.');
+    process.exit(1);
+  }
+  log(`Database backup evidence verified: id=${evidence.backupId}, database=${evidence.databaseName}, bytes=${evidence.dumpSize}.`);
+  return evidence;
+}
+
+function runLocalMysqlRootSql(environment, sql) {
+  const rootPassword = String(environment.DB_PASSWORD || '');
+  if (!rootPassword) {
+    throw new Error('Local MySQL exporter provisioning requires DB_PASSWORD.');
+  }
+  const invocation = resolveDockerDirectInvocation([
+    ...composeArgs('exec', '-T', '-e', 'MYSQL_PWD', 'mysql'),
+    'mysql', '--batch', '--skip-column-names', '-uroot',
+  ]);
+  return spawnSync(invocation.command, invocation.args, {
+    cwd: repoRoot,
+    input: sql,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+    shell: false,
+    env: {
+      ...process.env,
+      MYSQL_PWD: rootPassword,
+      WSLENV: wslForwardedEnvironment(['MYSQL_PWD']),
+    },
+  });
+}
+
+async function waitForLocalMysqlRoot(environment, timeoutMs = 180_000) {
+  const startedAt = Date.now();
+  let lastError = 'MySQL has not accepted an authenticated query yet.';
+  while (Date.now() - startedAt <= timeoutMs) {
+    const result = runLocalMysqlRootSql(environment, 'SELECT 1;\n');
+    if (result.status === 0 && String(result.stdout || '').trim() === '1') return;
+    lastError = String(result.stderr || result.error?.message || lastError).trim();
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+  throw new Error(`Local MySQL did not become ready for exporter provisioning: ${lastError}`);
+}
+
+function provisionLocalMysqlExporterAccount(environment = mergedEnv()) {
+  if (!localMysql || !observability) return;
+  const username = String(environment.MYSQLD_EXPORTER_USERNAME || 'exporter').trim();
+  const password = readMysqlExporterPassword(resolveMysqlExporterSecretPath(environment));
+  const databaseName = databaseNameFromEnvironment(environment);
+  if (!/^[A-Za-z0-9_]{1,64}$/u.test(username)) {
+    console.error('[deploy] MYSQLD_EXPORTER_USERNAME must contain only letters, digits, or underscores for local provisioning.');
+    process.exit(1);
+  }
+  if (!password || !databaseName || !/^[A-Za-z0-9_]{1,64}$/u.test(databaseName)) {
+    console.error('[deploy] Local MySQL exporter provisioning requires a generated password and a safe database name.');
+    process.exit(1);
+  }
+
+  const passwordBase64 = Buffer.from(password, 'utf8').toString('base64');
+  const sql = [
+    `SET @lumira_exporter_password = CONVERT(FROM_BASE64('${passwordBase64}') USING utf8mb4);`,
+    "SET @lumira_create_exporter = CONCAT('CREATE USER IF NOT EXISTS `" + username + "`@''%'' IDENTIFIED BY ', QUOTE(@lumira_exporter_password));",
+    'PREPARE lumira_create_exporter_stmt FROM @lumira_create_exporter;',
+    'EXECUTE lumira_create_exporter_stmt;',
+    'DEALLOCATE PREPARE lumira_create_exporter_stmt;',
+    "SET @lumira_alter_exporter = CONCAT('ALTER USER `" + username + "`@''%'' IDENTIFIED BY ', QUOTE(@lumira_exporter_password));",
+    'PREPARE lumira_alter_exporter_stmt FROM @lumira_alter_exporter;',
+    'EXECUTE lumira_alter_exporter_stmt;',
+    'DEALLOCATE PREPARE lumira_alter_exporter_stmt;',
+    "REVOKE ALL PRIVILEGES, GRANT OPTION FROM `" + username + "`@'%';",
+    "GRANT PROCESS, REPLICATION CLIENT ON *.* TO `" + username + "`@'%';",
+    "GRANT SELECT ON `" + databaseName + "`.* TO `" + username + "`@'%';",
+    "GRANT SELECT ON performance_schema.* TO `" + username + "`@'%';",
+    "GRANT SELECT ON sys.* TO `" + username + "`@'%';",
+    "ALTER USER `" + username + "`@'%' WITH MAX_USER_CONNECTIONS 3;",
+    "SHOW GRANTS FOR `" + username + "`@'%';",
+    '',
+  ].join('\n');
+  const result = runLocalMysqlRootSql(environment, sql);
+  if (result.status !== 0) {
+    if (result.stderr) process.stderr.write(result.stderr);
+    console.error('[deploy] Unable to provision the least-privilege local MySQL exporter account.');
+    process.exit(result.status ?? 1);
+  }
+  const grantee = `\`${username}\`@\`%\``;
+  const scopePatterns = [
+    new RegExp(`^GRANT (?:PROCESS, REPLICATION CLIENT|REPLICATION CLIENT, PROCESS) ON \\*\\.\\* TO ${grantee}(?: WITH MAX_USER_CONNECTIONS 3)?$`, 'u'),
+    new RegExp('^GRANT SELECT ON `' + databaseName + '`\\.\\* TO ' + grantee + '$', 'u'),
+    new RegExp('^GRANT SELECT ON `performance_schema`\\.\\* TO ' + grantee + '$', 'u'),
+    new RegExp('^GRANT SELECT ON `sys`\\.\\* TO ' + grantee + '$', 'u'),
+  ];
+  const grants = String(result.stdout || '').split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
+  const unexpectedGrant = grants.find((line) => !scopePatterns.some((pattern) => pattern.test(line)));
+  if (unexpectedGrant || grants.length !== scopePatterns.length) {
+    console.error('[deploy] Local MySQL exporter account grants did not converge to the approved read-only set.');
+    process.exit(1);
+  }
+  log(`Local MySQL exporter account ${username} is provisioned with read-only monitoring privileges.`);
+}
+
+async function ensureLocalMysqlExporterAccount() {
+  if (!localMysql || !observability) return;
+  const environment = mergedEnv();
+  runWithRetry('docker', composeArgs('up', '-d', 'mysql'), 1);
+  await waitForLocalMysqlRoot(environment);
+  provisionLocalMysqlExporterAccount();
 }
 
 function resolvePublicBaseUrl(env = mergedEnv()) {
@@ -819,6 +1293,9 @@ function ensureObservabilityProvisioning() {
   }
 
   const env = mergedEnv();
+  ensureMysqlExporterSecret(env);
+  validateManagedMysqlExporterTls(env);
+  mkdirSync(generatedBackupMetricsDir, { recursive: true });
   const receivers = [];
   if (isEnabled(env.GRAFANA_ALERT_EMAIL_ENABLED) && env.GRAFANA_ALERT_EMAIL_TO) {
     receivers.push({
@@ -918,6 +1395,10 @@ async function runDatabaseMigrations() {
   const dependencyServices = localMysql ? ['mysql', 'redis'] : ['redis'];
   log(`Preparing database migration network with: ${dependencyServices.join(', ')}.`);
   runWithRetry('docker', composeArgs('up', '-d', ...dependencyServices), 1);
+  const backupEvidence = createVerifiedDatabaseBackup({
+    allowFreshLocalDatabase: localMysql && !localMysqlDataVolumeWasPresent,
+  });
+  verifyBackupMatchesMigrationTarget(backupEvidence, env);
 
   const localMigratorImage = 'lumira/lumira-migrator:local';
   let migratorImage = env.LUMIRA_MIGRATOR_IMAGE || 'ghcr.io/elexvx/lumira/lumira-migrator:main';
@@ -952,8 +1433,8 @@ async function runDatabaseMigrations() {
     env: {
       ...process.env,
       DB_URL: env.DB_URL || '',
-      DB_USERNAME: env.DB_USERNAME || 'root',
-      DB_PASSWORD: env.DB_PASSWORD || '',
+      DB_USERNAME: env.DB_MIGRATION_USERNAME || env.DB_USERNAME || 'root',
+      DB_PASSWORD: env.DB_MIGRATION_PASSWORD || env.DB_PASSWORD || '',
       // docker.cmd delegates to WSL on Windows. WSLENV forwards these values
       // without exposing database credentials in the process argument list.
       WSLENV: wslForwardedEnvironment(['DB_URL', 'DB_USERNAME', 'DB_PASSWORD']),
@@ -975,7 +1456,7 @@ async function checkDeployment() {
     'api-proxy',
     ...(!localMysql ? ['edge-proxy'] : []),
     ...(localMysql ? ['mysql'] : []),
-    ...(observability ? ['prometheus', 'loki', 'tempo', 'alloy', 'grafana'] : []),
+    ...(observability ? ['prometheus', 'mysqld-exporter', 'backup-metrics-exporter', 'loki', 'tempo', 'alloy', 'grafana'] : []),
   ];
 
   log('Running deployment health checks...');
@@ -1065,7 +1546,9 @@ async function waitForComposeServicesRunning(expectedServices, label, options = 
 }
 
 async function waitForPrometheusTargets() {
-  const queryUrl = 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22lumira-server%22%7D';
+  const queryUrl = 'http://127.0.0.1:9090/api/v1/query?query=up';
+  const mysqlQueryUrl = 'http://127.0.0.1:9090/api/v1/query?query=mysql_up%7Bjob%3D%22mysql%22%7D';
+  const requiredJobs = ['prometheus', 'mysql', 'backup-metrics', 'lumira-job-executor', 'lumira-async'];
   const timeoutMs = 240_000;
   const intervalMs = 3_000;
   const startedAt = Date.now();
@@ -1078,9 +1561,20 @@ async function waitForPrometheusTargets() {
       try {
         const payload = JSON.parse(result.text);
         const series = payload.data?.result ?? [];
-        const upSeries = series.filter((item) => item.value?.[1] === '1');
-        lastSummary = `${upSeries.length}/${series.length} lumira targets are UP`;
-        if (series.length >= 8 && upSeries.length >= 8) {
+        const upJobs = new Set(
+          series
+            .filter((item) => item.value?.[1] === '1')
+            .map((item) => item.metric?.job)
+            .filter(Boolean),
+        );
+        const serverUp = series.some((item) => item.metric?.job === 'lumira-server' && item.value?.[1] === '1');
+        // eslint-disable-next-line no-await-in-loop
+        const mysqlResult = await probeHttp(mysqlQueryUrl, { timeoutMs: 5_000 });
+        const mysqlPayload = mysqlResult.ok ? JSON.parse(mysqlResult.text) : null;
+        const mysqlAuthenticated = (mysqlPayload?.data?.result ?? []).some((item) => item.value?.[1] === '1');
+        const missingJobs = requiredJobs.filter((job) => !upJobs.has(job));
+        lastSummary = `missing jobs=${missingJobs.join(',') || 'none'}, serverUp=${serverUp}, mysqlAuthenticated=${mysqlAuthenticated}`;
+        if (missingJobs.length === 0 && serverUp && mysqlAuthenticated) {
           log(`Prometheus targets are ready: ${lastSummary}`);
           return;
         }
@@ -1095,7 +1589,7 @@ async function waitForPrometheusTargets() {
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 
-  throw new Error(`Prometheus did not report all lumira service targets as UP (${lastSummary}).`);
+  throw new Error(`Prometheus did not report all required service/database targets as healthy (${lastSummary}).`);
 }
 
 async function checkGrafanaAlertingProvisioning() {
@@ -1156,6 +1650,9 @@ configureBuildIdentity();
 configureLocalDeploymentDefaults();
 await confirmReset();
 ensureDockerReady();
+if (localMysql && shouldRunDatabaseMigrations()) {
+  localMysqlDataVolumeWasPresent = dockerVolumeExists(resolveComposeVolumeName('mysql_data'));
+}
 ensureHostMountedDirectories();
 ensureEdgeTlsFiles();
 ensureObservabilityProvisioning();
@@ -1185,6 +1682,7 @@ run('docker', composeArgs('config'), { stdio: 'ignore' });
 validateServiceNames();
 maybePruneDockerBuildCache('before-build');
 ensureDockerVolumeOwnership();
+await ensureLocalMysqlExporterAccount();
 await runDatabaseMigrations();
 
 if (serviceNames.length > 0) {

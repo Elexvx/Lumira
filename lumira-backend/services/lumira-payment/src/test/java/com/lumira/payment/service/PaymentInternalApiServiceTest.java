@@ -226,6 +226,35 @@ class PaymentInternalApiServiceTest {
         );
     }
 
+    @Test
+    void replayPaidOrderEventShouldResolveOptionalRelayAndDelegate() {
+        PaymentOutboxRelay relay = mock(PaymentOutboxRelay.class);
+        when(relay.replayPaidOrderEvent("ORD-1")).thenReturn(true);
+        PaymentInternalApiService service = new PaymentInternalApiService(
+                mock(PaymentTransactionService.class),
+                null,
+                provider(mock(SystemInternalApi.class)),
+                fixedProvider(relay)
+        );
+
+        assertThat(service.replayPaidOrderEvent(" ORD-1 ")).isTrue();
+        verify(relay).replayPaidOrderEvent("ORD-1");
+    }
+
+    @Test
+    void replayPaidOrderEventShouldFailClearlyWhenRelayIsUnavailable() {
+        PaymentInternalApiService service = new PaymentInternalApiService(
+                mock(PaymentTransactionService.class),
+                null,
+                provider(mock(SystemInternalApi.class)),
+                fixedProvider(null)
+        );
+
+        assertThatThrownBy(() -> service.replayPaidOrderEvent("ORD-1"))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessageContaining("unavailable");
+    }
+
     private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
         if (systemInternalApi != null) {
             when(systemInternalApi.permissionSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
@@ -235,6 +264,13 @@ class PaymentInternalApiServiceTest {
         }
         ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(systemInternalApi);
+        return provider;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> ObjectProvider<T> fixedProvider(T value) {
+        ObjectProvider<T> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(value);
         return provider;
     }
 
