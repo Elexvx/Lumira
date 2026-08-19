@@ -238,9 +238,6 @@ public class PlatformEventOutboxService {
                 .set("dispatch_status", STATUS_DISPATCHING)
                 .set("claim_token", claimToken)
                 .set("claim_expires_at", claimExpiresAt)
-                .set("updated_at", now)
-                .set("updated_by", trustedUserIdOrNull(event.getUpdatedBy()))
-                .set("updated_by_uuid", trustedUserUuidOrNull(event))
                 .eq("id", event.getId())
                 .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .eq("deleted", 0)
@@ -252,6 +249,7 @@ public class PlatformEventOutboxService {
                                 .eq("dispatch_status", STATUS_DISPATCHING)
                                 .isNotNull("claim_expires_at")
                                 .le("claim_expires_at", now)));
+        applyAuditUpdate(updateWrapper, event, now);
         applyIdentityPredicate(updateWrapper, event);
         int updated = outboxMapper.update(null, updateWrapper);
         if (updated > 0) {
@@ -275,9 +273,6 @@ public class PlatformEventOutboxService {
                 .set("last_error", null)
                 .set("claim_token", null)
                 .set("claim_expires_at", null)
-                .set("updated_at", now)
-                .set("updated_by", trustedUserIdOrNull(event.getUpdatedBy()))
-                .set("updated_by_uuid", trustedUserUuidOrNull(event))
                 .eq("id", event.getId())
                 .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .eq("deleted", 0)
@@ -285,6 +280,7 @@ public class PlatformEventOutboxService {
                 .eq("event_key", event.getEventKey())
                 .eq("dispatch_status", STATUS_DISPATCHING)
                 .eq("claim_token", event.getClaimToken());
+        applyAuditUpdate(wrapper, event, now);
         applyRetryCountPredicate(wrapper, event.getRetryCount());
         applyIdentityPredicate(wrapper, event);
         int updated = outboxMapper.update(null, wrapper);
@@ -313,9 +309,6 @@ public class PlatformEventOutboxService {
                 .set("last_error", truncateError(exception == null ? "unknown error" : exception.getMessage()))
                 .set("claim_token", null)
                 .set("claim_expires_at", null)
-                .set("updated_at", now)
-                .set("updated_by", trustedUserIdOrNull(event.getUpdatedBy()))
-                .set("updated_by_uuid", trustedUserUuidOrNull(event))
                 .eq("id", event.getId())
                 .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .eq("deleted", 0)
@@ -323,6 +316,7 @@ public class PlatformEventOutboxService {
                 .eq("event_key", event.getEventKey())
                 .eq("dispatch_status", STATUS_DISPATCHING)
                 .eq("claim_token", event.getClaimToken());
+        applyAuditUpdate(wrapper, event, now);
         applyRetryCountPredicate(wrapper, event.getRetryCount());
         applyIdentityPredicate(wrapper, event);
         int updated = outboxMapper.update(null, wrapper);
@@ -409,15 +403,13 @@ public class PlatformEventOutboxService {
                 .set("last_error", null)
                 .set("claim_token", null)
                 .set("claim_expires_at", null)
-                .set("updated_at", now)
-                .set("updated_by", trustedUpdatedBy)
-                .set("updated_by_uuid", trustedUpdatedByUuid)
                 .eq("id", event.getId())
                 .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .eq("deleted", 0)
                 .eq("event_type", event.getEventType())
                 .eq("event_key", event.getEventKey())
                 .eq("dispatch_status", previousStatus);
+        applyAuditUpdate(wrapper, event, now);
         if (previousRetryCount == null) {
             wrapper.isNull("retry_count");
         } else {
@@ -437,10 +429,26 @@ public class PlatformEventOutboxService {
         event.setClaimToken(null);
         event.setClaimExpiresAt(null);
         event.setUpdatedAt(now);
-        event.setUpdatedBy(trustedUpdatedBy);
-        event.setUpdatedByUuid(trustedUpdatedByUuid);
+        if (trustedUpdatedBy != null) {
+            event.setUpdatedBy(trustedUpdatedBy);
+            event.setUpdatedByUuid(trustedUpdatedByUuid);
+        }
         invalidateDispatchableCountCache();
         return true;
+    }
+
+    private void applyAuditUpdate(
+            UpdateWrapper<PlatformEventOutboxEntity> wrapper,
+            PlatformEventOutboxEntity event,
+            LocalDateTime now
+    ) {
+        wrapper.set("updated_at", now);
+        Long trustedUpdatedBy = trustedUserIdOrNull(event == null ? null : event.getUpdatedBy());
+        if (trustedUpdatedBy == null) {
+            return;
+        }
+        wrapper.set("updated_by", trustedUpdatedBy)
+                .set("updated_by_uuid", trustedUserUuidOrNull(event));
     }
 
     private void applyIdentityPredicate(UpdateWrapper<PlatformEventOutboxEntity> wrapper, PlatformEventOutboxEntity event) {

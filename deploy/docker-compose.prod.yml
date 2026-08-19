@@ -523,6 +523,7 @@ services:
     - upload_data:/data/uploads
     - plugin_data:/data/plugins
     - plugin_staging:/data/plugin-staging
+    - certificate_data:/app/storage
     depends_on:
       redis:
         condition: service_started
@@ -694,6 +695,7 @@ volumes:
   upload_data: null
   plugin_data: null
   plugin_staging: null
+  certificate_data: null
   prometheus_data: null
   loki_data: null
   tempo_data: null

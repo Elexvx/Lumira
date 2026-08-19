@@ -485,6 +485,18 @@ test('production image contexts exclude host secrets, state, backups, and image 
   }
 });
 
+test('certificate render output is writable and durable across control-plane slots', () => {
+  assert.match(serviceDockerfile, /mkdir -p[^\n]*\/app\/storage/);
+  assert.match(serviceDockerfile, /chown -R app:app[^\n]*\/app\/storage/);
+  assert.match(
+    composeProd,
+    /lumira-server-blue:[\s\S]*?volumes:[\s\S]*?- certificate_data:\/app\/storage/,
+    'the shared server anchor must persist generated certificates'
+  );
+  assert.match(composeProd, /^  certificate_data: null$/m);
+  assert.match(deployScript, /\{ key: 'certificate_data', mountPath: '\/mnt\/certificate_data' \}/);
+});
+
 test('deploy-container allows selected deploys for every compose runtime service', () => {
   for (const serviceName of [
     'lumira-server-blue',

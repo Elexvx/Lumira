@@ -72,8 +72,8 @@ WORKDIR /app
 
 RUN addgroup --system app \
     && adduser --system --ingroup app app \
-    && mkdir -p /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging \
-    && chown -R app:app /tmp/sentinel /data
+    && mkdir -p /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging /app/storage \
+    && chown -R app:app /tmp/sentinel /data /app/storage
 
 COPY --from=builder /workspace/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
 

@@ -76,6 +76,7 @@ const appWritableDockerVolumes = [
   { key: 'upload_data', mountPath: '/mnt/upload_data' },
   { key: 'plugin_data', mountPath: '/mnt/plugin_data' },
   { key: 'plugin_staging', mountPath: '/mnt/plugin_staging' },
+  { key: 'certificate_data', mountPath: '/mnt/certificate_data' },
 ];
 const appRuntimeUid = process.env.LEGENDARY_APP_UID || '100';
 const appRuntimeGid = process.env.LEGENDARY_APP_GID || '101';

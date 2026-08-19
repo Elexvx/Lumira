@@ -227,6 +227,29 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
+    void anonymousDispatchShouldPreserveLegacySystemAuditValue() throws Exception {
+        MessageEventDTO event = buildEvent();
+        event.setUserId(null);
+        event.setUserUuid(null);
+        event.setEventKey("NOTICE_CREATED:9001:all:9001");
+        PlatformEventOutboxEntity stored = buildStoredEntity(event);
+        stored.setUpdatedBy(0L);
+        stored.setUpdatedByUuid(null);
+        when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
+                eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
+        when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
+
+        assertThat(service.dispatchPending(deliveryService, 100)).isEqualTo(1);
+
+        ArgumentCaptor<UpdateWrapper<PlatformEventOutboxEntity>> wrapperCaptor = updateWrapperCaptor();
+        verify(outboxMapper, times(2)).update(isNull(), wrapperCaptor.capture());
+        wrapperCaptor.getAllValues().forEach(wrapper ->
+                assertThat(wrapper.getSqlSet()).contains("updated_at").doesNotContain("updated_by")
+        );
+    }
+
+    @Test
     void dispatchPendingShouldRejectDeliveredWhenClaimWriteMisses() throws Exception {
         MessageEventDTO event = buildEvent();
         PlatformEventOutboxEntity stored = buildStoredEntity(event);
