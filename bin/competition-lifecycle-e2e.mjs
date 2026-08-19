@@ -11,11 +11,15 @@ const expertName = process.env.LIFECYCLE_EXPERT_NAME || '赛事全流程验收�
 const password = process.env.LIFECYCLE_PASSWORD;
 const round = process.env.LIFECYCLE_ROUND || '1';
 const timeoutMs = Number(process.env.LIFECYCLE_TIMEOUT_MS || 15_000);
+const paymentConfirmationTimeoutMs = Number(process.env.LIFECYCLE_PAYMENT_CONFIRM_TIMEOUT_MS || 60_000);
 const smtpSinkUrl = process.env.LIFECYCLE_SMTP_SINK_URL || 'http://127.0.0.1:2526';
 const lifecycleTimeZone = process.env.LIFECYCLE_TIME_ZONE || 'Asia/Shanghai';
 
 if (!password) {
   throw new Error('Set LIFECYCLE_PASSWORD');
+}
+if (!Number.isFinite(paymentConfirmationTimeoutMs) || paymentConfirmationTimeoutMs < 1_000) {
+  throw new Error('LIFECYCLE_PAYMENT_CONFIRM_TIMEOUT_MS must be at least 1000');
 }
 
 const base = new URL(baseUrl);
@@ -454,12 +458,20 @@ await step('模拟支付成功并回调', () => api(
 ));
 
 const paidRegistration = await step('确认报名支付完成', async () => {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const current = await api(organizerToken, `/api/v2/aiadc/registrations/${registration.id}`);
+  const deadline = Date.now() + paymentConfirmationTimeoutMs;
+  let current;
+  while (Date.now() < deadline) {
+    current = await api(organizerToken, `/api/v2/aiadc/registrations/${registration.id}`);
     if (current.status === 'CONFIRMED') return current;
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error('Registration did not become CONFIRMED after mock payment');
+  const paymentStatus = await api(
+    organizerToken,
+    `/api/v2/aiadc/registrations/${registration.id}/payment-status`,
+  );
+  throw new Error(
+    `Registration did not become CONFIRMED after mock payment: registration=${safeBody(current)}, payment=${safeBody(paymentStatus)}`,
+  );
 });
 assert(paidRegistration.participantNo, 'Confirmed registration is missing participant number');
 summary.participantNo = paidRegistration.participantNo;

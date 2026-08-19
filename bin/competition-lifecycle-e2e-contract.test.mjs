@@ -32,6 +32,9 @@ test('repository lifecycle E2E covers the complete competition business chain', 
   assert.match(lifecycle, /LIFECYCLE_TIME_ZONE \|\| 'Asia\/Shanghai'/);
   assert.match(lifecycle, /timeZone: lifecycleTimeZone/);
   assert.match(lifecycle, /lifecycleDateFormatter\.formatToParts/);
+  assert.match(lifecycle, /LIFECYCLE_PAYMENT_CONFIRM_TIMEOUT_MS \|\| 60_000/);
+  assert.match(lifecycle, /Date\.now\(\) \+ paymentConfirmationTimeoutMs/);
+  assert.match(lifecycle, /payment=\$\{safeBody\(paymentStatus\)\}/);
   assert.match(lifecycle, /only accepts a loopback base URL/);
   assert.doesNotMatch(lifecycle, /const password\s*=\s*['"][^'"]+['"]/);
 });
