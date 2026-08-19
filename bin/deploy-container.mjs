@@ -509,6 +509,7 @@ function maybePruneDockerBuildCache(stage) {
 function generatedEnvDefaults() {
   return {
     DB_PASSWORD: randomSecret('mysql'),
+    REDIS_PASSWORD: randomSecret('redis'),
     JWT_SECRET: randomSecret('jwt'),
     FIELD_SECRET: randomSecret('field'),
     PLUGIN_SIGNATURE_SECRET: randomSecret('plugin-signature'),
@@ -611,6 +612,7 @@ function ensureEnvFile() {
   const generatedValues = generatedEnvDefaults();
   const legacyGeneratedValues = new Map([
     ['JAVA_OPTS', '-XX:MaxRAMPercentage=75 -Djava.security.egd=file:/dev/./urandom'],
+    ['REDIS_PASSWORD', 'change-me-at-least-24-characters-redis-password'],
     ['PLATFORM_UPDATE_MANIFEST_URL', ''],
     ['PLATFORM_UPDATE_AGENT_URL', 'http://127.0.0.1:9788'],
     ['PLATFORM_UPDATE_AGENT_TOKEN', 'change-me-local-updater-token'],

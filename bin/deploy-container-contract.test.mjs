@@ -222,6 +222,14 @@ test('deploy-container generates every scoped internal token used by production 
   }
 });
 
+test('deploy-container generates and migrates the production Redis credential', () => {
+  assert.match(deployScript, /REDIS_PASSWORD:\s*randomSecret\('redis'\)/);
+  assert.match(
+    deployScript,
+    /\['REDIS_PASSWORD', 'change-me-at-least-24-characters-redis-password'\]/,
+  );
+});
+
 test('Windows WSL Docker deployments forward migration credentials without putting them in argv', () => {
   assert.match(
     deployScript,
