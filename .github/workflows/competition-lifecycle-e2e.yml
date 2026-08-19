@@ -66,7 +66,7 @@ jobs:
             'PLAYWRIGHT_EXPERT_USER=e2e_lifecycle_expert',
             `PLAYWRIGHT_EXPERT_PASSWORD=${resolvedPassword}`,
             'PLAYWRIGHT_ROLE_MATRIX=true',
-            'PLAYWRIGHT_BASE_URL=http://127.0.0.1:8000',
+            'PLAYWRIGHT_BASE_URL=http://127.0.0.1:8001',
           ].join('\n') + '\n');
           NODE
 
@@ -77,6 +77,21 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:8000
           DEPLOY_CHECK_BASE_URL: http://127.0.0.1:8000
         run: node bin/reset-e2e-platform.mjs
+
+      - name: Start isolated browser frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8001
+          DEPLOY_CHECK_BASE_URL: http://127.0.0.1:8000
+        run: |
+          node bin/deploy-container.mjs --rebuild --local-mysql --services lumira-ui --skip-migrations
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:8001/user/login >/dev/null; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+          docker logs --tail 200 lumira-ui
+          exit 1
 
       - name: Start isolated SMTP capture
         shell: bash
@@ -104,7 +119,7 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          for container in lumira-api-proxy lumira-async lumira-server-blue; do
+          for container in lumira-ui lumira-api-proxy lumira-async lumira-server-blue; do
             echo "::group::${container} recent logs"
             docker logs --since 10m --tail 500 "${container}" 2>&1 || true
             echo "::endgroup::"
