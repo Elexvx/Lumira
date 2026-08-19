@@ -128,8 +128,11 @@ async function tryLogin(username, password) {
   }
 }
 
-async function resolvePassword(username, initialPassword, resolvedPassword) {
-  const resolvedLogin = await tryLogin(username, resolvedPassword);
+async function resolvePassword(username, initialPassword, resolvedPassword, { newlyCreated = false } = {}) {
+  // A newly created account is guaranteed to have the supplied initial
+  // password. Avoid a known-failing probe that would consume the shared login
+  // rate-limit budget before the multi-role lifecycle starts.
+  const resolvedLogin = newlyCreated ? null : await tryLogin(username, resolvedPassword);
   if (resolvedLogin && !resolvedLogin.requiresPasswordChange) return resolvedLogin;
 
   const initialLogin = resolvedLogin || await tryLogin(username, initialPassword);
@@ -211,6 +214,7 @@ const participantUsers = await api(
   `/api/v2/iam/users?username=${encodeURIComponent(participantUsername)}&pageNo=1&pageSize=20`,
 );
 let participantUser = (participantUsers?.records || []).find((item) => item.username === participantUsername);
+let participantCreated = false;
 if (!participantUser) {
   if (!participantInitialPassword) {
     throw new Error('Set LIFECYCLE_PARTICIPANT_INITIAL_PASSWORD to create the isolated participant account');
@@ -231,9 +235,10 @@ if (!participantUser) {
       deptIds: [],
     },
   });
+  participantCreated = true;
 }
 
-await resolvePassword(participantUsername, participantInitialPassword, finalPassword);
+await resolvePassword(participantUsername, participantInitialPassword, finalPassword, { newlyCreated: participantCreated });
 
 console.log('[fixture] Resolving the lifecycle expert account.');
 const users = await api(
@@ -241,6 +246,7 @@ const users = await api(
   `/api/v2/iam/users?username=${encodeURIComponent(expertUsername)}&pageNo=1&pageSize=20`,
 );
 let expertUser = (users?.records || []).find((item) => item.username === expertUsername);
+let expertCreated = false;
 if (!expertUser) {
   if (!expertInitialPassword) {
     throw new Error('Set LIFECYCLE_EXPERT_INITIAL_PASSWORD to create the isolated expert account');
@@ -261,9 +267,10 @@ if (!expertUser) {
       deptIds: [],
     },
   });
+  expertCreated = true;
 }
 
-const expertLogin = await resolvePassword(expertUsername, expertInitialPassword, finalPassword);
+const expertLogin = await resolvePassword(expertUsername, expertInitialPassword, finalPassword, { newlyCreated: expertCreated });
 const expertToken = expertLogin.accessToken;
 const expertUserId = expertUser.id ?? expertUser.userId;
 if (!expertUserId) throw new Error(`Lifecycle expert user id is missing: ${safeBody(expertUser)}`);

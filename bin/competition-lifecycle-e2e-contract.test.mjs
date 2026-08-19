@@ -43,6 +43,9 @@ test('lifecycle fixture owns every prerequisite without embedding credentials', 
   assert.match(fixture, /builtin-mock-payment/);
   assert.match(fixture, /\/api\/v1\/system\/smtp-settings/);
   assert.match(fixture, /\/api\/v1\/system\/dict-items\?dictCode=/);
+  assert.match(fixture, /newlyCreated \? null : await tryLogin/);
+  assert.match(fixture, /newlyCreated: participantCreated/);
+  assert.match(fixture, /newlyCreated: expertCreated/);
   for (const dictCode of ['aiadc_expert_title', 'aiadc_expert_position', 'aiadc_expert_expertise', 'aiadc_expert_tag']) {
     assert.match(fixture, new RegExp(dictCode));
   }
