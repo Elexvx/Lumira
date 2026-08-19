@@ -93,6 +93,17 @@ function preferredDictValue(values, preferred) {
   return values.includes(preferred) ? preferred : values[0];
 }
 
+function isReviewEligibleExpert(expert) {
+  return expert?.approvalStatus === 'APPROVED'
+    && expert?.status === 'active'
+    && expert?.accountStatus === 'ENABLED'
+    && Number(expert?.userId) > 0
+    && typeof expert?.userUuid === 'string'
+    && expert.userUuid.trim().length > 0
+    && typeof expert?.email === 'string'
+    && expert.email.trim().length > 0;
+}
+
 async function encryptedPassword(value) {
   const keyResult = await api(undefined, '/api/v1/auth/login-encryption-key');
   if (!keyResult?.publicKey) throw new Error('Login encryption public key is missing');
@@ -315,11 +326,12 @@ if (expert.approvalStatus !== 'APPROVED') {
     method: 'POST',
     body: { comment: 'Lumira lifecycle E2E fixture approval' },
   });
-  expert = await waitFor(async () => {
-    const current = await api(organizerToken, `/api/v2/experts/${expert.id}`);
-    return current.approvalStatus === 'APPROVED' && current.status === 'active' ? current : null;
-  }, 'approved expert projection');
 }
+
+expert = await waitFor(async () => {
+  const current = await api(organizerToken, `/api/v2/experts/${expert.id}`);
+  return isReviewEligibleExpert(current) ? current : null;
+}, 'approved and review-eligible expert projection', 160);
 
 console.log(`LIFECYCLE_FIXTURE_READY ${JSON.stringify({
   baseUrl: base.origin,

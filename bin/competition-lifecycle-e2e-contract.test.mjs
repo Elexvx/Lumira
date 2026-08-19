@@ -52,6 +52,12 @@ test('lifecycle fixture owns every prerequisite without embedding credentials', 
   assert.match(fixture, /newlyCreated \? null : await tryLogin/);
   assert.match(fixture, /newlyCreated: participantCreated/);
   assert.match(fixture, /newlyCreated: expertCreated/);
+  assert.match(fixture, /function isReviewEligibleExpert\(expert\)/);
+  assert.match(fixture, /expert\?\.accountStatus === 'ENABLED'/);
+  assert.match(fixture, /Number\(expert\?\.userId\) > 0/);
+  assert.match(fixture, /expert\.userUuid\.trim\(\)\.length > 0/);
+  assert.match(fixture, /expert\.email\.trim\(\)\.length > 0/);
+  assert.match(fixture, /'approved and review-eligible expert projection', 160/);
   for (const dictCode of ['aiadc_expert_title', 'aiadc_expert_position', 'aiadc_expert_expertise', 'aiadc_expert_tag']) {
     assert.match(fixture, new RegExp(dictCode));
   }
