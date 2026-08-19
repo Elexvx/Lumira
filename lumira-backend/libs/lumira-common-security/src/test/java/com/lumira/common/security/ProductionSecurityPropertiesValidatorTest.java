@@ -196,6 +196,22 @@ class ProductionSecurityPropertiesValidatorTest {
     }
 
     @Test
+    void shouldAllowJobExecutorWithoutControlPlaneSecretsInProduction() {
+        Map<String, Object> properties = strongProperties();
+        properties.put("spring.application.name", "lumira-job-executor");
+        removeControlPlaneSecrets(properties);
+        properties.remove("spring.data.redis.password");
+        properties.remove("saas.internal.system-token");
+        properties.remove("saas.internal.auth-token");
+        properties.remove("saas.internal.auth-system-token");
+        properties.remove("saas.internal.team-token");
+        StandardEnvironment environment = environment("prod", properties);
+        ProductionSecurityPropertiesValidator validator = new ProductionSecurityPropertiesValidator(environment);
+
+        assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
+    }
+
+    @Test
     void shouldAllowAsyncWithoutAuthSystemTokenInProduction() {
         Map<String, Object> properties = strongProperties();
         properties.put("spring.application.name", "lumira-async");
@@ -227,6 +243,35 @@ class ProductionSecurityPropertiesValidatorTest {
         ProductionSecurityPropertiesValidator validator = new ProductionSecurityPropertiesValidator(environment);
 
         assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
+    }
+
+    @Test
+    void shouldAllowAsyncWithoutControlPlaneSecretsInProduction() {
+        Map<String, Object> properties = strongProperties();
+        properties.put("spring.application.name", "lumira-async");
+        removeControlPlaneSecrets(properties);
+        properties.remove("saas.internal.system-token");
+        properties.remove("saas.internal.auth-token");
+        properties.remove("saas.internal.auth-system-token");
+        properties.remove("saas.internal.team-token");
+        StandardEnvironment environment = environment("prod", properties);
+        ProductionSecurityPropertiesValidator validator = new ProductionSecurityPropertiesValidator(environment);
+
+        assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
+    }
+
+    @Test
+    void shouldStillRejectMissingRedisPasswordForAsyncInProduction() {
+        Map<String, Object> properties = strongProperties();
+        properties.put("spring.application.name", "lumira-async");
+        removeControlPlaneSecrets(properties);
+        properties.remove("spring.data.redis.password");
+        StandardEnvironment environment = environment("prod", properties);
+        ProductionSecurityPropertiesValidator validator = new ProductionSecurityPropertiesValidator(environment);
+
+        assertThatThrownBy(validator::afterPropertiesSet)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("REDIS_PASSWORD");
     }
 
     @Test
@@ -312,5 +357,13 @@ class ProductionSecurityPropertiesValidatorTest {
 
     private static void move(Map<String, Object> properties, String source, String target) {
         properties.put(target, properties.remove(source));
+    }
+
+    private static void removeControlPlaneSecrets(Map<String, Object> properties) {
+        properties.remove("spring.datasource.password");
+        properties.remove("saas.security.jwt-secret");
+        properties.remove("saas.security.field-secret");
+        properties.remove("saas.plugin.signature-secret");
+        properties.remove("saas.web.cors-allowed-origin-patterns");
     }
 }

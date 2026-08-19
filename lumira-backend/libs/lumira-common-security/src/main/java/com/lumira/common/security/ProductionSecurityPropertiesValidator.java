@@ -56,16 +56,24 @@ public class ProductionSecurityPropertiesValidator implements InitializingBean {
             return;
         }
 
-        requireSecret("spring.datasource.password", "DB_PASSWORD", UNSAFE_DB_PASSWORDS, 8);
-        requireSecret("spring.data.redis.password", "REDIS_PASSWORD", UNSAFE_REDIS_PASSWORDS, 8);
-        requireSecret("saas.security.jwt-secret", "JWT_SECRET", UNSAFE_JWT_SECRETS, 32);
-        requireSecret("saas.security.field-secret", "FIELD_SECRET", UNSAFE_FIELD_SECRETS, 32);
+        if (isStatelessRuntimeApplication()) {
+            if (isAsyncApplication()) {
+                requireSecret("spring.data.redis.password", "REDIS_PASSWORD", UNSAFE_REDIS_PASSWORDS, 8);
+            }
+        } else {
+            requireSecret("spring.datasource.password", "DB_PASSWORD", UNSAFE_DB_PASSWORDS, 8);
+            requireSecret("spring.data.redis.password", "REDIS_PASSWORD", UNSAFE_REDIS_PASSWORDS, 8);
+            requireSecret("saas.security.jwt-secret", "JWT_SECRET", UNSAFE_JWT_SECRETS, 32);
+            requireSecret("saas.security.field-secret", "FIELD_SECRET", UNSAFE_FIELD_SECRETS, 32);
+        }
         requireSecret("saas.plugin.signature-secret", "PLUGIN_SIGNATURE_SECRET", UNSAFE_PLUGIN_SECRETS, 32, false);
         requireSecret("xxl.job.accessToken", "XXL_JOB_ACCESS_TOKEN", UNSAFE_XXL_TOKENS, 16, false);
         requireScopedInternalTokens();
-        requireCorsAllowedOrigins();
         requireNoInternalPermitPaths();
-        requireEncryptedLoginPassword();
+        if (!isStatelessRuntimeApplication()) {
+            requireCorsAllowedOrigins();
+            requireEncryptedLoginPassword();
+        }
     }
 
     private boolean isProductionProfile() {
@@ -243,6 +251,10 @@ public class ProductionSecurityPropertiesValidator implements InitializingBean {
     private boolean isAsyncApplication() {
         String applicationName = environment.getProperty("spring.application.name", "").trim();
         return "lumira-async".equalsIgnoreCase(applicationName);
+    }
+
+    private boolean isStatelessRuntimeApplication() {
+        return isAsyncApplication() || isJobExecutorApplication();
     }
 
     private String normalizedRequiredSecret(List<String> propertyNames, String envName, Set<String> unsafeValues, int minLength) {
