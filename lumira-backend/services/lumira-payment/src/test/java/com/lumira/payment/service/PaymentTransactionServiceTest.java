@@ -20,6 +20,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
@@ -361,6 +363,49 @@ class PaymentTransactionServiceTest {
 
         verifyNoInteractions(managementAppService);
         verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void createOrderForTrustedOwnerShouldUseExactOwnerWithoutPaymentManagementPermission() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(providerSettings());
+        PaymentOrderRow existing = orderRow(1001L);
+        doReturn(existing).when(jdbcTemplate).queryForObject(
+                any(String.class), anyOrderRowMapper(), eq("idem-1"), eq(1001L), eq("user-uuid-1001")
+        );
+        PaymentTransactionService service = service(jdbcTemplate, managementAppService);
+
+        PaymentOrderDTO order = service.createOrderForTrustedOwner(
+                currentUser("aiadc:registration:pay"),
+                orderRequest("ORD-1", "idem-1")
+        );
+
+        assertThat(order.orderNo()).isEqualTo("ORD-1");
+        verify(jdbcTemplate).queryForObject(
+                any(String.class), anyOrderRowMapper(), eq("idem-1"), eq(1001L), eq("user-uuid-1001")
+        );
+        verify(jdbcTemplate, never()).update(any(String.class), any(Object[].class));
+    }
+
+    @Test
+    void trustedOwnerOrderCallsShouldIsolateCaughtFailuresFromCallerTransactions() throws Exception {
+        Method createMethod = PaymentTransactionService.class.getMethod(
+                "createOrderForTrustedOwner",
+                CurrentUser.class,
+                PaymentCreateOrderRequestDTO.class
+        );
+        Method getMethod = PaymentTransactionService.class.getMethod(
+                "getOrderForUser",
+                Long.class,
+                String.class,
+                String.class
+        );
+
+        assertThat(createMethod.getAnnotation(Transactional.class).propagation())
+                .isEqualTo(Propagation.REQUIRES_NEW);
+        assertThat(getMethod.getAnnotation(Transactional.class).propagation())
+                .isEqualTo(Propagation.REQUIRES_NEW);
     }
 
     @Test

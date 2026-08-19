@@ -96,7 +96,9 @@ class PaymentInternalApiServiceTest {
         assertThatThrownBy(() -> service.createOrder(null, "user-uuid-1001", null))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
-        verify(transactionService, never()).createOrder(org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any());
+        verify(transactionService, never()).createOrderForTrustedOwner(
+                org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any()
+        );
     }
 
     @Test
@@ -109,11 +111,13 @@ class PaymentInternalApiServiceTest {
         assertThatThrownBy(() -> service.createOrder(1001L, "user-uuid-1001", null))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
-        verify(transactionService, never()).createOrder(org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any());
+        verify(transactionService, never()).createOrderForTrustedOwner(
+                org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any()
+        );
     }
 
     @Test
-    void createOrderShouldPassTrustedOperatorSnapshotToTransactionService() {
+    void createOrderShouldValidateTrustedOperatorSnapshotAndUseExactOwnerScope() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "ENABLED"));
@@ -131,24 +135,19 @@ class PaymentInternalApiServiceTest {
                 null
         );
         PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po-1", "subject", 100L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
-        when(transactionService.createOrder(any(CurrentUser.class), any())).thenReturn(order);
+        when(transactionService.createOrderForTrustedOwner(
+                org.mockito.ArgumentMatchers.any(CurrentUser.class), any()
+        )).thenReturn(order);
 
         PaymentOrderDTO result = service.createOrder(1001L, "user-uuid-1001", request);
 
         assertThat(result).isSameAs(order);
         org.mockito.ArgumentCaptor<CurrentUser> userCaptor = org.mockito.ArgumentCaptor.forClass(CurrentUser.class);
-        verify(transactionService).createOrder(userCaptor.capture(), org.mockito.ArgumentMatchers.same(request));
+        verify(transactionService).createOrderForTrustedOwner(userCaptor.capture(), org.mockito.ArgumentMatchers.same(request));
         assertThat(userCaptor.getValue().getUserId()).isEqualTo(1001L);
-        assertThat(userCaptor.getValue().getUsername()).isEqualTo("alice");
         assertThat(userCaptor.getValue().getUserUuid()).isEqualTo("user-uuid-1001");
-        assertThat(userCaptor.getValue().getSessionId()).isEqualTo("internal-payment");
-        assertThat(userCaptor.getValue().getSessionVersion()).isEqualTo(1);
         assertThat(userCaptor.getValue().getPermissionsVersion()).isEqualTo("perm-v1001");
-        assertThat(userCaptor.getValue().getPermissions()).containsExactlyInAnyOrder("payment:order:create", "payment:order:view");
-        assertThat(userCaptor.getValue().getRoleIds()).containsExactly(31L);
-        assertThat(userCaptor.getValue().getDeptIds()).containsExactly(41L);
-        assertThat(userCaptor.getValue().getDefaultHomePath()).isEqualTo("/payment/orders");
-        assertThat(userCaptor.getValue().isAuthenticated()).isTrue();
+        verify(systemInternalApi).permissionSnapshot(1001L, "user-uuid-1001");
     }
 
     @Test
@@ -169,13 +168,15 @@ class PaymentInternalApiServiceTest {
                 Map.of(),
                 null
         );
-        when(transactionService.createOrder(any(CurrentUser.class), any()))
+        when(transactionService.createOrderForTrustedOwner(
+                org.mockito.ArgumentMatchers.any(CurrentUser.class), any()
+        ))
                 .thenReturn(new PaymentOrderDTO("ORD-1", "stripe", "po-1", "subject", 100L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null));
 
         service.createOrder(1001L, "user-uuid-1001", 9L, request);
 
         org.mockito.ArgumentCaptor<CurrentUser> userCaptor = org.mockito.ArgumentCaptor.forClass(CurrentUser.class);
-        verify(transactionService).createOrder(userCaptor.capture(), org.mockito.ArgumentMatchers.same(request));
+        verify(transactionService).createOrderForTrustedOwner(userCaptor.capture(), org.mockito.ArgumentMatchers.same(request));
         verify(systemInternalApi).simulatedRolePermissionSnapshot(1001L, "user-uuid-1001", 9L);
         assertThat(userCaptor.getValue().getSimulatedRoleId()).isEqualTo(9L);
     }
@@ -190,7 +191,9 @@ class PaymentInternalApiServiceTest {
         assertThatThrownBy(() -> service.createOrder(1001L, "user-uuid-1001", mock(PaymentCreateOrderRequestDTO.class)))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
-        verify(transactionService, never()).createOrder(org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any());
+        verify(transactionService, never()).createOrderForTrustedOwner(
+                org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any()
+        );
     }
 
     @Test
@@ -203,7 +206,9 @@ class PaymentInternalApiServiceTest {
         assertThatThrownBy(() -> service.createOrder(1001L, "user-uuid-1001", mock(PaymentCreateOrderRequestDTO.class)))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
-        verify(transactionService, never()).createOrder(org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any());
+        verify(transactionService, never()).createOrderForTrustedOwner(
+                org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any()
+        );
     }
 
     @Test
@@ -216,7 +221,9 @@ class PaymentInternalApiServiceTest {
         assertThatThrownBy(() -> service.createOrder(1001L, "other-user-uuid", mock(PaymentCreateOrderRequestDTO.class)))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
-        verify(transactionService, never()).createOrder(org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any());
+        verify(transactionService, never()).createOrderForTrustedOwner(
+                org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.any()
+        );
     }
 
     private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {

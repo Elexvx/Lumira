@@ -360,15 +360,23 @@ public class JdbcReviewRepository implements ReviewRepository {
     public List<ReviewVO.AdminAssignment> listAssignments(Long batchId) {
         return database.query(
                 """
-                        select id, batch_id as batchId, candidate_id as candidateId,
-                               expert_id as expertId, expert_user_id as expertUserId,
-                               expert_user_uuid as expertUserUuid, reviewer_weight as reviewerWeight,
-                               status, due_at as dueAt,
-                               accepted_at as acceptedAt, declined_at as declinedAt,
-                               decline_reason as declineReason, expired_at as expiredAt,
-                               revoked_at as revokedAt, revoke_reason as revokeReason,
-                               submitted_at as submittedAt, invitation.status as invitationStatus,
-                               invitation.checked_in_at as checkedInAt, version
+                        select assignment.id as id, assignment.batch_id as batchId,
+                               assignment.candidate_id as candidateId,
+                               assignment.expert_id as expertId,
+                               assignment.expert_user_id as expertUserId,
+                               assignment.expert_user_uuid as expertUserUuid,
+                               assignment.reviewer_weight as reviewerWeight,
+                               assignment.status as status, assignment.due_at as dueAt,
+                               assignment.accepted_at as acceptedAt,
+                               assignment.declined_at as declinedAt,
+                               assignment.decline_reason as declineReason,
+                               assignment.expired_at as expiredAt,
+                               assignment.revoked_at as revokedAt,
+                               assignment.revoke_reason as revokeReason,
+                               assignment.submitted_at as submittedAt,
+                               invitation.status as invitationStatus,
+                               invitation.checked_in_at as checkedInAt,
+                               assignment.version as version
                           from competition_review_assignment assignment
                           left join competition_review_invitation invitation
                             on invitation.batch_id = assignment.batch_id

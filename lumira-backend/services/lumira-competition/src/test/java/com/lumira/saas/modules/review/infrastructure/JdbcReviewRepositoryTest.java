@@ -85,6 +85,24 @@ class JdbcReviewRepositoryTest {
     }
 
     @Test
+    void adminAssignmentQueryQualifiesColumnsSharedWithInvitationJoin() {
+        RecordingQueryOperations database = new RecordingQueryOperations();
+        JdbcReviewRepository repository = new JdbcReviewRepository(database);
+
+        repository.listAssignments(60L);
+
+        assertThat(database.sql)
+                .contains("assignment.id as id")
+                .contains("assignment.batch_id as batchId")
+                .contains("assignment.expert_id as expertId")
+                .contains("assignment.status as status")
+                .contains("assignment.version as version")
+                .contains("invitation.status as invitationStatus")
+                .doesNotContain("select id, batch_id as batchId");
+        assertThat(database.args).containsExactly(60L);
+    }
+
+    @Test
     void publishedResultQueryScopesTeamAccessByBothStableUserIdentities() {
         RecordingQueryOperations database = new RecordingQueryOperations();
         JdbcReviewRepository repository = new JdbcReviewRepository(database);

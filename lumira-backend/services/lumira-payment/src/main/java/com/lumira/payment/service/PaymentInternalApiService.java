@@ -65,7 +65,8 @@ public class PaymentInternalApiService implements PaymentInternalApi {
     @Override
     public PaymentOrderDTO createOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, PaymentCreateOrderRequestDTO request) {
         requireRequest(request);
-        return paymentTransactionService.createOrder(resolveTrustedOperator(operatorId, operatorUuid, simulatedRoleId), request);
+        CurrentUser operator = resolveTrustedOperator(operatorId, operatorUuid, simulatedRoleId);
+        return paymentTransactionService.createOrderForTrustedOwner(operator, request);
     }
 
     @Override
@@ -84,7 +85,7 @@ public class PaymentInternalApiService implements PaymentInternalApi {
     @Override
     public PaymentOrderDTO cancelOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
         CurrentUser operator = resolveTrustedOperator(operatorId, operatorUuid, simulatedRoleId);
-        return paymentTransactionService.cancelPendingOrderForUser(operator, requireOrderNo(orderNo));
+        return paymentTransactionService.cancelPendingOrderForTrustedOwner(operator, requireOrderNo(orderNo));
     }
 
     private CurrentUser resolveTrustedOperator(Long operatorId, String operatorUuid, Long simulatedRoleId) {

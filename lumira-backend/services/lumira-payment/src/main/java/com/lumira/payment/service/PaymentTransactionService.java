@@ -22,6 +22,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -109,6 +110,18 @@ public class PaymentTransactionService {
     public PaymentOrderDTO createOrder(CurrentUser currentUser, PaymentCreateOrderRequestDTO request) {
         return createOrder(
                 trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE),
+                request,
+                resolveProviderSettings(request, false)
+        );
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PaymentOrderDTO createOrderForTrustedOwner(
+            CurrentUser trustedOwner,
+            PaymentCreateOrderRequestDTO request
+    ) {
+        return createOrder(
+                trustedOwnerActor(trustedOwner),
                 request,
                 resolveProviderSettings(request, false)
         );
@@ -346,7 +359,7 @@ public class PaymentTransactionService {
         return toOrderDto(row);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     public PaymentOrderDTO getOrderForUser(Long userId, String userUuid, String orderNo) {
         Actor actor = trustedLookupActor(userId, userUuid);
         PaymentOrderRow row = findOrderByOrderNoAndCreatedBy(orderNo, actor);
@@ -369,6 +382,16 @@ public class PaymentTransactionService {
     @Transactional
     public PaymentOrderDTO cancelPendingOrderForUser(CurrentUser currentUser, String orderNo) {
         Actor actor = trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE);
+        PaymentOrderRow row = findOrderByOrderNoAndCreatedBy(normalizeIdentifier(orderNo), actor);
+        if (row == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
+        }
+        return cancelPendingOrder(actor, row);
+    }
+
+    @Transactional
+    public PaymentOrderDTO cancelPendingOrderForTrustedOwner(CurrentUser trustedOwner, String orderNo) {
+        Actor actor = trustedOwnerActor(trustedOwner);
         PaymentOrderRow row = findOrderByOrderNoAndCreatedBy(normalizeIdentifier(orderNo), actor);
         if (row == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
@@ -672,6 +695,11 @@ public class PaymentTransactionService {
     private Actor trustedActor(CurrentUser currentUser, String requiredPermission) {
         PaymentActorResolver.Actor actor = actorResolver.require(currentUser, requiredPermission);
         return new Actor(actor.userId(), actor.userUuid());
+    }
+
+    private Actor trustedOwnerActor(CurrentUser currentUser) {
+        PaymentActorResolver.Actor actor = actorResolver.requireAuthenticated(currentUser);
+        return trustedLookupActor(actor.userId(), actor.userUuid());
     }
 
     private Actor trustedLookupActor(Long userId, String userUuid) {
