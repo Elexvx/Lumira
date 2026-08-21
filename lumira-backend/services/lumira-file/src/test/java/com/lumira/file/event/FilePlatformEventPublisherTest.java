@@ -183,18 +183,18 @@ class FilePlatformEventPublisherTest {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = new CurrentUser(2001L, "tester", null, "session-1", 1, true, Set.of("system:file:upload"));
+        CurrentUser currentUser = new CurrentUser(2001L, "tester", "session-1", 1, true, Set.of("system:file:upload"));
         currentUser.setUserUuid("user-uuid-2001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
     }
 
     private CurrentUser unauthenticatedUser() {
-        return new CurrentUser(2001L, "tester", null, "session-1", 1, false, Set.of("system:file:upload"));
+        return new CurrentUser(2001L, "tester", "session-1", 1, false, Set.of("system:file:upload"));
     }
 
     private CurrentUser blankUsernameUser() {
-        return new CurrentUser(2001L, " ", null, "session-1", 1, true, Set.of("system:file:upload"));
+        return new CurrentUser(2001L, " ", "session-1", 1, true, Set.of("system:file:upload"));
     }
 
     private FilePlatformEventPublisher publisher(PlatformEventOutboxService outboxService) {

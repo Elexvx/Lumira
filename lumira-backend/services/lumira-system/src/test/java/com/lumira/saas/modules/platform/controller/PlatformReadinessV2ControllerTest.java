@@ -196,7 +196,7 @@ class PlatformReadinessV2ControllerTest {
     void metricsShouldNormalizeInvalidSimulatedRoleIdBeforePermissionSnapshot() {
         OwnerReadModelMetricsService metricsService = Mockito.mock(OwnerReadModelMetricsService.class);
         SecurityContextFacade securityContextFacade = Mockito.mock(SecurityContextFacade.class);
-        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, Set.of("system:monitor:service:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "admin", "session-1", 1, true, Set.of("system:monitor:service:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         currentUser.setSimulatedRoleId(0L);
@@ -229,7 +229,7 @@ class PlatformReadinessV2ControllerTest {
 
     private SecurityContextFacade securityContext(Set<String> permissions, Long simulatedRoleId) {
         SecurityContextFacade securityContextFacade = Mockito.mock(SecurityContextFacade.class);
-        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, permissions);
+        CurrentUser currentUser = new CurrentUser(1001L, "admin", "session-1", 1, true, permissions);
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         currentUser.setSimulatedRoleId(simulatedRoleId);

@@ -364,15 +364,15 @@ class AiToolPolicyServiceTest {
     }
 
     private static CurrentUser userWithPermissions(Set<String> permissions) {
-        return trusted(new CurrentUser(100L, "admin", 2002L, "session-1", 1, true, permissions));
+        return trusted(new CurrentUser(100L, "admin", "session-1", 1, true, permissions));
     }
 
     private static CurrentUser blankUsernameUser() {
-        return new CurrentUser(100L, " ", 2002L, "session-1", 1, true, Set.of("*", "ai:tool-policy:view"));
+        return new CurrentUser(100L, " ", "session-1", 1, true, Set.of("*", "ai:tool-policy:view"));
     }
 
     private static CurrentUser missingSessionVersionUser() {
-        return new CurrentUser(100L, "admin", 2002L, "session-1", null, true, Set.of("*", "ai:tool-policy:view"));
+        return new CurrentUser(100L, "admin", "session-1", null, true, Set.of("*", "ai:tool-policy:view"));
     }
 
     private static CurrentUser trusted(CurrentUser currentUser) {

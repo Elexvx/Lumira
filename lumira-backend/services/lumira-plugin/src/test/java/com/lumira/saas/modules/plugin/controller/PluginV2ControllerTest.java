@@ -265,7 +265,7 @@ class PluginV2ControllerTest {
     }
 
     private CurrentUser currentUser(String... permissions) {
-        CurrentUser currentUser = new CurrentUser(100L, "alice", 2002L, "session-1", 3, true, Set.of(permissions));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 3, true, Set.of(permissions));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
         return currentUser;

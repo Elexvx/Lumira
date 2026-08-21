@@ -119,7 +119,7 @@ class PluginManagementAppServiceTest {
 
     @Test
     void upload_shouldRejectUntrustedOperatorBeforeStagingPackage() {
-        CurrentUser untrusted = new CurrentUser(100L, "alice", 1001L, null, 3, true, Set.of("plugin:management:upload"));
+        CurrentUser untrusted = new CurrentUser(100L, "alice", null, 3, true, Set.of("plugin:management:upload"));
 
         assertThatThrownBy(() -> pluginManagementAppService.upload(null, untrusted))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
@@ -1109,7 +1109,6 @@ class PluginManagementAppServiceTest {
         CurrentUser currentUser = new CurrentUser(
                 100L,
                 "alice",
-                1001L,
                 "session-1",
                 3,
                 true,

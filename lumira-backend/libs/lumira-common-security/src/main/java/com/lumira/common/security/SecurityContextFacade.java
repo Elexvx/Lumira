@@ -35,6 +35,6 @@ public class SecurityContextFacade {
     }
 
     public CurrentUser createAnonymousUser() {
-        return new CurrentUser(0L, "anonymous", null, null, 0, false, Set.of());
+        return new CurrentUser(0L, "anonymous", null, 0, false, Set.of());
     }
 }

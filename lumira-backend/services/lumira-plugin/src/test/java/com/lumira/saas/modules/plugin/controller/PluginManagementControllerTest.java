@@ -65,7 +65,7 @@ class PluginManagementControllerTest {
 
     @Test
     void currentMenusUsesSortedPermissionSnapshotForCurrentUser() {
-        CurrentUser currentUser = new CurrentUser(100L, "alice", 2002L, "session-1", 3, true, Set.of("plugin:sms:view", "dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 3, true, Set.of("plugin:sms:view", "dashboard:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
         List<Map<String, Object>> menus = List.of(Map.of("menuCode", "plugin.sms"));
@@ -81,7 +81,7 @@ class PluginManagementControllerTest {
 
     @Test
     void currentMenusUsesEmptySnapshotForUnauthenticatedUser() {
-        CurrentUser currentUser = new CurrentUser(100L, "alice", 2002L, "session-1", 3, false, Set.of("plugin:sms:view", "dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 3, false, Set.of("plugin:sms:view", "dashboard:view"));
         currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
         List<Map<String, Object>> menus = List.of();
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -95,7 +95,7 @@ class PluginManagementControllerTest {
 
     @Test
     void currentMenusUsesEmptySnapshotForBlankUsername() {
-        CurrentUser currentUser = new CurrentUser(100L, " ", 2002L, "session-1", 3, true, Set.of("plugin:sms:view", "dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(100L, " ", "session-1", 3, true, Set.of("plugin:sms:view", "dashboard:view"));
         currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
         List<Map<String, Object>> menus = List.of();
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -109,7 +109,7 @@ class PluginManagementControllerTest {
 
     @Test
     void currentMenusUsesEmptySnapshotForMissingSessionVersion() {
-        CurrentUser currentUser = new CurrentUser(100L, "alice", 2002L, "session-1", null, true, Set.of("plugin:sms:view", "dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", null, true, Set.of("plugin:sms:view", "dashboard:view"));
         currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
         List<Map<String, Object>> menus = List.of();
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -132,7 +132,7 @@ class PluginManagementControllerTest {
 
     @Test
     void currentPermissionsReturnsEmptyListForUnauthenticatedUser() {
-        CurrentUser currentUser = new CurrentUser(100L, "alice", 2002L, "session-1", 3, false, Set.of("plugin:sms:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 3, false, Set.of("plugin:sms:view"));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
 
         var response = controller.currentPermissions();
@@ -142,7 +142,7 @@ class PluginManagementControllerTest {
 
     @Test
     void currentPermissionsReturnsEmptyListForBlankUsername() {
-        CurrentUser currentUser = new CurrentUser(100L, " ", 2002L, "session-1", 3, true, Set.of("plugin:sms:view"));
+        CurrentUser currentUser = new CurrentUser(100L, " ", "session-1", 3, true, Set.of("plugin:sms:view"));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
 
         var response = controller.currentPermissions();
@@ -159,7 +159,7 @@ class PluginManagementControllerTest {
                 mock(PluginRuntimeSecurityPolicy.class),
                 null
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", 2002L, "session-1", 3, true, Set.of("plugin:sms:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 3, true, Set.of("plugin:sms:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -180,7 +180,7 @@ class PluginManagementControllerTest {
                 mock(PluginRuntimeSecurityPolicy.class),
                 systemInternalApi
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", 2002L, "session-1", 3, true, Set.of("plugin:sms:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 3, true, Set.of("plugin:sms:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);

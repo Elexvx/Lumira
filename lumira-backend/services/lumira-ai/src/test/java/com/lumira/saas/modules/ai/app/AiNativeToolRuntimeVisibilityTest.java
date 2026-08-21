@@ -31,7 +31,7 @@ class AiNativeToolRuntimeVisibilityTest {
     void regularUserOnlySeesRbacAllowedReadOnlyLowTools() {
         DefaultAiNativeToolRuntimeService service = service(request -> AuthorizationDecision.deny("UNUSED", "unused"));
 
-        List<String> visible = service.listTools(trusted(new CurrentUser(100L, "reader", 1001L, "s1", 1, true, Set.of())))
+        List<String> visible = service.listTools(trusted(new CurrentUser(100L, "reader", "s1", 1, true, Set.of())))
                 .stream()
                 .map(AiVO.ToolVO::getToolCode)
                 .toList();
@@ -139,7 +139,6 @@ class AiNativeToolRuntimeVisibilityTest {
         CurrentUser currentUser = new CurrentUser(
                 100L,
                 "admin",
-                1001L,
                 "session-1",
                 1,
                 true,

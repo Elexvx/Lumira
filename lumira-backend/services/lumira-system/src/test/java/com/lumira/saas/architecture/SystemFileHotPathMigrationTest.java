@@ -21,10 +21,7 @@ class SystemFileHotPathMigrationTest {
                 .contains("idx_file_object_deleted_bucket")
                 .contains("idx_file_object_deleted_created_id")
                 .contains("idx_file_processing_task_queue")
-                .contains("idx_file_processing_task_created")
-                .doesNotContain("idx_file_storage_space_tenant_deleted_default_id")
-                .doesNotContain("idx_file_object_tenant_deleted_bucket")
-                .doesNotContain("idx_file_processing_task_tenant_created");
+                .contains("idx_file_processing_task_created");
     }
 
     private static String readText(String... candidates) throws Exception {

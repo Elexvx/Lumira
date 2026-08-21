@@ -201,7 +201,7 @@ class FileManagementAppServiceTest {
                 }
         );
 
-        CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(11L, "alice", "sid", 1, true, Set.of("*"));
         currentUser.setUserUuid("user-uuid-11");
         currentUser.setPermissionsVersion("permissions-1");
         PageResponse<?> response = service.listFiles(currentUser, null, null, null, null, null, null, 1, 100, null, null);
@@ -296,7 +296,7 @@ class FileManagementAppServiceTest {
 
     @Test
     void uploadDocument_shouldRejectInternalServicePrincipalBeforeStorageWrite() {
-        CurrentUser internalService = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of());
+        CurrentUser internalService = new CurrentUser(0L, "internal-service", "internal", 0, false, Set.of());
 
         assertThatThrownBy(() -> service.uploadDocument(internalService, multipartFile, "docs", null, null, "local"))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
@@ -306,7 +306,7 @@ class FileManagementAppServiceTest {
 
     @Test
     void uploadFile_publicScopeShouldRequirePublishPermissionBeforeStorageWrite() {
-        CurrentUser uploader = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("system:file:upload"));
+        CurrentUser uploader = new CurrentUser(11L, "alice", "sid", 1, true, Set.of("system:file:upload"));
         uploader.setUserUuid("user-uuid-11");
         uploader.setPermissionsVersion("permissions-1");
         when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
@@ -438,7 +438,7 @@ class FileManagementAppServiceTest {
 
     @Test
     void listFiles_downloadCenterScopeShouldRequireDownloadCenterPermission() {
-        CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("system:file:view"));
+        CurrentUser currentUser = new CurrentUser(11L, "alice", "sid", 1, true, Set.of("system:file:view"));
         currentUser.setUserUuid("user-uuid-11");
         currentUser.setPermissionsVersion("permissions-1");
         when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
@@ -929,7 +929,7 @@ class FileManagementAppServiceTest {
         CurrentUser currentUser = currentUser();
         FileStorageSpaceEntity entity = storageSpaceEntities(1).getFirst();
         Path uploadRoot = tempDir.resolve("uploads");
-        Path localRoot = uploadRoot.resolve("tenant-local");
+        Path localRoot = uploadRoot.resolve("local-storage");
         entity.setRootPath(localRoot.toString());
         when(uploadProperties.getStorageRoot()).thenReturn(uploadRoot.toString());
         when(fileStorageSpaceMapper.findByIdWithUsage(5L)).thenReturn(entity);
@@ -949,29 +949,29 @@ class FileManagementAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(11L, "alice", "sid", 1, true, Set.of("*"));
         currentUser.setUserUuid("user-uuid-11");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
     }
 
     private CurrentUser currentUser(String... permissions) {
-        CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of(permissions));
+        CurrentUser currentUser = new CurrentUser(11L, "alice", "sid", 1, true, Set.of(permissions));
         currentUser.setUserUuid("user-uuid-11");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
     }
 
     private CurrentUser unauthenticatedUser() {
-        return new CurrentUser(11L, "alice", null, "sid", 1, false, Set.of("*"));
+        return new CurrentUser(11L, "alice", "sid", 1, false, Set.of("*"));
     }
 
     private CurrentUser blankUsernameUser() {
-        return new CurrentUser(11L, " ", null, "sid", 1, true, Set.of("*"));
+        return new CurrentUser(11L, " ", "sid", 1, true, Set.of("*"));
     }
 
     private CurrentUser missingSessionVersionUser() {
-        return new CurrentUser(11L, "alice", null, "sid", null, true, Set.of("*"));
+        return new CurrentUser(11L, "alice", "sid", null, true, Set.of("*"));
     }
 
     private List<FileObjectEntity> fileObjectEntities(int size) {

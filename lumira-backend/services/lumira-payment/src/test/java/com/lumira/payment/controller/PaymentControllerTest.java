@@ -51,7 +51,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("payment:order:create")));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -89,7 +89,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(1001L, "root-admin", 0L, "session-1", 1, true, Set.of("payment:config:update", "payment:order:create")));
+        CurrentUser currentUser = trusted(new CurrentUser(1001L, "root-admin", "session-1", 1, true, Set.of("payment:config:update", "payment:order:create")));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-SANDBOX-1",
@@ -127,7 +127,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("payment:order:view")));
         PageResponse<PaymentOrderDTO> page = new PageResponse<>();
         when(paymentTransactionService.listManualOrdersForUser(currentUser, 1, 50)).thenReturn(page);
 
@@ -152,7 +152,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("payment:order:create")));
         PaymentOrderDTO cancelled = new PaymentOrderDTO(
                 "MAN-ALI-P-1-CANCEL",
                 "alipay",
@@ -196,7 +196,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(42L, "admin", 0L, "session-1", 1, true, Set.of("payment:config:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "admin", "session-1", 1, true, Set.of("payment:config:view")));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
 
         assertThatThrownBy(controller::providers)
@@ -219,7 +219,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(1001L, "root-admin", 0L, "session-1", 1, true, Set.of("payment:config:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(1001L, "root-admin", "session-1", 1, true, Set.of("payment:config:view")));
         PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
         settings.setProviderCode("stripe");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -248,7 +248,6 @@ class PaymentControllerTest {
         CurrentUser currentUser = trusted(new CurrentUser(
                 1001L,
                 "root-admin",
-                0L,
                 "session-1",
                 1,
                 true,
@@ -278,7 +277,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = new CurrentUser(42L, " ", 0L, "session-1", 1, true, Set.of("payment:order:create"));
+        CurrentUser currentUser = new CurrentUser(42L, " ", "session-1", 1, true, Set.of("payment:order:create"));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -314,7 +313,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = new CurrentUser(42L, "alice", 0L, null, 1, true, Set.of("payment:order:create"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", null, 1, true, Set.of("payment:order:create"));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -350,7 +349,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("payment:order:view")));
         PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po_1", "subscription", 9900L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
         when(paymentTransactionService.getOrderForUser(currentUser, "ORD-1")).thenReturn(order);
@@ -376,7 +375,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:refund:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("payment:refund:view")));
         var refund = new com.lumira.api.payment.PaymentRefundDTO("REF-1", "ORD-1", "stripe", "pr_1", 100L, "CNY", "PENDING", "duplicate", Map.of(), null, null, null, null, null);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
         when(paymentTransactionService.getRefundForUser(currentUser, "REF-1")).thenReturn(refund);
@@ -436,7 +435,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("payment:order:create")));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -471,7 +470,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("payment:order:create")));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",

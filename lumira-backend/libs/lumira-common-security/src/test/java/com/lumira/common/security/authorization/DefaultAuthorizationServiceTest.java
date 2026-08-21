@@ -19,37 +19,37 @@ class DefaultAuthorizationServiceTest {
         DefaultAuthorizationService service = service(allowGrant("ai:tool:file.delete", "HIGH", false, false));
 
         assertThat(service.evaluate(null).reasonCode()).isEqualTo("AUTHZ_REQUEST_MISSING");
-        assertThat(service.evaluate(request(1001L, "WEB", user(1001L, "*"), null, null, null, null)).reasonCode()).isEqualTo("AUTHZ_TARGET_MISSING");
+        assertThat(service.evaluate(request("WEB", user("*"), null, null, null, null)).reasonCode()).isEqualTo("AUTHZ_TARGET_MISSING");
     }
 
     @Test
     void allowsAndDeniesHumanPermission() {
         DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
 
-        assertThat(service.evaluate(AuthorizationRequest.permission(user(1001L, "system:user:view"), "system:user:view")).verdict())
+        assertThat(service.evaluate(AuthorizationRequest.permission(user("system:user:view"), "system:user:view")).verdict())
                 .isEqualTo(AuthorizationVerdict.ALLOW);
-        assertThat(service.evaluate(AuthorizationRequest.permission(user(1001L, "system:user:view"), "system:user:delete")).reasonCode())
+        assertThat(service.evaluate(AuthorizationRequest.permission(user("system:user:view"), "system:user:delete")).reasonCode())
                 .isEqualTo("RBAC_PERMISSION_MISSING");
     }
 
     @Test
     void deniesUnauthenticatedSubjectEvenWhenPermissionIsPresent() {
         DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
-        CurrentUser unauthenticated = user(1001L, "system:user:view");
+        CurrentUser unauthenticated = user("system:user:view");
         unauthenticated.setAuthenticated(false);
-        CurrentUser invalidUserId = user(1001L, "system:user:view");
+        CurrentUser invalidUserId = user("system:user:view");
         invalidUserId.setUserId(0L);
-        CurrentUser missingUserId = user(1001L, "system:user:view");
+        CurrentUser missingUserId = user("system:user:view");
         missingUserId.setUserId(null);
-        CurrentUser blankUsername = user(1001L, "system:user:view");
+        CurrentUser blankUsername = user("system:user:view");
         blankUsername.setUsername(" ");
-        CurrentUser missingSessionId = user(1001L, "system:user:view");
+        CurrentUser missingSessionId = user("system:user:view");
         missingSessionId.setSessionId(null);
-        CurrentUser missingSessionVersion = user(1001L, "system:user:view");
+        CurrentUser missingSessionVersion = user("system:user:view");
         missingSessionVersion.setSessionVersion(null);
-        CurrentUser missingUserUuid = user(1001L, "system:user:view");
+        CurrentUser missingUserUuid = user("system:user:view");
         missingUserUuid.setUserUuid(null);
-        CurrentUser missingPermissionsVersion = user(1001L, "system:user:view");
+        CurrentUser missingPermissionsVersion = user("system:user:view");
         missingPermissionsVersion.setPermissionsVersion(null);
 
         assertThat(service.evaluate(AuthorizationRequest.permission(unauthenticated, "system:user:view")).reasonCode())
@@ -72,11 +72,11 @@ class DefaultAuthorizationServiceTest {
 
     @Test
     void authorizationRequestFactoriesDoNotInferSubjectFromUntrustedCurrentUser() {
-        CurrentUser missingSessionVersion = user(1001L, "*");
+        CurrentUser missingSessionVersion = user("*");
         missingSessionVersion.setSessionVersion(null);
-        CurrentUser missingUserUuid = user(1001L, "*");
+        CurrentUser missingUserUuid = user("*");
         missingUserUuid.setUserUuid(null);
-        CurrentUser missingPermissionsVersion = user(1001L, "*");
+        CurrentUser missingPermissionsVersion = user("*");
         missingPermissionsVersion.setPermissionsVersion(null);
 
         assertThat(AuthorizationRequest.permission(missingSessionVersion, "system:user:view").humanUserId()).isNull();
@@ -89,30 +89,30 @@ class DefaultAuthorizationServiceTest {
     }
 
     @Test
-    void allowsRbacWithoutTenantScope() {
+    void allowsRbacWithoutResourceScope() {
         DefaultAuthorizationService service = service(allowGrant("ai:tool:file.delete", "HIGH", false, false));
 
-        assertThat(service.evaluate(request(2002L, "WEB", user(1001L, "system:user:view"), "system:user:view", null, null, null)).verdict())
+        assertThat(service.evaluate(request("WEB", user("system:user:view"), "system:user:view", null, null, null)).verdict())
                 .isEqualTo(AuthorizationVerdict.ALLOW);
-        assertThat(service.evaluate(aiRequest(user(1001L, "ai:tool:*"), 300L, "file.delete", "ai:tool:file.delete", "LOW", true, true,
-                Map.of("resourceTenantId", 2002L))).verdict()).isEqualTo(AuthorizationVerdict.ALLOW);
+        assertThat(service.evaluate(aiRequest(user("ai:tool:*"), 300L, "file.delete", "ai:tool:file.delete", "LOW", true, true,
+                Map.of())).verdict()).isEqualTo(AuthorizationVerdict.ALLOW);
     }
 
     @Test
     void dataScopeSelfRequiresMatchingUserUuid() {
         DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
-        CurrentUser currentUser = user(1001L, "system:user:view");
+        CurrentUser currentUser = user("system:user:view");
 
-        assertThat(service.evaluate(request(1001L, "WEB", currentUser, "system:user:view", null, null, null,
+        assertThat(service.evaluate(request("WEB", currentUser, "system:user:view", null, null, null,
                 Map.of("dataScope", "self", "ownerUserId", 100L, "ownerUserUuid", "user-uuid-100"))).verdict())
                 .isEqualTo(AuthorizationVerdict.ALLOW);
-        assertThat(service.evaluate(request(1001L, "WEB", currentUser, "system:user:view", null, null, null,
+        assertThat(service.evaluate(request("WEB", currentUser, "system:user:view", null, null, null,
                 Map.of("dataScope", "self", "ownerUserUuid", "user-uuid-100"))).reasonCode())
                 .isEqualTo("DATA_SCOPE_SELF_DENIED");
-        assertThat(service.evaluate(request(1001L, "WEB", currentUser, "system:user:view", null, null, null,
+        assertThat(service.evaluate(request("WEB", currentUser, "system:user:view", null, null, null,
                 Map.of("dataScope", "self", "ownerUserId", 100L))).reasonCode())
                 .isEqualTo("DATA_SCOPE_SELF_DENIED");
-        assertThat(service.evaluate(request(1001L, "WEB", currentUser, "system:user:view", null, null, null,
+        assertThat(service.evaluate(request("WEB", currentUser, "system:user:view", null, null, null,
                 Map.of("dataScope", "self", "ownerUserId", 100L, "ownerUserUuid", "other-uuid"))).reasonCode())
                 .isEqualTo("DATA_SCOPE_SELF_DENIED");
     }
@@ -120,14 +120,14 @@ class DefaultAuthorizationServiceTest {
     @Test
     void aiAgentRequiresUserAndAgentIntersection() {
         DefaultAuthorizationService allowed = service(allowGrant("ai:tool:file.delete", "HIGH", false, false));
-        assertThat(allowed.evaluate(aiRequest(user(1001L, "ai:tool:file.delete"), 300L, "file.delete",
+        assertThat(allowed.evaluate(aiRequest(user("ai:tool:file.delete"), 300L, "file.delete",
                 "ai:tool:file.delete", "LOW", true, true, Map.of())).verdict()).isEqualTo(AuthorizationVerdict.ALLOW);
 
         DefaultAuthorizationService noGrant = service(AgentToolGrantDecision.deny("AGENT_GRANT_DENIED"));
-        assertThat(noGrant.evaluate(aiRequest(user(1001L, "ai:tool:file.delete"), 300L, "file.delete",
+        assertThat(noGrant.evaluate(aiRequest(user("ai:tool:file.delete"), 300L, "file.delete",
                 "ai:tool:file.delete", "LOW", true, true, Map.of())).reasonCode()).isEqualTo("AGENT_GRANT_DENIED");
 
-        assertThat(allowed.evaluate(aiRequest(user(1001L, "system:user:view"), 300L, "file.delete",
+        assertThat(allowed.evaluate(aiRequest(user("system:user:view"), 300L, "file.delete",
                 "ai:tool:file.delete", "LOW", true, true, Map.of())).reasonCode()).isEqualTo("RBAC_PERMISSION_MISSING");
     }
 
@@ -138,7 +138,7 @@ class DefaultAuthorizationServiceTest {
                 request -> DelegationGrantDecision.deny("DELEGATION_GRANT_NOT_FOUND", "Delegation grant was not found")
         );
 
-        assertThat(noDelegation.evaluate(aiRequest(user(1001L, "ai:tool:file.delete"), 300L, "file.delete",
+        assertThat(noDelegation.evaluate(aiRequest(user("ai:tool:file.delete"), 300L, "file.delete",
                 "ai:tool:file.delete", "LOW", true, true, Map.of())).reasonCode()).isEqualTo("DELEGATION_GRANT_NOT_FOUND");
     }
 
@@ -146,13 +146,13 @@ class DefaultAuthorizationServiceTest {
     void aiAgentEnforcesRiskConfirmAndApproval() {
         DefaultAuthorizationService service = service(allowGrant("ai:tool:file.delete", "HIGH", false, false));
 
-        assertThat(service.evaluate(aiRequest(user(1001L, "ai:tool:file.delete"), 300L, "file.delete",
+        assertThat(service.evaluate(aiRequest(user("ai:tool:file.delete"), 300L, "file.delete",
                 "ai:tool:file.delete", "CRITICAL", true, true, Map.of())).reasonCode()).isEqualTo("AGENT_RISK_EXCEEDS_GRANT");
-        assertThat(service.evaluate(aiRequest(user(1001L, "ai:tool:file.delete"), 300L, "file.delete",
+        assertThat(service.evaluate(aiRequest(user("ai:tool:file.delete"), 300L, "file.delete",
                 "ai:tool:file.delete", "HIGH", false, true, Map.of())).verdict()).isEqualTo(AuthorizationVerdict.REQUIRE_CONFIRM);
 
         DefaultAuthorizationService approval = service(allowGrant("ai:tool:file.delete", "CRITICAL", false, true));
-        assertThat(approval.evaluate(aiRequest(user(1001L, "ai:tool:file.delete"), 300L, "file.delete",
+        assertThat(approval.evaluate(aiRequest(user("ai:tool:file.delete"), 300L, "file.delete",
                 "ai:tool:file.delete", "CRITICAL", true, false, Map.of())).verdict()).isEqualTo(AuthorizationVerdict.REQUIRE_APPROVAL);
     }
 
@@ -160,9 +160,9 @@ class DefaultAuthorizationServiceTest {
     void pluginAndSystemJobDefaultDeny() {
         DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
 
-        assertThat(service.evaluate(request(1001L, "PLUGIN", user(1001L, "*"), null, null, "plugin-x", null)).reasonCode())
+        assertThat(service.evaluate(request("PLUGIN", user("*"), null, null, "plugin-x", null)).reasonCode())
                 .isEqualTo("PLUGIN_PERMISSION_MISSING");
-        assertThat(service.evaluate(request(1001L, "SYSTEM_JOB", null, null, "file", null, "test")).reasonCode())
+        assertThat(service.evaluate(request("SYSTEM_JOB", null, null, "file", null, "test")).reasonCode())
                 .isEqualTo("SYSTEM_PRINCIPAL_MISSING");
         assertThat(service.evaluate(AuthorizationRequest.systemJob("file", "test", "req-1")).verdict())
                 .isEqualTo(AuthorizationVerdict.ALLOW);
@@ -172,7 +172,7 @@ class DefaultAuthorizationServiceTest {
     void systemJobRejectsLegacyInternalTokenFlagAndMixedSubjects() {
         DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
 
-        AuthorizationRequest legacyInternalTokenRequest = request(1001L, "SYSTEM_JOB", null, null, "file", null, "test",
+        AuthorizationRequest legacyInternalTokenRequest = request("SYSTEM_JOB", null, null, "file", null, "test",
                 Map.of("internalToken", Boolean.TRUE));
         assertThat(service.evaluate(legacyInternalTokenRequest).reasonCode())
                 .isEqualTo("SYSTEM_PRINCIPAL_MISSING");
@@ -195,7 +195,7 @@ class DefaultAuthorizationServiceTest {
                 "SYSTEM_JOB",
                 "req-1",
                 "trace-1",
-                user(1001L, "*")
+                user("*")
         );
         assertThat(service.evaluate(mixedSubjectRequest).reasonCode())
                 .isEqualTo("SYSTEM_JOB_SUBJECT_CONFLICT");
@@ -204,34 +204,34 @@ class DefaultAuthorizationServiceTest {
     @Test
     void requireAllowsAuthorizedRequest() {
         assertThatCode(() -> service(allowGrant("unused", "LOW", false, false))
-                .require(AuthorizationRequest.permission(user(1001L, "*"), "system:user:view"))).doesNotThrowAnyException();
+                .require(AuthorizationRequest.permission(user("*"), "system:user:view"))).doesNotThrowAnyException();
         assertThatThrownBy(() -> service(allowGrant("unused", "LOW", false, false))
-                .require(AuthorizationRequest.permission(user(1001L, "system:user:view"), "system:user:delete")))
+                .require(AuthorizationRequest.permission(user("system:user:view"), "system:user:delete")))
                 .isInstanceOf(BizException.class);
     }
 
     private DefaultAuthorizationService service(AgentToolGrantDecision decision) {
         return new DefaultAuthorizationService(request -> decision,
-                request -> DelegationGrantDecision.allow("TENANT", "CRITICAL", false, false, List.of("TEST_DELEGATION")));
+                request -> DelegationGrantDecision.allow("RESOURCE", "CRITICAL", false, false, List.of("TEST_DELEGATION")));
     }
 
     private AgentToolGrantDecision allowGrant(String permissionKey, String maxRisk, boolean confirm, boolean approval) {
         return AgentToolGrantDecision.allow("EXECUTE", permissionKey, maxRisk, confirm, approval, List.of("TEST_GRANT"));
     }
 
-    private CurrentUser user(Long tenantId, String permission) {
-        CurrentUser currentUser = new CurrentUser(100L, "admin", tenantId, "session-1", 1, true, Set.of(permission));
+    private CurrentUser user(String permission) {
+        CurrentUser currentUser = new CurrentUser(100L, "admin", "session-1", 1, true, Set.of(permission));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
     }
 
-    private AuthorizationRequest request(Long tenantId, String channel, CurrentUser user, String permissionKey,
+    private AuthorizationRequest request(String channel, CurrentUser user, String permissionKey,
                                          String resource, String tool, String action) {
-        return request(tenantId, channel, user, permissionKey, resource, tool, action, Map.of());
+        return request(channel, user, permissionKey, resource, tool, action, Map.of());
     }
 
-    private AuthorizationRequest request(Long tenantId, String channel, CurrentUser user, String permissionKey,
+    private AuthorizationRequest request(String channel, CurrentUser user, String permissionKey,
                                          String resource, String tool, String action, Map<String, Object> arguments) {
         return new AuthorizationRequest(null, null, user == null ? null : user.getUserId(),
                 user == null ? null : user.getUserUuid(), null,

@@ -37,7 +37,7 @@ class DefaultDelegationGrantEvaluatorTest {
     @Test
     void requiresConfirmAndApprovalFromMatchedGrant() {
         StubQueryOperations jdbc = new StubQueryOperations();
-        jdbc.grants = List.of(grant("file.object.search", "system:file:view", "TENANT", "HIGH", true, true));
+        jdbc.grants = List.of(grant("file.object.search", "system:file:view", "RESOURCE", "HIGH", true, true));
         DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
 
         assertThat(evaluator.evaluate(request("file.object.search", "system:file:view", "HIGH", false, false)).verdict())
@@ -53,14 +53,14 @@ class DefaultDelegationGrantEvaluatorTest {
         StubQueryOperations jdbc = new StubQueryOperations();
         jdbc.grants = List.of(
                 grant(null, "*", "SELF", "LOW", false, false),
-                grant("file.object.search", "system:file:view", "TENANT", "MEDIUM", false, false)
+                grant("file.object.search", "system:file:view", "RESOURCE", "MEDIUM", false, false)
         );
         DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
 
         DelegationGrantDecision decision = evaluator.evaluate(request("file.object.search", "system:file:view", "MEDIUM", true, true));
 
         assertThat(decision.verdict()).isEqualTo(AuthorizationVerdict.ALLOW);
-        assertThat(decision.scopeType()).isEqualTo("TENANT");
+        assertThat(decision.scopeType()).isEqualTo("RESOURCE");
         assertThat(decision.maxRiskLevel()).isEqualTo("MEDIUM");
     }
 
@@ -80,7 +80,7 @@ class DefaultDelegationGrantEvaluatorTest {
     void refusesToInferHumanUserIdFromUntrustedCurrentUser() {
         StubQueryOperations jdbc = new StubQueryOperations();
         DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
-        CurrentUser currentUser = new CurrentUser(100L, "admin", 1001L, "session-1", null, true, Set.of("system:file:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "admin", "session-1", null, true, Set.of("system:file:view"));
 
         DelegationGrantDecision decision = evaluator.evaluate(
                 AuthorizationRequest.aiTool(currentUser, 300L, "file.object.search", "system:file:view", "LOW", true, true, Map.of())
@@ -197,7 +197,7 @@ class DefaultDelegationGrantEvaluatorTest {
     }
 
     private CurrentUser trustedUser(Long userId, String permissionKey) {
-        CurrentUser user = new CurrentUser(userId, "admin", 1001L, "session-1", 1, true, Set.of(permissionKey));
+        CurrentUser user = new CurrentUser(userId, "admin", "session-1", 1, true, Set.of(permissionKey));
         user.setUserUuid("user-uuid-" + userId);
         user.setPermissionsVersion("permissions-1");
         return user;

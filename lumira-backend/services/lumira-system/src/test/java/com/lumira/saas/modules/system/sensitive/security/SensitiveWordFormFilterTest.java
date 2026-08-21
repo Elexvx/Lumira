@@ -34,7 +34,7 @@ class SensitiveWordFormFilterTest {
                 new ObjectMapper().findAndRegisterModules(),
                 pluginStateService
         );
-        CurrentUser currentUser = new CurrentUser(1001L, " ", 1001L, "session-1", 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(1001L, " ", "session-1", 1, true, Set.of("*"));
         when(securityContextFacade.getCurrentUserOrNull()).thenReturn(currentUser);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/content");
         request.setContentType("multipart/form-data");
@@ -60,7 +60,7 @@ class SensitiveWordFormFilterTest {
                 new ObjectMapper().findAndRegisterModules(),
                 pluginStateService
         );
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", null, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", null, true, Set.of("*"));
         when(securityContextFacade.getCurrentUserOrNull()).thenReturn(currentUser);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/content");
         request.setContentType("multipart/form-data");

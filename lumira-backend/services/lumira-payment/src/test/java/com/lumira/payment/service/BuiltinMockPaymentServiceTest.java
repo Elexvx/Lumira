@@ -347,7 +347,6 @@ class BuiltinMockPaymentServiceTest {
         CurrentUser currentUser = new CurrentUser(
                 1001L,
                 "tester",
-                null,
                 "session-1",
                 1,
                 true,

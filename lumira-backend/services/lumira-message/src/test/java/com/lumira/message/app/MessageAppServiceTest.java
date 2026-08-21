@@ -631,7 +631,6 @@ class MessageAppServiceTest {
         CurrentUser currentUser = trusted(new CurrentUser(
                 1001L,
                 "alice",
-                2002L,
                 "session-1",
                 3,
                 true,
@@ -828,7 +827,6 @@ class MessageAppServiceTest {
         CurrentUser currentUser = trusted(new CurrentUser(
                 1001L,
                 "alice",
-                2002L,
                 "session-1",
                 3,
                 true,
@@ -983,7 +981,7 @@ class MessageAppServiceTest {
                 )));
 
         messageAppService.createMessage(
-                trusted(new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:write"))),
+                trusted(new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:write"))),
                 request
         );
 
@@ -1009,7 +1007,7 @@ class MessageAppServiceTest {
         when(systemInternalApi.findTargetUserUuidById(2001L)).thenReturn(null);
 
         assertThatThrownBy(() -> messageAppService.createMessage(
-                trusted(new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:write"))),
+                trusted(new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:write"))),
                 request
         )).isInstanceOfSatisfying(BizException.class, exception ->
                 assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
@@ -1022,7 +1020,7 @@ class MessageAppServiceTest {
 
     @Test
     void countUnread_shouldRejectDisabledTrustedUserBeforeDatabaseAccess() {
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("stale");
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(
@@ -1038,7 +1036,7 @@ class MessageAppServiceTest {
 
     @Test
     void countUnread_shouldRejectTrustedUserWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("stale");
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(
@@ -1054,19 +1052,19 @@ class MessageAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return trusted(new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:view")));
+        return trusted(new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:view")));
     }
 
     private CurrentUser readUser() {
-        return trusted(new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:read")));
+        return trusted(new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:read")));
     }
 
     private CurrentUser writeUser() {
-        return trusted(new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:write")));
+        return trusted(new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:write")));
     }
 
     private CurrentUser retractUser() {
-        return trusted(new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:retract")));
+        return trusted(new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:retract")));
     }
 
     private CurrentUser trusted(CurrentUser currentUser) {
@@ -1079,15 +1077,15 @@ class MessageAppServiceTest {
     }
 
     private CurrentUser unauthenticatedUser() {
-        return new CurrentUser(1001L, "alice", 2002L, "session-1", 3, false, Set.of("*", "message:message:write"));
+        return new CurrentUser(1001L, "alice", "session-1", 3, false, Set.of("*", "message:message:write"));
     }
 
     private CurrentUser blankUsernameUser() {
-        return new CurrentUser(1001L, " ", 2002L, "session-1", 3, true, Set.of("*", "message:message:write"));
+        return new CurrentUser(1001L, " ", "session-1", 3, true, Set.of("*", "message:message:write"));
     }
 
     private CurrentUser missingSessionVersionUser() {
-        return new CurrentUser(1001L, "alice", 2002L, "session-1", null, true, Set.of("*", "message:message:write"));
+        return new CurrentUser(1001L, "alice", "session-1", null, true, Set.of("*", "message:message:write"));
     }
 
     private PermissionSnapshotDTO permissionSnapshot(List<Long> roleIds) {

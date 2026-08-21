@@ -89,7 +89,7 @@ class SecurityContextFacadeTest {
     }
 
     private CurrentUser trustedUser() {
-        CurrentUser currentUser = new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(100L, "admin", "session-1", 1, true, Set.of("*"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

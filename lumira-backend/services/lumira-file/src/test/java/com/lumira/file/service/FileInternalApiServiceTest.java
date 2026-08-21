@@ -154,7 +154,7 @@ class FileInternalApiServiceTest {
     void directUploadsRejectUntrustedCurrentUserBeforeDelegatingToAppService() {
         FileManagementAppService appService = mock(FileManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "s1", 1, false, java.util.Set.of("system:file:upload"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "s1", 1, false, java.util.Set.of("system:file:upload"));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
         FileInternalApiService service = new FileInternalApiService(appService, securityContextFacade, provider(userSnapshot(42L, "alice", "ENABLED")));
 
@@ -168,7 +168,7 @@ class FileInternalApiServiceTest {
     void directUploadsRejectMissingSessionIdBeforeDelegatingToAppService() {
         FileManagementAppService appService = mock(FileManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, null, 1, true, java.util.Set.of("system:file:upload"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", null, 1, true, java.util.Set.of("system:file:upload"));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
         FileInternalApiService service = new FileInternalApiService(appService, securityContextFacade, provider(userSnapshot(42L, "alice", "ENABLED")));
 

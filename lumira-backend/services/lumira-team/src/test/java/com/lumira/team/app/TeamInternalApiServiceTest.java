@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 class TeamInternalApiServiceTest {
     @BeforeEach
     void authenticateInternalService() {
-        CurrentUser principal = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of());
+        CurrentUser principal = new CurrentUser(0L, "internal-service", "internal", 0, false, Set.of());
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(principal, null, List.of()));
     }
 

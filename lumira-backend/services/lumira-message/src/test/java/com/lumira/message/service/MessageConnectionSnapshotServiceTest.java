@@ -24,7 +24,7 @@ class MessageConnectionSnapshotServiceTest {
                 messageAppService,
                 outboxService
         );
-        CurrentUser currentUser = new CurrentUser(1001L, " ", 1001L, "session-1", 3, true, Set.of("message:message:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, " ", "session-1", 3, true, Set.of("message:message:view"));
 
         service.emitSnapshot(currentUser);
 
@@ -43,7 +43,7 @@ class MessageConnectionSnapshotServiceTest {
                 messageAppService,
                 outboxService
         );
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", null, true, Set.of("message:message:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", null, true, Set.of("message:message:view"));
 
         service.emitSnapshot(currentUser);
 

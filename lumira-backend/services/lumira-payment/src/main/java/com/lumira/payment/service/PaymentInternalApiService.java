@@ -120,7 +120,6 @@ public class PaymentInternalApiService implements PaymentInternalApi {
         CurrentUser operator = new CurrentUser(
                 snapshot.userId(),
                 snapshot.username().trim(),
-                null,
                 "internal-payment",
                 1,
                 true,

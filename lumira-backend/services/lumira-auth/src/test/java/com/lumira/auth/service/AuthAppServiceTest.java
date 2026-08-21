@@ -823,7 +823,7 @@ class AuthAppServiceTest {
     @Test
     void verificationProvidersShouldRejectUnauthenticatedUserBeforeInternalLookup() {
         when(securityContextFacade.getCurrentUser()).thenReturn(
-                new CurrentUser(1001L, "alice", null, "sid", 1, false, Set.of("*"))
+                new CurrentUser(1001L, "alice", "sid", 1, false, Set.of("*"))
         );
 
         BizException exception = assertThrows(BizException.class, authAppService::verificationProviders);
@@ -1223,7 +1223,7 @@ class AuthAppServiceTest {
 
     @Test
     void currentUserRejectsAnonymousPrincipalBeforeSessionLookup() {
-        when(securityContextFacade.getCurrentUser()).thenReturn(new CurrentUser(0L, "anonymous", null, null, 0, false, Set.of()));
+        when(securityContextFacade.getCurrentUser()).thenReturn(new CurrentUser(0L, "anonymous", null, 0, false, Set.of()));
 
         assertThrows(BizException.class, () -> authAppService.currentUser());
 
@@ -1232,7 +1232,7 @@ class AuthAppServiceTest {
 
     @Test
     void currentUserRejectsBlankUsernameBeforeSessionLookup() {
-        CurrentUser currentUser = new CurrentUser(42L, " ", null, "session-1", 1, true, Set.of("dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(42L, " ", "session-1", 1, true, Set.of("dashboard:view"));
         currentUser.setPermissionsVersion("v1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
 
@@ -1243,7 +1243,7 @@ class AuthAppServiceTest {
 
     @Test
     void currentUserRejectsMissingSessionVersionBeforeSessionLookup() {
-        CurrentUser currentUser = new CurrentUser(42L, "jane", null, "session-1", null, true, Set.of("dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "jane", "session-1", null, true, Set.of("dashboard:view"));
         currentUser.setPermissionsVersion("v1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
 
@@ -1267,7 +1267,7 @@ class AuthAppServiceTest {
 
     @Test
     void keepaliveRejectsMissingUserUuidBeforeSessionLookup() {
-        CurrentUser currentUser = new CurrentUser(42L, "jane", null, "session-1", 1, true, Set.of("dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "jane", "session-1", 1, true, Set.of("dashboard:view"));
         currentUser.setPermissionsVersion("v1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
 
@@ -1278,7 +1278,7 @@ class AuthAppServiceTest {
 
     @Test
     void bootstrapRejectsAuthenticatedPrincipalWithoutSessionIdBeforeSessionLookup() {
-        when(securityContextFacade.getCurrentUser()).thenReturn(new CurrentUser(42L, "jane", null, null, 1, true, Set.of("dashboard:view")));
+        when(securityContextFacade.getCurrentUser()).thenReturn(new CurrentUser(42L, "jane", null, 1, true, Set.of("dashboard:view")));
 
         assertThrows(BizException.class, () -> authAppService.bootstrap());
 

@@ -681,7 +681,6 @@ class SensitiveWordServiceTest {
         assertThat(response.getTotal()).isZero();
         assertThat(queryOperations.countQueryCalled).isFalse();
         assertThat(queryOperations.lastListSql).contains("from sys_sensitive_word");
-        assertThat(queryOperations.lastListSql).doesNotContain("tenant_id");
     }
 
     @Test

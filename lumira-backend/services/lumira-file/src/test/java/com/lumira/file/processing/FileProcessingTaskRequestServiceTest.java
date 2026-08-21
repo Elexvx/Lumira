@@ -273,7 +273,7 @@ class FileProcessingTaskRequestServiceTest {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = new CurrentUser(2001L, "tester", null, "session-1", 1, true, Set.of("system:file:upload"));
+        CurrentUser currentUser = new CurrentUser(2001L, "tester", "session-1", 1, true, Set.of("system:file:upload"));
         currentUser.setUserUuid("user-uuid-2001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

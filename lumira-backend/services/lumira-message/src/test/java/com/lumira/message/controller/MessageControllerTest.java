@@ -141,7 +141,7 @@ class MessageControllerTest {
     }
 
     private CurrentUser currentUser(String permission) {
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", 3, true, Set.of(permission));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of(permission));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

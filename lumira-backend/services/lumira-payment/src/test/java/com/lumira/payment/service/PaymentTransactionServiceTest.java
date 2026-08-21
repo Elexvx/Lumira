@@ -1075,7 +1075,6 @@ class PaymentTransactionServiceTest {
         CurrentUser currentUser = new CurrentUser(
                 1001L,
                 "tester",
-                null,
                 "session-1",
                 1,
                 true,
@@ -1097,7 +1096,6 @@ class PaymentTransactionServiceTest {
         return new CurrentUser(
                 1001L,
                 "tester",
-                null,
                 "session-1",
                 1,
                 true,

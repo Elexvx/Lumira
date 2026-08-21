@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Read boundary for the competition-registration bounded context.
  *
- * <p>Authorization, tenant identity and input validation remain in the application service. This
+ * <p>Authorization, resource identity and input validation remain in the application service. This
  * port owns only persisted registration, material, stage, payment and configuration lookups.</p>
  */
 public interface RegistrationQueryRepository {

@@ -276,8 +276,6 @@ class PermissionSnapshotServiceTest {
         service.loadSnapshot(1001L, "uuid-1001");
 
         assertEquals(queryCountAfterFirstLoad, jdbcTemplate.queryCount(), "Global snapshot cache should not be partitioned by request scope");
-        assertFalse(jdbcTemplate.usedLegacyScopeIds.contains(1L));
-        assertFalse(jdbcTemplate.usedLegacyScopeIds.contains(2L));
     }
 
     @Test
@@ -466,7 +464,6 @@ class PermissionSnapshotServiceTest {
         private boolean roleGranted = true;
         private RuntimeException rolePermissionQueryFailure;
         private final AtomicInteger queryCount = new AtomicInteger();
-        private final List<Long> usedLegacyScopeIds = java.util.Collections.synchronizedList(new ArrayList<>());
 
         private RecordingJdbcTemplate(List<String> permissions) {
             this.permissions = permissions;
@@ -493,7 +490,6 @@ class PermissionSnapshotServiceTest {
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             queryCount.incrementAndGet();
-            recordLegacyScopeArgs(args);
             try {
                 if (sql.contains("from sys_user_role ur") && sql.contains("select distinct ur.role_id")) {
                     return List.of(rowMapper.mapRow(row("role_id", 3001L), 0));
@@ -516,7 +512,6 @@ class PermissionSnapshotServiceTest {
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             queryCount.incrementAndGet();
-            recordLegacyScopeArgs(args);
             if (sql.contains("from sys_user_role ur") && sql.contains("and ur.role_id = ?")) {
                 return roleGranted ? List.of(Map.of("granted", 1)) : List.of();
             }
@@ -526,7 +521,6 @@ class PermissionSnapshotServiceTest {
         @Override
         public <T> List<T> queryForList(String sql, Class<T> requiredType, Object... args) {
             queryCount.incrementAndGet();
-            recordLegacyScopeArgs(args);
             return List.of();
         }
 
@@ -551,16 +545,6 @@ class PermissionSnapshotServiceTest {
             return resultSet;
         }
 
-        private void recordLegacyScopeArgs(Object... args) {
-            if (args == null) {
-                return;
-            }
-            for (Object arg : args) {
-                if (arg instanceof Long scopeId && (scopeId == 1001L || scopeId == 1L || scopeId == 2L)) {
-                    usedLegacyScopeIds.add(scopeId);
-                }
-            }
-        }
     }
 
     private static final class InMemoryCacheTemplate extends CacheTemplate {

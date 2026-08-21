@@ -576,7 +576,7 @@ class AiToolOrchestrationServiceHashTest {
     }
 
     private CurrentUser currentUser() {
-        return trusted(new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of("*", "system:user:view")));
+        return trusted(new CurrentUser(100L, "admin", "session-1", 1, true, Set.of("*", "system:user:view")));
     }
 
     private CurrentUser currentUserWithSimulatedRole(Long simulatedRoleId) {
@@ -590,15 +590,15 @@ class AiToolOrchestrationServiceHashTest {
     }
 
     private CurrentUser unauthenticatedUser() {
-        return new CurrentUser(100L, "admin", 1001L, "session-1", 1, false, Set.of("*", "system:user:view"));
+        return new CurrentUser(100L, "admin", "session-1", 1, false, Set.of("*", "system:user:view"));
     }
 
     private CurrentUser blankUsernameUser() {
-        return new CurrentUser(100L, " ", 1001L, "session-1", 1, true, Set.of("*", "system:user:view"));
+        return new CurrentUser(100L, " ", "session-1", 1, true, Set.of("*", "system:user:view"));
     }
 
     private CurrentUser missingSessionVersionUser() {
-        return new CurrentUser(100L, "admin", 1001L, "session-1", null, true, Set.of("*", "system:user:view"));
+        return new CurrentUser(100L, "admin", "session-1", null, true, Set.of("*", "system:user:view"));
     }
 
     private CurrentUser trusted(CurrentUser currentUser) {

@@ -760,7 +760,7 @@ class PaymentManagementAppServiceTest {
     }
 
     private CurrentUser currentUser(String... permissions) {
-        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, Set.of(permissions));
+        CurrentUser currentUser = new CurrentUser(1001L, "admin", "session-1", 1, true, Set.of(permissions));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

@@ -110,7 +110,6 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
         CurrentUser internalUser = new CurrentUser(
                 0L,
                 INTERNAL_PRINCIPAL_NAME,
-                null,
                 "internal",
                 0,
                 false,

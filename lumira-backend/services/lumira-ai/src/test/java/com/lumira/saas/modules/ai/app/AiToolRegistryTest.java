@@ -311,7 +311,7 @@ class AiToolRegistryTest {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = new CurrentUser(2001L, "alice", 1001L, "session-1", 1, true, Set.of("ai:tool:*"));
+        CurrentUser currentUser = new CurrentUser(2001L, "alice", "session-1", 1, true, Set.of("ai:tool:*"));
         currentUser.setUserUuid("user-uuid-2001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

@@ -156,7 +156,6 @@ class DddArchitectureCatalogControllerTest {
         CurrentUser currentUser = new CurrentUser(
                 1001L,
                 "architect",
-                null,
                 "session-1",
                 1,
                 true,
@@ -194,7 +193,6 @@ class DddArchitectureCatalogControllerTest {
         CurrentUser currentUser = new CurrentUser(
                 1001L,
                 "architect",
-                null,
                 "session-1",
                 1,
                 true,

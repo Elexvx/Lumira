@@ -129,7 +129,7 @@
 
 | 服务/模块 | 核心职责 | 主数据 | 对外契约 |
 |---|---|---|---|
-| API Gateway / IAM | 登录、Token、租户、角色、权限、限流 | 用户、角色、权限映射 | 鉴权上下文、权限快照 |
+| API Gateway / IAM | 登录、Token、角色、权限、限流 | 用户、角色、权限映射 | 鉴权上下文、权限快照 |
 | Competition | 赛事、阶段、规则、报名/材料时间窗 | competition、stage、rule | CompetitionPublished、StageWindowChanged |
 | Registration | 报名、逻辑数据集、资料快照、参赛资格 | dataset、registration、snapshot、eligibility | RegistrationConfirmed、CandidateFrozen |
 | Team / Project | 团队、成员、项目主数据 | team、member、project | TeamChanged、ProjectChanged |
@@ -203,7 +203,7 @@
 | 团队负责人 | 本团队报名、成员和材料 | 管理本团队报名；成员移除需二次确认 |
 | 赛事运营 | 授权赛事的数据集 | 查看、复核、导出；敏感字段按权限脱敏 |
 | 评审专家 | 被分配任务的候选快照 | 仅填写自己的评分单 |
-| 平台管理员 | 全租户或授权租户 | 管理与审计，默认不替专家改分 |
+| 平台管理员 | 当前部署内全部赛事或授权赛事 | 管理与审计，默认不替专家改分 |
 
 所有查询采用服务端数据范围谓词，不依赖前端隐藏。文件下载必须校验“文件引用属于当前可访问报名/评审任务”，不能只校验 `file:view`。
 
@@ -347,7 +347,7 @@
 所有评审主表统一包含：
 
 - `id`、业务 UUID。
-- `tenant_id`、`competition_id`，必要时包含 `dataset_id`。
+- `competition_id`，必要时包含 `dataset_id`。
 - `version` 乐观锁。
 - `created_by/uuid`、`updated_by/uuid`、时间。
 - `deleted` 仅用于草稿类数据；已提交评分和发布记录不物理删除。
@@ -398,7 +398,7 @@
 | `CompetitionAwardConfirmed` | Review/Competition | Certificate、Message |
 | `ExportCompleted` | Export | Message、Audit |
 
-事件必须包含 `eventId`、`eventType`、`occurredAt`、`aggregateId`、`aggregateVersion`、`tenantId`、`competitionId`、`traceId` 和 `payloadVersion`。
+事件必须包含 `eventId`、`eventType`、`occurredAt`、`aggregateId`、`aggregateVersion`、`competitionId`、`traceId` 和 `payloadVersion`。
 
 ## 10. 权限、安全与合规
 
@@ -428,13 +428,13 @@ registration:material:download
 权限判断同时包含：
 
 - 功能权限。
-- 租户范围。
+- 赛事和数据集范围。
 - 赛事范围。
 - 数据集范围。
 - 任务/所有者范围。
 - 字段级脱敏规则。
 
-管理员“全部可见”应理解为在其租户与职责范围内全部可见；跨租户仍需平台级授权。
+管理员“全部可见”应理解为在当前部署与职责范围内全部可见；不依赖跨部署授权。
 
 ### 10.3 盲审与隐私
 
@@ -625,7 +625,7 @@ registration:material:download
 - 评审批次定稿耗时、发布撤回次数。
 - 晋级率、申诉率、证书签发成功率。
 
-所有告警包含 `tenantId`、`competitionId`、`batchId` 和 `traceId`，便于赛事级定位。
+所有告警包含 `competitionId`、`batchId` 和 `traceId`，便于赛事级定位。
 
 ## 17. 风险与应对
 

@@ -528,7 +528,6 @@ class AiNativeToolRuntimeServiceTest {
         CurrentUser currentUser = trusted(new CurrentUser(
                 100L,
                 "admin",
-                1001L,
                 "session-1",
                 1,
                 true,
@@ -669,7 +668,7 @@ class AiNativeToolRuntimeServiceTest {
     void listToolsHidesPermissionedToolsFromUnauthorizedUser() {
         DefaultAiNativeToolRuntimeService service = newService(new StubQueryOperations(), mock(AiSkillPermissionChecker.class));
 
-        List<AiVO.ToolVO> tools = service.listTools(trusted(new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of())));
+        List<AiVO.ToolVO> tools = service.listTools(trusted(new CurrentUser(100L, "admin", "session-1", 1, true, Set.of())));
 
         assertThat(tools).extracting(AiVO.ToolVO::getToolCode)
                 .contains("system.permission.snapshot")
@@ -680,7 +679,7 @@ class AiNativeToolRuntimeServiceTest {
     void listToolsHidesPermissionedToolsFromUntrustedWildcardUser() {
         DefaultAiNativeToolRuntimeService service = newService(new StubQueryOperations(), mock(AiSkillPermissionChecker.class));
 
-        List<AiVO.ToolVO> tools = service.listTools(new CurrentUser(100L, "admin", 1001L, "session-1", 1, false, Set.of("*")));
+        List<AiVO.ToolVO> tools = service.listTools(new CurrentUser(100L, "admin", "session-1", 1, false, Set.of("*")));
 
         assertThat(tools).extracting(AiVO.ToolVO::getToolCode)
                 .contains("system.permission.snapshot")
@@ -755,7 +754,6 @@ class AiNativeToolRuntimeServiceTest {
         CurrentUser currentUser = trusted(new CurrentUser(
                 100L,
                 "admin",
-                1001L,
                 "session-1",
                 1,
                 true,
@@ -975,7 +973,6 @@ class AiNativeToolRuntimeServiceTest {
         CurrentUser currentUser = new CurrentUser(
                 100L,
                 "admin",
-                1001L,
                 "session-1",
                 1,
                 true,
@@ -1009,7 +1006,6 @@ class AiNativeToolRuntimeServiceTest {
         CurrentUser currentUser = new CurrentUser(
                 100L,
                 "admin",
-                1001L,
                 "session-1",
                 1,
                 true,
@@ -1022,7 +1018,6 @@ class AiNativeToolRuntimeServiceTest {
         CurrentUser currentUser = new CurrentUser(
                 100L,
                 "admin",
-                1001L,
                 "session-1",
                 1,
                 true,
@@ -1043,7 +1038,6 @@ class AiNativeToolRuntimeServiceTest {
         return new CurrentUser(
                 100L,
                 "admin",
-                1001L,
                 "session-1",
                 1,
                 false,
@@ -1055,7 +1049,6 @@ class AiNativeToolRuntimeServiceTest {
         return new CurrentUser(
                 100L,
                 " ",
-                1001L,
                 "session-1",
                 1,
                 true,
@@ -1067,7 +1060,6 @@ class AiNativeToolRuntimeServiceTest {
         return new CurrentUser(
                 100L,
                 "admin",
-                1001L,
                 null,
                 1,
                 true,

@@ -31,7 +31,7 @@ class DashboardControllerTest {
         SystemManagementAppService appService = mock(SystemManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("dashboard:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -50,7 +50,7 @@ class DashboardControllerTest {
         SystemManagementAppService appService = mock(SystemManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("dashboard:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -70,7 +70,7 @@ class DashboardControllerTest {
         SystemManagementAppService appService = mock(SystemManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("dashboard:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -91,7 +91,7 @@ class DashboardControllerTest {
     void summaryShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
         SystemManagementAppService appService = mock(SystemManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("dashboard:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -110,7 +110,7 @@ class DashboardControllerTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("dashboard:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -142,7 +142,7 @@ class DashboardControllerTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("dashboard:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("dashboard:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         currentUser.setSimulatedRoleId(0L);

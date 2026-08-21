@@ -29,7 +29,7 @@ class MessageJwtAuthFilterTest {
         JwtTokenService jwtTokenService = mock(JwtTokenService.class);
         MessageSessionAuthenticationService sessionAuthenticationService = mock(MessageSessionAuthenticationService.class);
         MessageJwtAuthFilter filter = new MessageJwtAuthFilter(jwtTokenService, sessionAuthenticationService, responseMapper());
-        CurrentUser internalUser = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of());
+        CurrentUser internalUser = new CurrentUser(0L, "internal-service", "internal", 0, false, Set.of());
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(internalUser, "internal-token", Set.of())
         );
@@ -64,7 +64,7 @@ class MessageJwtAuthFilterTest {
     void shouldAuthenticateTrustedBearerWithSessionServiceOnlyOnce() throws Exception {
         JwtTokenService jwtTokenService = mock(JwtTokenService.class);
         MessageSessionAuthenticationService sessionAuthenticationService = mock(MessageSessionAuthenticationService.class);
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1L, "session-1", 1, true, Set.of("message:read"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 1, true, Set.of("message:read"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         when(sessionAuthenticationService.authenticateAccessToken("access-token"))

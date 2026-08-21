@@ -133,7 +133,7 @@ class AiV2ControllerTest {
 
     private SecurityContextFacade trustedSecurityContext(Set<String> permissions) {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
-        CurrentUser user = new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, permissions);
+        CurrentUser user = new CurrentUser(7L, "ai-user", "s1", 1, true, permissions);
         user.setUserUuid("user-uuid-7");
         user.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(user);

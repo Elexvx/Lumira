@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DictRuntimeServiceTest {
 
     @Test
-    void listEnabledItemsShouldNotDependOnTenantScope() {
+    void listEnabledItemsShouldUseDictionaryCodePredicate() {
         FakeJdbcTemplate jdbcTemplate = new FakeJdbcTemplate(List.of(item("MALE", "Male", 10)));
         DictRuntimeService service = new DictRuntimeService(new JdbcDictRuntimeRepository(jdbcTemplate));
 
@@ -26,7 +26,6 @@ class DictRuntimeServiceTest {
         assertEquals(1, items.size());
         assertEquals("sys_user_gender", jdbcTemplate.lastArgs.get(0));
         assertTrue(jdbcTemplate.lastSql.contains("where t.dict_code = ?"));
-        assertTrue(!jdbcTemplate.lastSql.contains("tenant_id = ?"));
     }
 
     @Test

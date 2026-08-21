@@ -21,7 +21,7 @@ class MessageWebSocketHandlerTest {
         MessageConnectionSnapshotService connectionSnapshotService = mock(MessageConnectionSnapshotService.class);
         MessageWebSocketHandler handler = new MessageWebSocketHandler(webSocketRegistry, connectionSnapshotService);
         WebSocketSession session = mock(WebSocketSession.class);
-        CurrentUser currentUser = new CurrentUser(1001L, " ", 1001L, "session-1", 3, true, Set.of("message:message:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, " ", "session-1", 3, true, Set.of("message:message:view"));
         Map<String, Object> attributes = new HashMap<>();
         attributes.put(MessageSessionHandshakeInterceptor.CURRENT_USER_ATTR, currentUser);
         when(session.getAttributes()).thenReturn(attributes);
@@ -39,7 +39,7 @@ class MessageWebSocketHandlerTest {
         MessageConnectionSnapshotService connectionSnapshotService = mock(MessageConnectionSnapshotService.class);
         MessageWebSocketHandler handler = new MessageWebSocketHandler(webSocketRegistry, connectionSnapshotService);
         WebSocketSession session = mock(WebSocketSession.class);
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", null, true, Set.of("message:message:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", null, true, Set.of("message:message:view"));
         Map<String, Object> attributes = new HashMap<>();
         attributes.put(MessageSessionHandshakeInterceptor.CURRENT_USER_ATTR, currentUser);
         when(session.getAttributes()).thenReturn(attributes);
@@ -57,7 +57,7 @@ class MessageWebSocketHandlerTest {
         MessageConnectionSnapshotService connectionSnapshotService = mock(MessageConnectionSnapshotService.class);
         MessageWebSocketHandler handler = new MessageWebSocketHandler(webSocketRegistry, connectionSnapshotService);
         WebSocketSession session = mock(WebSocketSession.class);
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", 3, true, Set.of("message:message:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         Map<String, Object> attributes = new HashMap<>();

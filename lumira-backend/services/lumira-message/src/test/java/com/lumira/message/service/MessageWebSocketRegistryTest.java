@@ -210,7 +210,7 @@ class MessageWebSocketRegistryTest {
     }
 
     private CurrentUser currentUser(String userUuid) {
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", 3, true, Set.of("message:message:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 3, true, Set.of("message:message:view"));
         currentUser.setUserUuid(userUuid);
         currentUser.setSimulatedRoleId(9L);
         currentUser.setPermissionsVersion("permissions-1");

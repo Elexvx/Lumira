@@ -38,7 +38,7 @@ class ProfileControllerTest {
         SystemManagementAppService appService = mock(SystemManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -64,7 +64,7 @@ class ProfileControllerTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         MultipartFile file = mock(MultipartFile.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -84,7 +84,7 @@ class ProfileControllerTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         MultipartFile file = mock(MultipartFile.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, false, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, false, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -103,7 +103,7 @@ class ProfileControllerTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         MultipartFile file = mock(MultipartFile.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", null, true, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", null, true, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -123,7 +123,7 @@ class ProfileControllerTest {
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         MultipartFile file = mock(MultipartFile.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -144,7 +144,7 @@ class ProfileControllerTest {
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
         MultipartFile file = mock(MultipartFile.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -165,7 +165,7 @@ class ProfileControllerTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         MultipartFile file = mock(MultipartFile.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -185,7 +185,7 @@ class ProfileControllerTest {
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         MultipartFile file = mock(MultipartFile.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -210,7 +210,7 @@ class ProfileControllerTest {
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         MultipartFile file = mock(MultipartFile.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -244,7 +244,7 @@ class ProfileControllerTest {
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("profile:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("profile:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         currentUser.setSimulatedRoleId(0L);

@@ -139,7 +139,7 @@ class SystemInternalApiServiceTest {
     }
 
     private Authentication userAuthentication() {
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", null, "session-1", 1, true, Set.of("system:user:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 1, true, Set.of("system:user:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("v1");
         return new UsernamePasswordAuthenticationToken(currentUser, "jwt", Set.of());

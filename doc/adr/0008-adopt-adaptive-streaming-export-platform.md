@@ -8,7 +8,7 @@ Proposed
 
 用户管理已有按 5,000 条切换同步/异步的导出基础，但异步路径仍会把全部记录加载为 List，并用 `XSSFWorkbook` 和 byte array 在内存中生成完整文件。其他管理页面尚未统一接入这一能力。
 
-赛事报名字段动态、包含个人信息，未来多租户和大批量导出同时要求数据作用域、字段授权、稳定内存、任务恢复、审计和文件过期。
+赛事报名字段动态、包含个人信息，大批量导出同时要求资源范围、字段授权、稳定内存、任务恢复、审计和文件过期。
 
 ## 决策
 
@@ -18,7 +18,7 @@ Proposed
 - 读取使用 keyset cursor 和固定批次；XLSX 使用流式 workbook/临时文件，超大数据使用 CSV/ZIP。
 - 不在 JSON 中返回 Base64 文件，不把全部记录或完整工作簿保存在 JVM heap。
 - 任务与 Outbox 同事务创建；async worker 使用 lease、heartbeat、cursor、retry、cancel 和 expiry。
-- 每个任务绑定 tenant/resource/filter/field/permission snapshot，并执行字段脱敏和审计。
+- 每个任务绑定 resource/filter/field/permission snapshot，并执行字段脱敏和审计。
 
 ## 影响
 

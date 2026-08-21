@@ -188,7 +188,7 @@ class SystemControllerTest {
     }
 
     private static CurrentUser currentUser() {
-        CurrentUser currentUser = new CurrentUser(42L, "alice", null, "session-1", 1, true, Set.of("system:role:view"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, true, Set.of("system:role:view"));
         currentUser.setUserUuid("user-uuid-42");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

@@ -126,7 +126,7 @@ class FileControllerTest {
     }
 
     private CurrentUser trustedCurrentUser(String permission) {
-        CurrentUser currentUser = new CurrentUser(100L, "alice", 1001L, "session-1", 1, true, Set.of(permission));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of(permission));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

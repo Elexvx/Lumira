@@ -838,19 +838,19 @@ class AiEmployeeRuntimeServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return trusted(new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of("ai:chat:send")));
+        return trusted(new CurrentUser(100L, "admin", "session-1", 1, true, Set.of("ai:chat:send")));
     }
 
     private CurrentUser unauthenticatedUser() {
-        return new CurrentUser(100L, "admin", 1001L, "session-1", 1, false, Set.of("*", "ai:chat:send"));
+        return new CurrentUser(100L, "admin", "session-1", 1, false, Set.of("*", "ai:chat:send"));
     }
 
     private CurrentUser missingSessionVersionUser() {
-        return new CurrentUser(100L, "admin", 1001L, "session-1", null, true, Set.of("*", "ai:chat:send"));
+        return new CurrentUser(100L, "admin", "session-1", null, true, Set.of("*", "ai:chat:send"));
     }
 
     private CurrentUser currentUserWithoutChatPermission() {
-        return trusted(new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of("ai:view")));
+        return trusted(new CurrentUser(100L, "admin", "session-1", 1, true, Set.of("ai:view")));
     }
 
     private CurrentUser trusted(CurrentUser currentUser) {

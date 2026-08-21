@@ -69,7 +69,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void providers_shouldAllowProtectedAdminAndDelegateToManagementService() {
-        CurrentUser admin = currentUser(1001L, "admin", 0L, "payment:config:view");
+        CurrentUser admin = currentUser(1001L, "admin", "payment:config:view");
         PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
         settings.setProviderCode("stripe");
         when(securityContextFacade.getCurrentUser()).thenReturn(admin);
@@ -106,7 +106,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void providers_shouldAllowProtectedAdminWithRenamedUsername() {
-        CurrentUser admin = currentUser(1001L, "root-admin", 0L, "payment:config:view");
+        CurrentUser admin = currentUser(1001L, "root-admin", "payment:config:view");
         PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
         settings.setProviderCode("stripe");
         when(securityContextFacade.getCurrentUser()).thenReturn(admin);
@@ -120,7 +120,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void providers_shouldRejectProtectedAdminWhileSimulatingRole() {
-        CurrentUser admin = currentUser(1001L, "root-admin", 0L, "payment:config:view");
+        CurrentUser admin = currentUser(1001L, "root-admin", "payment:config:view");
         admin.setSimulatedRoleId(9001L);
         when(securityContextFacade.getCurrentUser()).thenReturn(admin);
 
@@ -133,7 +133,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void updateProvider_shouldDelegateWithOperator() {
-        CurrentUser admin = currentUser(1001L, "admin", null, "payment:config:update");
+        CurrentUser admin = currentUser(1001L, "admin", "payment:config:update");
         PaymentProviderSettingsDTO request = new PaymentProviderSettingsDTO();
         PaymentProviderSettingsDTO result = new PaymentProviderSettingsDTO();
         result.setProviderCode("stripe");
@@ -148,7 +148,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void createOrder_shouldCheckPermissionAndDelegateToTransactionService() {
-        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
+        CurrentUser currentUser = currentUser(42L, "alice", "payment:order:create");
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -174,7 +174,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void manualOrders_shouldRequireViewPermissionAndDelegate() {
-        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:view");
+        CurrentUser currentUser = currentUser(42L, "alice", "payment:order:view");
         PageResponse<PaymentOrderDTO> page = new PageResponse<>();
         when(paymentTransactionService.listManualOrdersForUser(currentUser, 1, 50)).thenReturn(page);
 
@@ -187,7 +187,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void cancelOrder_shouldRequireCreatePermissionAndDelegate() {
-        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
+        CurrentUser currentUser = currentUser(42L, "alice", "payment:order:create");
         PaymentOrderDTO cancelled = new PaymentOrderDTO(
                 "MAN-WX-P-1-CANCEL",
                 "wechat_pay",
@@ -219,7 +219,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void createSandboxOrder_shouldRequireProtectedAdminAndDelegateToSandboxTransactionService() {
-        CurrentUser admin = currentUser(1001L, "admin", 0L, "payment:config:update");
+        CurrentUser admin = currentUser(1001L, "admin", "payment:config:update");
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-SANDBOX-1",
@@ -245,7 +245,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void createOrder_shouldRejectUnauthenticatedUserBeforePermissionAndService() {
-        CurrentUser currentUser = new CurrentUser(42L, "alice", 1001L, "session-1", 1, false, Set.of("payment:order:create"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", 1, false, Set.of("payment:order:create"));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -295,7 +295,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void createOrder_shouldRejectMissingSessionVersionBeforePermissionAndService() {
-        CurrentUser currentUser = new CurrentUser(42L, "alice", 1001L, "session-1", null, true, Set.of("payment:order:create"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", "session-1", null, true, Set.of("payment:order:create"));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -405,7 +405,7 @@ class PaymentV2ControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
+        CurrentUser currentUser = currentUser(42L, "alice", "payment:order:create");
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -435,7 +435,7 @@ class PaymentV2ControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
+        CurrentUser currentUser = currentUser(42L, "alice", "payment:order:create");
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -456,11 +456,7 @@ class PaymentV2ControllerTest {
     }
 
     private CurrentUser currentUser(Long userId, String username, String permission) {
-        return currentUser(userId, username, 1001L, permission);
-    }
-
-    private CurrentUser currentUser(Long userId, String username, Long legacyScopeId, String permission) {
-        CurrentUser currentUser = new CurrentUser(userId, username, legacyScopeId, "session-1", 1, true, Set.of(permission));
+        CurrentUser currentUser = new CurrentUser(userId, username, "session-1", 1, true, Set.of(permission));
         currentUser.setUserUuid("user-uuid-" + userId);
         currentUser.setPermissionsVersion("permissions-1");
         SecurityContextHolder.getContext().setAuthentication(

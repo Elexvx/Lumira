@@ -29,7 +29,7 @@ class TeamJwtAuthFilterTest {
         JwtTokenService jwtTokenService = mock(JwtTokenService.class);
         AuthInternalApi authInternalApi = mock(AuthInternalApi.class);
         TeamJwtAuthFilter filter = new TeamJwtAuthFilter(jwtTokenService, authInternalApi);
-        CurrentUser internalUser = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of());
+        CurrentUser internalUser = new CurrentUser(0L, "internal-service", "internal", 0, false, Set.of());
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(internalUser, "internal-token", Set.of())
         );

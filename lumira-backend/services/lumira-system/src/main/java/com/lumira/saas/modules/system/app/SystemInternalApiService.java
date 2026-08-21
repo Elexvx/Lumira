@@ -359,7 +359,7 @@ public class SystemInternalApiService implements SystemInternalApi {
     }
 
     private static Authentication internalServiceAuthentication() {
-        CurrentUser internalService = new CurrentUser(0L, "internal-service", null, "internal", 0, false, java.util.Set.of());
+        CurrentUser internalService = new CurrentUser(0L, "internal-service", "internal", 0, false, java.util.Set.of());
         return new UsernamePasswordAuthenticationToken(internalService, "internal-token", java.util.Set.of());
     }
 

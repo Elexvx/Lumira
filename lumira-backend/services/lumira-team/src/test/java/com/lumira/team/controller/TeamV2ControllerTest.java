@@ -108,7 +108,7 @@ class TeamV2ControllerTest {
     }
 
     private CurrentUser trustedCurrentUser() {
-        CurrentUser currentUser = new CurrentUser(3001L, "alice", 1001L, "session-1", 1, true, Set.of("team:view"));
+        CurrentUser currentUser = new CurrentUser(3001L, "alice", "session-1", 1, true, Set.of("team:view"));
         currentUser.setUserUuid("user-uuid-3001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

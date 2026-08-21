@@ -31,7 +31,7 @@ class SensitiveWordRequestBodyAdviceTest {
                 securityContextFacade,
                 pluginStateService
         );
-        CurrentUser currentUser = new CurrentUser(1001L, " ", 1001L, "session-1", 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(1001L, " ", "session-1", 1, true, Set.of("*"));
         Object body = new Object();
         when(securityContextFacade.getCurrentUserOrNull()).thenReturn(currentUser);
 
@@ -52,7 +52,7 @@ class SensitiveWordRequestBodyAdviceTest {
                 securityContextFacade,
                 pluginStateService
         );
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", null, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", null, true, Set.of("*"));
         Object body = new Object();
         when(securityContextFacade.getCurrentUserOrNull()).thenReturn(currentUser);
 

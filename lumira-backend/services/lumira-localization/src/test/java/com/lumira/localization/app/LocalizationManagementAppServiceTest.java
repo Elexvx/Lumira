@@ -226,7 +226,7 @@ class LocalizationManagementAppServiceTest {
     void publish_shouldRejectUnauthenticatedUserBeforeReleaseWrite() {
         LocalizationDTO.PublishRequest request = new LocalizationDTO.PublishRequest();
         request.setLocaleCode("zh-CN");
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, false, Set.of("localization:publish"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, false, Set.of("localization:publish"));
 
         assertThatThrownBy(() -> service.publish(request, currentUser))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -240,7 +240,7 @@ class LocalizationManagementAppServiceTest {
     void publish_shouldRejectBlankUsernameBeforeReleaseWrite() {
         LocalizationDTO.PublishRequest request = new LocalizationDTO.PublishRequest();
         request.setLocaleCode("zh-CN");
-        CurrentUser currentUser = new CurrentUser(100L, " ", null, "session-1", 1, true, Set.of("localization:publish"));
+        CurrentUser currentUser = new CurrentUser(100L, " ", "session-1", 1, true, Set.of("localization:publish"));
 
         assertThatThrownBy(() -> service.publish(request, currentUser))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -254,7 +254,7 @@ class LocalizationManagementAppServiceTest {
     void publish_shouldRejectMissingSessionVersionBeforeReleaseWrite() {
         LocalizationDTO.PublishRequest request = new LocalizationDTO.PublishRequest();
         request.setLocaleCode("zh-CN");
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", null, true, Set.of("localization:publish"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", null, true, Set.of("localization:publish"));
 
         assertThatThrownBy(() -> service.publish(request, currentUser))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -268,7 +268,7 @@ class LocalizationManagementAppServiceTest {
     void publish_shouldRejectMissingUserUuidBeforeReleaseWrite() {
         LocalizationDTO.PublishRequest request = new LocalizationDTO.PublishRequest();
         request.setLocaleCode("zh-CN");
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("localization:publish"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of("localization:publish"));
         currentUser.setPermissionsVersion("permissions-1");
 
         assertThatThrownBy(() -> service.publish(request, currentUser))
@@ -285,7 +285,7 @@ class LocalizationManagementAppServiceTest {
         request.setLocaleCode("en-US");
         request.setLanguageName("English");
         request.setDefaultLanguage(false);
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, false, Set.of("localization:update"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, false, Set.of("localization:update"));
 
         assertThatThrownBy(() -> service.saveLanguage(currentUser, null, request))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -301,7 +301,7 @@ class LocalizationManagementAppServiceTest {
         request.setLocaleCode("en-US");
         request.setLanguageName("English");
         request.setDefaultLanguage(false);
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("localization:update"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of("localization:update"));
         currentUser.setUserUuid("user-uuid-100");
 
         assertThatThrownBy(() -> service.saveLanguage(currentUser, null, request))
@@ -615,7 +615,7 @@ class LocalizationManagementAppServiceTest {
     }
 
     private CurrentUser trustedUser(String... permissions) {
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of(permissions));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of(permissions));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "alice", "ENABLED"));

@@ -16,7 +16,7 @@ import static org.mockito.Mockito.when;
 class LoginAuditServiceTest {
 
     @Test
-    void logRecordsTrustedUserWithoutTenant() {
+    void logRecordsTrustedUserWithoutScopeContext() {
         AuditLoginLogMapper mapper = mock(AuditLoginLogMapper.class);
         when(mapper.insert(org.mockito.ArgumentMatchers.any(AuditLoginLogEntity.class))).thenReturn(1);
         LoginAuditService service = new LoginAuditService(mapper);

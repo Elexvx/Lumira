@@ -90,7 +90,7 @@ class InternalPaymentControllerTest {
     }
 
     private void authenticateInternalService() {
-        CurrentUser internalService = new CurrentUser(0L, "internal-service", null, "internal", 0, false, java.util.Set.of());
+        CurrentUser internalService = new CurrentUser(0L, "internal-service", "internal", 0, false, java.util.Set.of());
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(internalService, "internal-token", java.util.Set.of())
         );

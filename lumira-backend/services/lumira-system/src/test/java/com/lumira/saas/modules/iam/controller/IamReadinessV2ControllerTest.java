@@ -45,8 +45,6 @@ class IamReadinessV2ControllerTest {
                         "/api/v2/iam/readiness",
                         "SystemInternalApi.currentPermissionSnapshot"
                 );
-        assertThat(readiness.apiContracts())
-                .noneMatch(contract -> contract.contains("/tenants"));
         assertThat(readiness.eventContracts())
                 .contains("RolePermissionsChanged", "iam/permission_snapshot read-model version bump");
         assertThat(readiness.healthChecks())
@@ -66,8 +64,6 @@ class IamReadinessV2ControllerTest {
                 );
         assertThat(readiness.blockers())
                 .anySatisfy(blocker -> assertThat(blocker).contains("permission snapshot invalidation"));
-        assertThat(readiness.blockers())
-                .noneSatisfy(blocker -> assertThat(blocker).contains("tenant write-side"));
 
         var health = controller.health().getData();
         assertThat(health.status()).isEqualTo("UP");
@@ -178,7 +174,7 @@ class IamReadinessV2ControllerTest {
     void metricsShouldNormalizeInvalidSimulatedRoleIdBeforePermissionSnapshot() {
         OwnerReadModelMetricsService metricsService = Mockito.mock(OwnerReadModelMetricsService.class);
         SecurityContextFacade securityContextFacade = Mockito.mock(SecurityContextFacade.class);
-        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, Set.of("system:monitor:service:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "admin", "session-1", 1, true, Set.of("system:monitor:service:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         currentUser.setSimulatedRoleId(0L);
@@ -211,7 +207,7 @@ class IamReadinessV2ControllerTest {
 
     private SecurityContextFacade securityContext(Set<String> permissions) {
         SecurityContextFacade securityContextFacade = Mockito.mock(SecurityContextFacade.class);
-        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, permissions);
+        CurrentUser currentUser = new CurrentUser(1001L, "admin", "session-1", 1, true, permissions);
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);

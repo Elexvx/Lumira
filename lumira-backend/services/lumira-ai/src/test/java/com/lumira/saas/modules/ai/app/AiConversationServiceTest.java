@@ -458,11 +458,11 @@ class AiConversationServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return trusted(new CurrentUser(1001L, "alice", 100L, "session-1", 1, true, Set.of("ai:chat:send")));
+        return trusted(new CurrentUser(1001L, "alice", "session-1", 1, true, Set.of("ai:chat:send")));
     }
 
     private CurrentUser unauthenticatedUser() {
-        return new CurrentUser(1001L, "alice", 100L, "session-1", 1, false, Set.of("*"));
+        return new CurrentUser(1001L, "alice", "session-1", 1, false, Set.of("*"));
     }
 
     private CurrentUser trusted(CurrentUser currentUser) {

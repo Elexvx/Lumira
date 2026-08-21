@@ -46,7 +46,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldRemoveIdleTimedOutSessionFromStore() throws Exception {
         Fixture fixture = buildFixture();
-        AuthSession session = buildSession("session-1", 1001L, 2001L, Instant.now().minusSeconds(4000), Instant.now().plusSeconds(3600));
+        AuthSession session = buildSession("session-1", 2001L, Instant.now().minusSeconds(4000), Instant.now().plusSeconds(3600));
         TokenClaims claims = buildClaims(session, "token-1");
         fixture.jwtTokenService.setTokenClaims(claims);
         fixture.authSessionStore.put(session);
@@ -62,7 +62,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldRejectStaleTokenWithoutRemovingTrustedSession() throws Exception {
         Fixture fixture = buildFixture();
-        AuthSession session = buildSession("session-2", 1001L, 2001L, Instant.now().minusSeconds(60), Instant.now().plusSeconds(3600));
+        AuthSession session = buildSession("session-2", 2001L, Instant.now().minusSeconds(60), Instant.now().plusSeconds(3600));
         TokenClaims claims = buildClaims(session, "token-2");
         claims.setUserId(9999L);
         fixture.jwtTokenService.setTokenClaims(claims);
@@ -78,7 +78,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldThrottleLastActivityWritesForActiveSessions() throws Exception {
         Fixture fixture = buildFixture();
-        AuthSession session = buildSession("session-3", 1001L, 2001L, Instant.now().minusSeconds(10), Instant.now().plusSeconds(3600));
+        AuthSession session = buildSession("session-3", 2001L, Instant.now().minusSeconds(10), Instant.now().plusSeconds(3600));
         TokenClaims claims = buildClaims(session, "token-3");
         fixture.jwtTokenService.setTokenClaims(claims);
         fixture.authSessionStore.put(session);
@@ -92,7 +92,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldPersistLastActivityWhenThrottleWindowExpires() throws Exception {
         Fixture fixture = buildFixture();
-        AuthSession session = buildSession("session-4", 1001L, 2001L, Instant.now().minusSeconds(120), Instant.now().plusSeconds(3600));
+        AuthSession session = buildSession("session-4", 2001L, Instant.now().minusSeconds(120), Instant.now().plusSeconds(3600));
         TokenClaims claims = buildClaims(session, "token-4");
         fixture.jwtTokenService.setTokenClaims(claims);
         fixture.authSessionStore.put(session);
@@ -109,7 +109,6 @@ class JwtAuthFilterTest {
         Fixture fixture = buildFixture();
         AuthSession staleSession = buildSession(
                 "session-cas",
-                1001L,
                 2001L,
                 Instant.now().minusSeconds(120),
                 Instant.now().plusSeconds(3600)
@@ -117,7 +116,6 @@ class JwtAuthFilterTest {
         populatePermissionSnapshot(staleSession);
         AuthSession concurrentSession = buildSession(
                 "session-cas",
-                1001L,
                 2001L,
                 Instant.now(),
                 Instant.now().plusSeconds(3600)
@@ -138,7 +136,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldNotUpdateActivityRefreshMetricWhenWithinThrottleWindow() throws Exception {
         Fixture fixture = buildFixture();
-        AuthSession session = buildSession("session-5", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
+        AuthSession session = buildSession("session-5", 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
         session.setPermissionsVersion("test");
         session.setPermissions(java.util.List.of("session:read"));
         session.setRoleIds(java.util.List.of(3L));
@@ -169,7 +167,7 @@ class JwtAuthFilterTest {
         Fixture fixture = buildFixture(true);
         fixture.request.setMethod("GET");
         fixture.request.setRequestURI(path);
-        AuthSession session = buildSession("session-6", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
+        AuthSession session = buildSession("session-6", 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
         session.setPermissionsVersion("test");
         session.setPermissions(java.util.List.of("session:read"));
         session.setRoleIds(java.util.List.of(3L));
@@ -196,7 +194,7 @@ class JwtAuthFilterTest {
         Fixture fixture = buildFixture(true);
         fixture.request.setMethod(method);
         fixture.request.setRequestURI(path);
-        AuthSession session = buildSession("session-passkey", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
+        AuthSession session = buildSession("session-passkey", 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
         session.setPermissionsVersion("test");
         session.setPermissions(java.util.List.of("session:read"));
         session.setRoleIds(java.util.List.of(3L));
@@ -311,7 +309,7 @@ class JwtAuthFilterTest {
         return securityProperties;
     }
 
-    private AuthSession buildSession(String sessionId, long tenantId, long userId, Instant lastActivityAt, Instant expireTime) {
+    private AuthSession buildSession(String sessionId, long userId, Instant lastActivityAt, Instant expireTime) {
         AuthSession session = new AuthSession();
         session.setSessionId(sessionId);
         session.setUserId(userId);

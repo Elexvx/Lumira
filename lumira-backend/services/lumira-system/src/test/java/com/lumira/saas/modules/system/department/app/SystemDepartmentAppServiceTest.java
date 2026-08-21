@@ -81,7 +81,6 @@ class SystemDepartmentAppServiceTest {
         assertThat(queryOperations.existsCallCount).isEqualTo(2);
         assertThat(queryOperations.countQueryCalled).isFalse();
         assertThat(queryOperations.updateCalled).isTrue();
-        assertThat(queryOperations.seenTenantReference).isFalse();
         verify(permissionSnapshotService).invalidatePermissions();
     }
 
@@ -669,21 +668,18 @@ class SystemDepartmentAppServiceTest {
         private boolean departmentCodeExists;
         private boolean countQueryCalled;
         private boolean updateCalled;
-        private boolean seenTenantReference;
         private int existsCallCount;
         private int queryCallCount;
         private int updateResult = 1;
 
         @Override
         public boolean exists(String sql, Object... args) {
-            recordTenantUsage(sql, args);
             existsCallCount += 1;
             return departmentCodeExists && sql.contains("dept_code = ?");
         }
 
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
-            recordTenantUsage(sql, args);
             queryCallCount += 1;
             if (sql.contains("from sys_department d")) {
                 return castList(List.of(department(2001L, null, "sales", "销售部")));
@@ -693,7 +689,6 @@ class SystemDepartmentAppServiceTest {
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            recordTenantUsage(sql, args);
             if (sql.contains("count(1)")) {
                 countQueryCalled = true;
             }
@@ -705,7 +700,6 @@ class SystemDepartmentAppServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
-            recordTenantUsage(sql, args);
             if (elementType == Long.class && sql.contains("with recursive dept_tree")) {
                 return castList(List.of(2001L));
             }
@@ -714,20 +708,8 @@ class SystemDepartmentAppServiceTest {
 
         @Override
         public int update(String sql, Object... args) {
-            recordTenantUsage(sql, args);
             updateCalled = true;
             return updateResult;
-        }
-
-        private void recordTenantUsage(String sql, Object... args) {
-            if (sql != null && sql.toLowerCase().contains("tenant")) {
-                seenTenantReference = true;
-            }
-            for (Object arg : args) {
-                if (Long.valueOf(2002L).equals(arg)) {
-                    seenTenantReference = true;
-                }
-            }
         }
 
         @SuppressWarnings("unchecked")

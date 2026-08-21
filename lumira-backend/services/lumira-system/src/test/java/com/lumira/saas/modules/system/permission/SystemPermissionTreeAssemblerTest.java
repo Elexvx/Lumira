@@ -44,7 +44,7 @@ class SystemPermissionTreeAssemblerTest {
     }
 
     @Test
-    void shouldSeparatePersonalAndTenantFileActions() {
+    void shouldSeparatePersonalAndGlobalFileActions() {
         SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
 
         List<SystemVO.PermissionTreeVO> tree = assembler.build(

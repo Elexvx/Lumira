@@ -31,10 +31,6 @@ public class CurrentUser {
         this(userId, username, sessionId, sessionVersion, authenticated, permissions, Set.of(), null, Set.of(), Set.of(), List.of());
     }
 
-    public CurrentUser(Long userId, String username, Long ignoredScopeId, String sessionId, Integer sessionVersion, boolean authenticated, Set<String> permissions) {
-        this(userId, username, sessionId, sessionVersion, authenticated, permissions, Set.of(), null, Set.of(), Set.of(), List.of());
-    }
-
     public CurrentUser(
             Long userId,
             String username,
@@ -59,24 +55,6 @@ public class CurrentUser {
         this.deptIds = deptIds;
         this.descendantDeptIds = descendantDeptIds;
         this.dataScopes = dataScopes;
-    }
-
-    public CurrentUser(
-            Long userId,
-            String username,
-            Long ignoredScopeId,
-            String sessionId,
-            Integer sessionVersion,
-            boolean authenticated,
-            Set<String> permissions,
-            Set<Long> roleIds,
-            Long primaryDeptId,
-            Set<Long> deptIds,
-            Set<Long> descendantDeptIds,
-            List<DataPermissionRule> dataScopes
-    ) {
-        this(userId, username, sessionId, sessionVersion, authenticated, permissions, roleIds,
-                primaryDeptId, deptIds, descendantDeptIds, dataScopes);
     }
 
     public Long getUserId() {

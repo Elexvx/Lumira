@@ -129,7 +129,7 @@ class AiKnowledgeBaseAppServiceTest {
         );
 
         assertThatThrownBy(() -> service.listKnowledgeBases(
-                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view"))),
                 null,
                 null,
                 "OWNED",
@@ -158,7 +158,7 @@ class AiKnowledgeBaseAppServiceTest {
         );
 
         assertThatThrownBy(() -> service.listKnowledgeBases(
-                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view"))),
                 null,
                 null,
                 "OWNED",
@@ -190,7 +190,7 @@ class AiKnowledgeBaseAppServiceTest {
         );
 
         assertThatThrownBy(() -> service.listKnowledgeBases(
-                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view"))),
                 null,
                 null,
                 "OWNED",
@@ -217,7 +217,7 @@ class AiKnowledgeBaseAppServiceTest {
         );
 
         assertThatThrownBy(() -> service.listKnowledgeBases(
-                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:view"))),
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:view"))),
                 null,
                 null,
                 "OWNED",
@@ -271,7 +271,7 @@ class AiKnowledgeBaseAppServiceTest {
         request.setVisibilityScope("PERSONAL");
 
         assertThatThrownBy(() -> service.createKnowledgeBase(
-                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view"))),
                 request
         )).isInstanceOfSatisfying(BizException.class, exception ->
                 assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
@@ -292,7 +292,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:view")));
 
         assertThatThrownBy(() -> service.listEmployeeKnowledgeBases(currentUser, 11L))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -314,7 +314,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view")));
         AiDTO.EmployeeKnowledgeBasesUpdateRequest request = new AiDTO.EmployeeKnowledgeBasesUpdateRequest();
         request.setKnowledgeBaseIds(List.of(20L));
 
@@ -344,7 +344,7 @@ class AiKnowledgeBaseAppServiceTest {
                 vectorService(),
                 permissionSnapshotService
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view")));
 
         assertThatThrownBy(() -> service.listEmployeeKnowledgeBases(currentUser, 11L))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -374,7 +374,7 @@ class AiKnowledgeBaseAppServiceTest {
         );
 
         assertThatThrownBy(() -> service.listKnowledgeBases(
-                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view"))),
                 null,
                 null,
                 "OWNED",
@@ -407,7 +407,7 @@ class AiKnowledgeBaseAppServiceTest {
         );
 
         assertThatThrownBy(() -> service.listKnowledgeBases(
-                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view"))),
                 null,
                 null,
                 "OWNED",
@@ -442,7 +442,7 @@ class AiKnowledgeBaseAppServiceTest {
                 systemInternalApi,
                 null
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view")));
 
         service.listKnowledgeBases(currentUser, null, null, "OWNED", 1, 10);
 
@@ -476,7 +476,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view")));
 
         service.listKnowledgeBases(currentUser, null, null, "OWNED", 1, 10);
 
@@ -662,7 +662,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:document:upload")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:document:upload")));
         MultipartFile file = new TestMultipartFile("manual.txt", "text/plain", "uploaded knowledge text".getBytes(StandardCharsets.UTF_8));
 
         var result = service.uploadDocument(currentUser, 20L, file);
@@ -704,7 +704,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:document:upload")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:document:upload")));
         currentUser.setSimulatedRoleId(9L);
         MultipartFile file = new TestMultipartFile("manual.txt", "text/plain", "uploaded knowledge text".getBytes(StandardCharsets.UTF_8));
 
@@ -731,7 +731,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:document:upload")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:document:upload")));
         MultipartFile file = new TestMultipartFile("manual.txt", "text/plain", "uploaded knowledge text".getBytes(StandardCharsets.UTF_8));
 
         assertThatThrownBy(() -> service.uploadDocument(currentUser, 20L, file))
@@ -759,7 +759,7 @@ class AiKnowledgeBaseAppServiceTest {
         MultipartFile file = new TestMultipartFile("manual.txt", "text/plain", "uploaded knowledge text".getBytes(StandardCharsets.UTF_8));
 
         assertThatThrownBy(() -> service.uploadDocument(
-                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view"))),
                 20L,
                 file
         )).isInstanceOfSatisfying(BizException.class, exception ->
@@ -781,7 +781,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:document:delete")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:document:delete")));
 
         service.deleteDocument(currentUser, 20L, 30L);
 
@@ -813,7 +813,7 @@ class AiKnowledgeBaseAppServiceTest {
         );
 
         assertThatThrownBy(() -> service.deleteDocument(
-                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view"))),
                 20L,
                 30L
         )).isInstanceOfSatisfying(BizException.class, exception ->
@@ -836,7 +836,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:document:delete")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:document:delete")));
 
         assertThatThrownBy(() -> service.deleteDocument(currentUser, 20L, 30L))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -1005,7 +1005,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:query")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:query")));
 
         var references = service.retrieve(currentUser, "合同审批", List.of(20L), 2);
 
@@ -1027,7 +1027,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view")));
 
         assertThatThrownBy(() -> service.retrieve(currentUser, "合同审批", List.of(20L), 2))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -1049,7 +1049,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view")));
 
         assertThatThrownBy(() -> service.retrieveForEmployee(currentUser, 11L, "合同审批", 2))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -1072,7 +1072,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:create")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:create")));
         AiDTO.KnowledgeBaseUpsertRequest request = new AiDTO.KnowledgeBaseUpsertRequest();
         request.setName("研发知识库");
         request.setDescription("研发资料");
@@ -1099,7 +1099,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:create")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:create")));
         AiDTO.KnowledgeBaseUpsertRequest request = new AiDTO.KnowledgeBaseUpsertRequest();
         request.setName("研发知识库");
         request.setDescription("研发资料");
@@ -1127,7 +1127,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:update")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:update")));
         AiDTO.KnowledgeBaseUpsertRequest request = new AiDTO.KnowledgeBaseUpsertRequest();
         request.setName("Research KB");
         request.setStatus("ENABLED");
@@ -1154,7 +1154,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:update")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:update")));
         AiDTO.KnowledgeBaseUpsertRequest request = new AiDTO.KnowledgeBaseUpsertRequest();
         request.setName("Research KB");
         request.setStatus("ENABLED");
@@ -1179,7 +1179,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:delete")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:delete")));
 
         assertThat(service.deleteKnowledgeBase(currentUser, 88L)).isTrue();
 
@@ -1218,7 +1218,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:delete")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:delete")));
 
         assertThatThrownBy(() -> service.deleteKnowledgeBase(currentUser, 88L))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -1232,15 +1232,15 @@ class AiKnowledgeBaseAppServiceTest {
     }
 
     private static CurrentUser unauthenticatedUser() {
-        return new CurrentUser(7L, "admin", 1L, "session", 1, false, Set.of("*", "ai:knowledge:view", "ai:knowledge:create"));
+        return new CurrentUser(7L, "admin", "session", 1, false, Set.of("*", "ai:knowledge:view", "ai:knowledge:create"));
     }
 
     private static CurrentUser blankUsernameUser() {
-        return new CurrentUser(7L, " ", 1L, "session", 1, true, Set.of("*", "ai:knowledge:view", "ai:knowledge:create"));
+        return new CurrentUser(7L, " ", "session", 1, true, Set.of("*", "ai:knowledge:view", "ai:knowledge:create"));
     }
 
     private static CurrentUser missingSessionVersionUser() {
-        return new CurrentUser(7L, "admin", 1L, "session", null, true, Set.of("*", "ai:knowledge:view", "ai:knowledge:create"));
+        return new CurrentUser(7L, "admin", "session", null, true, Set.of("*", "ai:knowledge:view", "ai:knowledge:create"));
     }
 
     private static CurrentUser trusted(CurrentUser currentUser) {

@@ -23,7 +23,7 @@ class AuthenticationTrustSupportTest {
 
     @Test
     void canReuseInternalServiceTokenAuthenticationWithoutTreatingItAsUserLogin() {
-        CurrentUser internalService = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of());
+        CurrentUser internalService = new CurrentUser(0L, "internal-service", "internal", 0, false, Set.of());
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(internalService, "token", Set.of());
 
@@ -63,17 +63,17 @@ class AuthenticationTrustSupportTest {
 
     @Test
     void rejectsMalformedInternalServicePrincipals() {
-        CurrentUser internalService = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of());
+        CurrentUser internalService = new CurrentUser(0L, "internal-service", "internal", 0, false, Set.of());
         UsernamePasswordAuthenticationToken unauthenticated =
                 new UsernamePasswordAuthenticationToken(internalService, "token");
-        CurrentUser privilegedInternalService = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of("*"));
+        CurrentUser privilegedInternalService = new CurrentUser(0L, "internal-service", "internal", 0, false, Set.of("*"));
         UsernamePasswordAuthenticationToken privileged =
                 new UsernamePasswordAuthenticationToken(privilegedInternalService, "token", Set.of());
-        CurrentUser internalWithUserUuid = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of());
+        CurrentUser internalWithUserUuid = new CurrentUser(0L, "internal-service", "internal", 0, false, Set.of());
         internalWithUserUuid.setUserUuid("user-uuid-1");
         UsernamePasswordAuthenticationToken withUserUuid =
                 new UsernamePasswordAuthenticationToken(internalWithUserUuid, "token", Set.of());
-        CurrentUser internalWithPermissionsVersion = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of());
+        CurrentUser internalWithPermissionsVersion = new CurrentUser(0L, "internal-service", "internal", 0, false, Set.of());
         internalWithPermissionsVersion.setPermissionsVersion("permissions-1");
         UsernamePasswordAuthenticationToken withPermissionsVersion =
                 new UsernamePasswordAuthenticationToken(internalWithPermissionsVersion, "token", Set.of());
@@ -106,7 +106,7 @@ class AuthenticationTrustSupportTest {
     }
 
     private CurrentUser trustedUser() {
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1L, "session-1", 1, true, Set.of("system:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 1, true, Set.of("system:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

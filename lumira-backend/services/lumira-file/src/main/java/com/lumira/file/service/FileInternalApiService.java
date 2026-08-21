@@ -303,7 +303,6 @@ public class FileInternalApiService implements FileInternalApi {
         CurrentUser internalUser = new CurrentUser(
                 userId,
                 trustedUsername,
-                null,
                 internalProxySessionId(userId),
                 INTERNAL_PROXY_SESSION_VERSION,
                 true,

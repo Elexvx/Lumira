@@ -66,7 +66,7 @@ class PasskeyAuthServiceTest {
                 new ObjectMapper()
         );
         when(securityContextFacade.getCurrentUser()).thenReturn(
-                new CurrentUser(1001L, "alice", null, "sid", 1, false, Set.of("*"))
+                new CurrentUser(1001L, "alice", "sid", 1, false, Set.of("*"))
         );
 
         BizException exception = assertThrows(BizException.class, service::listCredentials);
@@ -81,7 +81,7 @@ class PasskeyAuthServiceTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
         when(securityContextFacade.getCurrentUser()).thenReturn(
-                new CurrentUser(1001L, " ", null, "sid", 1, true, Set.of("*"))
+                new CurrentUser(1001L, " ", "sid", 1, true, Set.of("*"))
         );
 
         BizException exception = assertThrows(BizException.class, service::listCredentials);
@@ -96,7 +96,7 @@ class PasskeyAuthServiceTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
         when(securityContextFacade.getCurrentUser()).thenReturn(
-                new CurrentUser(1001L, "alice", null, "sid", null, true, Set.of("*"))
+                new CurrentUser(1001L, "alice", "sid", null, true, Set.of("*"))
         );
 
         BizException exception = assertThrows(BizException.class, service::listCredentials);
@@ -110,7 +110,7 @@ class PasskeyAuthServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", null, "sid", 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "sid", 1, true, Set.of("*"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -210,7 +210,7 @@ class PasskeyAuthServiceTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, redisTemplate);
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", null, "sid", 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "sid", 1, true, Set.of("*"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -487,7 +487,7 @@ class PasskeyAuthServiceTest {
     }
 
     private static CurrentUser trustedUser(Long userId, String username) {
-        CurrentUser currentUser = new CurrentUser(userId, username, null, "sid-" + userId, 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(userId, username, "sid-" + userId, 1, true, Set.of("*"));
         currentUser.setUserUuid("user-uuid-" + userId);
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

@@ -31,7 +31,7 @@ class OnlineSessionStreamServiceTest {
     @Test
     void openStreamShouldRejectUnauthenticatedUserEvenWhenSessionIdExists() {
         OnlineSessionStreamService service = service(mock(SessionAuthenticationService.class));
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", null, "session-1", 1, false, Set.of("system:online-user:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 1, false, Set.of("system:online-user:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
 
@@ -43,7 +43,7 @@ class OnlineSessionStreamServiceTest {
     @Test
     void openStreamShouldRejectBlankUsernameEvenWhenSessionIdExists() {
         OnlineSessionStreamService service = service(mock(SessionAuthenticationService.class));
-        CurrentUser currentUser = new CurrentUser(1001L, " ", null, "session-1", 1, true, Set.of("system:online-user:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, " ", "session-1", 1, true, Set.of("system:online-user:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
 
@@ -63,7 +63,7 @@ class OnlineSessionStreamServiceTest {
                 Clock.fixed(Instant.parse("2026-07-06T12:00:00Z"), ZoneOffset.UTC),
                 Duration.ofSeconds(30)
         );
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", null, "session-1", 1, true, Set.of("system:config:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 1, true, Set.of("system:config:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setSimulatedRoleId(9L);
         currentUser.setPermissionsVersion("permissions-1");
@@ -77,7 +77,7 @@ class OnlineSessionStreamServiceTest {
     @Test
     void openStreamShouldRejectBlankSessionId() {
         OnlineSessionStreamService service = service(mock(SessionAuthenticationService.class));
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", null, " ", 1, true, Set.of("system:online-user:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", " ", 1, true, Set.of("system:online-user:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
 
@@ -89,7 +89,7 @@ class OnlineSessionStreamServiceTest {
     @Test
     void openStreamShouldRejectMissingSessionVersion() {
         OnlineSessionStreamService service = service(mock(SessionAuthenticationService.class));
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", null, "session-1", null, true, Set.of("system:online-user:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", null, true, Set.of("system:online-user:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
 
@@ -101,7 +101,7 @@ class OnlineSessionStreamServiceTest {
     @Test
     void openStreamShouldRejectUnsafeSessionId() {
         OnlineSessionStreamService service = service(mock(SessionAuthenticationService.class));
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", null, "../session", 1, true, Set.of("system:online-user:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "../session", 1, true, Set.of("system:online-user:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
 
@@ -246,7 +246,7 @@ class OnlineSessionStreamServiceTest {
     }
 
     private CurrentUser trustedCurrentUser() {
-        CurrentUser currentUser = new CurrentUser(1001L, "alice", null, "session-1", 1, true, Set.of("system:online-user:view"));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", "session-1", 1, true, Set.of("system:online-user:view"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setSimulatedRoleId(9L);
         currentUser.setPermissionsVersion("permissions-1");

@@ -33,7 +33,6 @@ class PluginPersistenceMapperHotPathSqlTest {
         assertThat(migrationSql).contains("idx_sys_plugin_definition_deleted_status_sort_code");
         assertThat(migrationSql).contains("idx_sys_plugin_version_plugin_deleted_status_created");
         assertThat(migrationSql).contains("idx_sys_plugin_version_plugin_active_deleted");
-        assertThat(migrationSql).doesNotContain("sys_plugin_tenant");
         assertThat(migrationSql).contains("idx_sys_plugin_runtime_log_code_deleted_id");
         assertThat(migrationSql).contains("idx_sys_plugin_menu_rel_code_version_deleted_sort");
         assertThat(migrationSql).contains("idx_sys_plugin_permission_rel_code_version_deleted");

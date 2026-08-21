@@ -1120,11 +1120,11 @@ class AiManagementAppServiceTest {
     }
 
     private CurrentUser userWithPermissions(Set<String> permissions) {
-        return trusted(new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, permissions));
+        return trusted(new CurrentUser(100L, "admin", "session-1", 1, true, permissions));
     }
 
     private CurrentUser missingSessionVersionUser() {
-        return new CurrentUser(100L, "admin", 1001L, "session-1", null, true, Set.of("*"));
+        return new CurrentUser(100L, "admin", "session-1", null, true, Set.of("*"));
     }
 
     private CurrentUser trusted(CurrentUser currentUser) {

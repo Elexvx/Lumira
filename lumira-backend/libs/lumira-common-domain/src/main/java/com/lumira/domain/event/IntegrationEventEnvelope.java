@@ -15,7 +15,6 @@ public record IntegrationEventEnvelope(
         String eventType,
         int schemaVersion,
         String sourceModule,
-        Long tenantId,
         String aggregateType,
         String aggregateId,
         Instant occurredAt,
@@ -29,9 +28,6 @@ public record IntegrationEventEnvelope(
         eventType = requireText(eventType, "eventType");
         schemaVersion = schemaVersion < 1 ? 1 : schemaVersion;
         sourceModule = requireText(sourceModule, "sourceModule");
-        if (tenantId != null && tenantId <= 0) {
-            throw new IllegalArgumentException("tenantId must be positive when present");
-        }
         aggregateType = requireText(aggregateType, "aggregateType");
         aggregateId = requireText(aggregateId, "aggregateId");
         occurredAt = occurredAt == null ? Instant.now() : occurredAt;

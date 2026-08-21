@@ -17,17 +17,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SaasSqlBootstrapCompletenessTest {
 
-    private static final Pattern TENANT_SURFACE =
-            Pattern.compile("(?i)(`?tenant_id`?|\\bsys_tenant\\b|\\btenant\\b)");
-
     @Test
     void consolidatedSaasSqlSeedsCompleteRoleOnlyIamBootstrap() throws IOException {
         String sql = readSaasSql();
         String normalizedSql = normalizeWhitespace(sql);
 
-        assertThat(TENANT_SURFACE.matcher(sql).find())
-                .as("sql/saas.sql must be the role-only fresh-init entrypoint without tenant schema or wording")
-                .isFalse();
         assertThat(sql)
                 .contains("CREATE TABLE `sys_menu`")
                 .contains("CREATE TABLE `sys_permission`")

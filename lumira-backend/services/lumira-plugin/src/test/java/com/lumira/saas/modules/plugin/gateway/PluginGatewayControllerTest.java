@@ -46,7 +46,7 @@ class PluginGatewayControllerTest {
                 mock(SensitiveErrorMessageSanitizer.class),
                 mock(SecurityAuditEventService.class)
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, false, Set.of("plugin:test:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, false, Set.of("plugin:test:view"));
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
         when(request.getRequestURI()).thenReturn("/api/p/test/hello");
@@ -72,7 +72,7 @@ class PluginGatewayControllerTest {
                 mock(SecurityAuditEventService.class),
                 systemInternalApi
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("plugin:test:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of("plugin:test:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -102,7 +102,7 @@ class PluginGatewayControllerTest {
                 mock(SensitiveErrorMessageSanitizer.class),
                 mock(SecurityAuditEventService.class)
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", null, true, Set.of("plugin:test:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", null, true, Set.of("plugin:test:view"));
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
         when(request.getRequestURI()).thenReturn("/api/p/test/hello");
@@ -127,7 +127,7 @@ class PluginGatewayControllerTest {
                 mock(SecurityAuditEventService.class),
                 null
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("plugin:test:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of("plugin:test:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -155,7 +155,7 @@ class PluginGatewayControllerTest {
                 mock(SensitiveErrorMessageSanitizer.class),
                 mock(SecurityAuditEventService.class)
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("plugin:test:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of("plugin:test:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/p/../admin");
@@ -183,7 +183,7 @@ class PluginGatewayControllerTest {
                 mock(SensitiveErrorMessageSanitizer.class),
                 mock(SecurityAuditEventService.class)
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("plugin:test:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of("plugin:test:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/p/test/echo") {
@@ -243,7 +243,7 @@ class PluginGatewayControllerTest {
                 mock(SensitiveErrorMessageSanitizer.class),
                 mock(SecurityAuditEventService.class)
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("plugin:test:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of("plugin:test:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/p/test/redirect");
@@ -279,7 +279,7 @@ class PluginGatewayControllerTest {
                 mock(SensitiveErrorMessageSanitizer.class),
                 mock(SecurityAuditEventService.class)
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 7, true, Set.of("plugin:test:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 7, true, Set.of("plugin:test:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-7");
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/p/test/profile");
@@ -325,7 +325,7 @@ class PluginGatewayControllerTest {
                 mock(SensitiveErrorMessageSanitizer.class),
                 mock(SecurityAuditEventService.class)
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("system:user:delete"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of("system:user:delete"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/p/test/delete-user");
@@ -368,7 +368,7 @@ class PluginGatewayControllerTest {
                 mock(SensitiveErrorMessageSanitizer.class),
                 mock(SecurityAuditEventService.class)
         );
-        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("plugin:test:view"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", "session-1", 1, true, Set.of("plugin:test:view"));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/p/test/page");

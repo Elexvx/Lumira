@@ -212,7 +212,7 @@ class SystemControllerRuntimeAppearanceTest {
     }
 
     private CurrentUser trustedUser(Set<String> permissions) {
-        CurrentUser currentUser = new CurrentUser(2001L, "alice", 1001L, "session-1", 1, true, permissions);
+        CurrentUser currentUser = new CurrentUser(2001L, "alice", "session-1", 1, true, permissions);
         currentUser.setUserUuid("user-uuid-2001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
