@@ -12,6 +12,8 @@ import { applyWatermarkOpacity } from '@/watermark/color';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { MaintenanceModeGate } from '@/maintenance/MaintenanceModeGate';
 import { startFrontendVersionPolling, startPublicBrandingPolling } from '@/app.runtime';
+import '@/services/payment/builtinMockPaymentCheckoutAdapter';
+import '@/services/verification/challengeResponseAdapter';
 import './global.css';
 
 export type { AppInitialState } from '@/app.types';

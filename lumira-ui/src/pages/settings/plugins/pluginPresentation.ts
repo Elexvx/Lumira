@@ -33,6 +33,10 @@ const BUILTIN_PLUGIN_MESSAGES: Record<string, { name: string; description: strin
     name: 'page.plugins.builtin.builtinMockPayment.name',
     description: 'page.plugins.builtin.builtinMockPayment.description',
   },
+  'builtin-mock-sms': {
+    name: 'page.plugins.builtin.builtinMockSms.name',
+    description: 'page.plugins.builtin.builtinMockSms.description',
+  },
   'sensitive-words': {
     name: 'page.plugins.builtin.sensitiveWords.name',
     description: 'page.plugins.builtin.sensitiveWords.description',

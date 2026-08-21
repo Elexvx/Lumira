@@ -17,6 +17,7 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
+import com.lumira.saas.modules.system.support.BuiltinMockSmsAvailability;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,9 @@ public class SystemVerificationSettingsAppService {
     private static final String PERMISSION_VERIFICATION_MANAGE = "system:verification:manage";
     private static final String PERMISSION_CONFIG_UPDATE = "system:config:update";
     private static final String STATUS_ENABLED = "ENABLED";
+    private static final String PROVIDER_ALIYUN = "aliyun";
+    private static final String DEFAULT_MOCK_SIGN_NAME = "Lumira调试";
+    private static final String DEFAULT_MOCK_TEMPLATE_CODE = "SMS_DEBUG_VERIFICATION";
 
     private static final String TOTP_CONFIG_ENABLED_KEY = "verification.totp.enabled";
     private static final String PASSWORD_LOGIN_ENABLED_KEY = "verification.password-login.enabled";
@@ -106,6 +110,7 @@ public class SystemVerificationSettingsAppService {
     private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
     private volatile CachedReadModelVersion cachedPublicBootstrapVersion;
     private SystemConfigVersioningService configVersioningService;
+    private BuiltinMockSmsAvailability builtinMockSmsAvailability;
 
     public SystemVerificationSettingsAppService(
             MyBatisQueryOperations jdbcTemplate,
@@ -194,6 +199,11 @@ public class SystemVerificationSettingsAppService {
         this.configVersioningService = configVersioningService;
     }
 
+    @Autowired
+    public void setBuiltinMockSmsAvailability(BuiltinMockSmsAvailability builtinMockSmsAvailability) {
+        this.builtinMockSmsAvailability = builtinMockSmsAvailability;
+    }
+
     public SystemVerificationSettingsAppService(
             MyBatisQueryOperations jdbcTemplate,
             SystemVerificationProperties properties,
@@ -248,6 +258,7 @@ public class SystemVerificationSettingsAppService {
         settings.setEndpoint(record.endpoint());
         settings.setRegion(record.region());
         settings.setConfigured(record.configured());
+        settings.setMockProviderAvailable(isMockProviderAvailable());
         return settings;
     }
 
@@ -348,7 +359,7 @@ public class SystemVerificationSettingsAppService {
         requireRequest(request, "SMS verification settings request");
         SmsVerificationSettingsRecord current = loadSmsSettingsRecord();
         Boolean enabled = request.getEnabled() == null ? current.enabled() : request.getEnabled();
-        String provider = sanitizeText(request.getProvider(), current.provider());
+        String provider = sanitizeText(request.getProvider(), current.provider()).toLowerCase();
         String signName = sanitizeText(request.getSignName(), current.signName());
         String templateCode = sanitizeText(request.getTemplateCode(), current.templateCode());
         String accessKeyId = sanitizeText(request.getAccessKeyId(), current.accessKeyId());
@@ -356,6 +367,15 @@ public class SystemVerificationSettingsAppService {
         String accessKeySecret = StringUtils.hasText(request.getAccessKeySecret()) ? request.getAccessKeySecret() : existingSecret;
         String endpoint = sanitizeText(request.getEndpoint(), current.endpoint());
         String region = sanitizeText(request.getRegion(), current.region());
+        if (BuiltinMockSmsAvailability.PROVIDER_CODE.equals(provider)) {
+            if (!isMockProviderAvailable()) {
+                throw new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "内置模拟短信验证码插件未启用或当前环境不允许使用");
+            }
+            signName = defaultIfBlank(signName, DEFAULT_MOCK_SIGN_NAME);
+            templateCode = defaultIfBlank(templateCode, DEFAULT_MOCK_TEMPLATE_CODE);
+        } else if (!PROVIDER_ALIYUN.equals(provider)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "暂不支持的短信服务商: " + provider);
+        }
         SystemConfigVersioningService.GovernanceSession governance = beginGovernance(
                 request.getExpectedConfigVersion(),
                 request.getChangeReason(),
@@ -517,12 +537,24 @@ public class SystemVerificationSettingsAppService {
         String accessKeySecret = defaultIfBlank(values.get(SMS_CONFIG_ACCESS_KEY_SECRET_KEY), "");
         String endpoint = defaultIfBlank(values.get(SMS_CONFIG_ENDPOINT_KEY), "");
         String region = defaultIfBlank(values.get(SMS_CONFIG_REGION_KEY), "");
-        boolean configured = StringUtils.hasText(provider)
-                && StringUtils.hasText(signName)
-                && StringUtils.hasText(templateCode)
-                && StringUtils.hasText(accessKeyId)
-                && StringUtils.hasText(accessKeySecret);
+        boolean configured;
+        if (BuiltinMockSmsAvailability.PROVIDER_CODE.equalsIgnoreCase(provider)) {
+            configured = isMockProviderAvailable()
+                    && StringUtils.hasText(signName)
+                    && StringUtils.hasText(templateCode);
+        } else if (PROVIDER_ALIYUN.equalsIgnoreCase(provider)) {
+            configured = StringUtils.hasText(signName)
+                    && StringUtils.hasText(templateCode)
+                    && StringUtils.hasText(accessKeyId)
+                    && StringUtils.hasText(accessKeySecret);
+        } else {
+            configured = false;
+        }
         return new SmsVerificationSettingsRecord(enabled, provider, signName, templateCode, accessKeyId, accessKeySecret, endpoint, region, configured);
+    }
+
+    private boolean isMockProviderAvailable() {
+        return builtinMockSmsAvailability != null && builtinMockSmsAvailability.isEnabled();
     }
 
     private void upsertSmsConfigValue(String configKey, String configName, String configValue, String remark, Long operatorId, String operatorUuid) {
@@ -699,6 +731,11 @@ public class SystemVerificationSettingsAppService {
         configSnapshotCache.invalidateAll();
         configLoadInFlight.invalidateAll();
         cachedPublicBootstrapVersion = null;
+    }
+
+    public void onBuiltinMockSmsPluginStateChanged(String state) {
+        invalidateConfigCaches();
+        markPublicBootstrapChanged("builtin-mock-sms-" + defaultIfBlank(state, "changed"));
     }
 
     private void markPublicBootstrapChanged(String eventKey) {

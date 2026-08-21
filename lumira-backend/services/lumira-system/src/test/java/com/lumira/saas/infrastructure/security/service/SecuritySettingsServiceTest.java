@@ -18,6 +18,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -114,7 +115,9 @@ class SecuritySettingsServiceTest {
         service.updateSettings(request, trustedOperator(23L, "operator-uuid-23"));
 
         ArgumentCaptor<SysConfigEntity> captor = ArgumentCaptor.forClass(SysConfigEntity.class);
-        verify(mapper, times(17)).upsertPlatformConfig(captor.capture());
+        verify(mapper, times(16)).upsertPlatformConfig(captor.capture());
+        assertTrue(captor.getAllValues().stream()
+                .noneMatch(entity -> "security.registration-enabled".equals(entity.getConfigKey())));
         captor.getAllValues().forEach(entity -> {
             assertEquals(23L, entity.getCreatedBy());
             assertEquals("operator-uuid-23", entity.getCreatedByUuid());

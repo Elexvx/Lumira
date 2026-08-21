@@ -31,12 +31,25 @@ export interface AuthUser {
   roleIds?: number[];
 }
 
+export interface MockSmsDelivery {
+  providerCode: 'builtin_mock_sms';
+  phoneNumbers: string;
+  signName: string;
+  templateCode: string;
+  templateParam: string;
+  resultCode: string;
+  resultMessage: string;
+  requestId: string;
+  bizId: string;
+}
+
 export interface SecondFactorLoginOption {
   factorCode: string;
   factorName: string;
   challengeId: string;
   maskedContact?: string | null;
   promptMessage?: string | null;
+  mockSmsDelivery?: MockSmsDelivery | null;
 }
 
 export interface LoginResponse {
@@ -91,6 +104,7 @@ export interface LoginCodeChallenge {
   promptMessage?: string | null;
   expiresInSeconds?: number | null;
   cooldownSeconds?: number | null;
+  mockSmsDelivery?: MockSmsDelivery | null;
 }
 
 export interface LoginEncryptionKey {
@@ -124,7 +138,6 @@ export interface SecuritySettings {
   accessTokenExpireSeconds: number;
   refreshTokenExpireSeconds: number;
   allowMultiDeviceLogin: boolean;
-  registrationEnabled: boolean;
   captchaEnabled: boolean;
   captchaType: CaptchaType;
   loginDefenseWindowMinutes: number;
@@ -1183,6 +1196,7 @@ export interface SecondFactorChallenge {
   challengeId: string;
   maskedContact?: string | null;
   promptMessage?: string | null;
+  mockSmsDelivery?: MockSmsDelivery | null;
 }
 
 export interface SecondFactorBindingChallenge extends SecondFactorChallenge {
@@ -1254,6 +1268,7 @@ export interface SmsVerificationSettings {
   region: string;
   configured?: boolean;
   accessKeySecretConfigured?: boolean;
+  mockProviderAvailable?: boolean;
 }
 
 export interface SmsVerificationSettingsPayload {

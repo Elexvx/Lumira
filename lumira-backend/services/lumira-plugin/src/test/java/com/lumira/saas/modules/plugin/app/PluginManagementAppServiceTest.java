@@ -196,6 +196,44 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
+    void builtinMockSmsEnableShouldProvisionThroughItsLifecycleHookInsideTheEnableTransaction() {
+        BuiltinPluginLifecycleHook hook = mock(BuiltinPluginLifecycleHook.class);
+        when(hook.pluginCode()).thenReturn("builtin-mock-sms");
+        ObjectProvider<BuiltinPluginLifecycleHook> hookProvider = mock(ObjectProvider.class);
+        when(hookProvider.orderedStream()).thenReturn(Stream.of(hook));
+        pluginManagementAppService.setBuiltinPluginLifecycleHooks(hookProvider);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
+
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("builtin-mock-sms");
+        request.setVersion("1.0.0");
+
+        pluginManagementAppService.enable(request, currentUser());
+
+        InOrder ordered = inOrder(pluginPersistenceService, hook);
+        ordered.verify(pluginPersistenceService).enablePlugin(
+                "builtin-mock-sms", "1.0.0", null, 100L, "user-uuid-100"
+        );
+        ordered.verify(hook).onEnable(any(BuiltinPluginLifecycleHook.PluginLifecycleContext.class));
+    }
+
+    @Test
+    void builtinMockSmsEnableShouldFailClosedWhenLifecycleHookIsMissing() {
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("builtin-mock-sms");
+        request.setVersion("1.0.0");
+
+        assertThatThrownBy(() -> pluginManagementAppService.enable(request, currentUser()))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode",
+                        com.lumira.common.enums.ErrorCode.DEPENDENCY_UNAVAILABLE
+                )
+                .hasMessageContaining("builtin-mock-sms");
+    }
+
+    @Test
     void enable_shouldCheckEmailWithUserProfileOnly() {
         PluginSecondFactorProvider secondFactorProvider = org.mockito.Mockito.mock(PluginSecondFactorProvider.class);
         when(secondFactorProvider.requiresEmail()).thenReturn(true);
@@ -358,6 +396,36 @@ class PluginManagementAppServiceTest {
         InOrder ordered = inOrder(pluginPersistenceService, hook);
         ordered.verify(pluginPersistenceService).disablePlugin(
                 "builtin-mock-payment", 100L, "user-uuid-100"
+        );
+        ordered.verify(hook).onDisable(any(BuiltinPluginLifecycleHook.PluginLifecycleContext.class));
+    }
+
+    @Test
+    void builtinMockSmsDisableShouldBlockPluginStateBeforeInvalidatingVerificationSettings() {
+        BuiltinPluginLifecycleHook hook = mock(BuiltinPluginLifecycleHook.class);
+        when(hook.pluginCode()).thenReturn("builtin-mock-sms");
+        ObjectProvider<BuiltinPluginLifecycleHook> hookProvider = mock(ObjectProvider.class);
+        when(hookProvider.orderedStream()).thenReturn(Stream.of(hook));
+        pluginManagementAppService.setBuiltinPluginLifecycleHooks(hookProvider);
+        PluginVersionEntity enabledVersion = new PluginVersionEntity();
+        enabledVersion.setPluginCode("builtin-mock-sms");
+        enabledVersion.setVersion("1.0.0");
+        PluginVO.PluginStatusVO pluginStatus = new PluginVO.PluginStatusVO();
+        pluginStatus.setSupportsDataPurge(false);
+        when(pluginPersistenceService.findEnabledVersion("builtin-mock-sms"))
+                .thenReturn(Optional.of(enabledVersion));
+        when(pluginPersistenceService.pluginStatus("builtin-mock-sms"))
+                .thenReturn(Optional.of(pluginStatus));
+
+        PluginDTO.DisableRequest request = new PluginDTO.DisableRequest();
+        request.setPluginCode("builtin-mock-sms");
+        request.setPurgeData(false);
+
+        pluginManagementAppService.disable(request, currentUser());
+
+        InOrder ordered = inOrder(pluginPersistenceService, hook);
+        ordered.verify(pluginPersistenceService).disablePlugin(
+                "builtin-mock-sms", 100L, "user-uuid-100"
         );
         ordered.verify(hook).onDisable(any(BuiltinPluginLifecycleHook.PluginLifecycleContext.class));
     }

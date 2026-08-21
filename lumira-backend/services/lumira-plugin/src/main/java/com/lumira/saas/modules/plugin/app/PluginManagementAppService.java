@@ -63,6 +63,7 @@ public class PluginManagementAppService {
     private static final String BUILTIN_SENSITIVE_WORDS_PLUGIN = "sensitive-words";
     private static final String BUILTIN_WORK_ORDER_FEEDBACK_PLUGIN = "work-order-feedback";
     private static final String BUILTIN_MOCK_PAYMENT_PLUGIN = "builtin-mock-payment";
+    private static final String BUILTIN_MOCK_SMS_PLUGIN = "builtin-mock-sms";
     private static final Set<String> AUTHENTICATED_PERMISSIONLESS_MENU_CODES = Set.of(
             "certificate.mine",
             "expert.application"
@@ -80,8 +81,13 @@ public class PluginManagementAppService {
             ),
             BUILTIN_MOCK_PAYMENT_PLUGIN,
             new BuiltinPluginRuntime(
-                    List.of("/mock-payment/checkout"),
-                    List.of("payment-provider", "checkout-route", "callbacks", "refunds")
+                    List.of(),
+                    List.of("payment-provider", "checkout-adapter", "callbacks", "refunds")
+            ),
+            BUILTIN_MOCK_SMS_PLUGIN,
+            new BuiltinPluginRuntime(
+                    List.of(),
+                    List.of("sms-provider", "verification-debug-modal")
             )
     );
 
@@ -1107,8 +1113,8 @@ public class PluginManagementAppService {
                 .filter(candidate -> candidate != null && pluginCode.equals(candidate.pluginCode()))
                 .findFirst()
                 .orElse(null);
-        if (BUILTIN_MOCK_PAYMENT_PLUGIN.equals(pluginCode) && hook == null) {
-            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Built-in mock payment lifecycle is unavailable");
+        if ((BUILTIN_MOCK_PAYMENT_PLUGIN.equals(pluginCode) || BUILTIN_MOCK_SMS_PLUGIN.equals(pluginCode)) && hook == null) {
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Built-in plugin lifecycle is unavailable: " + pluginCode);
         }
         return hook;
     }

@@ -4265,9 +4265,27 @@ SELECT `id`, 'INNOVATION', '创新赛', 10, 'ENABLED', '竞赛类别', 0, 0, 0 F
 UNION ALL
 SELECT `id`, 'APPLICATION', '应用赛', 20, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'SPECIAL', '专项赛', 30, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+SELECT `id`, 'AI_APPLICATION', 'AI 应用赛', 30, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'OTHER', '其他', 40, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+SELECT `id`, 'ALGORITHM', '算法赛', 40, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'DATA_SCIENCE', '数据科学赛', 50, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'ROBOTICS', '机器人赛', 60, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'CREATIVE_DESIGN', '创意设计赛', 70, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'ENTREPRENEURSHIP', '创业赛', 80, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'CHALLENGE', '挑战赛', 90, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'SKILLS', '技能赛', 100, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'SPECIAL', '专项赛', 110, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'INVITATIONAL', '邀请赛', 120, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'OTHER', '其他', 130, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
 UNION ALL
 SELECT `id`, 'SCHOOL', '校级', 10, 'ENABLED', '竞赛级别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_level' AND `deleted` = 0
 UNION ALL
@@ -4524,7 +4542,6 @@ VALUES
     ('security.access-token-expire-seconds', 'Access Token 过期时间', '1800', 'PLATFORM', 1, 'Access token TTL seconds', 0, 0, 0),
     ('security.refresh-token-expire-seconds', 'Refresh Token 刷新时限', '604800', 'PLATFORM', 1, 'Refresh token TTL seconds', 0, 0, 0),
     ('security.allow-multi-device-login', 'Multi-device login', '1', 'PLATFORM', 1, 'Whether the same account can be online on multiple devices', 0, 0, 0),
-    ('security.registration-enabled', '允许用户注册', '0', 'PLATFORM', 1, '是否允许未注册手机号通过短信验证码创建普通用户', 0, 0, 0),
     ('security.captcha-enabled', 'Captcha enabled', '0', 'PLATFORM', 1, '是否开启登录时的人机验证码', 0, 0, 0),
     ('security.captcha-type', 'Captcha type', 'IMAGE', 'PLATFORM', 1, '验证码类型：IMAGE/SLIDER', 0, 0, 0),
     ('security.login-defense-window-minutes', '登录防御统计窗口', '5', 'PLATFORM', 1, 'Login defense statistics window in minutes', 0, 0, 0),
@@ -4700,9 +4717,9 @@ INSERT INTO `sys_plugin_definition` (
     `runtime_contributions_json`, `created_by`, `updated_by`, `deleted`
 )
 VALUES (
-    'builtin-mock-payment', '内置模拟支付', 'BUSINESS', 'Lumira managed mock payment provider for end-to-end payment testing.',
+    'builtin-mock-payment', '内置模拟支付', 'BUSINESS', 'Lumira managed mock payment provider adapted to the standard payment checkout flow.',
     'Lumira', '1.0', 1, 'DISABLED', 900, 'SHARED', 1, 0,
-    JSON_ARRAY('payment-provider', 'checkout-route', 'callbacks', 'refunds'), 0, 0, 0
+    JSON_ARRAY('payment-provider', 'checkout-adapter', 'callbacks', 'refunds'), 0, 0, 0
 )
 ON DUPLICATE KEY UPDATE
     `plugin_name` = VALUES(`plugin_name`),
@@ -4730,6 +4747,60 @@ VALUES (
     JSON_OBJECT(
         'pluginCode', 'builtin-mock-payment',
         'pluginName', '内置模拟支付',
+        'version', '1.0.0',
+        'kind', 'BUSINESS',
+        'builtin', true
+    ),
+    JSON_OBJECT('builtin', true, 'status', 'VERIFIED'), CURRENT_TIMESTAMP, 0, 0, 0
+)
+ON DUPLICATE KEY UPDATE
+    `min_platform_version` = VALUES(`min_platform_version`),
+    `install_status` = VALUES(`install_status`),
+    `load_status` = VALUES(`load_status`),
+    `health_status` = VALUES(`health_status`),
+    `schema_status` = VALUES(`schema_status`),
+    `is_active` = VALUES(`is_active`),
+    `metadata_json` = VALUES(`metadata_json`),
+    `validation_report_json` = VALUES(`validation_report_json`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_plugin_definition` (
+    `plugin_code`, `plugin_name`, `plugin_type`, `description`, `author`, `plugin_api_version`,
+    `builtin_flag`, `status`, `sort_no`, `schema_mode`, `supports_hot_disable`, `supports_data_purge`,
+    `runtime_contributions_json`, `created_by`, `updated_by`, `deleted`
+)
+VALUES (
+    'builtin-mock-sms', '内置模拟短信验证码', 'BUSINESS', 'Lumira managed mock SMS provider for local verification-code debugging.',
+    'Lumira', '1.0', 1, 'DISABLED', 910, 'SHARED', 1, 0,
+    JSON_ARRAY('sms-provider', 'verification-debug-modal'), 0, 0, 0
+)
+ON DUPLICATE KEY UPDATE
+    `plugin_name` = VALUES(`plugin_name`),
+    `plugin_type` = VALUES(`plugin_type`),
+    `description` = VALUES(`description`),
+    `author` = VALUES(`author`),
+    `plugin_api_version` = VALUES(`plugin_api_version`),
+    `builtin_flag` = VALUES(`builtin_flag`),
+    `sort_no` = VALUES(`sort_no`),
+    `schema_mode` = VALUES(`schema_mode`),
+    `supports_hot_disable` = VALUES(`supports_hot_disable`),
+    `supports_data_purge` = VALUES(`supports_data_purge`),
+    `runtime_contributions_json` = VALUES(`runtime_contributions_json`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_plugin_version` (
+    `plugin_code`, `version`, `min_platform_version`, `install_status`, `load_status`, `health_status`,
+    `lifecycle_status`, `schema_status`, `is_active`, `rollbackable`, `metadata_json`, `validation_report_json`,
+    `installed_at`, `created_by`, `updated_by`, `deleted`
+)
+VALUES (
+    'builtin-mock-sms', '1.0.0', '1.0.0', 'INSTALLED', 'LOADED', 'HEALTHY',
+    'DISABLED', 'READY', 1, 0,
+    JSON_OBJECT(
+        'pluginCode', 'builtin-mock-sms',
+        'pluginName', '内置模拟短信验证码',
         'version', '1.0.0',
         'kind', 'BUSINESS',
         'builtin', true

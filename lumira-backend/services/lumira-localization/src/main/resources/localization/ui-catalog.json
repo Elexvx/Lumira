@@ -4633,6 +4633,28 @@
       }
     },
     {
+      "messageKey": "page.login.backToLogin",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/user/Login.tsx",
+      "translations": {
+        "zh-CN": "返回登录",
+        "en-US": "Back to login"
+      }
+    },
+    {
+      "messageKey": "page.login.registerAndLogin",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/user/Login.tsx",
+      "translations": {
+        "zh-CN": "注册并登录",
+        "en-US": "Create account and log in"
+      }
+    },
+    {
       "messageKey": "page.login.initialPasswordChange.confirmPassword",
       "namespaceCode": "page",
       "sourceLocale": "zh-CN",
@@ -4769,10 +4791,10 @@
       "namespaceCode": "page",
       "sourceLocale": "zh-CN",
       "sourceType": "UI",
-      "sourceRef": "lumira-ui/src/pages/user/login/components/LoginFormFields.tsx",
+      "sourceRef": "lumira-ui/src/pages/user/Login.tsx",
       "translations": {
-        "zh-CN": "加入我们",
-        "en-US": "Join us"
+        "zh-CN": "注册账号",
+        "en-US": "Create account"
       }
     },
     {
@@ -5266,9 +5288,68 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/user/login/components/LoginFormFields.tsx",
       "translations": {
-        "zh-CN": "注册入口暂未开放",
-        "en-US": "Registration is not available yet"
+        "zh-CN": "暂时无法注册，请联系管理员配置注册与验证码服务",
+        "en-US": "Registration is unavailable. Ask an administrator to configure registration and verification."
       }
+    },
+    {
+      "messageKey": "mockSms.modal.title",
+      "namespaceCode": "mockSms",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/services/verification/challengeResponseAdapter.tsx",
+      "translations": {
+        "zh-CN": "模拟短信验证码",
+        "en-US": "Mock SMS verification code"
+      }
+    },
+    {
+      "messageKey": "mockSms.modal.close",
+      "namespaceCode": "mockSms",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/services/verification/challengeResponseAdapter.tsx",
+      "translations": { "zh-CN": "关闭", "en-US": "Close" }
+    },
+    {
+      "messageKey": "mockSms.modal.debugOnly",
+      "namespaceCode": "mockSms",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/services/verification/challengeResponseAdapter.tsx",
+      "translations": { "zh-CN": "仅用于本地调试，不会发送真实短信", "en-US": "For local debugging only. No real SMS message was sent." }
+    },
+    {
+      "messageKey": "mockSms.modal.code",
+      "namespaceCode": "mockSms",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/services/verification/challengeResponseAdapter.tsx",
+      "translations": { "zh-CN": "验证码", "en-US": "Verification code" }
+    },
+    {
+      "messageKey": "mockSms.modal.copy",
+      "namespaceCode": "mockSms",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/services/verification/challengeResponseAdapter.tsx",
+      "translations": { "zh-CN": "复制验证码", "en-US": "Copy code" }
+    },
+    {
+      "messageKey": "mockSms.modal.copySuccess",
+      "namespaceCode": "mockSms",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/services/verification/challengeResponseAdapter.tsx",
+      "translations": { "zh-CN": "验证码已复制", "en-US": "Verification code copied" }
+    },
+    {
+      "messageKey": "mockSms.modal.copyFailed",
+      "namespaceCode": "mockSms",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/services/verification/challengeResponseAdapter.tsx",
+      "translations": { "zh-CN": "复制失败，请手动复制验证码", "en-US": "Copy failed. Please copy the code manually." }
     },
     {
       "messageKey": "page.login.secondFactor.prompt",
@@ -5499,6 +5580,28 @@
       "translations": {
         "zh-CN": "返回插件列表",
         "en-US": "Back to plugins"
+      }
+    },
+    {
+      "messageKey": "page.plugins.builtin.builtinMockSms.description",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/settings/plugins/pluginPresentation.ts",
+      "translations": {
+        "zh-CN": "在本地开发和测试环境模拟阿里云短信验证码发送，并通过调试弹窗展示验证码。",
+        "en-US": "Mocks Alibaba Cloud SMS verification delivery in local development and test environments and shows the code in a debug dialog."
+      }
+    },
+    {
+      "messageKey": "page.plugins.builtin.builtinMockSms.name",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/settings/plugins/pluginPresentation.ts",
+      "translations": {
+        "zh-CN": "内置模拟短信验证码",
+        "en-US": "Built-in Mock SMS Verification"
       }
     },
     {

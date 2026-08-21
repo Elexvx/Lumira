@@ -28,6 +28,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -280,10 +281,10 @@ public class PaymentTransactionService {
                 "currency", row.getCurrency(),
                 "metadata", request.metadata() == null ? Map.of() : request.metadata()
         )));
-        row.setResponseJson(serialize(Map.of(
-                "providerCode", row.getProviderCode(),
-                "paymentUrl", row.getPaymentUrl()
-        )));
+        Map<String, Object> providerResponse = new LinkedHashMap<>();
+        providerResponse.put("providerCode", row.getProviderCode());
+        providerResponse.put("paymentUrl", row.getPaymentUrl());
+        row.setResponseJson(serialize(providerResponse));
         row.setIdempotencyKey(resolveIdempotencyKey(request.idempotencyKey(), row.getOrderNo()));
         row.setExpiresAt(now.plusHours(2));
         row.setCreatedBy(actorUserId);
@@ -1147,8 +1148,9 @@ public class PaymentTransactionService {
             ).paymentUrl();
         }
         if (BuiltinMockPaymentAvailability.PROVIDER_CODE.equals(order.getProviderCode())) {
-            return "/mock-payment/checkout?orderNo="
-                    + java.net.URLEncoder.encode(order.getOrderNo(), java.nio.charset.StandardCharsets.UTF_8);
+            // The debug provider is presented by the existing payment checkout adapter.
+            // It must not create a second business route or redirect flow.
+            return null;
         }
         if (StringUtils.hasText(settings.getApiBaseUrl())) {
             return resolveText(settings.getApiBaseUrl(), "") + "/checkout/" + order.getOrderNo();

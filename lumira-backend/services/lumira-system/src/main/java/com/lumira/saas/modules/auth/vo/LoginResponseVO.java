@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.auth.vo;
 
+import com.lumira.api.system.MockSmsDeliveryDTO;
 import java.util.List;
 
 public class LoginResponseVO {
@@ -74,6 +75,7 @@ public class LoginResponseVO {
         private String challengeId;
         private String maskedContact;
         private String promptMessage;
+        private MockSmsDeliveryDTO mockSmsDelivery;
 
         public String getFactorCode() {
             return factorCode;
@@ -113,6 +115,14 @@ public class LoginResponseVO {
 
         public void setPromptMessage(String promptMessage) {
             this.promptMessage = promptMessage;
+        }
+
+        public MockSmsDeliveryDTO getMockSmsDelivery() {
+            return mockSmsDelivery;
+        }
+
+        public void setMockSmsDelivery(MockSmsDeliveryDTO mockSmsDelivery) {
+            this.mockSmsDelivery = mockSmsDelivery;
         }
     }
 }

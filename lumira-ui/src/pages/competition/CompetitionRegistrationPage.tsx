@@ -45,6 +45,11 @@ import type {
   CompetitionStageFormRecord,
 } from '@/services/competition/types';
 import { request, requestFile } from '@/services/common/request';
+import {
+  canPresentPaymentCheckout,
+  presentPaymentCheckout,
+  type PaymentCheckoutOrder,
+} from '@/services/payment/paymentCheckout';
 import type { FileObjectRecord } from '@/types/api';
 import { CompetitionPaymentStep } from './components/CompetitionPaymentStep';
 import {
@@ -2684,7 +2689,12 @@ const CompetitionRegistrationPage = () => {
       setPaymentOrder(order);
       setPaymentModalOpen(true);
       registrationActionRef.current?.reload();
-      if (!order.paymentUrl) message.info('支付链接正在生成，弹窗会自动刷新');
+      if (!canPresentPaymentCheckout({
+        ...order,
+        providerCode: order.providerCode || selectedPaymentProvider,
+      })) {
+        message.info('支付操作正在生成，弹窗会自动刷新');
+      }
     } catch (error) {
       const errorMessage = extractErrorMessage(error, '支付订单生成失败');
       if (isMissingPreliminaryMaterialsError(errorMessage)) {
@@ -2751,6 +2761,21 @@ const CompetitionRegistrationPage = () => {
       if (!silent) showErrorMessage(error, '支付结果查询失败');
     }
   }, [clearAllRegistrationDrafts, registrationId]);
+
+  const registrationCheckoutOrder = useMemo(() => paymentOrder ? ({
+    ...paymentOrder,
+    providerCode: paymentOrder.providerCode || selectedPaymentProvider,
+  }) : undefined, [paymentOrder, selectedPaymentProvider]);
+
+  const openRegistrationPaymentCheckout = useCallback(() => {
+    if (!registrationCheckoutOrder) return;
+    presentPaymentCheckout(registrationCheckoutOrder, {
+      onOrderUpdated: (update: PaymentCheckoutOrder) => {
+        setPaymentOrder((current) => current ? ({ ...current, ...update } as CompetitionPaymentOrderRecord) : current);
+        void refreshPaymentResult(true);
+      },
+    });
+  }, [refreshPaymentResult, registrationCheckoutOrder]);
 
   useEffect(() => {
     if (!paymentModalOpen || !registrationId) return;
@@ -4055,10 +4080,12 @@ const CompetitionRegistrationPage = () => {
               <Typography.Text>支付订单号：{paymentOrder?.orderNo || '生成中'}</Typography.Text>
               <Typography.Text>支付金额：{formatRegistrationAmount(paymentOrder?.amountMinor ?? registrationRecord?.payableAmountMinor, paymentOrder?.currency || registrationRecord?.currency)}</Typography.Text>
               <Typography.Text>支付渠道：{paymentOptions.find((item) => item.providerCode === selectedPaymentProvider)?.displayName || selectedPaymentProvider || '-'}</Typography.Text>
-              {paymentOrder?.paymentUrl ? (
-                <Button type="primary" block href={paymentOrder.paymentUrl} target="_blank" rel="noopener noreferrer">前往支付</Button>
+              {canPresentPaymentCheckout(registrationCheckoutOrder) ? (
+                <Button type="primary" block onClick={openRegistrationPaymentCheckout}>前往支付</Button>
               ) : <Button type="primary" block loading disabled>支付链接生成中</Button>}
-              {paymentOrder?.paymentUrl ? <Button block href={paymentOrder.paymentUrl} target="_blank" rel="noopener noreferrer">重新打开支付</Button> : null}
+              {canPresentPaymentCheckout(registrationCheckoutOrder) ? (
+                <Button block onClick={openRegistrationPaymentCheckout}>重新打开支付</Button>
+              ) : null}
               <Button block onClick={() => void refreshPaymentResult()}>我已完成支付，检查结果</Button>
             </Space>
           </Modal>

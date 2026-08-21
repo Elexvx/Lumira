@@ -12,7 +12,6 @@ export const normalizeSecuritySettings = (settings?: Partial<SecuritySettings> |
     DEFAULT_SECURITY_SETTINGS.refreshTokenExpireSeconds,
   );
   const allowMultiDeviceLogin = toBoolean(settings?.allowMultiDeviceLogin, DEFAULT_SECURITY_SETTINGS.allowMultiDeviceLogin);
-  const registrationEnabled = toBoolean(settings?.registrationEnabled, DEFAULT_SECURITY_SETTINGS.registrationEnabled);
   const captchaEnabled = toBoolean(settings?.captchaEnabled, DEFAULT_SECURITY_SETTINGS.captchaEnabled);
   const captchaType = toCaptchaType(settings?.captchaType, DEFAULT_SECURITY_SETTINGS.captchaType);
   const loginDefenseWindowMinutes = toPositiveNumber(
@@ -54,7 +53,6 @@ export const normalizeSecuritySettings = (settings?: Partial<SecuritySettings> |
     accessTokenExpireSeconds,
     refreshTokenExpireSeconds,
     allowMultiDeviceLogin,
-    registrationEnabled,
     captchaEnabled,
     captchaType,
     loginDefenseWindowMinutes,

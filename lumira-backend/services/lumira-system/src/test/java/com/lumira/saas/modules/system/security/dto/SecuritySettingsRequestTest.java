@@ -17,7 +17,6 @@ class SecuritySettingsRequestTest {
                   "accessTokenExpireSeconds": 1800,
                   "refreshTokenExpireSeconds": 604800,
                   "allowMultiDeviceLogin": true,
-                  "registrationEnabled": true,
                   "captchaEnabled": false,
                   "captchaType": "IMAGE",
                   "loginDefenseWindowMinutes": 5,
@@ -36,7 +35,6 @@ class SecuritySettingsRequestTest {
         SecuritySettingsRequest request = new ObjectMapper().readValue(payload, SecuritySettingsRequest.class);
 
         assertEquals(8L, request.getPasswordMinLength());
-        assertTrue(request.getRegistrationEnabled());
         assertTrue(request.getPasswordRequireUppercase());
         assertTrue(request.getPasswordRequireLowercase());
         assertFalse(request.getPasswordRequireSpecialCharacter());

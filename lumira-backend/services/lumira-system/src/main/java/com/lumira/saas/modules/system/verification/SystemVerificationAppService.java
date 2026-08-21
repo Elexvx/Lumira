@@ -22,6 +22,7 @@ package com.lumira.saas.modules.system.verification;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.MockSmsDeliveryDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -42,6 +43,7 @@ import com.lumira.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.lumira.saas.modules.auth.vo.LoginResponseVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.support.SmsVerificationSender;
+import com.lumira.saas.modules.system.support.BuiltinMockSmsAvailability;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.modules.system.verification.SystemVerificationProperties;
 import com.lumira.saas.modules.system.verification.SystemVerificationSettingsAppService;
@@ -78,6 +80,8 @@ import org.springframework.util.StringUtils;
 @ConditionalOnLumiraControlPlaneEnabled
 public class SystemVerificationAppService {
     private static final Logger log = LoggerFactory.getLogger(SystemVerificationAppService.class);
+    private static final String DEFAULT_MOCK_SIGN_NAME = "Lumira调试";
+    private static final String DEFAULT_MOCK_TEMPLATE_CODE = "SMS_DEBUG_VERIFICATION";
     private static final TypeReference<List<String>> STRING_LIST = new TypeReference<List<String>>(){};
     private static final String FACTOR_TOTP = "totp";
     private static final String TOTP_CONFIG_ENABLED_KEY = "verification.totp.enabled";
@@ -376,9 +380,22 @@ public class SystemVerificationAppService {
         String contactHash = this.hashContactValue(normalizedContactType, normalizedContactValue);
         String maskedContact = FACTOR_SMS.equals(normalizedContactType) ? this.maskMobile(normalizedContactValue) : this.maskEmail(normalizedContactValue);
         this.ensureVerificationCodeCooldown(userId, trustedUserUuid, normalizedContactType, CHALLENGE_TYPE_BIND);
-        this.persistChallenge(challengeId, userId, trustedUserUuid, normalizedContactType, CHALLENGE_TYPE_BIND, contactHash, null, List.of(), codeHash, maskedContact, verificationCode, userId);
-        this.deliverVerificationCode(userId, trustedUserUuid, user.getUsername(), normalizedContactType, AUDIT_SCENE_CONTACT_BIND, normalizedContactValue, maskedContact, verificationCode, challengeId, "\u90ae\u7bb1\u9a8c\u8bc1\u7801", FACTOR_SMS.equals(normalizedContactType) ? this.loadSmsSettingsRecord() : null);
-        return this.buildChallengeResponse(normalizedContactType, this.contactBindFactorName(normalizedContactType), challengeId, maskedContact, FACTOR_SMS.equals(normalizedContactType) ? "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u4f60\u586b\u5199\u7684\u624b\u673a\u53f7\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u9a8c\u8bc1\u7801\u5b8c\u6210\u7ed1\u5b9a" : "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u4f60\u586b\u5199\u7684\u90ae\u7bb1\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u9a8c\u8bc1\u7801\u5b8c\u6210\u7ed1\u5b9a", null, null, List.of(), this.properties.isExposeDebugCode() ? verificationCode : null);
+        this.persistChallenge(
+                challengeId,
+                userId,
+                trustedUserUuid,
+                normalizedContactType,
+                CHALLENGE_TYPE_BIND,
+                contactHash,
+                null,
+                List.of(),
+                codeHash,
+                maskedContact,
+                FACTOR_SMS.equals(normalizedContactType) ? null : verificationCode,
+                userId
+        );
+        MockSmsDeliveryDTO mockSmsDelivery = this.deliverVerificationCode(userId, trustedUserUuid, user.getUsername(), normalizedContactType, AUDIT_SCENE_CONTACT_BIND, normalizedContactValue, maskedContact, verificationCode, challengeId, "\u90ae\u7bb1\u9a8c\u8bc1\u7801", FACTOR_SMS.equals(normalizedContactType) ? this.loadSmsSettingsRecord() : null);
+        return this.buildChallengeResponse(normalizedContactType, this.contactBindFactorName(normalizedContactType), challengeId, maskedContact, FACTOR_SMS.equals(normalizedContactType) ? "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u4f60\u586b\u5199\u7684\u624b\u673a\u53f7\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u9a8c\u8bc1\u7801\u5b8c\u6210\u7ed1\u5b9a" : "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u4f60\u586b\u5199\u7684\u90ae\u7bb1\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u9a8c\u8bc1\u7801\u5b8c\u6210\u7ed1\u5b9a", null, null, List.of(), mockSmsDelivery);
     }
 
     private void requireSensitiveContactChangeVerification(SysUserEntity user, String trustedUserUuid, String currentFactorCode, String currentChallengeId, String currentVerificationCode) {
@@ -562,9 +579,23 @@ public class SystemVerificationAppService {
         String promptMessage = FACTOR_SMS.equals(normalizedLoginType) ? "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u7ed1\u5b9a\u624b\u673a\u53f7\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u9a8c\u8bc1\u7801\u5b8c\u6210\u767b\u5f55" : "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u7ed1\u5b9a\u90ae\u7bb1\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u9a8c\u8bc1\u7801\u5b8c\u6210\u767b\u5f55";
         String trustedUserUuid = this.normalizeUserUuid(user.getUuid());
         this.ensureVerificationCodeCooldown(user.getId(), trustedUserUuid, normalizedLoginType, CHALLENGE_TYPE_LOGIN);
-        this.persistChallenge(challengeId, user.getId(), trustedUserUuid, normalizedLoginType, CHALLENGE_TYPE_LOGIN, null, null, List.of(), codeHash, maskedContact, verificationCode, user.getId());
+        this.persistChallenge(
+                challengeId,
+                user.getId(),
+                trustedUserUuid,
+                normalizedLoginType,
+                CHALLENGE_TYPE_LOGIN,
+                null,
+                null,
+                List.of(),
+                codeHash,
+                maskedContact,
+                FACTOR_SMS.equals(normalizedLoginType) ? null : verificationCode,
+                user.getId()
+        );
+        MockSmsDeliveryDTO mockSmsDelivery;
         try {
-            this.deliverVerificationCode(user.getId(), trustedUserUuid, user.getUsername(), normalizedLoginType, AUDIT_SCENE_LOGIN_CODE, FACTOR_SMS.equals(normalizedLoginType) ? user.getMobile() : user.getEmail(), maskedContact, verificationCode, challengeId, "\u90ae\u7bb1\u9a8c\u8bc1\u7801", smsSettings);
+            mockSmsDelivery = this.deliverVerificationCode(user.getId(), trustedUserUuid, user.getUsername(), normalizedLoginType, AUDIT_SCENE_LOGIN_CODE, FACTOR_SMS.equals(normalizedLoginType) ? user.getMobile() : user.getEmail(), maskedContact, verificationCode, challengeId, "\u90ae\u7bb1\u9a8c\u8bc1\u7801", smsSettings);
         }
         catch (RuntimeException exception) {
             this.discardChallenge(challengeId, user.getId(), trustedUserUuid, normalizedLoginType, CHALLENGE_TYPE_LOGIN);
@@ -578,7 +609,7 @@ public class SystemVerificationAppService {
         challenge.setPromptMessage(promptMessage);
         challenge.setExpiresInSeconds(this.verificationCodeExpireSeconds());
         challenge.setCooldownSeconds(this.verificationCodeCooldownSeconds());
-        challenge.setDebugCode(this.properties.isExposeDebugCode() ? verificationCode : null);
+        challenge.setMockSmsDelivery(mockSmsDelivery);
         return challenge;
     }
 
@@ -611,11 +642,12 @@ public class SystemVerificationAppService {
                 List.of(),
                 codeHash,
                 maskedContact,
-                verificationCode,
+                null,
                 pendingIdentity.userId()
         );
+        MockSmsDeliveryDTO mockSmsDelivery;
         try {
-            this.deliverVerificationCode(
+            mockSmsDelivery = this.deliverVerificationCode(
                     pendingIdentity.userId(),
                     pendingIdentity.userUuid(),
                     pendingIdentity.auditUsername(),
@@ -640,7 +672,7 @@ public class SystemVerificationAppService {
         challenge.setPromptMessage(promptMessage);
         challenge.setExpiresInSeconds(this.verificationCodeExpireSeconds());
         challenge.setCooldownSeconds(this.verificationCodeCooldownSeconds());
-        challenge.setDebugCode(this.properties.isExposeDebugCode() ? verificationCode : null);
+        challenge.setMockSmsDelivery(mockSmsDelivery);
         return challenge;
     }
 
@@ -756,9 +788,9 @@ public class SystemVerificationAppService {
             String verificationCode = this.generateNumericCode(6);
             String codeHash = this.totpService.sha256(challengeId + ":" + verificationCode);
             String maskedContact = this.maskMobile(user.getMobile());
-            this.persistChallenge(challengeId, user.getId(), trustedUserUuid, normalizedFactor, CHALLENGE_TYPE_LOGIN, null, null, List.of(), codeHash, maskedContact, verificationCode, user.getId());
-            this.deliverVerificationCode(user.getId(), trustedUserUuid, user.getUsername(), normalizedFactor, AUDIT_SCENE_SECOND_FACTOR, user.getMobile(), maskedContact, verificationCode, challengeId, "\u90ae\u7bb1\u9a8c\u8bc1\u7801", smsSettings);
-            return this.buildChallengeResponse(normalizedFactor, challengeId, maskedContact, "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u7ed1\u5b9a\u624b\u673a\u53f7\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u77ed\u4fe1\u9a8c\u8bc1\u7801\u5b8c\u6210\u9a8c\u8bc1", null, null, List.of(), this.properties.isExposeDebugCode() ? verificationCode : null);
+            this.persistChallenge(challengeId, user.getId(), trustedUserUuid, normalizedFactor, CHALLENGE_TYPE_LOGIN, null, null, List.of(), codeHash, maskedContact, null, user.getId());
+            MockSmsDeliveryDTO mockSmsDelivery = this.deliverVerificationCode(user.getId(), trustedUserUuid, user.getUsername(), normalizedFactor, AUDIT_SCENE_SECOND_FACTOR, user.getMobile(), maskedContact, verificationCode, challengeId, "\u90ae\u7bb1\u9a8c\u8bc1\u7801", smsSettings);
+            return this.buildChallengeResponse(normalizedFactor, challengeId, maskedContact, "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u7ed1\u5b9a\u624b\u673a\u53f7\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u77ed\u4fe1\u9a8c\u8bc1\u7801\u5b8c\u6210\u9a8c\u8bc1", null, null, List.of(), mockSmsDelivery);
         }
         if (FACTOR_EMAIL.equals(normalizedFactor)) {
             if (!this.isEmailLoginEnabled()) {
@@ -778,7 +810,7 @@ public class SystemVerificationAppService {
             String maskedContact = this.maskEmail(user.getEmail());
             this.persistChallenge(challengeId, user.getId(), trustedUserUuid, normalizedFactor, CHALLENGE_TYPE_LOGIN, null, null, List.of(), codeHash, maskedContact, verificationCode, user.getId());
             this.deliverVerificationCode(user.getId(), trustedUserUuid, user.getUsername(), normalizedFactor, AUDIT_SCENE_SECOND_FACTOR, user.getEmail(), maskedContact, verificationCode, challengeId, "\u90ae\u7bb1\u9a8c\u8bc1\u7801", null);
-            return this.buildChallengeResponse(normalizedFactor, challengeId, maskedContact, "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u7ed1\u5b9a\u90ae\u7bb1\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u90ae\u7bb1\u9a8c\u8bc1\u7801\u5b8c\u6210\u9a8c\u8bc1", null, null, List.of(), this.properties.isExposeDebugCode() ? verificationCode : null);
+            return this.buildChallengeResponse(normalizedFactor, challengeId, maskedContact, "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u7ed1\u5b9a\u90ae\u7bb1\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u90ae\u7bb1\u9a8c\u8bc1\u7801\u5b8c\u6210\u9a8c\u8bc1", null, null, List.of(), null);
         }
         if (FACTOR_TOTP.equals(normalizedFactor) && !this.isTotpEnabled()) {
             throw new BizException(ErrorCode.BIZ_ERROR, "\u8bf7\u5148\u5728\u7cfb\u7edf\u4e2d\u542f\u7528 2FA \u529f\u80fd");
@@ -795,23 +827,24 @@ public class SystemVerificationAppService {
         if (this.isTotpEnabled()) {
             this.loadBinding(user.getId(), trustedUserUuid, FACTOR_TOTP).filter(binding -> binding.enabled() && binding.bound()).ifPresent(binding -> {
                 SystemVO.VerificationChallengeVO challenge = this.startLoginChallenge(user.getId(), trustedUserUuid, FACTOR_TOTP);
-                result.add(this.buildSecondFactorOption(FACTOR_TOTP, "2FA", challenge.getChallengeId(), binding.maskedContact(), "\u8bf7\u8f93\u5165\u8ba4\u8bc1\u5668\u4e2d\u7684 6 \u4f4d\u9a8c\u8bc1\u7801\u5b8c\u6210\u9a8c\u8bc1"));
+                result.add(this.buildSecondFactorOption(FACTOR_TOTP, "2FA", challenge.getChallengeId(), binding.maskedContact(), "\u8bf7\u8f93\u5165\u8ba4\u8bc1\u5668\u4e2d\u7684 6 \u4f4d\u9a8c\u8bc1\u7801\u5b8c\u6210\u9a8c\u8bc1", null));
             });
         }
         if ((smsSettings = this.loadSmsSettingsRecord()).enabled() && smsSettings.configured() && StringUtils.hasText((String)user.getMobile())) {
             SystemVO.VerificationChallengeVO challenge = this.startLoginChallenge(user.getId(), trustedUserUuid, FACTOR_SMS);
-            result.add(this.buildSecondFactorOption(FACTOR_SMS, "\u77ed\u4fe1\u9a8c\u8bc1\u7801", challenge.getChallengeId(), challenge.getMaskedContact(), "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u7ed1\u5b9a\u624b\u673a\u53f7\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u77ed\u4fe1\u9a8c\u8bc1\u7801\u5b8c\u6210\u9a8c\u8bc1"));
+            result.add(this.buildSecondFactorOption(FACTOR_SMS, "\u77ed\u4fe1\u9a8c\u8bc1\u7801", challenge.getChallengeId(), challenge.getMaskedContact(), "\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3\u7ed1\u5b9a\u624b\u673a\u53f7\uff0c\u8bf7\u8f93\u5165 6 \u4f4d\u77ed\u4fe1\u9a8c\u8bc1\u7801\u5b8c\u6210\u9a8c\u8bc1", challenge.getMockSmsDelivery()));
         }
         return result;
     }
 
-    private LoginResponseVO.SecondFactorOptionVO buildSecondFactorOption(String factorCode, String factorName, String challengeId, String maskedContact, String promptMessage) {
+    private LoginResponseVO.SecondFactorOptionVO buildSecondFactorOption(String factorCode, String factorName, String challengeId, String maskedContact, String promptMessage, MockSmsDeliveryDTO mockSmsDelivery) {
         LoginResponseVO.SecondFactorOptionVO option = new LoginResponseVO.SecondFactorOptionVO();
         option.setFactorCode(factorCode);
         option.setFactorName(factorName);
         option.setChallengeId(challengeId);
         option.setMaskedContact(maskedContact);
         option.setPromptMessage(promptMessage);
+        option.setMockSmsDelivery(mockSmsDelivery);
         return option;
     }
 
@@ -916,11 +949,11 @@ public class SystemVerificationAppService {
         }
     }
 
-    private SystemVO.VerificationChallengeVO buildChallengeResponse(String factorCode, String challengeId, String maskedContact, String promptMessage, String setupUri, String setupSecret, List<String> recoveryCodes, String debugCode) {
-        return this.buildChallengeResponse(factorCode, this.loginDefinitionOf(factorCode).factorName(), challengeId, maskedContact, promptMessage, setupUri, setupSecret, recoveryCodes, debugCode);
+    private SystemVO.VerificationChallengeVO buildChallengeResponse(String factorCode, String challengeId, String maskedContact, String promptMessage, String setupUri, String setupSecret, List<String> recoveryCodes, MockSmsDeliveryDTO mockSmsDelivery) {
+        return this.buildChallengeResponse(factorCode, this.loginDefinitionOf(factorCode).factorName(), challengeId, maskedContact, promptMessage, setupUri, setupSecret, recoveryCodes, mockSmsDelivery);
     }
 
-    private SystemVO.VerificationChallengeVO buildChallengeResponse(String factorCode, String factorName, String challengeId, String maskedContact, String promptMessage, String setupUri, String setupSecret, List<String> recoveryCodes, String debugCode) {
+    private SystemVO.VerificationChallengeVO buildChallengeResponse(String factorCode, String factorName, String challengeId, String maskedContact, String promptMessage, String setupUri, String setupSecret, List<String> recoveryCodes, MockSmsDeliveryDTO mockSmsDelivery) {
         SystemVO.VerificationChallengeVO challenge = new SystemVO.VerificationChallengeVO();
         challenge.setFactorCode(factorCode);
         challenge.setFactorName(factorName);
@@ -930,7 +963,7 @@ public class SystemVerificationAppService {
         challenge.setSetupUri(setupUri);
         challenge.setSetupSecret(setupSecret);
         challenge.setRecoveryCodes(recoveryCodes);
-        challenge.setDebugCode(debugCode);
+        challenge.setMockSmsDelivery(mockSmsDelivery);
         return challenge;
     }
 
@@ -944,7 +977,6 @@ public class SystemVerificationAppService {
         result.setSetupUri(challenge.setupUri());
         result.setSetupSecret(challenge.setupSecret());
         result.setRecoveryCodes(challenge.recoveryCodes());
-        result.setDebugCode(challenge.debugCode());
         return result;
     }
 
@@ -1099,12 +1131,22 @@ public class SystemVerificationAppService {
         String accessKeySecret = this.defaultIfBlank(values.get(SMS_CONFIG_ACCESS_KEY_SECRET_KEY), "");
         String endpoint = this.defaultIfBlank(values.get(SMS_CONFIG_ENDPOINT_KEY), "");
         String region = this.defaultIfBlank(values.get(SMS_CONFIG_REGION_KEY), "");
-        boolean configured = enabled && StringUtils.hasText((String)provider) && StringUtils.hasText((String)signName) && StringUtils.hasText((String)templateCode) && StringUtils.hasText((String)accessKeyId) && StringUtils.hasText((String)accessKeySecret);
+        if (BuiltinMockSmsAvailability.PROVIDER_CODE.equalsIgnoreCase(provider)) {
+            signName = this.defaultIfBlank(signName, DEFAULT_MOCK_SIGN_NAME);
+            templateCode = this.defaultIfBlank(templateCode, DEFAULT_MOCK_TEMPLATE_CODE);
+        }
+        SmsVerificationSender.SmsSettings senderSettings = new SmsVerificationSender.SmsSettings(
+                provider, signName, templateCode, accessKeyId, accessKeySecret, endpoint, region, true
+        );
+        boolean configured = enabled && this.smsVerificationSender.isConfigured(senderSettings);
         return new SmsVerificationSettingsRecord(enabled, provider, signName, templateCode, accessKeyId, accessKeySecret, endpoint, region, configured);
     }
 
-    private void deliverVerificationCode(Long userId, String userUuid, String username, String channel, String scene, String target, String maskedTarget, String verificationCode, String challengeId, String emailSubject, SmsVerificationSettingsRecord smsSettings) {
+    private MockSmsDeliveryDTO deliverVerificationCode(Long userId, String userUuid, String username, String channel, String scene, String target, String maskedTarget, String verificationCode, String challengeId, String emailSubject, SmsVerificationSettingsRecord smsSettings) {
         String normalizedChannel = channel.toUpperCase(Locale.ROOT);
+        Long auditUserId = userId != null && userId > 0 ? userId : null;
+        String auditUserUuid = auditUserId == null ? null : userUuid;
+        MockSmsDeliveryDTO mockSmsDelivery = null;
         try {
             Object providerDetail;
             if (FACTOR_EMAIL.equals(channel)) {
@@ -1113,15 +1155,37 @@ public class SystemVerificationAppService {
             } else if (FACTOR_SMS.equals(channel)) {
                 SmsVerificationSender.SmsSendResult result = this.smsVerificationSender.send(this.toSmsSettings(smsSettings), target, verificationCode);
                 providerDetail = "provider=" + this.defaultIfBlank(smsSettings.provider(), "aliyun") + ", providerRequestId=" + this.defaultIfBlank(result.requestId(), "-") + ", providerBizId=" + this.defaultIfBlank(result.bizId(), "-");
+                if (result.mock()) {
+                    mockSmsDelivery = this.toMockSmsDelivery(smsSettings, maskedTarget, result);
+                }
             } else {
                 throw new BizException(ErrorCode.NOT_FOUND, "\u9a8c\u8bc1\u7801\u6e20\u9053\u4e0d\u5b58\u5728");
             }
-            this.verificationDeliveryAuditService.log(userId, userUuid, username, normalizedChannel, scene, "SUCCESS", this.abbreviate("challengeId=" + challengeId + ", target=" + maskedTarget + ", " + (String)providerDetail));
+            this.verificationDeliveryAuditService.log(auditUserId, auditUserUuid, username, normalizedChannel, scene, "SUCCESS", this.abbreviate("challengeId=" + challengeId + ", target=" + maskedTarget + ", " + (String)providerDetail));
         }
         catch (RuntimeException exception) {
-            this.verificationDeliveryAuditService.log(userId, userUuid, username, normalizedChannel, scene, "FAIL", this.abbreviate("challengeId=" + challengeId + ", target=" + maskedTarget + ", reason=" + exception.getMessage()));
+            this.verificationDeliveryAuditService.log(auditUserId, auditUserUuid, username, normalizedChannel, scene, "FAIL", this.abbreviate("challengeId=" + challengeId + ", target=" + maskedTarget + ", reason=" + exception.getMessage()));
             throw exception;
         }
+        return mockSmsDelivery;
+    }
+
+    private MockSmsDeliveryDTO toMockSmsDelivery(
+            SmsVerificationSettingsRecord settings,
+            String maskedTarget,
+            SmsVerificationSender.SmsSendResult result
+    ) {
+        MockSmsDeliveryDTO delivery = new MockSmsDeliveryDTO();
+        delivery.setProviderCode(BuiltinMockSmsAvailability.PROVIDER_CODE);
+        delivery.setPhoneNumbers(maskedTarget);
+        delivery.setSignName(settings.signName());
+        delivery.setTemplateCode(settings.templateCode());
+        delivery.setTemplateParam(result.templateParam());
+        delivery.setResultCode(result.code());
+        delivery.setResultMessage(result.message());
+        delivery.setRequestId(result.requestId());
+        delivery.setBizId(result.bizId());
+        return delivery;
     }
 
     private SmsVerificationSender.SmsSettings toSmsSettings(SmsVerificationSettingsRecord record) {
@@ -1186,7 +1250,7 @@ public class SystemVerificationAppService {
     }
 
     private void persistChallenge(String challengeId, Long userId, String userUuid, String factorCode, String challengeType, String setupSecret, String setupUri, List<String> recoveryCodes, String codeHash, String maskedContact, String debugCode, Long operatorId) {
-        int updated = this.jdbcTemplate.update("insert into sys_verification_challenge (\n    challenge_id, user_id, user_uuid, factor_code, challenge_type, expires_at, consumed_flag,\n    setup_secret, setup_uri, recovery_codes_json, code_hash, masked_contact, debug_code,\n    created_by, created_by_uuid, updated_by, updated_by_uuid, deleted\n) values (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)\non duplicate key update\n    factor_code = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(factor_code) else factor_code end,\n    challenge_type = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(challenge_type) else challenge_type end,\n    expires_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(expires_at) else expires_at end,\n    consumed_flag = case when user_id = values(user_id) and user_uuid = values(user_uuid) then 0 else consumed_flag end,\n    setup_secret = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(setup_secret) else setup_secret end,\n    setup_uri = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(setup_uri) else setup_uri end,\n    recovery_codes_json = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(recovery_codes_json) else recovery_codes_json end,\n    code_hash = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(code_hash) else code_hash end,\n    masked_contact = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(masked_contact) else masked_contact end,\n    debug_code = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(debug_code) else debug_code end,\n    updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(updated_by) else updated_by end,\n    updated_by_uuid = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(updated_by_uuid) else updated_by_uuid end,\n    updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then current_timestamp else updated_at end,\n    deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) then 0 else deleted end\n", challengeId, userId, userUuid, factorCode, challengeType, this.challengeExpiresAt(factorCode, challengeType), this.fieldCryptoService.encrypt(setupSecret), setupUri, this.encryptStringList(recoveryCodes), codeHash, maskedContact, this.properties.isExposeDebugCode() ? debugCode : null, operatorId, userUuid, operatorId, userUuid);
+        int updated = this.jdbcTemplate.update("insert into sys_verification_challenge (\n    challenge_id, user_id, user_uuid, factor_code, challenge_type, expires_at, consumed_flag,\n    setup_secret, setup_uri, recovery_codes_json, code_hash, masked_contact, debug_code,\n    created_by, created_by_uuid, updated_by, updated_by_uuid, deleted\n) values (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)\non duplicate key update\n    factor_code = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(factor_code) else factor_code end,\n    challenge_type = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(challenge_type) else challenge_type end,\n    expires_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(expires_at) else expires_at end,\n    consumed_flag = case when user_id = values(user_id) and user_uuid = values(user_uuid) then 0 else consumed_flag end,\n    setup_secret = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(setup_secret) else setup_secret end,\n    setup_uri = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(setup_uri) else setup_uri end,\n    recovery_codes_json = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(recovery_codes_json) else recovery_codes_json end,\n    code_hash = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(code_hash) else code_hash end,\n    masked_contact = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(masked_contact) else masked_contact end,\n    debug_code = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(debug_code) else debug_code end,\n    updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(updated_by) else updated_by end,\n    updated_by_uuid = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(updated_by_uuid) else updated_by_uuid end,\n    updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then current_timestamp else updated_at end,\n    deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) then 0 else deleted end\n", challengeId, userId, userUuid, factorCode, challengeType, this.challengeExpiresAt(factorCode, challengeType), this.fieldCryptoService.encrypt(setupSecret), setupUri, this.encryptStringList(recoveryCodes), codeHash, maskedContact, this.properties.isExposeDebugCode() ? debugCode : null, operatorId, userUuid, operatorId, userUuid);
         this.requireVerificationWrite(updated, "Verification challenge changed, please retry");
     }
 

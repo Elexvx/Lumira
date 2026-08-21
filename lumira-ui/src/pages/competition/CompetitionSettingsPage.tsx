@@ -1,4 +1,4 @@
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
+import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, InboxOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, ConfigProvider, Divider, Form, Input, InputNumber, Menu, Modal, Popconfirm, Radio, Select, Space, Switch, Tabs, Tag, Typography } from 'antd';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react';
 import { history, useLocation, useParams } from '@umijs/max';
@@ -6,11 +6,13 @@ import { formatMessage } from '@/i18n/formatMessage';
 import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
 import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
 import { isCompetitionWorkspaceReadOnly } from '@/features/competition-workspace/competitionWorkspaceReadOnly';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { DataTable } from '@/features/table/DataTable';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { databaseMessage } from '@/i18n/databaseMessage';
 import {
+  deleteCompetition,
   getCompetitionSettings,
   listCompetitionStages,
   saveCompetitionSettingsModule,
@@ -1553,16 +1555,27 @@ type CompetitionBasicSettingsPanelProps = {
   competition: CompetitionRecord;
   categoryOptions: Array<{ label: string; value: string }>;
   levelOptions: Array<{ label: string; value: string }>;
+  readOnly: boolean;
+  canArchive: boolean;
+  canDelete: boolean;
   onSaved: (competition: CompetitionRecord) => void;
 };
 
-const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle, CompetitionBasicSettingsPanelProps>(({
+const CompetitionBasicSettingsPanel = forwardRef<
+  CompetitionSettingsPanelHandle,
+  CompetitionBasicSettingsPanelProps
+>(({
   competition,
   categoryOptions,
   levelOptions,
+  readOnly,
+  canArchive,
+  canDelete,
   onSaved,
 }, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
+  const [archiving, setArchiving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     form.resetFields();
@@ -1587,92 +1600,192 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
       return false;
     }
   }, [competition, form, onSaved]);
+
+  const archiveCompetition = useCallback(async () => {
+    setArchiving(true);
+    try {
+      const archived = await updateCompetition(competition.id, normalizePayload({
+        ...defaultCompetitionFormValues,
+        ...recordToFormValues(competition),
+        status: 'archived',
+      } as CompetitionFormValues, { preserveTimelineFrom: competition }), API_OPTS.SILENT);
+      onSaved(archived);
+      message.success('赛事已归档');
+    } catch (error) {
+      showErrorMessage(error, '赛事归档失败');
+    } finally {
+      setArchiving(false);
+    }
+  }, [competition, onSaved]);
+
+  const deleteCurrentCompetition = useCallback(async () => {
+    setDeleting(true);
+    try {
+      await deleteCompetition(competition.id);
+      message.success('赛事已删除');
+      history.replace('/competitions/management');
+    } catch (error) {
+      showErrorMessage(error, '赛事删除失败');
+    } finally {
+      setDeleting(false);
+    }
+  }, [competition.id]);
   useImperativeHandle(ref, () => ({
     saveNow: save,
   }), [save]);
 
   return (
     <section className="competition-config-module">
-      <div className="competition-config-module__header">
-        <Typography.Title className="competition-config-module__title" level={4}>
-          基础信息
-        </Typography.Title>
-      </div>
-      <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues}>
-        <section className="competition-basic-section">
-          <Typography.Title className="competition-basic-section__title" level={5}>
+      <CompetitionSettingsReadOnlyBoundary readOnly={readOnly}>
+        <div className="competition-config-module__header">
+          <Typography.Title className="competition-config-module__title" level={4}>
             基础信息
           </Typography.Title>
-          <div className="competition-basic-section__grid">
-            <Form.Item name="title" label="竞赛名称" rules={[{ required: true, message: '请输入竞赛名称' }]}>
-              <Input maxLength={128} placeholder="请输入竞赛名称" />
-            </Form.Item>
-            <Form.Item name="shortName" label="竞赛简称">
-              <Input maxLength={128} placeholder="请输入竞赛简称" />
-            </Form.Item>
-            <Form.Item name="category" label="竞赛类别" rules={[{ required: true, message: '请选择竞赛类别' }]}>
-              <Select options={categoryOptions} placeholder="请选择竞赛类别" />
-            </Form.Item>
-            <Form.Item name="competitionLevel" label="竞赛级别" rules={[{ required: true, message: '请选择竞赛级别' }]}>
-              <Select options={levelOptions} placeholder="请选择竞赛级别" />
-            </Form.Item>
-          </div>
-        </section>
+        </div>
+        <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues}>
+          <section className="competition-basic-section">
+            <Typography.Title className="competition-basic-section__title" level={5}>
+              基础信息
+            </Typography.Title>
+            <div className="competition-basic-section__grid">
+              <Form.Item name="title" label="竞赛名称" rules={[{ required: true, message: '请输入竞赛名称' }]}>
+                <Input maxLength={128} placeholder="请输入竞赛名称" />
+              </Form.Item>
+              <Form.Item name="shortName" label="竞赛简称">
+                <Input maxLength={128} placeholder="请输入竞赛简称" />
+              </Form.Item>
+              <Form.Item name="category" label="竞赛类别" rules={[{ required: true, message: '请选择竞赛类别' }]}>
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  options={categoryOptions}
+                  placeholder="请选择竞赛类别"
+                />
+              </Form.Item>
+              <Form.Item name="competitionLevel" label="竞赛级别" rules={[{ required: true, message: '请选择竞赛级别' }]}>
+                <Select options={levelOptions} placeholder="请选择竞赛级别" />
+              </Form.Item>
+            </div>
+          </section>
 
-        <section className="competition-basic-section">
-          <Typography.Title className="competition-basic-section__title" level={5}>
-            组织与参赛
-          </Typography.Title>
-          <Form.List name="organizers">
-            {(fields, { add, remove }) => (
-              <Form.Item className="competition-organizer-list" label="组织者" required>
-                <Space orientation="vertical" size={12} className="competition-dynamic-list">
-                  {fields.map((field, index) => (
-                    <div key={field.key} className="competition-dynamic-list__row">
-                      <Form.Item name={[field.name, 'role']} rules={[{ required: true, message: '请输入组织者类型' }]} className="competition-dynamic-list__role">
-                        <Input maxLength={64} placeholder="例如：主办方" />
-                      </Form.Item>
-                      <Form.Item name={[field.name, 'name']} rules={[{ required: true, message: '请输入组织者名称' }]} className="competition-dynamic-list__main">
-                        <Input maxLength={128} placeholder="例如：大学赛事组委会" />
-                      </Form.Item>
-                      <div className="competition-dynamic-list__actions">
-                        {index === fields.length - 1 ? (
+          <section className="competition-basic-section">
+            <Typography.Title className="competition-basic-section__title" level={5}>
+              组织与参赛
+            </Typography.Title>
+            <Form.List name="organizers">
+              {(fields, { add, remove }) => (
+                <Form.Item className="competition-organizer-list" label="组织者" required>
+                  <Space orientation="vertical" size={12} className="competition-dynamic-list">
+                    {fields.map((field, index) => (
+                      <div key={field.key} className="competition-dynamic-list__row">
+                        <Form.Item name={[field.name, 'role']} rules={[{ required: true, message: '请输入组织者类型' }]} className="competition-dynamic-list__role">
+                          <Input maxLength={64} placeholder="例如：主办方" />
+                        </Form.Item>
+                        <Form.Item name={[field.name, 'name']} rules={[{ required: true, message: '请输入组织者名称' }]} className="competition-dynamic-list__main">
+                          <Input maxLength={128} placeholder="例如：大学赛事组委会" />
+                        </Form.Item>
+                        <div className="competition-dynamic-list__actions">
+                          {index === fields.length - 1 ? (
+                            <Button
+                              aria-label="Add organizer"
+                              title="Add organizer"
+                              icon={<PlusOutlined />}
+                              onClick={() => {
+                                add({ role: '', name: '' });
+                              }}
+                            />
+                          ) : null}
                           <Button
-                            aria-label="Add organizer"
-                            title="Add organizer"
-                            icon={<PlusOutlined />}
+                            aria-label="Remove organizer"
+                            title="Remove organizer"
+                            icon={<DeleteOutlined />}
+                            disabled={fields.length <= 1}
                             onClick={() => {
-                              add({ role: '', name: '' });
+                              remove(field.name);
                             }}
                           />
-                        ) : null}
-                        <Button
-                          aria-label="Remove organizer"
-                          title="Remove organizer"
-                          icon={<DeleteOutlined />}
-                          disabled={fields.length <= 1}
-                          onClick={() => {
-                            remove(field.name);
-                          }}
-                        />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </Space>
+                    ))}
+                  </Space>
+                </Form.Item>
+              )}
+            </Form.List>
+            <div className="competition-basic-section__grid">
+              <Form.Item className="competition-basic-section__full" name="participationScope" label="参赛范围" rules={[{ required: true, message: '请输入参赛范围' }]}>
+                <Input maxLength={255} placeholder="请输入参赛范围" />
               </Form.Item>
-            )}
-          </Form.List>
-          <div className="competition-basic-section__grid">
-            <Form.Item className="competition-basic-section__full" name="participationScope" label="参赛范围" rules={[{ required: true, message: '请输入参赛范围' }]}>
-              <Input maxLength={255} placeholder="请输入参赛范围" />
-            </Form.Item>
+            </div>
+          </section>
+
+          <Form.Item name="code" hidden>
+            <Input />
+          </Form.Item>
+        </Form>
+      </CompetitionSettingsReadOnlyBoundary>
+
+      {canArchive || canDelete ? (
+        <section className="competition-basic-section competition-basic-section--danger">
+          <Typography.Title className="competition-basic-section__title" level={5}>
+            危险操作
+          </Typography.Title>
+          <div className="competition-danger-actions">
+            {canArchive ? (
+              <div className="competition-danger-action">
+                <div className="competition-danger-action__copy">
+                  <Typography.Text strong>归档赛事</Typography.Text>
+                  <Typography.Text type="secondary">
+                    {competition.status === 'archived'
+                      ? '赛事已归档，工作空间当前为只读状态。'
+                      : '归档后赛事将转为只读，不再接受报名、评审或设置修改。'}
+                  </Typography.Text>
+                </div>
+                <Popconfirm
+                  disabled={competition.status === 'archived'}
+                  title="确认归档该赛事？"
+                  description="归档后赛事工作空间将变为只读状态。"
+                  okText="确认归档"
+                  cancelText="取消"
+                  okButtonProps={{ danger: true }}
+                  onConfirm={() => archiveCompetition()}
+                >
+                  <Button
+                    danger
+                    type="primary"
+                    icon={<InboxOutlined />}
+                    loading={archiving}
+                    disabled={competition.status === 'archived'}
+                  >
+                    归档
+                  </Button>
+                </Popconfirm>
+              </div>
+            ) : null}
+            {canDelete ? (
+              <div className="competition-danger-action">
+                <div className="competition-danger-action__copy">
+                  <Typography.Text strong>删除赛事</Typography.Text>
+                  <Typography.Text type="secondary">
+                    删除后赛事将从列表移除，且无法通过页面恢复；已有报名记录的赛事无法删除。
+                  </Typography.Text>
+                </div>
+                <Popconfirm
+                  title="确认删除该赛事？"
+                  description="此操作不可通过页面恢复，请确认后再删除。"
+                  okText="确认删除"
+                  cancelText="取消"
+                  okButtonProps={{ danger: true }}
+                  onConfirm={() => deleteCurrentCompetition()}
+                >
+                  <Button danger type="primary" icon={<DeleteOutlined />} loading={deleting}>
+                    删除
+                  </Button>
+                </Popconfirm>
+              </div>
+            ) : null}
           </div>
         </section>
-
-        <Form.Item name="code" hidden>
-          <Input />
-        </Form.Item>
-      </Form>
+      ) : null}
     </section>
   );
 });
@@ -2249,6 +2362,7 @@ const CompetitionSettingsReadOnlyBoundary = ({
 const CompetitionSettingsPage = () => {
   const params = useParams<{ competitionUuid: string }>();
   const location = useLocation();
+  const actionPermission = useActionPermission();
   const workspace = useOptionalCompetitionWorkspace();
   const competitionUuid = params.competitionUuid || '';
   const initialNavigation = parseCompetitionSettingsNavigation(location.search);
@@ -2261,10 +2375,14 @@ const CompetitionSettingsPage = () => {
   const [storageSpaceOptions, setStorageSpaceOptions] = useState<StorageSpaceOption[]>([]);
   const [paymentProviderOptions, setPaymentProviderOptions] = useState<PaymentProviderOption[]>([]);
   const activePanelRef = useRef<CompetitionSettingsPanelHandle | null>(null);
-  const settingsReadOnly = isCompetitionWorkspaceReadOnly(
+  const settingsArchived = isCompetitionWorkspaceReadOnly(
     settings?.competition.status,
     workspace?.workspace?.readOnly,
   );
+  const canManageSettings = workspace ? workspace.can('settings.manage') : true;
+  const canArchiveCompetition = actionPermission.can('aiadc:competition:update');
+  const canDeleteCompetition = actionPermission.can('aiadc:competition:delete');
+  const settingsReadOnly = settingsArchived || !canManageSettings;
   const fallbackDictOptions = useCompetitionDictFallbackOptions();
   const { options: categoryOptions } = useDictOptions(COMPETITION_CATEGORY_DICT, fallbackDictOptions.categoryOptions);
   const { options: levelOptions } = useDictOptions(COMPETITION_LEVEL_DICT, fallbackDictOptions.levelOptions);
@@ -2420,6 +2538,11 @@ const CompetitionSettingsPage = () => {
     updateNavigationUrl('stages', nextDetail);
   }, [stageDetail, updateNavigationUrl]);
 
+  const handleCompetitionSaved = useCallback((competition: CompetitionRecord) => {
+    setSettings((current) => current ? { ...current, competition } : current);
+    workspace?.refresh();
+  }, [workspace]);
+
   return (
     <CompetitionWorkspacePageFrame
       embeddedInWorkspace={Boolean(workspace)}
@@ -2440,7 +2563,7 @@ const CompetitionSettingsPage = () => {
               />
             </aside>
             <main className="competition-settings-content">
-              {settingsReadOnly ? (
+              {settingsArchived ? (
                 <Alert
                   type="info"
                   showIcon
@@ -2448,17 +2571,26 @@ const CompetitionSettingsPage = () => {
                   description="归档赛事不再接受设置变更。"
                   style={{ marginBottom: 16 }}
                 />
+              ) : !canManageSettings ? (
+                <Alert
+                  type="warning"
+                  showIcon
+                  title="当前账号仅可查看赛事设置"
+                  description="需要赛事设置管理权限才能修改或归档赛事。"
+                  style={{ marginBottom: 16 }}
+                />
               ) : null}
               {activeKey === 'basic' ? (
-                <CompetitionSettingsReadOnlyBoundary readOnly={settingsReadOnly}>
-                  <CompetitionBasicSettingsPanel
-                    ref={activePanelRef}
-                    competition={settings.competition}
-                    categoryOptions={categoryOptions as Array<{ label: string; value: string }>}
-                    levelOptions={levelOptions as Array<{ label: string; value: string }>}
-                    onSaved={(competition) => setSettings({ ...settings, competition })}
-                  />
-                </CompetitionSettingsReadOnlyBoundary>
+                <CompetitionBasicSettingsPanel
+                  ref={activePanelRef}
+                  competition={settings.competition}
+                  categoryOptions={categoryOptions as Array<{ label: string; value: string }>}
+                  levelOptions={levelOptions as Array<{ label: string; value: string }>}
+                  readOnly={settingsReadOnly}
+                  canArchive={canArchiveCompetition}
+                  canDelete={canDeleteCompetition}
+                  onSaved={handleCompetitionSaved}
+                />
               ) : activeKey === 'registration' ? (
                 <>
                   <Tabs

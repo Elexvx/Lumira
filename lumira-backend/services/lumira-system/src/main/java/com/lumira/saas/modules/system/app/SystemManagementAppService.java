@@ -2215,7 +2215,6 @@ public class SystemManagementAppService {
         snapshot.setAccessTokenExpireSeconds(request.getAccessTokenExpireSeconds());
         snapshot.setRefreshTokenExpireSeconds(request.getRefreshTokenExpireSeconds());
         snapshot.setAllowMultiDeviceLogin(Boolean.TRUE.equals(request.getAllowMultiDeviceLogin()));
-        snapshot.setRegistrationEnabled(Boolean.TRUE.equals(request.getRegistrationEnabled()));
         snapshot.setCaptchaEnabled(Boolean.TRUE.equals(request.getCaptchaEnabled()));
         snapshot.setCaptchaType(defaultIfBlank(request.getCaptchaType(), "IMAGE").trim().toUpperCase());
         snapshot.setLoginDefenseWindowMinutes(request.getLoginDefenseWindowMinutes());
@@ -2237,7 +2236,6 @@ public class SystemManagementAppService {
         vo.setAccessTokenExpireSeconds(snapshot.getAccessTokenExpireSeconds());
         vo.setRefreshTokenExpireSeconds(snapshot.getRefreshTokenExpireSeconds());
         vo.setAllowMultiDeviceLogin(snapshot.isAllowMultiDeviceLogin());
-        vo.setRegistrationEnabled(snapshot.isRegistrationEnabled());
         vo.setCaptchaEnabled(snapshot.isCaptchaEnabled());
         vo.setCaptchaType(defaultIfBlank(snapshot.getCaptchaType(), "IMAGE").trim().toUpperCase());
         vo.setLoginDefenseWindowMinutes(snapshot.getLoginDefenseWindowMinutes());
@@ -2255,7 +2253,6 @@ public class SystemManagementAppService {
 
     private SystemVO.SecuritySettingsVO toPublicSecuritySettingsVO(SecuritySettingsService.SecuritySettingsSnapshot snapshot) {
         SystemVO.SecuritySettingsVO vo = new SystemVO.SecuritySettingsVO();
-        vo.setRegistrationEnabled(snapshot.isRegistrationEnabled());
         vo.setCaptchaEnabled(snapshot.isCaptchaEnabled());
         vo.setCaptchaType(defaultIfBlank(snapshot.getCaptchaType(), "IMAGE").trim().toUpperCase());
         vo.setVerificationCodeExpireSeconds(snapshot.getVerificationCodeExpireSeconds());

@@ -53,6 +53,7 @@ import com.lumira.saas.modules.system.sensitive.security.SensitiveWordFormFilter
 import com.lumira.saas.modules.system.sensitive.security.SensitiveWordRequestBodyAdvice;
 import com.lumira.saas.modules.system.settings.infrastructure.JdbcSystemPlatformSettingsRepository;
 import com.lumira.saas.modules.system.support.SmsVerificationSender;
+import com.lumira.saas.modules.system.support.BuiltinMockSmsAvailability;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.modules.system.update.app.PlatformUpdateAppService;
 import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceService;
@@ -64,6 +65,7 @@ import com.lumira.saas.modules.system.user.infrastructure.JdbcSystemUserManageme
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationProperties;
 import com.lumira.saas.modules.system.verification.SystemVerificationSettingsAppService;
+import com.lumira.saas.modules.system.verification.BuiltinMockSmsLifecycleHook;
 import com.lumira.saas.modules.system.verification.VerificationDeliveryAuditService;
 import com.lumira.saas.modules.system.verification.WechatLoginProperties;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
@@ -132,6 +134,7 @@ import org.springframework.context.annotation.Import;
         SensitiveWordPluginStateService.class,
         SensitiveWordRequestBodyAdvice.class,
         SensitiveWordService.class,
+        BuiltinMockSmsAvailability.class,
         SmsVerificationSender.class,
         SmtpMailService.class,
         SystemController.class,
@@ -153,6 +156,7 @@ import org.springframework.context.annotation.Import;
         SystemVerificationAppService.class,
         SystemVerificationController.class,
         SystemVerificationSettingsAppService.class,
+        BuiltinMockSmsLifecycleHook.class,
         UserExportAppService.class,
         UserExportTaskWorkerService.class,
         VerificationDeliveryAuditService.class,

@@ -21,12 +21,15 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { databaseMessage } from '@/i18n/databaseMessage';
+import {
+  resolveSelectedSmsProviderCode,
+  resolveVisibleSmsProviderCodes,
+} from '../smsProviderOptions';
+import type { SmsProviderCode } from '../smsProviderOptions';
 
 const t = databaseMessage;
 
 type ConfigDrawerMode = 'totp' | 'sms' | 'email' | 'wechat' | 'passkey' | 'basic';
-type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
-
 interface SmsProviderFieldConfig {
   name: string;
   label: string;
@@ -119,13 +122,6 @@ const buildPasskeyDefaults = (rpName: string) => {
   };
 };
 
-const SMS_PROVIDER_OPTIONS: Array<{ label: string; value: SmsProviderCode }> = [
-  { label: t('ui.settings.verification.useauthenticatorconfig.alibabaCloudSms'), value: 'aliyun' },
-  { label: t('ui.settings.verification.useauthenticatorconfig.tencentCloudSms'), value: 'tencent' },
-  { label: t('ui.settings.verification.useauthenticatorconfig.localMock'), value: 'mock' },
-  { label: t('ui.settings.verification.useauthenticatorconfig.customGateway'), value: 'custom' },
-];
-
 const SMS_PROVIDER_SCHEMAS: Record<SmsProviderCode, SmsProviderSchema> = {
   aliyun: {
     fields: [
@@ -137,30 +133,10 @@ const SMS_PROVIDER_SCHEMAS: Record<SmsProviderCode, SmsProviderSchema> = {
       { name: 'region', label: t('ui.settings.verification.useauthenticatorconfig.region'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGCnHangzhou') },
     ],
   },
-  tencent: {
+  builtin_mock_sms: {
     fields: [
-      { name: 'signName', label: t('ui.settings.verification.useauthenticatorconfig.smsSignName'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHongxiangShangdao'), required: true },
-      { name: 'templateCode', label: t('ui.settings.verification.useauthenticatorconfig.templateId'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eG1234567'), required: true },
-      { name: 'accessKeyId', label: 'SecretId', placeholder: t('ui.settings.verification.useauthenticatorconfig.tencentCloudSecretid'), required: true },
-      { name: 'accessKeySecret', label: 'SecretKey', placeholder: t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingSecret'), password: true, required: true },
-      { name: 'endpoint', label: t('ui.settings.verification.useauthenticatorconfig.apiEndpoint'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHttpsSmsTencentcloudapiCom') },
-      { name: 'region', label: t('ui.settings.verification.useauthenticatorconfig.region'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGApGuangzhou') },
-    ],
-  },
-  mock: {
-    fields: [
-      { name: 'signName', label: t('ui.settings.verification.useauthenticatorconfig.mockSignName'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGTestSms') },
-      { name: 'templateCode', label: t('ui.settings.verification.useauthenticatorconfig.mockTemplateCode'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGMockSms001') },
-    ],
-  },
-  custom: {
-    fields: [
-      { name: 'endpoint', label: t('ui.settings.verification.useauthenticatorconfig.gatewayUrl'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHttpsSmsExampleComApi'), required: true },
-      { name: 'accessKeyId', label: t('ui.settings.verification.useauthenticatorconfig.gatewayAccount'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGGatewayUser'), required: true },
-      { name: 'accessKeySecret', label: t('ui.settings.verification.useauthenticatorconfig.gatewaySecret'), placeholder: t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingSecret'), password: true, required: true },
-      { name: 'signName', label: t('ui.settings.verification.useauthenticatorconfig.signName'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHongxiangShangdao'), required: true },
-      { name: 'templateCode', label: t('ui.settings.verification.useauthenticatorconfig.templateCode'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGSms123456789'), required: true },
-      { name: 'region', label: t('ui.settings.verification.useauthenticatorconfig.region'), placeholder: t('ui.settings.verification.useauthenticatorconfig.fillInAsRequiredByTheGateway') },
+      { name: 'signName', label: t('ui.settings.verification.useauthenticatorconfig.mockSignName'), placeholder: 'Lumira调试', required: true },
+      { name: 'templateCode', label: t('ui.settings.verification.useauthenticatorconfig.mockTemplateCode'), placeholder: 'SMS_DEBUG_VERIFICATION', required: true },
     ],
   },
 } as const;
@@ -255,6 +231,13 @@ const SmsDrawerContent = ({
 }) => {
   const provider = (Form.useWatch('provider', smsFormProps.form) || 'aliyun') as SmsProviderCode;
   const providerSchema = SMS_PROVIDER_SCHEMAS[provider] ?? SMS_PROVIDER_SCHEMAS.aliyun;
+  const providerOptions: Array<{ label: string; value: SmsProviderCode }> =
+    resolveVisibleSmsProviderCodes(smsSettingsData?.mockProviderAvailable).map((code) => ({
+      value: code,
+      label: code === 'aliyun'
+        ? t('ui.settings.verification.useauthenticatorconfig.alibabaCloudSms')
+        : t('ui.settings.verification.useauthenticatorconfig.localMock'),
+    }));
   const { isMobile } = useResponsive();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
@@ -268,7 +251,7 @@ const SmsDrawerContent = ({
         >
           <Select
             disabled={!canManageSettings}
-            options={SMS_PROVIDER_OPTIONS}
+            options={providerOptions}
             placeholder={t('ui.settings.verification.useauthenticatorconfig.pleaseSelectAnSmsProvider')}
             onChange={handleSmsProviderChange}
           />
@@ -684,7 +667,7 @@ export const useAuthenticatorConfigDrawer = ({
   );
 
   const normalizeProviderCode = (value?: string | null): SmsProviderCode => {
-    if (value === 'tencent' || value === 'mock' || value === 'custom') {
+    if (value === 'builtin_mock_sms') {
       return value;
     }
     return 'aliyun';
@@ -848,17 +831,23 @@ export const useAuthenticatorConfigDrawer = ({
     if (!smsSettingsData) {
       return;
     }
-    const providerCode = normalizeProviderCode(smsSettingsData.provider);
+    const providerCode = resolveSelectedSmsProviderCode(
+      smsSettingsData.provider,
+      smsSettingsData.mockProviderAvailable,
+    );
     const accessKeySecret = smsSettingsData.accessKeySecretConfigured ? SMS_ACCESS_KEY_SECRET_MASK : '';
-    setProviderDrafts((drafts) => ({
-      ...drafts,
-      [providerCode]: {
-        ...smsSettingsData,
-        accessKeySecret,
-      },
-    }));
+    if (providerCode) {
+      setProviderDrafts((drafts) => ({
+        ...drafts,
+        [providerCode]: {
+          ...smsSettingsData,
+          accessKeySecret,
+        },
+      }));
+    }
     smsSettingsForm.setFieldsValue({
       ...smsSettingsData,
+      provider: providerCode,
       accessKeySecret,
     });
   }, [smsSettingsData, smsSettingsForm]);
@@ -871,8 +860,8 @@ export const useAuthenticatorConfigDrawer = ({
       const nextDraft = providerDrafts[nextProviderCode] || {
         enabled: currentValues.enabled ?? false,
         provider: nextProviderCode,
-        signName: '',
-        templateCode: '',
+        signName: nextProviderCode === 'builtin_mock_sms' ? currentValues.signName || 'Lumira调试' : currentValues.signName || '',
+        templateCode: nextProviderCode === 'builtin_mock_sms' ? currentValues.templateCode || 'SMS_DEBUG_VERIFICATION' : currentValues.templateCode || '',
         accessKeyId: '',
         accessKeySecret: '',
         endpoint: '',

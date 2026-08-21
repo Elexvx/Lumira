@@ -1,5 +1,6 @@
 package com.lumira.api.auth;
 
+import com.lumira.api.system.MockSmsDeliveryDTO;
 import java.util.List;
 
 public class LoginResponseDTO {
@@ -92,6 +93,7 @@ public class LoginResponseDTO {
         private String challengeId;
         private String maskedContact;
         private String promptMessage;
+        private MockSmsDeliveryDTO mockSmsDelivery;
 
         public String getFactorCode() {
             return factorCode;
@@ -131,6 +133,14 @@ public class LoginResponseDTO {
 
         public void setPromptMessage(String promptMessage) {
             this.promptMessage = promptMessage;
+        }
+
+        public MockSmsDeliveryDTO getMockSmsDelivery() {
+            return mockSmsDelivery;
+        }
+
+        public void setMockSmsDelivery(MockSmsDeliveryDTO mockSmsDelivery) {
+            this.mockSmsDelivery = mockSmsDelivery;
         }
     }
 

@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.auth.vo;
 
+import com.lumira.api.system.MockSmsDeliveryDTO;
+
 public class LoginCodeChallengeVO {
 
     private String loginType;
@@ -9,7 +11,7 @@ public class LoginCodeChallengeVO {
     private String promptMessage;
     private Long expiresInSeconds;
     private Long cooldownSeconds;
-    private String debugCode;
+    private MockSmsDeliveryDTO mockSmsDelivery;
 
     public String getLoginType() {
         return loginType;
@@ -67,11 +69,11 @@ public class LoginCodeChallengeVO {
         this.cooldownSeconds = cooldownSeconds;
     }
 
-    public String getDebugCode() {
-        return debugCode;
+    public MockSmsDeliveryDTO getMockSmsDelivery() {
+        return mockSmsDelivery;
     }
 
-    public void setDebugCode(String debugCode) {
-        this.debugCode = debugCode;
+    public void setMockSmsDelivery(MockSmsDeliveryDTO mockSmsDelivery) {
+        this.mockSmsDelivery = mockSmsDelivery;
     }
 }

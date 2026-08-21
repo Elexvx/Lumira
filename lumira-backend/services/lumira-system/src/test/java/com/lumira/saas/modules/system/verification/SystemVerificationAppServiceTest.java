@@ -63,6 +63,9 @@ class SystemVerificationAppServiceTest {
         assertTrue(source.contains("factor_name = case when user_id = values(user_id) and user_uuid = values(user_uuid) and factor_code = values(factor_code)"));
         assertTrue(source.contains("deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) and factor_code = values(factor_code) then 0 else deleted end"));
         assertTrue(source.contains("factor_code = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
+        assertTrue(source.contains(") values (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"));
+        assertTrue(source.contains("Long auditUserId = userId != null && userId > 0 ? userId : null;"));
+        assertTrue(source.contains("String auditUserUuid = auditUserId == null ? null : userUuid;"));
     }
 
     @Test

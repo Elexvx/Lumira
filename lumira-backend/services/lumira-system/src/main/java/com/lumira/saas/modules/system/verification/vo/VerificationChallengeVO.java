@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.system.verification.vo;
 
+import com.lumira.api.system.MockSmsDeliveryDTO;
 import java.util.List;
 
 public class VerificationChallengeVO {
@@ -12,7 +13,7 @@ public class VerificationChallengeVO {
     private String setupUri;
     private String setupSecret;
     private List<String> recoveryCodes;
-    private String debugCode;
+    private MockSmsDeliveryDTO mockSmsDelivery;
 
     public String getFactorCode() { return factorCode; }
     public void setFactorCode(String factorCode) { this.factorCode = factorCode; }
@@ -30,6 +31,6 @@ public class VerificationChallengeVO {
     public void setSetupSecret(String setupSecret) { this.setupSecret = setupSecret; }
     public List<String> getRecoveryCodes() { return recoveryCodes; }
     public void setRecoveryCodes(List<String> recoveryCodes) { this.recoveryCodes = recoveryCodes; }
-    public String getDebugCode() { return debugCode; }
-    public void setDebugCode(String debugCode) { this.debugCode = debugCode; }
+    public MockSmsDeliveryDTO getMockSmsDelivery() { return mockSmsDelivery; }
+    public void setMockSmsDelivery(MockSmsDeliveryDTO mockSmsDelivery) { this.mockSmsDelivery = mockSmsDelivery; }
 }

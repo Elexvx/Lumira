@@ -801,6 +801,39 @@
   margin: 0 0 16px !important;
 }
 
+.competition-basic-section--danger .competition-basic-section__title {
+  color: var(--ant-color-error);
+}
+
+.competition-danger-actions {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-error-border);
+  border-radius: var(--ant-border-radius-lg);
+  background: var(--ant-color-error-bg);
+}
+
+.competition-danger-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px;
+}
+
+.competition-danger-action + .competition-danger-action {
+  border-top: 1px solid var(--ant-color-error-border);
+}
+
+.competition-danger-action__copy {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .competition-basic-section__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1202,6 +1235,15 @@
   .competition-config-grid,
   .competition-basic-section__grid {
     grid-template-columns: 1fr;
+  }
+
+  .competition-danger-action {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .competition-danger-action .ant-btn {
+    width: 100%;
   }
 
   .competition-material-preview {

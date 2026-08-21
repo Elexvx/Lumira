@@ -232,10 +232,19 @@ export const defaultRegistrationFormValues: Partial<RegistrationFormValues> = {
 
 export const useCompetitionDictFallbackOptions = () => ({
   categoryOptions: [
-    { label: databaseMessage('competition.category.innovation'), value: 'INNOVATION' },
-    { label: databaseMessage('competition.category.application'), value: 'APPLICATION' },
-    { label: databaseMessage('competition.category.special'), value: 'SPECIAL' },
-    { label: databaseMessage('competition.category.other'), value: 'OTHER' },
+    { label: databaseMessage('competition.category.innovation', {}, '创新赛'), value: 'INNOVATION' },
+    { label: databaseMessage('competition.category.application', {}, '应用赛'), value: 'APPLICATION' },
+    { label: databaseMessage('competition.category.aiApplication', {}, 'AI 应用赛'), value: 'AI_APPLICATION' },
+    { label: databaseMessage('competition.category.algorithm', {}, '算法赛'), value: 'ALGORITHM' },
+    { label: databaseMessage('competition.category.dataScience', {}, '数据科学赛'), value: 'DATA_SCIENCE' },
+    { label: databaseMessage('competition.category.robotics', {}, '机器人赛'), value: 'ROBOTICS' },
+    { label: databaseMessage('competition.category.creativeDesign', {}, '创意设计赛'), value: 'CREATIVE_DESIGN' },
+    { label: databaseMessage('competition.category.entrepreneurship', {}, '创业赛'), value: 'ENTREPRENEURSHIP' },
+    { label: databaseMessage('competition.category.challenge', {}, '挑战赛'), value: 'CHALLENGE' },
+    { label: databaseMessage('competition.category.skills', {}, '技能赛'), value: 'SKILLS' },
+    { label: databaseMessage('competition.category.special', {}, '专项赛'), value: 'SPECIAL' },
+    { label: databaseMessage('competition.category.invitational', {}, '邀请赛'), value: 'INVITATIONAL' },
+    { label: databaseMessage('competition.category.other', {}, '其他'), value: 'OTHER' },
   ],
   levelOptions: [
     { label: databaseMessage('competition.level.school'), value: 'SCHOOL' },

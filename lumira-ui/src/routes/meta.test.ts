@@ -56,11 +56,8 @@ describe('route meta', () => {
       .toBe('@/pages/certificates/RecordsPage');
   });
 
-  it('registers the built-in mock checkout as a hidden guarded page', () => {
-    expect(realPageRouteMetaMap.get('/mock-payment/checkout')).toMatchObject({
-      access: 'canUseBuiltinMockPayment',
-      hideInMenu: true,
-    });
+  it('keeps the built-in mock checkout inside the existing payment flow', () => {
+    expect(realPageRouteMetaMap.get('/mock-payment/checkout')).toBeUndefined();
   });
 
   it('registers the reviewer task page independently from workflow approvals', () => {

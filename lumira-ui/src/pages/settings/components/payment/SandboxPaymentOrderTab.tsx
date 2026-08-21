@@ -24,6 +24,12 @@ import {
   getPaymentOrder,
   listManualPaymentOrders,
 } from '@/services/payment/api';
+import {
+  canPresentPaymentCheckout,
+  hasInlinePaymentCheckout,
+  presentPaymentCheckout,
+  type PaymentCheckoutOrder,
+} from '@/services/payment/paymentCheckout';
 import { message } from '@/theme/antdFeedbackBridge';
 import { StandardDrawer } from '@/features/management/StandardDrawer';
 import { DataTable } from '@/features/table/DataTable';
@@ -96,6 +102,13 @@ export const SandboxPaymentOrderTab = ({
       ...current.filter((item) => item.orderNo !== order.orderNo),
     ]));
   }, []);
+
+  const applyCheckoutOrderUpdate = useCallback((base: PaymentOrderRecord, update: PaymentCheckoutOrder) => {
+    const next = { ...base, ...update } as PaymentOrderRecord;
+    setActiveOrder(next);
+    setDetailOrder((current) => current?.orderNo === next.orderNo ? next : current);
+    upsertOrder(next);
+  }, [upsertOrder]);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -185,7 +198,8 @@ export const SandboxPaymentOrderTab = ({
         origin: window.location.origin,
       });
       const nativeWechat = settings.providerCode === 'wechat_pay' && values.scene === 'NATIVE';
-      if (!nativeWechat) {
+      const inlineCheckout = hasInlinePaymentCheckout(settings.providerCode);
+      if (!nativeWechat && !inlineCheckout) {
         checkoutWindow = window.open('about:blank', '_blank');
       }
       setSubmitting(true);
@@ -197,20 +211,22 @@ export const SandboxPaymentOrderTab = ({
       upsertOrder(order);
       setDrawerOpen(false);
 
-      if (!order.paymentUrl) {
-        checkoutWindow?.close();
-        message.error(t('ui.settings.payment.sandboxpaymentorder.theProviderDidNotReturnAPaymentUrl'));
-        return;
-      }
       if (nativeWechat) {
         checkoutWindow?.close();
+        if (!order.paymentUrl) {
+          message.error(t('ui.settings.payment.sandboxpaymentorder.theProviderDidNotReturnAPaymentUrl'));
+          return;
+        }
         message.success(t('ui.settings.payment.sandboxpaymentorder.wechatPayOrderCreatedScanTheQrCode'));
         return;
       }
-      if (checkoutWindow) {
-        checkoutWindow.location.href = order.paymentUrl;
-      } else {
-        window.location.assign(order.paymentUrl);
+      const presented = presentPaymentCheckout(order, {
+        preopenedWindow: checkoutWindow,
+        onOrderUpdated: (update) => applyCheckoutOrderUpdate(order, update),
+      });
+      if (!presented) {
+        message.error(t('ui.settings.payment.sandboxpaymentorder.theProviderDidNotReturnAPaymentUrl'));
+        return;
       }
       message.success(t('ui.settings.payment.sandboxpaymentorder.paymentOrderCreatedAndCheckoutOpened'));
     } catch {
@@ -247,10 +263,10 @@ export const SandboxPaymentOrderTab = ({
   }, [upsertOrder]);
 
   const renderPaymentAction = (order: PaymentOrderRecord, compact = false) => {
-    if (!order.paymentUrl || !isPending(order.status)) {
+    if (!isPending(order.status) || !canPresentPaymentCheckout(order)) {
       return null;
     }
-    if (isWechatNativeOrder(order)) {
+    if (isWechatNativeOrder(order) && order.paymentUrl) {
       return (
         <Space direction="vertical" align="center" size={compact ? 8 : 12}>
           <QRCode value={order.paymentUrl} size={compact ? 152 : 196} />
@@ -261,7 +277,12 @@ export const SandboxPaymentOrderTab = ({
       );
     }
     return (
-      <Button type="primary" href={order.paymentUrl} target="_blank" rel="noreferrer">
+      <Button
+        type="primary"
+        onClick={() => presentPaymentCheckout(order, {
+          onOrderUpdated: (update) => applyCheckoutOrderUpdate(order, update),
+        })}
+      >
         {t('ui.settings.payment.sandboxpaymentorder.continuePayment')}
       </Button>
     );

@@ -11,6 +11,7 @@ import { getResponseRequestId, isApiResponse, parseResponseData, withRequestId }
 import { shouldRefreshAndRetryUnauthorized } from './requestInternalsAuth';
 import { buildDuplicateRequestKey } from './requestInternalsSerialization';
 import { ApiRequestError, type RequestOptions } from './requestInternalsTypes';
+import { adaptRequestSuccessData } from './requestSuccessAdapters';
 
 export const executeRequest = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
   let authSnapshot = captureRequestAuthSnapshot(options.skipAuth);
@@ -42,7 +43,9 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
 
       if (isApiResponse<T>(apiResponse)) {
         if (apiResponse.code === ErrorCode.SUCCESS) {
-          return apiResponse.data as T;
+          const data = apiResponse.data as T;
+          adaptRequestSuccessData(data);
+          return data;
         }
 
         if (shouldRefreshAndRetryUnauthorized(

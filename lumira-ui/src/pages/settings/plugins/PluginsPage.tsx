@@ -286,6 +286,7 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
       );
     }
     await invalidatePaymentProviderSettingsQuery(queryClient);
+    await queryClient.invalidateQueries({ queryKey: ['sms-verification-settings'] });
   }, [loadOverview, refreshBootstrap]);
 
   const confirmMutation = useCallback(

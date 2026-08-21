@@ -23,6 +23,7 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
+import com.lumira.saas.modules.system.support.BuiltinMockSmsAvailability;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -37,6 +38,61 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 class SystemVerificationSettingsAppServiceTest {
+
+    @Test
+    void mockSmsSettingsShouldBeConfiguredOnlyWhenPluginAndEnvironmentAreAvailable() {
+        Map<String, String> values = defaultConfigValues();
+        values.put("verification.sms.enabled", "true");
+        values.put("verification.sms.provider", BuiltinMockSmsAvailability.PROVIDER_CODE);
+        values.put("verification.sms.sign-name", "Lumira调试");
+        values.put("verification.sms.template-code", "SMS_DEBUG_VERIFICATION");
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(values);
+        SystemVerificationSettingsAppService service = verificationSettingsService(queryOperations);
+        BuiltinMockSmsAvailability availability = Mockito.mock(BuiltinMockSmsAvailability.class);
+        when(availability.isEnabled()).thenReturn(true);
+        service.setBuiltinMockSmsAvailability(availability);
+
+        SystemVO.SmsVerificationSettingsVO settings = service.getSmsSettings();
+
+        assertThat(settings.getProvider()).isEqualTo(BuiltinMockSmsAvailability.PROVIDER_CODE);
+        assertThat(settings.getConfigured()).isTrue();
+        assertThat(settings.getMockProviderAvailable()).isTrue();
+
+        when(availability.isEnabled()).thenReturn(false);
+        service.onBuiltinMockSmsPluginStateChanged("disabled");
+        SystemVO.SmsVerificationSettingsVO disabled = service.getSmsSettings();
+        assertThat(disabled.getConfigured()).isFalse();
+        assertThat(disabled.getMockProviderAvailable()).isFalse();
+    }
+
+    @Test
+    void updateSmsSettingsShouldRejectMockProviderWhenPluginIsUnavailable() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
+        SystemVerificationSettingsAppService service = verificationSettingsService(queryOperations);
+        BuiltinMockSmsAvailability availability = Mockito.mock(BuiltinMockSmsAvailability.class);
+        when(availability.isEnabled()).thenReturn(false);
+        service.setBuiltinMockSmsAvailability(availability);
+        SystemDTO.SmsVerificationSettingsRequest request = new SystemDTO.SmsVerificationSettingsRequest();
+        request.setProvider(BuiltinMockSmsAvailability.PROVIDER_CODE);
+
+        assertThatThrownBy(() -> service.updateSmsSettings(currentUser(), request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PLUGIN_NOT_ENABLED));
+        assertThat(queryOperations.updateCount.get()).isZero();
+    }
+
+    @Test
+    void updateSmsSettingsShouldRejectUnsupportedProvider() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
+        SystemVerificationSettingsAppService service = verificationSettingsService(queryOperations);
+        SystemDTO.SmsVerificationSettingsRequest request = new SystemDTO.SmsVerificationSettingsRequest();
+        request.setProvider("custom");
+
+        assertThatThrownBy(() -> service.updateSmsSettings(currentUser(), request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        assertThat(queryOperations.updateCount.get()).isZero();
+    }
 
     @Test
     void verificationConfigWritesShouldPersistTrustedUserUuid() throws Exception {
@@ -765,6 +821,19 @@ class SystemVerificationSettingsAppServiceTest {
         currentUser.setPermissionsVersion("permissions-1");
         currentUser.setPermissions(Set.of(permission));
         return currentUser;
+    }
+
+    private SystemVerificationSettingsAppService verificationSettingsService(RecordingQueryOperations queryOperations) {
+        WechatLoginSettingsService wechatLoginSettingsService = Mockito.mock(WechatLoginSettingsService.class);
+        when(wechatLoginSettingsService.loadSettings()).thenReturn(wechatSettings(false));
+        return new SystemVerificationSettingsAppService(
+                queryOperations,
+                new SystemVerificationProperties(),
+                Mockito.mock(SmtpMailService.class),
+                wechatLoginSettingsService,
+                cryptoService(),
+                Mockito.mock(ReadModelVersionService.class)
+        );
     }
 
     private static SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {

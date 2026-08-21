@@ -480,6 +480,61 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
+    void createBuiltinMockOrderShouldUseInlineCheckoutAdapterWithoutStandaloneRoute() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
+        BuiltinMockPaymentAvailability availability = mock(BuiltinMockPaymentAvailability.class);
+        var settings = providerSettings();
+        settings.setProviderCode(BuiltinMockPaymentAvailability.PROVIDER_CODE);
+        settings.setEnvironment("SANDBOX");
+        when(managementAppService.getRequiredProviderSettings(BuiltinMockPaymentAvailability.PROVIDER_CODE))
+                .thenReturn(settings);
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("idem-mock-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("MOCK-1"), eq(1001L), eq("user-uuid-1001"));
+        PaymentOrderRow persisted = orderRow(1001L);
+        persisted.setOrderNo("MOCK-1");
+        persisted.setProviderCode(BuiltinMockPaymentAvailability.PROVIDER_CODE);
+        persisted.setPaymentUrl(null);
+        doThrow(new EmptyResultDataAccessException(1))
+                .doReturn(persisted)
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("MOCK-1"));
+        doReturn(1).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        PaymentTransactionService service = service(
+                jdbcTemplate,
+                managementAppService,
+                mock(PaymentOutboxService.class),
+                domainEventPublisher
+        );
+        service.setBuiltinMockPaymentAvailability(availability);
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                BuiltinMockPaymentAvailability.PROVIDER_CODE,
+                "MOCK-1",
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-mock-1"
+        );
+
+        PaymentOrderDTO order = service.createOrder(currentUser(), request);
+
+        assertThat(order.providerCode()).isEqualTo(BuiltinMockPaymentAvailability.PROVIDER_CODE);
+        assertThat(order.paymentUrl()).isNull();
+        ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbcTemplate).update(contains("insert into payment_order"), argsCaptor.capture());
+        assertThat(argsCaptor.getValue()[7]).isNull();
+        assertThat(String.valueOf(argsCaptor.getValue()[12])).contains("\"paymentUrl\":null");
+        verify(availability).requireEnabledForWrite();
+        verify(domainEventPublisher).publishAll(any());
+    }
+
+    @Test
     void createOrderShouldRejectOrderNoOwnedByAnotherUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);

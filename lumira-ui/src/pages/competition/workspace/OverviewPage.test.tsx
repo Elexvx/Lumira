@@ -37,7 +37,10 @@ describe('Competition workspace overview', () => {
     expect(markup).toContain('data-page-title="赛事概览"');
     expect(markup).not.toContain('赛事工作空间');
     expect(markup.indexOf('赛事名称')).toBeLessThan(markup.indexOf('赛事代码'));
+    expect(markup.indexOf('赛事名称')).toBeLessThan(markup.indexOf('赛事编号'));
     expect(markup).toContain('工作空间兼容性测试赛事');
+    expect(markup).toContain('<dl class="competition-workspace-overview__details">');
+    expect(markup.match(/competition-workspace-overview__detail--wide/g)).toHaveLength(2);
     expect(markup).toContain('已发布');
     expect(markup).not.toContain('>published<');
   });

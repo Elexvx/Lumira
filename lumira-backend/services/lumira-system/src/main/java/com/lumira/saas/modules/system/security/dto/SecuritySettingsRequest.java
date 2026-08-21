@@ -18,8 +18,6 @@ public class SecuritySettingsRequest {
     @NotNull
     private Boolean allowMultiDeviceLogin;
     @NotNull
-    private Boolean registrationEnabled;
-    @NotNull
     private Boolean captchaEnabled;
     @NotBlank
     private String captchaType;
@@ -60,8 +58,6 @@ public class SecuritySettingsRequest {
     public void setRefreshTokenExpireSeconds(Long refreshTokenExpireSeconds) { this.refreshTokenExpireSeconds = refreshTokenExpireSeconds; }
     public Boolean getAllowMultiDeviceLogin() { return allowMultiDeviceLogin; }
     public void setAllowMultiDeviceLogin(Boolean allowMultiDeviceLogin) { this.allowMultiDeviceLogin = allowMultiDeviceLogin; }
-    public Boolean getRegistrationEnabled() { return registrationEnabled; }
-    public void setRegistrationEnabled(Boolean registrationEnabled) { this.registrationEnabled = registrationEnabled; }
     public Boolean getCaptchaEnabled() { return captchaEnabled; }
     public void setCaptchaEnabled(Boolean captchaEnabled) { this.captchaEnabled = captchaEnabled; }
     public String getCaptchaType() { return captchaType; }

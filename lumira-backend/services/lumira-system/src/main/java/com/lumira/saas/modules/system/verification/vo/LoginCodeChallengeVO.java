@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.system.verification.vo;
 
+import com.lumira.api.system.MockSmsDeliveryDTO;
+
 public class LoginCodeChallengeVO {
 
     private String loginType;
@@ -9,7 +11,7 @@ public class LoginCodeChallengeVO {
     private String promptMessage;
     private Long expiresInSeconds;
     private Long cooldownSeconds;
-    private String debugCode;
+    private MockSmsDeliveryDTO mockSmsDelivery;
 
     public String getLoginType() { return loginType; }
     public void setLoginType(String loginType) { this.loginType = loginType; }
@@ -25,6 +27,6 @@ public class LoginCodeChallengeVO {
     public void setExpiresInSeconds(Long expiresInSeconds) { this.expiresInSeconds = expiresInSeconds; }
     public Long getCooldownSeconds() { return cooldownSeconds; }
     public void setCooldownSeconds(Long cooldownSeconds) { this.cooldownSeconds = cooldownSeconds; }
-    public String getDebugCode() { return debugCode; }
-    public void setDebugCode(String debugCode) { this.debugCode = debugCode; }
+    public MockSmsDeliveryDTO getMockSmsDelivery() { return mockSmsDelivery; }
+    public void setMockSmsDelivery(MockSmsDeliveryDTO mockSmsDelivery) { this.mockSmsDelivery = mockSmsDelivery; }
 }

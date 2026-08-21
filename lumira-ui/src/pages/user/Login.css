@@ -1037,6 +1037,26 @@ html[data-theme="dark"] .saas-login-page__panel {
   box-shadow: none;
 }
 
+.saas-login-page__entry-title {
+  margin-bottom: 24px;
+  color: var(--ant-color-text);
+  font-size: clamp(22px, 1.5vw, 30px);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.saas-login-page__password-reset {
+  width: 100%;
+  min-height: var(--saas-login-panel-min-height);
+}
+
+.saas-login-page__reset-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
 .saas-login-page__form {
   width: 100%;
   min-height: var(--saas-login-panel-min-height);
@@ -1462,6 +1482,11 @@ html[data-theme="light"] .saas-login-page__footer {
 
   .saas-login-page__form {
     padding: 0;
+  }
+
+  .saas-login-page__entry-title {
+    margin-bottom: 20px;
+    text-align: center;
   }
 
   .saas-login-page__footer {

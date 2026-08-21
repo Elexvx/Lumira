@@ -358,6 +358,7 @@ export interface CompetitionStageFormUpsertPayload {
 
 export interface CompetitionPaymentOrderRecord {
   orderNo?: string | null;
+  providerCode?: string | null;
   amountMinor: number;
   currency: string;
   status: string;

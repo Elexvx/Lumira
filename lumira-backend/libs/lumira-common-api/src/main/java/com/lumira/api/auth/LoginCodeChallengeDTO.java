@@ -1,5 +1,7 @@
 package com.lumira.api.auth;
 
+import com.lumira.api.system.MockSmsDeliveryDTO;
+
 public class LoginCodeChallengeDTO {
     private String loginType;
     private String factorName;
@@ -8,6 +10,7 @@ public class LoginCodeChallengeDTO {
     private String promptMessage;
     private Long expiresInSeconds;
     private Long cooldownSeconds;
+    private MockSmsDeliveryDTO mockSmsDelivery;
 
     public String getLoginType() {
         return loginType;
@@ -63,5 +66,13 @@ public class LoginCodeChallengeDTO {
 
     public void setCooldownSeconds(Long cooldownSeconds) {
         this.cooldownSeconds = cooldownSeconds;
+    }
+
+    public MockSmsDeliveryDTO getMockSmsDelivery() {
+        return mockSmsDelivery;
+    }
+
+    public void setMockSmsDelivery(MockSmsDeliveryDTO mockSmsDelivery) {
+        this.mockSmsDelivery = mockSmsDelivery;
     }
 }

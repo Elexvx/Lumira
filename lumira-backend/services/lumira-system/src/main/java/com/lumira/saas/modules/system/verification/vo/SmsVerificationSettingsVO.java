@@ -12,6 +12,7 @@ public class SmsVerificationSettingsVO {
     private String region;
     private Boolean configured;
     private Boolean accessKeySecretConfigured;
+    private Boolean mockProviderAvailable;
 
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
@@ -33,4 +34,6 @@ public class SmsVerificationSettingsVO {
     public void setConfigured(Boolean configured) { this.configured = configured; }
     public Boolean getAccessKeySecretConfigured() { return accessKeySecretConfigured; }
     public void setAccessKeySecretConfigured(Boolean accessKeySecretConfigured) { this.accessKeySecretConfigured = accessKeySecretConfigured; }
+    public Boolean getMockProviderAvailable() { return mockProviderAvailable; }
+    public void setMockProviderAvailable(Boolean mockProviderAvailable) { this.mockProviderAvailable = mockProviderAvailable; }
 }

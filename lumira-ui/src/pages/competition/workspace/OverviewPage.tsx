@@ -7,7 +7,7 @@ import {
   SettingOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Col, Descriptions, Empty, Row, Tag, Typography } from 'antd';
+import { Col, Empty, Row, Tag, Typography } from 'antd';
 import type { CompetitionWorkspaceModule } from '@/services/competition/types';
 import { useCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
 import { CompetitionWorkspacePageFrame } from '@/features/competition-workspace/CompetitionWorkspacePageFrame';
@@ -68,12 +68,24 @@ const OverviewPage = () => {
               </Typography.Title>
             </div>
           </div>
-          <Descriptions className="competition-workspace-overview__details" column={{ xs: 1, sm: 2, lg: 3 }} colon={false}>
-            <Descriptions.Item label="赛事编号">{workspace.competitionNo || '-'}</Descriptions.Item>
-            <Descriptions.Item label="赛事名称">{workspace.title || '-'}</Descriptions.Item>
-            <Descriptions.Item label="赛事代码">{workspace.code || '-'}</Descriptions.Item>
-            <Descriptions.Item label="工作区 UUID" span={3}>{workspace.competitionUuid}</Descriptions.Item>
-          </Descriptions>
+          <dl className="competition-workspace-overview__details">
+            <div className="competition-workspace-overview__detail competition-workspace-overview__detail--wide">
+              <dt>赛事名称</dt>
+              <dd>{workspace.title || '-'}</dd>
+            </div>
+            <div className="competition-workspace-overview__detail">
+              <dt>赛事编号</dt>
+              <dd>{workspace.competitionNo || '-'}</dd>
+            </div>
+            <div className="competition-workspace-overview__detail">
+              <dt>赛事代码</dt>
+              <dd>{workspace.code || '-'}</dd>
+            </div>
+            <div className="competition-workspace-overview__detail competition-workspace-overview__detail--wide">
+              <dt>工作区 UUID</dt>
+              <dd>{workspace.competitionUuid}</dd>
+            </div>
+          </dl>
         </section>
 
         <section className="competition-workspace-overview__section" aria-labelledby="competition-workspace-actions-title">

@@ -1128,16 +1128,20 @@ class InternalSystemControllerTest {
     }
 
     @Test
-    void loginCodeChallengeShouldRejectUnknownMobileWhenRegistrationDisabled() {
+    void loginCodeChallengeShouldAlwaysStartRegistrationForUnknownMobile() {
+        LoginCodeChallengeVO challenge = new LoginCodeChallengeVO();
+        challenge.setLoginType("sms");
+        challenge.setChallengeId("challenge-sms-always-open");
         when(iamUserService.detectIdentityType("13800138001")).thenReturn(IamUserService.IDENTITY_MOBILE);
         when(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_MOBILE, "13800138001")).thenReturn("13800138001");
         when(userDomainService.findLoginUser("13800138001")).thenReturn(Optional.empty());
+        when(verificationAppService.startPendingLoginCodeChallenge("13800138001", "sms")).thenReturn(challenge);
 
-        assertThatThrownBy(() -> controller.loginCodeChallenge("13800138001", "sms"))
-                .isInstanceOf(com.lumira.common.exception.BizException.class)
-                .hasMessage("用户注册通道未开放");
+        var response = controller.loginCodeChallenge("13800138001", "sms");
 
-        verify(verificationAppService, never()).startPendingLoginCodeChallenge(anyString(), anyString());
+        assertThat(response.getChallengeId()).isEqualTo("challenge-sms-always-open");
+        verify(verificationAppService).startPendingLoginCodeChallenge("13800138001", "sms");
+        verifyNoInteractions(securitySettingsService);
     }
 
     @Test
@@ -1165,7 +1169,6 @@ class InternalSystemControllerTest {
         LoginCodeChallengeVO challenge = new LoginCodeChallengeVO();
         challenge.setLoginType("sms");
         challenge.setChallengeId("challenge-sms-pending");
-        when(securitySettingsService.isRegistrationEnabled()).thenReturn(true);
         when(iamUserService.detectIdentityType("13800138000")).thenReturn(IamUserService.IDENTITY_MOBILE);
         when(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_MOBILE, "13800138000")).thenReturn("13800138000");
         when(userDomainService.findLoginUser("13800138000")).thenReturn(Optional.empty());
@@ -1211,7 +1214,6 @@ class InternalSystemControllerTest {
             return org.mockito.Mockito.RETURNS_DEFAULTS.answer(invocation);
         });
         SecuritySettingsService localSecuritySettingsService = mock(SecuritySettingsService.class);
-        when(localSecuritySettingsService.isRegistrationEnabled()).thenReturn(true);
         InternalSystemController localController = new InternalSystemController(
                 userDomainService,
                 iamUserService,

@@ -150,6 +150,8 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
       return;
     }
 
+    // The complete guest bootstrap owns publicBootstrapLoadedAt. These slice refreshes run
+    // concurrently after an SPA logout and must not mark the others as stale or dispose them.
     let disposed = false;
 
     void request<AgreementSettings>('/v1/public/agreement-settings', {
@@ -179,7 +181,6 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
           return {
             ...prev,
             agreementSettings: normalizedAgreement,
-            publicBootstrapLoadedAt: Date.now(),
           };
         });
       })
@@ -213,7 +214,6 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
             ? {
                 ...prev,
                 securitySettings,
-                publicBootstrapLoadedAt: Date.now(),
               }
             : prev,
         );
@@ -259,7 +259,6 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
             ? {
                 ...prev,
                 brandingSettings: normalizedBranding,
-                publicBootstrapLoadedAt: Date.now(),
                 brandingRevision:
                   prev.brandingSettings?.websiteName === normalizedBranding.websiteName &&
                   prev.brandingSettings?.websiteLogoUrl === normalizedBranding.websiteLogoUrl &&

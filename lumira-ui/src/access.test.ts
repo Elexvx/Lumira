@@ -424,32 +424,4 @@ describe('access', () => {
     expect(result.canVisitPluginRuntime).toBe(true);
   });
 
-  it('allows the built-in mock checkout with the existing registration payment permission and enabled plugin', () => {
-    const enabled = access({
-      currentUser: commonUserWithPermissions(['aiadc:registration:pay']),
-      availablePlugins: [{
-        pluginCode: 'builtin-mock-payment',
-        pluginName: '内置模拟支付',
-        version: '1.0.0',
-        manifestPath: '/mock-payment/checkout',
-      }],
-    });
-    const disabled = access({
-      currentUser: commonUserWithPermissions(['aiadc:registration:pay']),
-      availablePlugins: [],
-    });
-    const unauthorized = access({
-      currentUser: commonUserWithPermissions(['aiadc:registration:view']),
-      availablePlugins: [{
-        pluginCode: 'builtin-mock-payment',
-        pluginName: '内置模拟支付',
-        version: '1.0.0',
-        manifestPath: '/mock-payment/checkout',
-      }],
-    });
-
-    expect(enabled.canUseBuiltinMockPayment).toBe(true);
-    expect(disabled.canUseBuiltinMockPayment).toBe(false);
-    expect(unauthorized.canUseBuiltinMockPayment).toBe(false);
-  });
 });

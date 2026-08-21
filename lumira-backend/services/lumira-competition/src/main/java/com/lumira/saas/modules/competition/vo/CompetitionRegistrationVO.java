@@ -205,6 +205,7 @@ public final class CompetitionRegistrationVO {
 
     public static class PaymentOrder {
         private String orderNo;
+        private String providerCode;
         private Long amountMinor;
         private String currency;
         private String status;
@@ -212,6 +213,8 @@ public final class CompetitionRegistrationVO {
 
         public String getOrderNo() { return orderNo; }
         public void setOrderNo(String orderNo) { this.orderNo = orderNo; }
+        public String getProviderCode() { return providerCode; }
+        public void setProviderCode(String providerCode) { this.providerCode = providerCode; }
         public Long getAmountMinor() { return amountMinor; }
         public void setAmountMinor(Long amountMinor) { this.amountMinor = amountMinor; }
         public String getCurrency() { return currency; }

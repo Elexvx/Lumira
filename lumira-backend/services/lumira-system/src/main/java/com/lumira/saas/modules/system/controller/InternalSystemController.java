@@ -856,7 +856,6 @@ public class InternalSystemController {
         var existingUser = userDomainService.findLoginUser(normalizedAccount);
         if (existingUser.isEmpty()) {
             if (FACTOR_SMS.equals(normalizedLoginType)) {
-                requireRegistrationEnabled();
                 return toChallenge(verificationAppService.startPendingLoginCodeChallenge(normalizedAccount, normalizedLoginType));
             }
             throw loginCodeChallengeAccountMismatch();
@@ -875,6 +874,7 @@ public class InternalSystemController {
         dto.setPromptMessage(challenge.getPromptMessage());
         dto.setExpiresInSeconds(challenge.getExpiresInSeconds());
         dto.setCooldownSeconds(challenge.getCooldownSeconds());
+        dto.setMockSmsDelivery(challenge.getMockSmsDelivery());
         return dto;
     }
 
@@ -933,6 +933,7 @@ public class InternalSystemController {
         dto.setPromptMessage(challenge.getPromptMessage());
         dto.setExpiresInSeconds(challenge.getExpiresInSeconds());
         dto.setCooldownSeconds(challenge.getCooldownSeconds());
+        dto.setMockSmsDelivery(challenge.getMockSmsDelivery());
         return dto;
     }
 
@@ -966,12 +967,6 @@ public class InternalSystemController {
 
     private BizException loginCodeChallengeAccountMismatch() {
         return new BizException(ErrorCode.VALIDATION_ERROR, "账号不存在或暂不支持该登录方式");
-    }
-
-    private void requireRegistrationEnabled() {
-        if (!securitySettingsService.isRegistrationEnabled()) {
-            throw new BizException(ErrorCode.FORBIDDEN, "用户注册通道未开放");
-        }
     }
 
     private BizException passwordResetChallengeMismatch() {
@@ -1410,7 +1405,6 @@ public class InternalSystemController {
     }
 
     private SysUserEntity registerLoginCodeUser(String account, String loginType) {
-        requireRegistrationEnabled();
         String normalizedLoginType = normalizeLoginCodeType(loginType);
         String identityType = iamUserService.detectIdentityType(account);
         if (FACTOR_SMS.equals(normalizedLoginType) && !IamUserService.IDENTITY_MOBILE.equals(identityType)) {
@@ -1680,6 +1674,7 @@ public class InternalSystemController {
         dto.setChallengeId(option.getChallengeId());
         dto.setMaskedContact(option.getMaskedContact());
         dto.setPromptMessage(option.getPromptMessage());
+        dto.setMockSmsDelivery(option.getMockSmsDelivery());
         return dto;
     }
 
@@ -1703,6 +1698,7 @@ public class InternalSystemController {
         dto.setMaskedContact(challenge.getMaskedContact());
         dto.setPromptMessage(challenge.getPromptMessage());
         dto.setExpiresInSeconds(null);
+        dto.setMockSmsDelivery(challenge.getMockSmsDelivery());
         return dto;
     }
 
@@ -1716,6 +1712,7 @@ public class InternalSystemController {
         dto.setExpiresInSeconds(null);
         dto.setSetupUri(challenge.getSetupUri());
         dto.setSetupSecret(challenge.getSetupSecret());
+        dto.setMockSmsDelivery(challenge.getMockSmsDelivery());
         return dto;
     }
 

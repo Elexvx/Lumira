@@ -48,6 +48,46 @@ test('database catalog has unique, complete Chinese and English entries', () => 
       `${entry.messageKey} contains a corrupted zh-CN translation`,
     );
   }
+
+  for (const mockSmsKey of [
+    'mockSms.modal.title',
+    'mockSms.modal.close',
+    'mockSms.modal.debugOnly',
+    'mockSms.modal.code',
+    'mockSms.modal.copy',
+    'mockSms.modal.copySuccess',
+    'mockSms.modal.copyFailed',
+    'page.plugins.builtin.builtinMockSms.name',
+    'page.plugins.builtin.builtinMockSms.description',
+  ]) {
+    assert.ok(keys.includes(mockSmsKey), `${mockSmsKey} must remain database-managed`);
+  }
+
+  const loginRegistrationAction = catalog.entries.find((entry) => entry.messageKey === 'page.login.joinUs');
+  assert.equal(loginRegistrationAction.translations['zh-CN'], '注册账号');
+  assert.equal(loginRegistrationAction.translations['en-US'], 'Create account');
+});
+
+test('login registration action has a guarded forward localization update', () => {
+  const migration = read('deploy/migrations/V202608210002__rename_login_registration_action.sql');
+  assert.match(migration, /page\.login\.joinUs/);
+  assert.match(migration, /'zh-CN' THEN '注册账号'/);
+  assert.match(migration, /'en-US' THEN 'Create account'/);
+  assert.match(migration, /JSON_SET/);
+});
+
+test('registration dependency feedback is accurate and migration-backed', () => {
+  const catalog = JSON.parse(read('lumira-backend/services/lumira-localization/src/main/resources/localization/ui-catalog.json'));
+  const entry = catalog.entries.find((item) => item.messageKey === 'page.login.registrationUnavailable');
+  const migration = read('deploy/migrations/V202608210004__clarify_registration_dependency_feedback.sql');
+
+  assert.equal(entry.translations['zh-CN'], '暂时无法注册，请联系管理员配置注册与验证码服务');
+  assert.equal(
+    entry.translations['en-US'],
+    'Registration is unavailable. Ask an administrator to configure registration and verification.',
+  );
+  assert.match(migration, /page\.login\.registrationUnavailable/);
+  assert.match(migration, /JSON_SET/);
 });
 
 test('corrupted payment translations have a guarded forward repair', () => {

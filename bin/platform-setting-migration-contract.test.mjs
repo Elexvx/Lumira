@@ -59,6 +59,17 @@ test('maintenance login role policy is database-owned and idempotently upgraded'
   assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
 
+test('user registration is always open and the obsolete setting is removed from fresh and upgraded databases', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608210007__remove_registration_toggle.sql');
+
+  assert.doesNotMatch(baseline, /security\.registration-enabled/);
+  assert.match(migration, /DELETE FROM `sys_config`/);
+  assert.match(migration, /config_key` = 'security\.registration-enabled'/);
+  assert.doesNotMatch(migration, /verification\.sms\.enabled/);
+  assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+});
+
 test('creative maintenance copy upgrade preserves customized existing values', () => {
   const baseline = read('lumira-backend/sql/saas.sql');
   const upgrade = read('lumira-backend/sql/upgrade-maintenance-copy-v1.sql');

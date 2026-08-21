@@ -1,6 +1,6 @@
 import { getLocale, setLocale, useLocation } from '@umijs/max';
 import { formatMessage } from '@/i18n/formatMessage';
-import { App, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
+import { Alert, App, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
 import { GlobalOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
@@ -25,6 +25,7 @@ type ForcedPasswordChangeFormValues = {
 };
 
 type PasswordResetStep = 0 | 1 | 2;
+export type AuthEntryMode = 'login' | 'registration' | 'password-reset';
 type PasswordResetFormValues = {
   account?: string;
   contactType?: 'sms' | 'email';
@@ -45,7 +46,7 @@ type LoginPageMainSectionProps = {
   pendingSecondFactorLogin: LoginResponse | null;
   pendingSecondFactorPrompt: string;
   agreementSettings: AgreementSettings;
-  registrationEnabled: boolean;
+  authEntryMode: AuthEntryMode;
   securityCaptchaEnabled: boolean;
   securityCaptchaType: CaptchaChallenge['captchaType'];
   captchaChallenge: CaptchaChallenge | null;
@@ -69,11 +70,12 @@ type LoginPageMainSectionProps = {
   handleFinishFailed: NonNullable<FormProps<LoginFormValues>['onFinishFailed']>;
   setCaptchaProof: (value: string) => void;
   resetCaptchaProof: () => void;
-  openPasswordReset: () => void;
+  showLogin: () => void;
+  showRegistration: () => void;
+  showPasswordReset: () => void;
 };
 
-const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, brandingFooterItems, submitButtonText, activeLoginMode, availableLoginModes, pendingSecondFactorLogin, pendingSecondFactorPrompt, agreementSettings, registrationEnabled, securityCaptchaEnabled, securityCaptchaType, captchaChallenge, captchaLoading, captchaImageLoadFailed, sendingLoginType, loginCodeChallenges, loginCodeCooldownSeconds, loginCapabilities, submitting, passkeySubmitting, setActiveLoginMode, openAgreementPreview, handleSendLoginCode, handleWechatLogin, handlePasskeyLogin, refreshCaptcha, setCaptchaImageLoadFailed, setCaptchaChallenge, handleSubmit, handleFinishFailed, setCaptchaProof, resetCaptchaProof, openPasswordReset }: LoginPageMainSectionProps) => {
-  const { message: messageApi } = App.useApp();
+const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, brandingFooterItems, submitButtonText, activeLoginMode, availableLoginModes, pendingSecondFactorLogin, pendingSecondFactorPrompt, agreementSettings, authEntryMode, securityCaptchaEnabled, securityCaptchaType, captchaChallenge, captchaLoading, captchaImageLoadFailed, sendingLoginType, loginCodeChallenges, loginCodeCooldownSeconds, loginCapabilities, submitting, passkeySubmitting, setActiveLoginMode, openAgreementPreview, handleSendLoginCode, handleWechatLogin, handlePasskeyLogin, refreshCaptcha, setCaptchaImageLoadFailed, setCaptchaChallenge, handleSubmit, handleFinishFailed, setCaptchaProof, resetCaptchaProof, showLogin, showRegistration, showPasswordReset }: LoginPageMainSectionProps) => {
   const { resolvedColorMode, setThemePreference } = useThemePreference();
   const currentLocale = getLocale();
   const nextLocale = currentLocale.startsWith('zh') ? 'en-US' : 'zh-CN';
@@ -85,7 +87,12 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
     : nextColorMode === 'light'
       ? 'Switch to light mode'
       : 'Switch to dark mode';
-  const joinMode = registrationEnabled && availableLoginModes.includes('sms') ? 'sms' : null;
+  const registrationAvailable = availableLoginModes.includes('sms');
+  const entryTitle = authEntryMode === 'registration'
+    ? formatMessage({ id: 'page.login.joinUs', defaultMessage: '注册账号' })
+    : authEntryMode === 'password-reset'
+      ? formatMessage({ id: 'page.login.passwordReset.title', defaultMessage: '重置密码' })
+      : formatMessage({ id: 'page.login.title', defaultMessage: '登录' });
 
   return (
     <div className="saas-login-page" style={loginPageStyle}>
@@ -120,8 +127,8 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
             <div className="saas-login-page__brand-title">
               {formatMessage(
                 {
-                  id: 'page.login.welcomeTitle',
-                  defaultMessage: '欢迎登录 {websiteName}',
+                  id: authEntryMode === 'login' ? 'page.login.welcomeTitle' : 'page.login.websiteTitle',
+                  defaultMessage: authEntryMode === 'login' ? '欢迎登录 {websiteName}' : '{websiteName}',
                 },
                 { websiteName: brandingWebsiteName },
               )}
@@ -130,19 +137,33 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
 
           <section
             className="saas-login-page__panel"
-            aria-label={formatMessage({
-              id: 'page.login.title',
-              defaultMessage: '登录',
-            })}
+            aria-label={entryTitle}
+            data-auth-entry-mode={authEntryMode}
           >
+            {authEntryMode !== 'login' ? (
+              <div className="saas-login-page__entry-title" data-testid="auth-entry-title">{entryTitle}</div>
+            ) : null}
+            {authEntryMode === 'password-reset' ? (
+              <PasswordResetPanel onBack={showLogin} onComplete={showLogin} />
+            ) : (
             <Form<LoginFormValues> form={loginForm} className="saas-login-page__form" onFinish={handleSubmit} onFinishFailed={handleFinishFailed}>
+              {authEntryMode === 'registration' && !registrationAvailable ? (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message={formatMessage({
+                    id: 'page.login.registrationUnavailable',
+                    defaultMessage: '暂时无法注册，请联系管理员配置注册与验证码服务',
+                  })}
+                />
+              ) : null}
               <LoginFormFields
+                variant={authEntryMode === 'registration' ? 'registration' : 'login'}
                 activeLoginMode={activeLoginMode}
                 availableLoginModes={availableLoginModes}
                 pendingSecondFactorLogin={pendingSecondFactorLogin}
                 pendingSecondFactorPrompt={pendingSecondFactorPrompt}
                 agreementSettings={agreementSettings}
-                registrationEnabled={registrationEnabled}
                 securityCaptchaEnabled={securityCaptchaEnabled}
                 securityCaptchaType={securityCaptchaType}
                 captchaChallenge={captchaChallenge}
@@ -163,7 +184,7 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
                 onSliderCaptchaVerified={setCaptchaProof}
                 onSliderCaptchaReset={resetCaptchaProof}
                 onOpenAgreementPreview={openAgreementPreview}
-                onForgotPassword={openPasswordReset}
+                onForgotPassword={showPasswordReset}
               />
               {(activeLoginMode === 'passkey' || activeLoginMode === 'wechat') && !pendingSecondFactorLogin ? null : (
                 <>
@@ -189,24 +210,12 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
                   >
                     {submitButtonText}
                   </Button>
+                  {authEntryMode === 'login' ? (
                   <button
                     type="button"
                     data-testid="login-join-button"
                     className="saas-login-page__join-button"
-                    onClick={() => {
-                      if (joinMode) {
-                        setActiveLoginMode(joinMode);
-                        return;
-                      }
-                      messageApi.info(
-                        formatMessage({
-                          id: 'page.login.registrationUnavailable',
-                          defaultMessage: currentLocale.startsWith('zh')
-                            ? '注册通道暂未开放，请联系管理员'
-                            : 'Registration is not available yet. Please contact an administrator.',
-                        }),
-                      );
-                    }}
+                    onClick={showRegistration}
                   >
                     <span className="saas-login-page__join-prompt">
                       {formatMessage({
@@ -217,13 +226,19 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
                     <span className="saas-login-page__join-action">
                       {formatMessage({
                         id: 'page.login.joinUs',
-                        defaultMessage: currentLocale.startsWith('zh') ? '加入我们' : 'Join us',
+                        defaultMessage: currentLocale.startsWith('zh') ? '注册账号' : 'Create account',
                       })}
                     </span>
                   </button>
+                  ) : (
+                    <Button type="link" block data-testid="auth-entry-back-to-login" onClick={showLogin}>
+                      {formatMessage({ id: 'page.login.backToLogin', defaultMessage: '返回登录' })}
+                    </Button>
+                  )}
                 </>
               )}
             </Form>
+            )}
           </section>
         </main>
 
@@ -251,12 +266,12 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
   );
 };
 
-const PasswordResetModal = ({
-  open,
-  onClose,
+const PasswordResetPanel = ({
+  onBack,
+  onComplete,
 }: {
-  open: boolean;
-  onClose: () => void;
+  onBack: () => void;
+  onComplete: () => void;
 }) => {
   const [form] = Form.useForm<PasswordResetFormValues>();
   const [step, setStep] = useState<PasswordResetStep>(0);
@@ -270,9 +285,9 @@ const PasswordResetModal = ({
     form.resetFields();
   };
 
-  const handleCancel = () => {
+  const resetAndReturn = (callback: () => void) => {
     resetState();
-    onClose();
+    callback();
   };
 
   const handleNext = async () => {
@@ -319,7 +334,7 @@ const PasswordResetModal = ({
         },
       });
       message.success(formatMessage({ id: 'page.login.passwordReset.success', defaultMessage: '密码已重置，请使用新密码登录' }));
-      handleCancel();
+      resetAndReturn(onComplete);
     } finally {
       setSubmitting(false);
     }
@@ -328,25 +343,7 @@ const PasswordResetModal = ({
   const contactType = Form.useWatch('contactType', form);
 
   return (
-    <Modal
-      open={open}
-      forceRender
-      title={formatMessage({ id: 'page.login.passwordReset.title', defaultMessage: '重置密码' })}
-      onCancel={handleCancel}
-      destroyOnHidden
-      footer={[
-        step > 0 ? (
-          <Button key="back" onClick={() => setStep((current) => Math.max(0, current - 1) as PasswordResetStep)} disabled={submitting}>
-            {formatMessage({ id: 'page.login.passwordReset.back', defaultMessage: '上一步' })}
-          </Button>
-        ) : null,
-        <Button key="next" type="primary" loading={submitting} onClick={() => void handleNext()}>
-          {step === 2
-            ? formatMessage({ id: 'page.login.passwordReset.submit', defaultMessage: '确认重置' })
-            : formatMessage({ id: 'page.login.passwordReset.next', defaultMessage: '下一步' })}
-        </Button>,
-      ]}
-    >
+    <div className="saas-login-page__password-reset" data-testid="password-reset-form">
       <Steps
         size="small"
         current={step}
@@ -446,7 +443,28 @@ const PasswordResetModal = ({
           </>
         ) : null}
       </Form>
-    </Modal>
+      <div className="saas-login-page__reset-actions">
+        <Button
+          onClick={() => {
+            if (step > 0) {
+              setStep((current) => Math.max(0, current - 1) as PasswordResetStep);
+              return;
+            }
+            resetAndReturn(onBack);
+          }}
+          disabled={submitting}
+        >
+          {step > 0
+            ? formatMessage({ id: 'page.login.passwordReset.back', defaultMessage: '上一步' })
+            : formatMessage({ id: 'page.login.backToLogin', defaultMessage: '返回登录' })}
+        </Button>
+        <Button type="primary" loading={submitting} onClick={() => void handleNext()}>
+          {step === 2
+            ? formatMessage({ id: 'page.login.passwordReset.submit', defaultMessage: '确认重置' })
+            : formatMessage({ id: 'page.login.passwordReset.next', defaultMessage: '下一步' })}
+        </Button>
+      </div>
+    </div>
   );
 };
 
@@ -455,7 +473,7 @@ const Login = () => {
   const location = useLocation();
   const responsive = useResponsive();
   const { message: messageApi } = App.useApp();
-  const [passwordResetOpen, setPasswordResetOpen] = useState(false);
+  const [authEntryMode, setAuthEntryMode] = useState<AuthEntryMode>('login');
   const sessionExpired = isSessionExpiredLoginSearch(location.search);
   const presentedLoginModes = resolvePresentedLoginModes(responsive.isMobile, loginFlow.availableLoginModes);
   const presentedLoginMode = resolvePresentedLoginMode(responsive.isMobile, loginFlow.activeLoginMode, loginFlow.availableLoginModes);
@@ -463,7 +481,9 @@ const Login = () => {
     id: 'page.login.initialPasswordChange.notice',
     defaultMessage: '当前账号仍在使用初始密码，必须修改后才能进入系统。',
   });
-  const submitButtonText = loginFlow.viewState.pendingSecondFactorLogin
+  const submitButtonText = authEntryMode === 'registration'
+    ? formatMessage({ id: 'page.login.registerAndLogin', defaultMessage: '注册并登录' })
+    : loginFlow.viewState.pendingSecondFactorLogin
     ? formatMessage({ id: 'page.login.submit.verify', defaultMessage: 'Verify and log in' })
     : presentedLoginMode === 'passkey'
       ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
@@ -507,12 +527,12 @@ const Login = () => {
     <>
       <LoginPageMainSection
         loginForm={loginFlow.loginForm}
-        activeLoginMode={presentedLoginMode}
+        activeLoginMode={authEntryMode === 'registration' ? 'sms' : presentedLoginMode}
         availableLoginModes={presentedLoginModes}
         pendingSecondFactorLogin={loginFlow.viewState.pendingSecondFactorLogin}
         pendingSecondFactorPrompt={loginFlow.viewState.pendingSecondFactorPrompt}
         agreementSettings={loginFlow.agreementSettings}
-        registrationEnabled={loginFlow.viewState.securitySettings.registrationEnabled}
+        authEntryMode={authEntryMode}
         securityCaptchaEnabled={loginFlow.viewState.securitySettings.captchaEnabled}
         securityCaptchaType={loginFlow.viewState.securitySettings.captchaType}
         captchaChallenge={loginFlow.viewState.captchaChallenge}
@@ -536,13 +556,18 @@ const Login = () => {
         handleFinishFailed={loginFlow.actions.handleFinishFailed}
         setCaptchaProof={loginFlow.actions.setCaptchaProof}
         resetCaptchaProof={loginFlow.actions.resetCaptchaProof}
-        openPasswordReset={() => setPasswordResetOpen(true)}
+        showLogin={() => setAuthEntryMode('login')}
+        showRegistration={() => {
+          loginFlow.loginForm.resetFields();
+          loginFlow.setActiveLoginMode('sms');
+          setAuthEntryMode('registration');
+        }}
+        showPasswordReset={() => setAuthEntryMode('password-reset')}
         loginPageStyle={loginFlow.loginPageStyle}
         brandingWebsiteName={loginFlow.brandingWebsiteName}
         brandingFooterItems={loginFlow.brandingFooterItems}
         submitButtonText={submitButtonText}
       />
-      <PasswordResetModal open={passwordResetOpen} onClose={() => setPasswordResetOpen(false)} />
       <Modal
         className="saas-login-page__agreement-modal"
         open={loginFlow.dialogState.agreementPreviewOpen}

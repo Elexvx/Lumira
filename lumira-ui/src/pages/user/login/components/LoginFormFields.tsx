@@ -655,12 +655,12 @@ export interface LoginFormValues {
 }
 
 interface LoginFormFieldsProps {
+  variant?: 'login' | 'registration';
   activeLoginMode: LoginMode;
   availableLoginModes: LoginMode[];
   pendingSecondFactorLogin: LoginResponse | null;
   pendingSecondFactorPrompt: string;
   agreementSettings: AgreementSettings;
-  registrationEnabled: boolean;
   securityCaptchaEnabled: boolean;
   securityCaptchaType: CaptchaChallenge['captchaType'];
   captchaChallenge: CaptchaChallenge | null;
@@ -838,12 +838,12 @@ const PasswordLoginPanel = ({
 };
 
 export const LoginFormFields = ({
+  variant = 'login',
   activeLoginMode,
   availableLoginModes,
   pendingSecondFactorLogin,
   pendingSecondFactorPrompt,
   agreementSettings,
-  registrationEnabled,
   securityCaptchaEnabled,
   securityCaptchaType,
   captchaChallenge,
@@ -866,6 +866,7 @@ export const LoginFormFields = ({
   onOpenAgreementPreview,
   onForgotPassword,
 }: LoginFormFieldsProps) => {
+  const registration = variant === 'registration';
   const codeLoginMode: CodeLoginMode = activeLoginMode === 'sms' ? 'sms' : 'email';
   const showUserAgreement = Boolean(agreementSettings.userAgreementMarkdown.trim());
   const showPrivacyAgreement = Boolean(agreementSettings.privacyAgreementMarkdown.trim());
@@ -901,17 +902,23 @@ export const LoginFormFields = ({
 
   return (
     <>
-      <LoginModeSwitcher
-        activeLoginMode={activeLoginMode}
-        availableLoginModes={availableLoginModes}
-        onModeChange={onModeChange}
-        onPasskeyLogin={onPasskeyLogin}
-        passkeyLoading={passkeyLoading}
-        modeContent={modeContent}
-      />
+      {registration ? (
+        <div className="saas-login-page__mode-content" data-testid="registration-form-fields">
+          {modeContent}
+        </div>
+      ) : (
+        <LoginModeSwitcher
+          activeLoginMode={activeLoginMode}
+          availableLoginModes={availableLoginModes}
+          onModeChange={onModeChange}
+          onPasskeyLogin={onPasskeyLogin}
+          passkeyLoading={passkeyLoading}
+          modeContent={modeContent}
+        />
+      )}
       {activeLoginMode !== 'passkey' && !pendingSecondFactorLogin ? (
         <>
-          <div className="saas-login-page__other-login">
+          {!registration ? <div className="saas-login-page__other-login">
             <div className="saas-login-page__other-title">
               <span>{formatMessage({ id: 'page.login.otherMethods', defaultMessage: '其他方式登录' })}</span>
             </div>
@@ -937,8 +944,8 @@ export const LoginFormFields = ({
                 }
               />
             </div>
-          </div>
-          {activeLoginMode !== 'wechat' ? (
+          </div> : null}
+          {!registration && activeLoginMode !== 'wechat' ? (
             <div className="saas-login-page__actions">
               <Form.Item noStyle name="remember" valuePropName="checked">
                 <Checkbox>{formatMessage({ id: 'page.login.remember', defaultMessage: 'Remember me' })}</Checkbox>
@@ -951,8 +958,8 @@ export const LoginFormFields = ({
           <div className="saas-login-page__agreement">
             <span className="saas-login-page__agreement-text">
               {formatMessage({
-                id: codeLoginMode === 'sms' && registrationEnabled ? 'page.login.autoRegisterNoticePrefix' : 'page.login.agreement.accept',
-                defaultMessage: codeLoginMode === 'sms' && registrationEnabled ? '未注册手机号验证后自动登录，注册即代表同意' : '我已阅读并同意',
+                id: codeLoginMode === 'sms' ? 'page.login.autoRegisterNoticePrefix' : 'page.login.agreement.accept',
+                defaultMessage: codeLoginMode === 'sms' ? '未注册手机号验证后自动登录，注册即代表同意' : '我已阅读并同意',
               })}
               <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
                 {showUserAgreement

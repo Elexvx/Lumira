@@ -88,6 +88,9 @@ class AuthAppServiceTest {
         assertFalse(Arrays.stream(VerificationChallengeDTO.class.getDeclaredFields()).map(Field::getName).toList().contains("debugCode"));
         assertFalse(Arrays.stream(VerificationBindingChallengeDTO.class.getDeclaredFields()).map(Field::getName).toList().contains("recoveryCodes"));
         assertFalse(Arrays.stream(VerificationProviderDTO.class.getDeclaredFields()).map(Field::getName).toList().contains("debugCode"));
+        assertTrue(Arrays.stream(LoginCodeChallengeDTO.class.getDeclaredFields()).map(Field::getName).toList().contains("mockSmsDelivery"));
+        assertTrue(Arrays.stream(VerificationChallengeDTO.class.getDeclaredFields()).map(Field::getName).toList().contains("mockSmsDelivery"));
+        assertTrue(Arrays.stream(LoginResponseDTO.SecondFactorOptionDTO.class.getDeclaredFields()).map(Field::getName).toList().contains("mockSmsDelivery"));
     }
 
     private SystemInternalApi systemInternalApi;

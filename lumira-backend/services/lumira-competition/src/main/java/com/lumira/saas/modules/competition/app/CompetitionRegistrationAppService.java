@@ -962,6 +962,7 @@ public class CompetitionRegistrationAppService {
             }
         }
         CompetitionRegistrationVO.PaymentOrder queuedOrder = new CompetitionRegistrationVO.PaymentOrder();
+        queuedOrder.setProviderCode(providerCode);
         queuedOrder.setAmountMinor(refreshed.getPayableAmountMinor());
         queuedOrder.setCurrency(refreshed.getCurrency());
         queuedOrder.setStatus("QUEUED");
@@ -2113,6 +2114,7 @@ public class CompetitionRegistrationAppService {
         }
         CompetitionRegistrationVO.PaymentOrder order = new CompetitionRegistrationVO.PaymentOrder();
         order.setOrderNo(source.orderNo());
+        order.setProviderCode(source.providerCode());
         order.setAmountMinor(source.amountMinor());
         order.setCurrency(source.currency());
         order.setStatus(source.status());
