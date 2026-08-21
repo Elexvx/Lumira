@@ -79,7 +79,6 @@ public class InProcessTeamInternalApiAdapter implements TeamInternalApi {
         CurrentUser internalService = new CurrentUser(
                 0L,
                 "internal-service",
-                null,
                 "internal",
                 0,
                 false,
