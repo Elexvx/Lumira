@@ -16,24 +16,24 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/alerting/internal/jobs")
 public class AlertingInternalJobController {
     private final AlertingJobService jobService;
-    private final String pluginInternalToken;
+    private final String jobInternalToken;
 
     public AlertingInternalJobController(
             AlertingJobService jobService,
-            @Value("${saas.internal.plugin-token:${SAAS_INTERNAL_PLUGIN_TOKEN:}}") String pluginInternalToken
+            @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobInternalToken
     ) {
         this.jobService = jobService;
-        this.pluginInternalToken = pluginInternalToken;
+        this.jobInternalToken = jobInternalToken;
     }
 
     @PostMapping("/run")
     public ApiResponse<AlertingModels.JobRunResult> run(
             @RequestHeader(name = "X-Job-Token", required = false) String token
     ) {
-        if (!InternalJobTokenValidator.isConfigured(pluginInternalToken)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Plugin internal token is not configured");
+        if (!InternalJobTokenValidator.isConfigured(jobInternalToken)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Job internal token is not configured");
         }
-        if (!InternalJobTokenValidator.isAuthorized(token, pluginInternalToken)) {
+        if (!InternalJobTokenValidator.isAuthorized(token, jobInternalToken)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Unauthorized alert worker access");
         }
         return ApiResponse.success(jobService.runOnce(), null);

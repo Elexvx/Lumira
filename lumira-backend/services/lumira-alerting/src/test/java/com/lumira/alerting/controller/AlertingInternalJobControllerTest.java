@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 class AlertingInternalJobControllerTest {
     @Test
-    void runRequiresPluginScopedInternalToken() {
+    void runRequiresJobScopedInternalToken() {
         AlertingJobService service = mock(AlertingJobService.class);
         AlertingInternalJobController controller = new AlertingInternalJobController(service, "alert-job-token");
 

@@ -25,7 +25,7 @@ public class AlertingWorkerLoop {
 
     public AlertingWorkerLoop(
             @Value("${lumira.async.owner-relay.control-plane-base-url:http://api-proxy:80}") String baseUrl,
-            @Value("${saas.internal.plugin-token:${SAAS_INTERNAL_PLUGIN_TOKEN:}}") String token,
+            @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String token,
             MeterRegistry meterRegistry
     ) {
         this.client = RestClient.builder().baseUrl(RemoteOwnerOutboxRelay.requireTrustedBaseUrl(baseUrl)).build();
