@@ -27,3 +27,14 @@ test('fresh and upgraded databases install the same disabled durable alerting pl
   }
   assert.equal(baselineVersion, '202608250001');
 });
+
+test('the async alert worker reaches the active control-plane slot through the API proxy', () => {
+  const worker = read('lumira-backend/services/lumira-async/src/main/java/com/lumira/asyncruntime/AlertingWorkerLoop.java');
+  const proxy = read('deploy/nginx/api.conf.template');
+
+  assert.match(worker, /\.uri\("\/alerting\/internal\/jobs\/run"\)/);
+  assert.match(
+    proxy,
+    /location \^~ \/alerting\/internal\/jobs \{[\s\S]*?proxy_pass http:\/\/\$gateway_upstream\$request_uri;/,
+  );
+});
