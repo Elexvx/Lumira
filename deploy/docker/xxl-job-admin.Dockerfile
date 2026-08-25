@@ -1,14 +1,20 @@
 # syntax=docker/dockerfile:1.7
 
-ARG MAVEN_IMAGE=maven:3.9.11-eclipse-temurin-21
-ARG JRE_IMAGE=eclipse-temurin:21-jre
+ARG MAVEN_IMAGE=docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21
+ARG JRE_IMAGE=docker.m.daocloud.io/library/eclipse-temurin:21-jre
 ARG XXL_JOB_VERSION=3.4.0
 
 FROM ${MAVEN_IMAGE} AS builder
 
 ARG XXL_JOB_VERSION
+ARG MAVEN_MIRROR_URL=https://mirrors.cloud.tencent.com/nexus/repository/maven-public
+ARG MAVEN_FALLBACK_MIRROR_URL=https://repo.huaweicloud.com/repository/maven
+ENV MAVEN_MIRROR_URL=${MAVEN_MIRROR_URL} \
+    MAVEN_OPTS="-Daether.connector.connectTimeout=60000 -Daether.connector.requestTimeout=120000 -Daether.transport.http.connectTimeout=60000 -Daether.transport.http.requestTimeout=120000 -Daether.connector.basic.threads=1"
 
 WORKDIR /workspace
+
+COPY deploy/docker/maven-settings.xml /workspace/maven-settings.xml
 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     set -eux; \
@@ -18,7 +24,15 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mkdir -p /workspace/src; \
     tar -xzf /tmp/xxl-job.tar.gz -C /workspace/src --strip-components=1; \
     cd /workspace/src; \
-    mvn -pl xxl-job-admin -am -DskipTests package; \
+    run_maven() { \
+      mvn --settings /workspace/maven-settings.xml -U -pl xxl-job-admin -am -DskipTests package; \
+    }; \
+    primary_mirror_url="${MAVEN_MIRROR_URL}"; \
+    fallback_mirror_url="${MAVEN_FALLBACK_MIRROR_URL}"; \
+    (run_maven \
+      || (export MAVEN_MIRROR_URL="$fallback_mirror_url"; run_maven) \
+      || (export MAVEN_MIRROR_URL="$primary_mirror_url"; run_maven) \
+      || (export MAVEN_MIRROR_URL="$fallback_mirror_url"; run_maven)); \
     JAR_FILE="$(find xxl-job-admin/target -maxdepth 1 -type f -name 'xxl-job-admin-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | sort | head -n 1)"; \
     test -n "$JAR_FILE"; \
     cp "$JAR_FILE" /workspace/xxl-job-admin.jar

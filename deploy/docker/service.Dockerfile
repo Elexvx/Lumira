@@ -1,11 +1,16 @@
-ARG MAVEN_IMAGE=maven:3.9.11-eclipse-temurin-21
-ARG JRE_IMAGE=eclipse-temurin:21-jre
+ARG MAVEN_IMAGE=docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21
+ARG JRE_IMAGE=docker.m.daocloud.io/library/eclipse-temurin:21-jre
 
 FROM ${MAVEN_IMAGE} AS builder
 
 WORKDIR /workspace
 
+ARG MAVEN_MIRROR_URL=https://mirrors.cloud.tencent.com/nexus/repository/maven-public
+ARG MAVEN_FALLBACK_MIRROR_URL=https://repo.huaweicloud.com/repository/maven
 ARG OTEL_JAVAAGENT_URL=
+ENV MAVEN_MIRROR_URL=${MAVEN_MIRROR_URL} \
+    MAVEN_OPTS="-Daether.connector.connectTimeout=60000 -Daether.connector.requestTimeout=120000 -Daether.transport.http.connectTimeout=60000 -Daether.transport.http.requestTimeout=120000 -Daether.connector.basic.threads=1"
+COPY deploy/docker/maven-settings.xml /workspace/maven-settings.xml
 RUN set -eux; \
     if [ -n "$OTEL_JAVAAGENT_URL" ]; then \
       curl --fail --show-error --location --retry 3 --retry-all-errors --connect-timeout 10 --max-time 180 "$OTEL_JAVAAGENT_URL" -o /workspace/opentelemetry-javaagent.jar; \
@@ -25,6 +30,7 @@ COPY lumira-backend/libs/lumira-plugin-api/pom.xml libs/lumira-plugin-api/pom.xm
 COPY lumira-backend/services/lumira-auth/pom.xml services/lumira-auth/pom.xml
 COPY lumira-backend/services/lumira-file/pom.xml services/lumira-file/pom.xml
 COPY lumira-backend/services/lumira-message/pom.xml services/lumira-message/pom.xml
+COPY lumira-backend/services/lumira-alerting/pom.xml services/lumira-alerting/pom.xml
 COPY lumira-backend/services/lumira-plugin/pom.xml services/lumira-plugin/pom.xml
 COPY lumira-backend/services/lumira-localization/pom.xml services/lumira-localization/pom.xml
 COPY lumira-backend/services/lumira-quartz/pom.xml services/lumira-quartz/pom.xml
@@ -38,11 +44,21 @@ COPY lumira-backend/libs libs
 # share this exact layer, so common modules are compiled once instead of once
 # per service image.
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn \
-      -pl services/lumira-admin,services/lumira-async,services/lumira-quartz \
-      -am \
-      -Dmaven.test.skip=true \
-      package
+    run_maven() { \
+      mvn \
+        --settings /workspace/maven-settings.xml \
+        -U \
+        -pl services/lumira-admin,services/lumira-async,services/lumira-quartz \
+        -am \
+        -Dmaven.test.skip=true \
+        package; \
+    }; \
+    primary_mirror_url="${MAVEN_MIRROR_URL}"; \
+    fallback_mirror_url="${MAVEN_FALLBACK_MIRROR_URL}"; \
+    run_maven \
+    || (export MAVEN_MIRROR_URL="$fallback_mirror_url"; run_maven) \
+    || (export MAVEN_MIRROR_URL="$primary_mirror_url"; run_maven) \
+    || (export MAVEN_MIRROR_URL="$fallback_mirror_url"; run_maven)
 
 FROM ${JRE_IMAGE} AS runtime
 

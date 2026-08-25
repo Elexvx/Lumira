@@ -10,6 +10,7 @@
   "src/pages/competition/CompetitionRegistrationDataPage.tsx": 80,
   "src/pages/payment/PaymentPage.tsx": 53,
   "src/pages/competition/ActivityRegistrationPage.tsx": 49,
+  "src/pages/plugins/AlertingPage.tsx": 178,
   "src/pages/workflow/WorkflowConfigPage.tsx": 42,
   "src/pages/competition/CompetitionReviewResultsPage.tsx": 38,
   "src/app.layout.tsx": 34,

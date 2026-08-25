@@ -27,6 +27,11 @@ lumira:
     owner-relay:
       # Always use api-proxy so the worker follows the active blue/green server slot.
       control-plane-base-url: ${LUMIRA_ASYNC_CONTROL_PLANE_BASE_URL:http://api-proxy:80}
+  alerting:
+    worker:
+      enabled: ${LUMIRA_ALERTING_WORKER_ENABLED:true}
+      initial-delay-ms: ${LUMIRA_ALERTING_WORKER_INITIAL_DELAY_MS:10000}
+      fixed-delay-ms: ${LUMIRA_ALERTING_WORKER_FIXED_DELAY_MS:15000}
   event:
     relay-loop:
       enabled: ${LUMIRA_EVENT_RELAY_LOOP_ENABLED:true}

@@ -189,6 +189,15 @@ describe('access', () => {
     expect(result.canVisitSystemSettings).toBe(true);
   });
 
+  it('shows alerting settings only to alerting viewers or settings administrators', () => {
+    const alertingViewer = access({ currentUser: userWithPermissions(['plugin:alerting:view']) });
+    const unrelatedUser = access({ currentUser: commonUserWithPermissions(['aiadc:registration:view']) });
+
+    expect(alertingViewer.canVisitAlertingPlugin).toBe(true);
+    expect(alertingViewer.canVisitSystemSettings).toBe(true);
+    expect(unrelatedUser.canVisitAlertingPlugin).toBe(false);
+  });
+
   it('does not expose data management for permissions whose pages were retired', () => {
     const projectOnly = access({ currentUser: userWithPermissions(['aiadc:project:view']) });
     const teamOnly = access({ currentUser: userWithPermissions(['team:view']) });

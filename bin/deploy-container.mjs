@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import readline from 'node:readline';
 
+import { deploymentRequiresDatabasePreparation } from './lib/deployment-database-policy.mjs';
 import { parseEnvFile, randomSecret } from './lib/env-utils.mjs';
 import { run as execRun, output as execOutput, optionalOutput as execOptionalOutput, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
 import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
@@ -403,7 +404,8 @@ Options:
   --ps        Show container status.
   --skip-check Skip deployment health checks after startup.
   --skip-readiness Skip selected-service readiness waits.
-  --skip-migrations Skip database migrations. Use only for non-database frontend or emergency diagnostics.
+  --skip-migrations Skip database preparation. Valid only with explicit non-database --services;
+                    never valid for a full or backend deployment because preparation also bootstraps admin.
   --skip-docker-prune Skip automatic Docker build cache cleanup before rebuilds.
   --allow-unknown-build-identity Allow deployment when GIT_COMMIT/GIT_BRANCH cannot be determined.
   --allow-dirty-build-identity Allow deployment from a dirty Git working tree.
@@ -717,6 +719,19 @@ function resolveComposeProjectName() {
 
 function resolveComposeVolumeName(volumeKey) {
   return `${resolveComposeProjectName()}_${volumeKey}`;
+}
+
+function validateMigrationSkipScope() {
+  if (!skipMigrations || stop || reset || ps || logs) {
+    return;
+  }
+  if (!deploymentRequiresDatabasePreparation(serviceNames)) {
+    return;
+  }
+  console.error('Refusing --skip-migrations for a full or database-backed deployment.');
+  console.error('Database preparation also runs the one-shot built-in administrator bootstrap; skipping it can leave production without a usable administrator.');
+  console.error('Use --skip-migrations only with explicit non-database --services such as lumira-ui or api-proxy.');
+  process.exit(1);
 }
 
 function atomicWriteProtectedFile(filePath, content) {
@@ -1425,13 +1440,7 @@ function composeArgs(...extraArgs) {
 
 function shouldRunDatabaseMigrations() {
   if (skipMigrations) return false;
-  if (serviceNames.length === 0) return true;
-  return serviceNames.some((serviceName) => [
-    'lumira-server-blue',
-    'lumira-server-green',
-    'lumira-async',
-    'lumira-job-executor',
-  ].includes(serviceName));
+  return deploymentRequiresDatabasePreparation(serviceNames);
 }
 
 async function runDatabaseMigrations() {
@@ -1453,8 +1462,11 @@ async function runDatabaseMigrations() {
   let migratorImage = env.LUMIRA_MIGRATOR_IMAGE || 'ghcr.io/elexvx/lumira/lumira-migrator:main';
   if (rebuild) {
     migratorImage = localMigratorImage;
+    const configuredBuildArgs = ['MAVEN_IMAGE', 'MAVEN_MIRROR_URL', 'MAVEN_FALLBACK_MIRROR_URL', 'FLYWAY_IMAGE']
+      .flatMap((name) => String(env[name] || '').trim() ? ['--build-arg', `${name}=${String(env[name]).trim()}`] : []);
     runWithRetry('docker', [
       'build',
+      ...configuredBuildArgs,
       '-f', 'deploy/docker/migrator.Dockerfile',
       '-t', migratorImage,
       '.',
@@ -1694,6 +1706,8 @@ if (help) {
   process.exit(0);
 }
 
+validateServiceNames();
+validateMigrationSkipScope();
 ensureEnvFile();
 configureBuildIdentity();
 configureLocalDeploymentDefaults();
@@ -1728,7 +1742,6 @@ if (logs) {
 }
 
 run('docker', composeArgs('config'), { stdio: 'ignore' });
-validateServiceNames();
 maybePruneDockerBuildCache('before-build');
 ensureDockerVolumeOwnership();
 await ensureLocalMysqlExporterAccount();

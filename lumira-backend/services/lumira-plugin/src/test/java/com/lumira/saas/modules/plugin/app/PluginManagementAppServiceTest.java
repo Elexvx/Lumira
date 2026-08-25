@@ -234,6 +234,44 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
+    void builtinAlertingEnableShouldResumeWorkersThroughItsLifecycleHook() {
+        BuiltinPluginLifecycleHook hook = mock(BuiltinPluginLifecycleHook.class);
+        when(hook.pluginCode()).thenReturn("builtin-alerting");
+        ObjectProvider<BuiltinPluginLifecycleHook> hookProvider = mock(ObjectProvider.class);
+        when(hookProvider.orderedStream()).thenReturn(Stream.of(hook));
+        pluginManagementAppService.setBuiltinPluginLifecycleHooks(hookProvider);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
+
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("builtin-alerting");
+        request.setVersion("1.0.0");
+
+        pluginManagementAppService.enable(request, currentUser());
+
+        InOrder ordered = inOrder(pluginPersistenceService, hook);
+        ordered.verify(pluginPersistenceService).enablePlugin(
+                "builtin-alerting", "1.0.0", null, 100L, "user-uuid-100"
+        );
+        ordered.verify(hook).onEnable(any(BuiltinPluginLifecycleHook.PluginLifecycleContext.class));
+    }
+
+    @Test
+    void builtinAlertingEnableFailsClosedWhenLifecycleHookIsMissing() {
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("builtin-alerting");
+        request.setVersion("1.0.0");
+
+        assertThatThrownBy(() -> pluginManagementAppService.enable(request, currentUser()))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasFieldOrPropertyWithValue(
+                        "errorCode",
+                        com.lumira.common.enums.ErrorCode.DEPENDENCY_UNAVAILABLE
+                )
+                .hasMessageContaining("builtin-alerting");
+    }
+
+    @Test
     void enable_shouldCheckEmailWithUserProfileOnly() {
         PluginSecondFactorProvider secondFactorProvider = org.mockito.Mockito.mock(PluginSecondFactorProvider.class);
         when(secondFactorProvider.requiresEmail()).thenReturn(true);

@@ -1,0 +1,13 @@
+[Unit]
+Description=Collect Lumira host disk metrics
+After=local-fs.target docker.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/lumira/deploy/operations/collect-host-disk-metrics.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/lumira/deploy/.generated/backup-metrics

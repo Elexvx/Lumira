@@ -2081,6 +2081,17 @@
       }
     },
     {
+      "messageKey": "nav.plugins.alerting",
+      "namespaceCode": "nav",
+      "sourceLocale": "zh-CN",
+      "sourceType": "ROUTE",
+      "sourceRef": "lumira-ui/src/routes/meta.ts",
+      "translations": {
+        "zh-CN": "告警中心",
+        "en-US": "Alert Center"
+      }
+    },
+    {
       "messageKey": "nav.plugins.sensitiveWords",
       "namespaceCode": "nav",
       "sourceLocale": "zh-CN",
@@ -5591,6 +5602,28 @@
       "translations": {
         "zh-CN": "在本地开发和测试环境模拟阿里云短信验证码发送，并通过调试弹窗展示验证码。",
         "en-US": "Mocks Alibaba Cloud SMS verification delivery in local development and test environments and shows the code in a debug dialog."
+      }
+    },
+    {
+      "messageKey": "page.plugins.builtin.builtinAlerting.description",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/settings/plugins/pluginPresentation.ts",
+      "translations": {
+        "zh-CN": "提供可配置规则、告警生命周期，以及企业微信、飞书、钉钉和邮件通知能力。",
+        "en-US": "Provides configurable rules, alert lifecycle management, and WeCom, Feishu, DingTalk, and email delivery."
+      }
+    },
+    {
+      "messageKey": "page.plugins.builtin.builtinAlerting.name",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/settings/plugins/pluginPresentation.ts",
+      "translations": {
+        "zh-CN": "内置告警中心",
+        "en-US": "Built-in Alert Center"
       }
     },
     {

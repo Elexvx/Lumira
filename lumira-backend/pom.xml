@@ -31,6 +31,7 @@
         <module>services/lumira-auth</module>
         <module>services/lumira-file</module>
         <module>services/lumira-message</module>
+        <module>services/lumira-alerting</module>
         <module>services/lumira-plugin</module>
         <module>services/lumira-localization</module>
         <module>services/lumira-payment</module>

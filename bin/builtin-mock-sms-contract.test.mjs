@@ -19,7 +19,7 @@ test('fresh SQL and forward migration register the same disabled built-in mock S
     assert.match(sql, /'1\.0\.0'/);
     assert.match(sql, /'DISABLED'/);
   }
-  assert.equal(baselineVersion, '202608210007');
+  assert.equal(baselineVersion, '202608250001');
   assert.match(migration, /verification\.sms\.provider/);
   assert.match(migration, /LOWER\(TRIM\(`config_value`\)\) IN \('debug', 'mock'\)/);
 });

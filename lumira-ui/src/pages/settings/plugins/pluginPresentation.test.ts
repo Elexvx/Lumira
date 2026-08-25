@@ -4,6 +4,8 @@ import type { PluginDefinition } from '@/types/api';
 import { localizeBuiltinPluginDefinition, localizePluginValue } from './pluginPresentation';
 
 const zhCN: Record<string, string> = {
+  'page.plugins.builtin.builtinAlerting.name': '内置告警中心',
+  'page.plugins.builtin.builtinAlerting.description': '提供告警能力。',
   'page.plugins.builtin.sensitiveWords.name': '敏感词插件',
   'page.plugins.builtin.sensitiveWords.description': '提供敏感词词库维护、请求内容拦截和批量导入能力。',
   'page.plugins.builtin.workOrderFeedback.name': '工单反馈插件',
@@ -34,6 +36,16 @@ const formatter = (messages: Record<string, string>) => (id: string, fallback: s
   messages[id] || fallback;
 
 describe('localizeBuiltinPluginDefinition', () => {
+  it('localizes the built-in alerting plugin metadata', () => {
+    expect(localizeBuiltinPluginDefinition(
+      definition('builtin-alerting'),
+      formatter(zhCN),
+    )).toMatchObject({
+      pluginName: '内置告警中心',
+      description: '提供告警能力。',
+    });
+  });
+
   it('recognizes the built-in mock payment plugin and keeps its fixed manifest name as fallback', () => {
     const plugin = {
       ...definition('builtin-mock-payment'),

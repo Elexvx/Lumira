@@ -58,4 +58,26 @@ describe('settings navigation tree', () => {
       access: 'canVisitSensitiveWordsPlugin',
     }));
   });
+
+  it('injects the enabled alerting plugin with its guarded route metadata', () => {
+    const menuTree = [{
+      menuCode: 'settings.root',
+      name: '系统设置',
+      path: '/settings',
+      children: [{
+        menuCode: 'plugin.alerting',
+        name: '告警中心',
+        path: '/settings/alerting',
+        icon: 'AlertOutlined',
+        permissionKey: 'plugin:alerting:view',
+        sortNo: 7,
+      }],
+    }] as MenuNode[];
+
+    expect(buildSettingsSourceItems(menuTree)).toContainEqual(expect.objectContaining({
+      path: '/settings/alerting',
+      name: 'nav.plugins.alerting',
+      access: 'canVisitAlertingPlugin',
+    }));
+  });
 });

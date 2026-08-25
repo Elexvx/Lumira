@@ -10,7 +10,7 @@ services:
   mysql:
     profiles:
     - local-mysql
-    image: mysql:8.4
+    image: ${MYSQL_IMAGE:-docker.m.daocloud.io/library/mysql:8.4}
     container_name: lumira-mysql
     restart: unless-stopped
     logging: *id001
@@ -50,7 +50,7 @@ services:
       retries: ${MYSQL_HEALTH_RETRIES:-30}
       start_period: ${MYSQL_HEALTH_START_PERIOD:-30s}
   redis:
-    image: redis:7.4
+    image: ${REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7.4}
     container_name: lumira-redis
     restart: unless-stopped
     logging: *id001
@@ -73,8 +73,10 @@ services:
       context: ..
       dockerfile: deploy/docker/xxl-job-admin.Dockerfile
       args:
-        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
-        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21}
+        MAVEN_MIRROR_URL: ${MAVEN_MIRROR_URL:-https://mirrors.cloud.tencent.com/nexus/repository/maven-public}
+        MAVEN_FALLBACK_MIRROR_URL: ${MAVEN_FALLBACK_MIRROR_URL:-https://repo.huaweicloud.com/repository/maven}
+        JRE_IMAGE: ${JRE_IMAGE:-docker.m.daocloud.io/library/eclipse-temurin:21-jre}
         XXL_JOB_VERSION: ${XXL_JOB_VERSION:-3.4.0}
     image: ${XXL_JOB_ADMIN_IMAGE:-lumira/xxl-job-admin:3.4.0}
     container_name: lumira-xxl-job-admin
@@ -103,7 +105,7 @@ services:
     - default
     - 1panel-network
   api-proxy:
-    image: nginx:1.29-alpine
+    image: ${NGINX_IMAGE:-docker.m.daocloud.io/library/nginx:1.29-alpine}
     container_name: lumira-api-proxy
     restart: unless-stopped
     logging: *id001
@@ -121,8 +123,10 @@ services:
       context: ..
       dockerfile: deploy/docker/lumira-ui.Dockerfile
       args:
-        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
-        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.29-alpine}
+        NODE_IMAGE: ${NODE_IMAGE:-docker.m.daocloud.io/library/node:22-bookworm-slim}
+        NGINX_IMAGE: ${NGINX_IMAGE:-docker.m.daocloud.io/library/nginx:1.29-alpine}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+        NPM_FALLBACK_REGISTRY: ${NPM_FALLBACK_REGISTRY:-https://mirrors.cloud.tencent.com/npm}
         FRONTEND_VERSION: ${FRONTEND_VERSION:-0.1.0}
         BUILD_TIME: ${BUILD_TIME:-}
         GIT_COMMIT: ${GIT_COMMIT:-}
@@ -138,7 +142,7 @@ services:
   edge-proxy:
     profiles:
     - edge
-    image: nginx:1.29-alpine
+    image: ${NGINX_IMAGE:-docker.m.daocloud.io/library/nginx:1.29-alpine}
     container_name: lumira-edge-proxy
     restart: unless-stopped
     logging: *id001
@@ -155,7 +159,7 @@ services:
   prometheus:
     profiles:
     - observability
-    image: ${PROMETHEUS_IMAGE:-prom/prometheus@sha256:e4254400b85610324913f0dc4acf92603d9984e7519414c5a12811aa6146acc3}
+    image: ${PROMETHEUS_IMAGE:-docker.m.daocloud.io/prom/prometheus@sha256:e4254400b85610324913f0dc4acf92603d9984e7519414c5a12811aa6146acc3}
     container_name: lumira-prometheus
     restart: unless-stopped
     logging: *id001
@@ -171,12 +175,14 @@ services:
     depends_on:
       mysqld-exporter:
         condition: service_started
+      redis-exporter:
+        condition: service_started
       backup-metrics-exporter:
         condition: service_started
   mysqld-exporter:
     profiles:
     - observability
-    image: ${MYSQLD_EXPORTER_IMAGE:-prom/mysqld-exporter@sha256:eacb4b18e2ec1e0abdf2d64851b68526c964f6d9cb3e9458fb5d5f5062ea94c1}
+    image: ${MYSQLD_EXPORTER_IMAGE:-docker.m.daocloud.io/prom/mysqld-exporter@sha256:eacb4b18e2ec1e0abdf2d64851b68526c964f6d9cb3e9458fb5d5f5062ea94c1}
     container_name: lumira-mysqld-exporter
     restart: unless-stopped
     logging: *id001
@@ -262,10 +268,33 @@ services:
       timeout: ${MYSQLD_EXPORTER_HEALTH_TIMEOUT:-5s}
       retries: ${MYSQLD_EXPORTER_HEALTH_RETRIES:-5}
       start_period: ${MYSQLD_EXPORTER_HEALTH_START_PERIOD:-10s}
+  redis-exporter:
+    profiles:
+    - observability
+    image: ${REDIS_EXPORTER_IMAGE:-docker.m.daocloud.io/oliver006/redis_exporter@sha256:120f7ec77293459ccfdad66bb1db75ab72e8bfeab99f58b1cc2564cadcd7a9e7}
+    container_name: lumira-redis-exporter
+    restart: unless-stopped
+    logging: *id001
+    user: "59000:59000"
+    read_only: true
+    security_opt:
+    - no-new-privileges:true
+    cap_drop:
+    - ALL
+    mem_limit: ${REDIS_EXPORTER_MEM_LIMIT:-64m}
+    cpus: ${REDIS_EXPORTER_CPUS:-0.15}
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    expose:
+    - '9121'
+    depends_on:
+      redis:
+        condition: service_started
   backup-metrics-exporter:
     profiles:
     - observability
-    image: ${NODE_EXPORTER_IMAGE:-prom/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0}
+    image: ${NODE_EXPORTER_IMAGE:-docker.m.daocloud.io/prom/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0}
     container_name: lumira-backup-metrics-exporter
     restart: unless-stopped
     logging: *id001
@@ -288,7 +317,7 @@ services:
   loki:
     profiles:
     - observability
-    image: ${LOKI_IMAGE:-grafana/loki@sha256:191d4fdfb7264f16989f0a57f320872620a5a7c2ceeec6229212c4190ec49b86}
+    image: ${LOKI_IMAGE:-docker.m.daocloud.io/grafana/loki@sha256:191d4fdfb7264f16989f0a57f320872620a5a7c2ceeec6229212c4190ec49b86}
     container_name: lumira-loki
     restart: unless-stopped
     logging: *id001
@@ -302,7 +331,7 @@ services:
   tempo:
     profiles:
     - observability
-    image: ${TEMPO_IMAGE:-grafana/tempo@sha256:2513658c41faa9197dc7373599bb6119eb27bcb4232cc83779e2bc87cbc34299}
+    image: ${TEMPO_IMAGE:-docker.m.daocloud.io/grafana/tempo@sha256:2513658c41faa9197dc7373599bb6119eb27bcb4232cc83779e2bc87cbc34299}
     container_name: lumira-tempo
     restart: unless-stopped
     logging: *id001
@@ -316,7 +345,7 @@ services:
   alloy:
     profiles:
     - observability
-    image: ${ALLOY_IMAGE:-grafana/alloy@sha256:51aeb9d829239345070619dad3edd6873186f913c84f45b365b74574fcb38ec0}
+    image: ${ALLOY_IMAGE:-docker.m.daocloud.io/grafana/alloy@sha256:51aeb9d829239345070619dad3edd6873186f913c84f45b365b74574fcb38ec0}
     container_name: lumira-alloy
     restart: unless-stopped
     logging: *id001
@@ -337,7 +366,7 @@ services:
   grafana:
     profiles:
     - observability
-    image: ${GRAFANA_IMAGE:-grafana/grafana@sha256:2d1f9ae67c1778d33e291d4c3c759cd8b650e67491f02533499eb950e075eeb5}
+    image: ${GRAFANA_IMAGE:-docker.m.daocloud.io/grafana/grafana@sha256:2d1f9ae67c1778d33e291d4c3c759cd8b650e67491f02533499eb950e075eeb5}
     container_name: lumira-grafana
     restart: unless-stopped
     logging: *id001
@@ -371,8 +400,10 @@ services:
       dockerfile: deploy/docker/service.Dockerfile
       target: lumira-server-image
       args:
-        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
-        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21}
+        MAVEN_MIRROR_URL: ${MAVEN_MIRROR_URL:-https://mirrors.cloud.tencent.com/nexus/repository/maven-public}
+        MAVEN_FALLBACK_MIRROR_URL: ${MAVEN_FALLBACK_MIRROR_URL:-https://repo.huaweicloud.com/repository/maven}
+        JRE_IMAGE: ${JRE_IMAGE:-docker.m.daocloud.io/library/eclipse-temurin:21-jre}
         OTEL_JAVAAGENT_URL: ${OTEL_JAVAAGENT_URL:-}
         SERVICE_DIR: services/lumira-admin
         SERVICE_MODULE: services/lumira-admin
@@ -519,6 +550,10 @@ services:
       UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
       PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
       PLUGIN_STAGING_ROOT: ${PLUGIN_STAGING_ROOT:-/data/plugin-staging}
+      ALERTING_SECRETS_MASTER_KEY: ${ALERTING_SECRETS_MASTER_KEY:-}
+      ALERTING_PROMETHEUS_BASE_URL: ${ALERTING_PROMETHEUS_BASE_URL:-http://prometheus:9090}
+      ALERTING_UI_BASE_URL: ${ALERTING_UI_BASE_URL:-}
+      ALERTING_ALLOW_PRIVATE_TARGETS: ${ALERTING_ALLOW_PRIVATE_TARGETS:-false}
     volumes:
     - upload_data:/data/uploads
     - plugin_data:/data/plugins
@@ -554,8 +589,10 @@ services:
       dockerfile: deploy/docker/service.Dockerfile
       target: lumira-async-image
       args:
-        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
-        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21}
+        MAVEN_MIRROR_URL: ${MAVEN_MIRROR_URL:-https://mirrors.cloud.tencent.com/nexus/repository/maven-public}
+        MAVEN_FALLBACK_MIRROR_URL: ${MAVEN_FALLBACK_MIRROR_URL:-https://repo.huaweicloud.com/repository/maven}
+        JRE_IMAGE: ${JRE_IMAGE:-docker.m.daocloud.io/library/eclipse-temurin:21-jre}
         OTEL_JAVAAGENT_URL: ${OTEL_JAVAAGENT_URL:-}
     image: ${LUMIRA_ASYNC_IMAGE:-lumira/lumira-async:0.1.0}
     container_name: lumira-async
@@ -612,6 +649,9 @@ services:
       LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_MINIMUM_IDLE: ${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_MINIMUM_IDLE:-30s}
       LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL: ${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:-30s}
       LUMIRA_PAYMENT_EVENT_CONSUMER_MAX_DELIVERY_COUNT: ${LUMIRA_PAYMENT_EVENT_CONSUMER_MAX_DELIVERY_COUNT:-8}
+      LUMIRA_ALERTING_WORKER_ENABLED: ${LUMIRA_ALERTING_WORKER_ENABLED:-true}
+      LUMIRA_ALERTING_WORKER_INITIAL_DELAY_MS: ${LUMIRA_ALERTING_WORKER_INITIAL_DELAY_MS:-10000}
+      LUMIRA_ALERTING_WORKER_FIXED_DELAY_MS: ${LUMIRA_ALERTING_WORKER_FIXED_DELAY_MS:-15000}
       OTEL_SERVICE_NAME: lumira-async
       SERVER_PORT: 8080
     depends_on:
@@ -626,8 +666,10 @@ services:
       dockerfile: deploy/docker/service.Dockerfile
       target: lumira-job-executor-image
       args:
-        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
-        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-docker.m.daocloud.io/library/maven:3.9.11-eclipse-temurin-21}
+        MAVEN_MIRROR_URL: ${MAVEN_MIRROR_URL:-https://mirrors.cloud.tencent.com/nexus/repository/maven-public}
+        MAVEN_FALLBACK_MIRROR_URL: ${MAVEN_FALLBACK_MIRROR_URL:-https://repo.huaweicloud.com/repository/maven}
+        JRE_IMAGE: ${JRE_IMAGE:-docker.m.daocloud.io/library/eclipse-temurin:21-jre}
         OTEL_JAVAAGENT_URL: ${OTEL_JAVAAGENT_URL:-}
     image: ${LUMIRA_JOB_EXECUTOR_IMAGE:-lumira/lumira-job-executor:0.1.0}
     container_name: lumira-job-executor

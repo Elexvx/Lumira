@@ -109,6 +109,8 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, ACTIVITY_REGISTER_PERMISSIONS);
   const canVisitSensitiveWordsPlugin =
     isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:sensitive-words:view'));
+  const canVisitAlertingPlugin =
+    isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:alerting:view'));
   const canVisitCertificateTemplates = isLogin && hasPermission(permissions, 'aiadc:certificate-template:view');
   const canVisitCertificateRecords = isLogin && hasPermission(permissions, 'aiadc:certificate:view');
   const canVisitCertificateManagement = [
@@ -147,6 +149,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
         canVisitAudit,
         canVisitLocalization,
         canVisitSensitiveWordsPlugin,
+        canVisitAlertingPlugin,
         canVisitWorkflowConfig,
       ].some(Boolean));
   const canVisitAnyUserCenter =
@@ -223,6 +226,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins,
     canVisitSensitiveWordsPlugin,
+    canVisitAlertingPlugin,
     canVisitWorkOrderFeedbackPlugin: isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:work-order-feedback:view')),
     canVisitAi: isLogin && AI_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitAiEmployees: isLogin && isSettingsAdmin,

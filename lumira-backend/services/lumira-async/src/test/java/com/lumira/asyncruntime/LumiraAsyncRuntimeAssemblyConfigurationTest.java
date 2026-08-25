@@ -71,6 +71,7 @@ class LumiraAsyncRuntimeAssemblyConfigurationTest {
             assertThat(context).hasSingleBean(RemoteCompetitionPaymentEventHandler.class);
             assertThat(context).hasSingleBean(CompetitionPaymentEventHandler.class);
             assertThat(context).hasSingleBean(AsyncOutboxRelayController.class);
+            assertThat(context).hasSingleBean(AlertingWorkerLoop.class);
             assertThat(context).doesNotHaveBean("paymentDomainEventPublisher");
             assertThat(context).doesNotHaveBean("dataSource");
             assertThat(context.getBeanDefinitionNames())
@@ -93,6 +94,7 @@ class LumiraAsyncRuntimeAssemblyConfigurationTest {
                     assertThat(context).doesNotHaveBean(OutboxRelayCoordinator.class);
                     assertThat(context).doesNotHaveBean(AsyncOutboxRelayController.class);
                     assertThat(context).doesNotHaveBean(RemoteCompetitionPaymentEventHandler.class);
+                    assertThat(context).doesNotHaveBean(AlertingWorkerLoop.class);
                 });
     }
 

@@ -64,6 +64,7 @@ public class PluginManagementAppService {
     private static final String BUILTIN_WORK_ORDER_FEEDBACK_PLUGIN = "work-order-feedback";
     private static final String BUILTIN_MOCK_PAYMENT_PLUGIN = "builtin-mock-payment";
     private static final String BUILTIN_MOCK_SMS_PLUGIN = "builtin-mock-sms";
+    private static final String BUILTIN_ALERTING_PLUGIN = "builtin-alerting";
     private static final Set<String> AUTHENTICATED_PERMISSIONLESS_MENU_CODES = Set.of(
             "certificate.mine",
             "expert.application"
@@ -88,6 +89,11 @@ public class PluginManagementAppService {
             new BuiltinPluginRuntime(
                     List.of(),
                     List.of("sms-provider", "verification-debug-modal")
+            ),
+            BUILTIN_ALERTING_PLUGIN,
+            new BuiltinPluginRuntime(
+                    List.of("/settings/alerting"),
+                    List.of("alert-evaluator", "delivery-worker", "channels", "contact-groups", "directory-mapping")
             )
     );
 
@@ -1113,7 +1119,9 @@ public class PluginManagementAppService {
                 .filter(candidate -> candidate != null && pluginCode.equals(candidate.pluginCode()))
                 .findFirst()
                 .orElse(null);
-        if ((BUILTIN_MOCK_PAYMENT_PLUGIN.equals(pluginCode) || BUILTIN_MOCK_SMS_PLUGIN.equals(pluginCode)) && hook == null) {
+        if ((BUILTIN_MOCK_PAYMENT_PLUGIN.equals(pluginCode)
+                || BUILTIN_MOCK_SMS_PLUGIN.equals(pluginCode)
+                || BUILTIN_ALERTING_PLUGIN.equals(pluginCode)) && hook == null) {
             throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Built-in plugin lifecycle is unavailable: " + pluginCode);
         }
         return hook;

@@ -1,6 +1,7 @@
 package com.lumira.server;
 
 import com.lumira.auth.AuthControlPlaneAssemblyConfiguration;
+import com.lumira.alerting.AlertingControlPlaneAssemblyConfiguration;
 import com.lumira.ai.assembly.AiControlPlaneAssemblyConfiguration;
 import com.lumira.localization.LocalizationControlPlaneAssemblyConfiguration;
 import com.lumira.message.MessageControlPlaneAssemblyConfiguration;
@@ -46,6 +47,7 @@ import org.springframework.context.annotation.Import;
         LumiraFileControlPlaneAssemblyConfiguration.class,
         AuthControlPlaneAssemblyConfiguration.class,
         MessageControlPlaneAssemblyConfiguration.class,
+        AlertingControlPlaneAssemblyConfiguration.class,
         PaymentControlPlaneAssemblyConfiguration.class,
         PluginControlPlaneAssemblyConfiguration.class,
         LocalizationControlPlaneAssemblyConfiguration.class,

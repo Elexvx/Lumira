@@ -346,6 +346,33 @@ test('admin bootstrap credential is mounted into the one-shot migrator and never
   );
 });
 
+test('database-backed deployments cannot bypass administrator bootstrap', () => {
+  assert.match(deployScript, /validateMigrationSkipScope\(\)/);
+  assert.match(
+    deployScript,
+    /deploymentRequiresDatabasePreparation\(serviceNames\)/,
+    'full and backend deployments must share one database-preparation policy',
+  );
+  assert.match(
+    deployScript,
+    /Refusing --skip-migrations for a full or database-backed deployment/,
+    'unsafe migration skips must fail before deployment starts',
+  );
+  assert.ok(
+    deployScript.indexOf('validateMigrationSkipScope();') < deployScript.indexOf('ensureEnvFile();'),
+    'the unsafe-skip guard must run before deployment files or Docker state are changed',
+  );
+});
+
+test('local migrator rebuilds honor configured registry and Maven mirrors', () => {
+  for (const buildArg of ['MAVEN_IMAGE', 'MAVEN_MIRROR_URL', 'MAVEN_FALLBACK_MIRROR_URL', 'FLYWAY_IMAGE']) {
+    assert.match(deployScript, new RegExp(`'${buildArg}'`), `migrator build must forward ${buildArg}`);
+  }
+  assert.match(envExample, /^MAVEN_MIRROR_URL=/m);
+  assert.match(envExample, /^MAVEN_FALLBACK_MIRROR_URL=/m);
+  assert.match(envExample, /^FLYWAY_IMAGE=/m);
+});
+
 test('production compose does not inject unused system or team tokens into job executor', () => {
   const jobExecutorBlock = composeProd.match(/lumira-job-executor:[\s\S]*?(?=\n  [a-z0-9-]+:|\nvolumes:|\nnetworks:|\n$)/i);
   assert.ok(jobExecutorBlock, 'job executor compose block must exist');
