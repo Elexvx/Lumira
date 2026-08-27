@@ -11,6 +11,8 @@ import {
   StopOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
+import { DataTable } from '@/features/table/DataTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { request } from '@/services/common/request';
 import { useAccess, useModel } from '@umijs/max';
 import {
@@ -31,7 +33,6 @@ import {
   Space,
   Statistic,
   Switch,
-  Table,
   Tabs,
   Tag,
   Typography,
@@ -168,6 +169,7 @@ const ChannelConfigFields = ({ type }: { type?: ChannelType }) => {
 
 const AlertingPage = () => {
   const { message } = App.useApp();
+  const responsive = useResponsive();
   const access = useAccess();
   const { initialState } = useModel('@@initialState');
   const enabledInBootstrap = initialState?.availablePlugins?.some((item) => item.pluginCode === 'builtin-alerting');
@@ -272,7 +274,7 @@ const AlertingPage = () => {
       </Descriptions>
     </Card>
     <Card title="告警实例">
-      <Table rowKey="id" loading={loading} dataSource={instances} pagination={{ pageSize: 10 }} columns={[
+      <DataTable rowKey="id" isMobile={responsive.isMobile} loading={loading} dataSource={instances} pagination={{ pageSize: 10 }} columns={[
         { title: '规则', dataIndex: 'ruleName' }, { title: '级别', dataIndex: 'severity', render: statusTag },
         { title: '状态', dataIndex: 'status', render: statusTag }, { title: '当前值', dataIndex: 'lastValue', render: (v) => v ?? '-' },
         { title: '触发时间', dataIndex: 'firingAt', render: formatTime }, { title: '确认时间', dataIndex: 'acknowledgedAt', render: formatTime },
@@ -283,7 +285,7 @@ const AlertingPage = () => {
   </Space>;
 
   const ruleTab = <Card extra={canManage && <Button type="primary" icon={<PlusOutlined />} onClick={() => { setRuleEditing(undefined); ruleForm.resetFields(); ruleForm.setFieldsValue({ enabled: false, windowSeconds: 300, pendingSeconds: 300, severity: 'WARNING', comparator: 'GT' } as RuleFormValue); setRuleOpen(true); }}>新建规则</Button>}>
-    <Table rowKey="id" loading={loading} dataSource={rules} columns={[
+    <DataTable rowKey="id" isMobile={responsive.isMobile} loading={loading} dataSource={rules} columns={[
       { title: '规则', dataIndex: 'name' }, { title: '信号', dataIndex: 'signalKey' }, { title: '条件', render: (_, r: RuleRecord) => `${r.comparator} ${r.threshold}` },
       { title: '级别', dataIndex: 'severity', render: statusTag }, { title: '联系人组', dataIndex: 'contactGroupName' },
       { title: '状态', dataIndex: 'enabled', render: (v) => v ? <Tag color="green">启用</Tag> : <Tag>停用</Tag> },
@@ -297,7 +299,7 @@ const AlertingPage = () => {
 
   const channelTab = <Card extra={canManageChannels && <Button type="primary" icon={<PlusOutlined />} onClick={() => { setChannelEditing(undefined); channelForm.resetFields(); channelForm.setFieldsValue({ enabled: false, config: {} } as ChannelFormValue); setChannelOpen(true); }}>新建渠道实例</Button>}>
     <Typography.Paragraph type="secondary">每条记录都是独立配置、独立启停的渠道实例；同一平台可配置多个机器人或 SMTP。</Typography.Paragraph>
-    <Table rowKey="id" loading={loading} dataSource={channels} columns={[
+    <DataTable rowKey="id" isMobile={responsive.isMobile} loading={loading} dataSource={channels} columns={[
       { title: '名称', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', render: (v: ChannelType) => CHANNEL_LABELS[v] || v },
       { title: '状态', dataIndex: 'enabled', render: (v) => v ? <Tag color="green">启用</Tag> : <Tag>停用</Tag> },
       { title: '凭据', dataIndex: 'secretConfigured', render: (v) => v ? <Tag color="blue">已加密配置</Tag> : <Tag>未配置</Tag> },
@@ -311,7 +313,7 @@ const AlertingPage = () => {
   </Card>;
 
   const groupTab = <Card extra={canManage && <Button type="primary" icon={<PlusOutlined />} onClick={() => { setGroupEditing(undefined); groupForm.resetFields(); groupForm.setFieldsValue({ enabled: true, members: [{ enabled: true }] } as GroupFormValue); setGroupOpen(true); }}>新建联系人组</Button>}>
-    <Table rowKey="id" dataSource={groups} columns={[
+    <DataTable rowKey="id" isMobile={responsive.isMobile} dataSource={groups} columns={[
       { title: '名称', dataIndex: 'name' }, { title: '成员', render: (_, r: ContactGroup) => r.members.map((m) => m.displayName || m.targetIdentifier).join('、') },
       { title: '渠道数', render: (_, r: ContactGroup) => new Set(r.members.map((m) => m.channelId)).size },
       { title: '状态', dataIndex: 'enabled', render: (v) => v ? <Tag color="green">启用</Tag> : <Tag>停用</Tag> },
@@ -320,7 +322,7 @@ const AlertingPage = () => {
   </Card>;
 
   const silenceTab = <Card extra={canSilence && <Button type="primary" icon={<PlusOutlined />} onClick={() => { setSilenceEditing(undefined); silenceForm.resetFields(); silenceForm.setFieldsValue({ enabled: true, startsAt: dayjs(), endsAt: dayjs().add(2, 'hour') } as SilenceFormValue); setSilenceOpen(true); }}>新建静默</Button>}>
-    <Table rowKey="id" dataSource={silences} columns={[
+    <DataTable rowKey="id" isMobile={responsive.isMobile} dataSource={silences} columns={[
       { title: '名称', dataIndex: 'name' }, { title: '规则', dataIndex: 'ruleName', render: (v) => v || '全部规则' },
       { title: '开始', dataIndex: 'startsAt', render: formatTime }, { title: '结束', dataIndex: 'endsAt', render: formatTime },
       { title: '原因', dataIndex: 'reason' }, { title: '状态', dataIndex: 'enabled', render: (v) => v ? <Tag color="orange">有效</Tag> : <Tag>停用</Tag> },
@@ -328,7 +330,7 @@ const AlertingPage = () => {
     ]} />
   </Card>;
 
-  const deliveryTab = <Card><Table rowKey="id" dataSource={deliveries} columns={[
+  const deliveryTab = <Card><DataTable rowKey="id" isMobile={responsive.isMobile} dataSource={deliveries} columns={[
     { title: '事件', dataIndex: 'eventType', render: statusTag }, { title: '渠道', dataIndex: 'channelName' },
     { title: '接收目标', dataIndex: 'recipient', ellipsis: true }, { title: '状态', dataIndex: 'status', render: statusTag },
     { title: '尝试次数', dataIndex: 'attempts' }, { title: '错误', dataIndex: 'lastError', ellipsis: true, render: (v) => v || '-' },
@@ -340,7 +342,7 @@ const AlertingPage = () => {
   const appChannels = channels.filter((channel) => channel.type.endsWith('_APP'));
   const directoryTab = <Card extra={canSyncDirectory && <Button icon={<PlusOutlined />} onClick={() => { mappingForm.resetFields(); setMappingOpen(true); }}>手工映射</Button>}>
     <Space wrap style={{ marginBottom: 16 }}>{appChannels.map((channel) => <Button key={channel.id} icon={<CloudSyncOutlined />} disabled={!canSyncDirectory} onClick={async () => { const result = await request<Record<string, number>>(`/v2/alerting/directory/channels/${channel.id}/sync`, { method: 'POST' }); message.success(`同步完成：匹配 ${result.matched || 0}，歧义 ${result.ambiguous || 0}，未匹配 ${result.unmatched || 0}`); await load(); }}>同步 {channel.name}</Button>)}</Space>
-    <Table rowKey="id" dataSource={mappings} columns={[
+    <DataTable rowKey="id" isMobile={responsive.isMobile} dataSource={mappings} columns={[
       { title: '渠道', dataIndex: 'channelId', render: (v) => channels.find((c) => c.id === v)?.name || v },
       { title: 'Lumira UID', dataIndex: 'userUuid' }, { title: '平台用户 ID', dataIndex: 'providerUserId', render: (v) => v || '-' },
       { title: '平台名称', dataIndex: 'providerDisplayName', render: (v) => v || '-' }, { title: '匹配依据', dataIndex: 'matchSource' },
