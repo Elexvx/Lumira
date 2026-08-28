@@ -942,6 +942,12 @@ class SystemRoleManagementAppServiceTest {
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             if (sql.contains("from sys_role r")) {
+                if (sql.contains("order by case when r.role_code = 'ADMIN'")) {
+                    return castList(List.of(
+                            role(1001L, "ADMIN", "管理员", "SYSTEM"),
+                            role(2001L, "commonuser", "普通用户", "BUSINESS")
+                    ));
+                }
                 return castList(List.of(role(2001L, "commonuser", "普通用户"), role(2002L, "admin", "管理员")));
             }
             return List.of();
@@ -1009,12 +1015,6 @@ class SystemRoleManagementAppServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
-            if (sql.contains("from sys_role") && SystemVO.RoleVO.class.equals(elementType)) {
-                return castList(List.of(
-                        role(1001L, "ADMIN", "管理员", "SYSTEM"),
-                        role(2001L, "commonuser", "普通用户", "BUSINESS")
-                ));
-            }
             if (sql.contains("from sys_role_permission") && String.class.equals(elementType)) {
                 rolePermissionLookupCount += 1;
                 if (rolePermissionKeys != null) {
