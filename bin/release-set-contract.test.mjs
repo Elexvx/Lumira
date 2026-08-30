@@ -8,7 +8,7 @@ import test from 'node:test';
 
 import { DeploymentStateRepository } from './lib/deployment-state-repository.mjs';
 import { createReleaseEnvelope, verifyReleaseEnvelope } from './lib/release-envelope.mjs';
-import { createPinnedLookup, releaseEnvelopeUrl, validateResolvedManifest, validateSourceUrl } from './lib/release-manifest-resolver.mjs';
+import { createPinnedLookup, releaseEnvelopeUrl, resolveReleaseRedirect, validateResolvedManifest, validateSourceUrl } from './lib/release-manifest-resolver.mjs';
 import { assertOperationFence, buildPreflightReport, createInitialDeploymentState, migrateDeploymentState, normalizeReleaseManifest, reconcileReleaseState } from './lib/platform-update-contract.mjs';
 
 const ciWorkflow = readFileSync(path.join(import.meta.dirname, '..', '.github', 'workflows', 'ci.yml'), 'utf8');
@@ -68,6 +68,11 @@ test('release source rejects insecure, untrusted, cross-host, and path traversal
   const first = validateSourceUrl('https://releases.example/release', ['releases.example']);
   const redirected = new URL('https://evil.example/release', first);
   assert.notEqual(first.hostname, redirected.hostname);
+  assert.equal(
+    new URL(resolveReleaseRedirect(first, 'https://release-assets.githubusercontent.com/file', ['releases.example', 'release-assets.githubusercontent.com'])).hostname,
+    'release-assets.githubusercontent.com',
+  );
+  assert.throws(() => resolveReleaseRedirect(first, 'https://evil.example/file', ['releases.example', 'release-assets.githubusercontent.com']), /not allowed/);
 });
 
 test('release source DNS pin supports scalar and all-address Node lookup callbacks', () => {

@@ -44,10 +44,8 @@ export function validateResolvedManifest(manifest, { releaseId, allowedChannels,
   return manifest;
 }
 
-export async function secureGet(urlValue, { allowedHosts, maxBytes = 1_572_864, timeoutMs = 10_000, allowPrivateAddresses = false, redirectCount = 0, originalHost } = {}) {
+export async function secureGet(urlValue, { allowedHosts, maxBytes = 1_572_864, timeoutMs = 10_000, allowPrivateAddresses = false, redirectCount = 0 } = {}) {
   const url = validateSourceUrl(urlValue, allowedHosts);
-  const initialHost = originalHost || url.hostname.toLowerCase();
-  if (url.hostname.toLowerCase() !== initialHost) throw new Error('cross-host release source redirect is forbidden');
   if (redirectCount > 3) throw new Error('release source redirected too many times');
   const addresses = await lookup(url.hostname, { all: true, verbatim: true });
   if (addresses.length === 0) throw new Error('release source host did not resolve');
@@ -62,7 +60,7 @@ export async function secureGet(urlValue, { allowedHosts, maxBytes = 1_572_864, 
       const location = response.headers.location;
       if (status >= 300 && status < 400 && location) {
         response.resume();
-        resolve(secureGet(new URL(location, url).toString(), { allowedHosts, maxBytes, timeoutMs, allowPrivateAddresses, redirectCount: redirectCount + 1, originalHost: initialHost }));
+        resolve(secureGet(resolveReleaseRedirect(url, location, allowedHosts), { allowedHosts, maxBytes, timeoutMs, allowPrivateAddresses, redirectCount: redirectCount + 1 }));
         return;
       }
       if (status < 200 || status >= 300) {
@@ -98,6 +96,10 @@ export async function secureGet(urlValue, { allowedHosts, maxBytes = 1_572_864, 
     request.setTimeout(timeoutMs, () => request.destroy(new Error('release source request timed out')));
     request.on('error', reject);
   });
+}
+
+export function resolveReleaseRedirect(currentUrl, location, allowedHosts) {
+  return validateSourceUrl(new URL(String(location || ''), currentUrl).toString(), allowedHosts).toString();
 }
 
 export function createPinnedLookup(selected) {

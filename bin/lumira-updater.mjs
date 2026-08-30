@@ -73,7 +73,7 @@ const allowInlineManifest = process.env.LUMIRA_UPDATER_ALLOW_INLINE_MANIFEST ===
 const trustedPublicKeysFile = process.env.LUMIRA_RELEASE_TRUSTED_PUBLIC_KEYS_FILE || '';
 const allowedReleaseKeyIds = process.env.LUMIRA_RELEASE_ALLOWED_KEY_IDS || '';
 const allowedReleaseChannels = process.env.LUMIRA_RELEASE_ALLOWED_CHANNELS || 'stable';
-const allowedReleaseHosts = process.env.LUMIRA_RELEASE_ALLOWED_HOSTS || 'api.github.com,github.com,objects.githubusercontent.com';
+const allowedReleaseHosts = process.env.LUMIRA_RELEASE_ALLOWED_HOSTS || 'api.github.com,github.com,objects.githubusercontent.com,release-assets.githubusercontent.com';
 const maximumManifestBytes = Number(process.env.LUMIRA_RELEASE_MAX_MANIFEST_BYTES || 512 * 1024);
 const maximumManifestAgeSeconds = Number(process.env.LUMIRA_RELEASE_MAX_AGE_SECONDS || 90 * 24 * 60 * 60);
 const deploymentStateRepository = new DeploymentStateRepository(statePath);
