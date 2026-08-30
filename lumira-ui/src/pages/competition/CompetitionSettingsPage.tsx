@@ -1,5 +1,5 @@
 import { DeleteOutlined, DragOutlined, InboxOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, ConfigProvider, Form, Input, InputNumber, Menu, Modal, Popconfirm, Radio, Select, Space, Switch, Table, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, ConfigProvider, Form, Input, InputNumber, Menu, Modal, Popconfirm, Radio, Select, Space, Switch, Tabs, Tag, Typography } from 'antd';
 import { DndContext, KeyboardSensor, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -778,6 +778,7 @@ const FieldSettingsTable = ({
   standalone = false,
 }: FieldSettingsTableProps) => {
   const form = Form.useFormInstance();
+  const responsive = useResponsive();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
@@ -932,10 +933,11 @@ const FieldSettingsTable = ({
     <Space className="competition-config-list" orientation="vertical" size={16}>
       <DndContext collisionDetection={closestCenter} sensors={sensors} onDragEnd={handleDragEnd}>
         <SortableContext items={records.map((record) => record.rowKey)} strategy={verticalListSortingStrategy}>
-          <Table<FieldTableRecord>
+          <DataTable<FieldTableRecord>
             className="competition-field-table"
             components={{ body: { row: SortableFieldRow } }}
             dataSource={records}
+            isMobile={responsive.isMobile}
             pagination={false}
             rowKey="rowKey"
             scroll={{ x: 1120 }}

@@ -899,7 +899,7 @@ const DictionaryRemoteSelect = ({ dictCode, mode, value, onChange }: DictionaryR
         .finally(() => { if (active) setLoading(false); });
     }, keyword ? 250 : 0);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [dictCode, keyword]);
+  }, [dictCode, keyword, value]);
   const loadNextPage = useCallback(() => {
     if (loading || items.length >= total) return;
     const nextPage = pageNo + 1;
