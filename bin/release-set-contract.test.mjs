@@ -107,7 +107,11 @@ test('CI release publishing is deterministic and safe to rerun', () => {
   assert.match(ciWorkflow, /released_at="\$\(git show -s --format=%cI/u);
   assert.match(ciWorkflow, /LUMIRA_RELEASED_AT: \$\{\{ steps\.release_metadata\.outputs\.released_at \}\}/u);
   assert.match(ciWorkflow, /Verified and reused identical immutable release/u);
+  assert.match(ciWorkflow, /for asset in lumira-release-envelope\.json lumira-release-manifest\.json; do/u);
   assert.match(ciWorkflow, /cmp --silent "tmp\/release\/\$\{asset\}" "\$\{existing_dir\}\/\$\{asset\}"/u);
+  assert.match(ciWorkflow, /jq -e --arg commit "\$\{GITHUB_SHA\}"/u);
+  assert.match(ciWorkflow, /cp "\$\{existing_dir\}\/image-supply-chain-evidence\.json" tmp\/release\/image-supply-chain-evidence\.json/u);
+  assert.doesNotMatch(ciWorkflow, /for asset in[^\n]*image-supply-chain-evidence\.json/u);
   assert.match(ciWorkflow, /Domestic registry mirror failed after 3 attempts/u);
 });
 
