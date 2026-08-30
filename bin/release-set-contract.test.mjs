@@ -8,7 +8,7 @@ import test from 'node:test';
 
 import { DeploymentStateRepository } from './lib/deployment-state-repository.mjs';
 import { createReleaseEnvelope, verifyReleaseEnvelope } from './lib/release-envelope.mjs';
-import { releaseEnvelopeUrl, validateResolvedManifest, validateSourceUrl } from './lib/release-manifest-resolver.mjs';
+import { createPinnedLookup, releaseEnvelopeUrl, validateResolvedManifest, validateSourceUrl } from './lib/release-manifest-resolver.mjs';
 import { assertOperationFence, buildPreflightReport, createInitialDeploymentState, migrateDeploymentState, normalizeReleaseManifest, reconcileReleaseState } from './lib/platform-update-contract.mjs';
 
 const ciWorkflow = readFileSync(path.join(import.meta.dirname, '..', '.github', 'workflows', 'ci.yml'), 'utf8');
@@ -68,6 +68,20 @@ test('release source rejects insecure, untrusted, cross-host, and path traversal
   const first = validateSourceUrl('https://releases.example/release', ['releases.example']);
   const redirected = new URL('https://evil.example/release', first);
   assert.notEqual(first.hostname, redirected.hostname);
+});
+
+test('release source DNS pin supports scalar and all-address Node lookup callbacks', () => {
+  const lookup = createPinnedLookup({ address: '203.0.113.10', family: 4 });
+  lookup('releases.example', {}, (error, address, family) => {
+    assert.equal(error, null);
+    assert.equal(address, '203.0.113.10');
+    assert.equal(family, 4);
+  });
+  lookup('releases.example', { all: true }, (error, addresses) => {
+    assert.equal(error, null);
+    assert.deepEqual(addresses, [{ address: '203.0.113.10', family: 4 }]);
+  });
+  assert.throws(() => createPinnedLookup({ address: '', family: 0 }), /invalid IP/);
 });
 
 test('CI publishes an updater-compatible immutable release id', () => {

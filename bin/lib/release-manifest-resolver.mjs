@@ -56,7 +56,7 @@ export async function secureGet(urlValue, { allowedHosts, maxBytes = 1_572_864, 
   return new Promise((resolve, reject) => {
     const request = https.get(url, {
       headers: { Accept: 'application/vnd.lumira.release-envelope+json, application/json', 'User-Agent': 'lumira-updater-v3' },
-      lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family),
+      lookup: createPinnedLookup(selected),
     }, (response) => {
       const status = response.statusCode || 0;
       const location = response.headers.location;
@@ -98,6 +98,19 @@ export async function secureGet(urlValue, { allowedHosts, maxBytes = 1_572_864, 
     request.setTimeout(timeoutMs, () => request.destroy(new Error('release source request timed out')));
     request.on('error', reject);
   });
+}
+
+export function createPinnedLookup(selected) {
+  const address = String(selected?.address || '');
+  const family = Number(selected?.family || net.isIP(address));
+  if (!net.isIP(address) || ![4, 6].includes(family)) throw new Error('release source resolved to an invalid IP address');
+  return (_hostname, options, callback) => {
+    if (options && typeof options === 'object' && options.all === true) {
+      callback(null, [{ address, family }]);
+      return;
+    }
+    callback(null, address, family);
+  };
 }
 
 export function validateSourceUrl(urlValue, allowedHosts) {
