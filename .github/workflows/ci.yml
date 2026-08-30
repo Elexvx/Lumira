@@ -456,12 +456,19 @@ jobs:
               --pattern 'lumira-release-envelope.json' \
               --pattern 'lumira-release-manifest.json' \
               --pattern 'image-supply-chain-evidence.json'
-            for asset in lumira-release-envelope.json lumira-release-manifest.json image-supply-chain-evidence.json; do
+            for asset in lumira-release-envelope.json lumira-release-manifest.json; do
               if ! cmp --silent "tmp/release/${asset}" "${existing_dir}/${asset}"; then
                 echo "Immutable release ${RELEASE_ID} already exists with different ${asset}." >&2
                 exit 1
               fi
             done
+            if ! jq -e --arg commit "${GITHUB_SHA}" \
+              '.commit == $commit and (.images | type == "object")' \
+              "${existing_dir}/image-supply-chain-evidence.json" >/dev/null; then
+              echo "Immutable release ${RELEASE_ID} contains invalid supply-chain evidence." >&2
+              exit 1
+            fi
+            cp "${existing_dir}/image-supply-chain-evidence.json" tmp/release/image-supply-chain-evidence.json
             echo "Verified and reused identical immutable release: ${RELEASE_ID}"
           else
             gh release create "$RELEASE_ID" \
