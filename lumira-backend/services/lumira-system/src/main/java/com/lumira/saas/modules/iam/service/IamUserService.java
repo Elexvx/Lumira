@@ -82,7 +82,7 @@ public class IamUserService {
             return Optional.empty();
         }
         IamUserRepository.IdentityBinding binding = queryIdentityBinding(normalizedType, normalizedIdentifier);
-        if (binding == null || binding.deleted() != 0 || !StringUtils.hasText(binding.userUuid())) {
+        if (binding == null || binding.deleted() != 0 || !binding.verified() || !StringUtils.hasText(binding.userUuid())) {
             return Optional.empty();
         }
         return findAccountByUserId(binding.userId())
@@ -110,6 +110,13 @@ public class IamUserService {
             Optional<IamUserAccount> user = findAccountByIdentity(identityType, account);
             if (user.isPresent()) {
                 return user;
+            }
+        }
+        for (String identityType : identityTypes) {
+            String normalizedIdentifier = normalizeIdentifier(identityType, account);
+            IamUserRepository.IdentityBinding binding = queryIdentityBinding(identityType, normalizedIdentifier);
+            if (binding != null && binding.deleted() == 0 && !binding.verified()) {
+                return Optional.empty();
             }
         }
         Optional<SysUserEntity> legacy = findLegacySysUser(account);

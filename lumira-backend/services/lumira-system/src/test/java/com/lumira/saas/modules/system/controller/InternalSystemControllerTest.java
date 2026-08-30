@@ -1162,30 +1162,35 @@ class InternalSystemControllerTest {
     }
 
     @Test
-    void registrationContactAvailabilityShouldNormalizeAndCheckLegacyAndIamData() {
+    void registrationContactAvailabilityShouldNotRevealExistingIdentity() {
         when(iamUserService.detectIdentityType("13800138000")).thenReturn(IamUserService.IDENTITY_MOBILE);
         when(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_MOBILE, "13800138000")).thenReturn("13800138000");
-        when(userDomainService.registrationContactExists(IamUserService.IDENTITY_MOBILE, "13800138000")).thenReturn(false);
+        when(userDomainService.registrationContactExists(IamUserService.IDENTITY_MOBILE, "13800138000")).thenReturn(true);
 
         var response = controller.registrationContactAvailability(
                 new com.lumira.api.auth.RegistrationContactAvailabilityRequest("MOBILE", "13800138000")
         );
 
         assertThat(response.available()).isTrue();
-        verify(userDomainService).registrationContactExists(IamUserService.IDENTITY_MOBILE, "13800138000");
+        verify(userDomainService, never()).registrationContactExists(anyString(), anyString());
     }
 
     @Test
-    void registrationCodeChallengeShouldRejectExistingContactBeforeSending() {
+    void registrationCodeChallengeShouldAcknowledgeExistingContactWithoutSending() {
         when(iamUserService.detectIdentityType("registered@example.com")).thenReturn(IamUserService.IDENTITY_EMAIL);
         when(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_EMAIL, "registered@example.com")).thenReturn("registered@example.com");
         when(userDomainService.registrationContactExists(IamUserService.IDENTITY_EMAIL, "registered@example.com")).thenReturn(true);
+        LoginCodeChallengeVO acknowledgement = new LoginCodeChallengeVO();
+        acknowledgement.setChallengeId("decoy-challenge");
+        when(verificationAppService.registrationChallengeAcknowledgement(IamUserService.IDENTITY_EMAIL, "registered@example.com"))
+                .thenReturn(acknowledgement);
 
-        assertThatThrownBy(() -> controller.registrationCodeChallenge(
+        var response = controller.registrationCodeChallenge(
                 new com.lumira.api.auth.RegistrationCodeChallengeRequest("EMAIL", "registered@example.com")
-        )).isInstanceOf(com.lumira.common.exception.BizException.class)
-                .hasMessage("该邮箱已注册，请直接登录");
+        );
 
+        assertThat(response.getChallengeId()).isEqualTo("decoy-challenge");
+        verify(verificationAppService).registrationChallengeAcknowledgement(IamUserService.IDENTITY_EMAIL, "registered@example.com");
         verify(verificationAppService, never()).startRegistrationCodeChallenge(anyString(), anyString());
     }
 

@@ -83,12 +83,18 @@ public class JdbcIamUserRepository implements IamUserRepository {
     public IdentityBinding findIdentityBinding(String identityType, String identifierNormalized) {
         List<IdentityBinding> bindings = database.query(
                 """
-                        select id, user_id, user_uuid, deleted
+                        select id, user_id, user_uuid, verified, deleted
                         from iam_user_identity
                         where identity_type = ? and identifier_normalized = ?
                         limit 1
                         """,
-                (rs, rowNum) -> new IdentityBinding(rs.getLong("id"), rs.getLong("user_id"), rs.getString("user_uuid"), rs.getInt("deleted")),
+                (rs, rowNum) -> new IdentityBinding(
+                        rs.getLong("id"),
+                        rs.getLong("user_id"),
+                        rs.getString("user_uuid"),
+                        rs.getInt("verified") == 1,
+                        rs.getInt("deleted")
+                ),
                 identityType,
                 identifierNormalized
         );

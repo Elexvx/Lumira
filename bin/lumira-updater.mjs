@@ -620,10 +620,33 @@ async function createPreflight(request) {
     manifestHash: manifest.manifestDigest || createHash('sha256').update(JSON.stringify(manifest)).digest('hex'),
     releaseId: manifest.releaseId,
     signatureKeyId: manifest.signatureKeyId || null,
+    deploymentFingerprint: preflightDeploymentFingerprint(state),
     expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
   };
   atomicWrite(preflightPath(preflight.preflightId), `${JSON.stringify(preflight, null, 2)}\n`);
   return preflight;
+}
+
+function preflightDeploymentFingerprint(state) {
+  const activeSlot = normalizeSlot(state?.activeSlot);
+  const active = state?.slots?.[activeSlot] || null;
+  return createHash('sha256').update(JSON.stringify({
+    activeSlot,
+    currentRelease: state?.currentRelease ? {
+      releaseId: state.currentRelease.releaseId || null,
+      manifestDigest: state.currentRelease.manifestDigest || null,
+      commit: state.currentRelease.commit || null,
+      databaseVersion: state.currentRelease.databaseVersion || null,
+      images: state.currentRelease.images || null,
+    } : null,
+    activeSlotState: active ? {
+      commit: active.commit || null,
+      databaseVersion: active.databaseVersion || null,
+      serverImage: active.serverImage || null,
+      frontendImage: active.frontendImage || null,
+    } : null,
+    workers: state?.workers || null,
+  })).digest('hex');
 }
 
 function requirePreflight(preflightId, expectedReleaseId) {
@@ -708,6 +731,30 @@ async function waitForSlot(task, slot, expectedCommit, timeoutMs = 240_000) {
     ? `${lastIdentity.serviceName || 'unknown-service'}@${lastIdentity.commitId || 'unknown-commit'}`
     : 'no valid runtime identity';
   throw new Error(`lumira-server-${slot} did not become ready as lumira-server@${expectedCommit}; observed ${observed}.`);
+}
+
+async function waitForMaintenanceAcknowledgement(task, slot, expectedMode, timeoutMs = 30_000) {
+  if (dryRun || expectedMode === 'NORMAL') return;
+  const address = await containerAddress(task, serverContainer(slot));
+  const baseUrl = slotBaseUrl(address, slot);
+  const expectedTaskId = String(task.platformTaskId || '').trim();
+  const startedAt = Date.now();
+  let observed = null;
+  while (Date.now() - startedAt < timeoutMs) {
+    const response = await probeHttp(`${baseUrl}/api/v2/platform/update-maintenance/ack`, { timeoutMs: 3_000 });
+    if (response.ok) {
+      try { observed = JSON.parse(response.text)?.data || null; } catch { observed = null; }
+      const taskMatches = expectedTaskId && String(observed?.taskId ?? '') === expectedTaskId;
+      if (taskMatches && observed?.mode === expectedMode && observed?.enforced === true) {
+        appendLog(task, `Active ${slot} slot acknowledged ${expectedMode} for platform task ${expectedTaskId}.`);
+        return;
+      }
+    }
+    await sleep(500);
+  }
+  throw new Error(
+    `Active ${slot} slot did not acknowledge maintenance mode ${expectedMode} for platform task ${expectedTaskId || 'unknown'}; observed ${JSON.stringify(observed)}.`,
+  );
 }
 
 async function waitForUi(task, slot, expectedReleaseId, expectedCommit, timeoutMs = 120_000) {
@@ -899,6 +946,10 @@ async function imageIsPresent(task, image) {
 }
 
 async function rollbackTraffic(task, state, failedSlot) {
+  if (state.currentRelease?.rollback?.supported === false
+      || state.currentRelease?.rollback?.applicationRollbackSupported === false) {
+    throw new Error('The active signed Release Set forbids application rollback.');
+  }
   const previousSlot = normalizeSlot(state.activeSlot);
   const previousRelease = state.slots?.[previousSlot] || {};
   updateEnv({
@@ -942,10 +993,14 @@ async function runInstall(task, request) {
   const preflight = request.preflightId ? requirePreflight(request.preflightId, request.releaseId) : await createPreflight(request);
   if (!preflight.ready) throw new Error(`Preflight failed: ${preflight.blockers.join(' ')}`);
   const manifest = preflight.manifest;
+  const state = deploymentState();
+  if (!preflight.deploymentFingerprint
+      || preflight.deploymentFingerprint !== preflightDeploymentFingerprint(state)) {
+    throw httpError(409, 'Deployment state changed after preflight. Run preflight again.');
+  }
   const targetBuildTime = manifest.releasedAt || new Date().toISOString();
   const targetFrontendVersion = `${manifest.version}+${manifest.commit.slice(0, 12)}`;
   const targetBackendVersion = `${manifest.version}+${manifest.commit.slice(0, 12)}`;
-  const state = deploymentState();
   const activeSlot = normalizeSlot(state.activeSlot);
   const targetSlot = inactiveSlot(activeSlot);
   task.preflightId = preflight.preflightId;
@@ -975,7 +1030,7 @@ async function runInstall(task, request) {
 
   let switched = false;
   let localFrontendRunning = false;
-  let workersUpdated = false;
+  const workersTouched = [];
   try {
     setPhase(task, 'BACKUP', 'Creating a platform backup before the online update.');
     const deploymentEnv = parseEnvFile(envPath);
@@ -1052,6 +1107,7 @@ async function runInstall(task, request) {
     checkCancellation(task);
 
     setPhase(task, 'MIGRATING', 'Applying expand-only database migrations.', manifest.databaseRequiredRuntimeMode);
+    await waitForMaintenanceAcknowledgement(task, activeSlot, manifest.databaseRequiredRuntimeMode);
     await migrate(task, manifest);
     checkCancellation(task);
 
@@ -1098,9 +1154,10 @@ async function runInstall(task, request) {
 
     setPhase(task, 'PREPARING_WORKERS', 'Confirming target worker Event Schema compatibility.');
     setPhase(task, 'DRAINING_WORKERS', 'Quiescing, draining, replacing, and verifying async and job workers serially.');
+    workersTouched.push({ service: 'lumira-async', imageKey: 'LUMIRA_ASYNC_IMAGE', image: state.workers?.asyncImage });
     await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', manifest.images.async, manifest);
+    workersTouched.push({ service: 'lumira-job-executor', imageKey: 'LUMIRA_JOB_EXECUTOR_IMAGE', image: state.workers?.jobExecutorImage });
     await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', manifest.images.jobExecutor, manifest);
-    workersUpdated = true;
     checkCancellation(task);
 
     setPhase(task, 'SWITCHING_TRAFFIC', `Hot switching API traffic from ${activeSlot} to ${targetSlot}.`);
@@ -1170,9 +1227,13 @@ async function runInstall(task, request) {
         appendLog(task, `Automatic traffic rollback failed: ${rollbackError.message}`);
       }
     } else {
-      if (workersUpdated) {
-        await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.workers?.asyncImage, state.currentRelease).catch((workerError) => appendLog(task, `Async restoration failed: ${workerError.message}`));
-        await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.workers?.jobExecutorImage, state.currentRelease).catch((workerError) => appendLog(task, `Job restoration failed: ${workerError.message}`));
+      for (const worker of [...workersTouched].reverse()) {
+        try {
+          await updateWorker(task, worker.service, worker.imageKey, worker.image, state.currentRelease);
+        } catch (workerError) {
+          task.recoveryIncomplete = true;
+          appendLog(task, `${worker.service} restoration failed: ${workerError.message}`);
+        }
       }
       await runCommand(task, 'docker', ['rm', '-f', serverContainer(targetSlot)]).catch(() => {});
     }
@@ -1292,7 +1353,8 @@ function startTask(type, request) {
         const finalState = deploymentState();
         if (Number(finalState.operationEpoch) === Number(task.operationEpoch)) {
           finalState.candidateRelease = null;
-          if (task.status === 'FAILED' && UPDATE_PHASES.indexOf(task.phase) >= UPDATE_PHASES.indexOf('SWITCHING_TRAFFIC')) finalState.status = 'DEGRADED';
+          if (task.status === 'FAILED' && (task.recoveryIncomplete
+              || UPDATE_PHASES.indexOf(task.phase) >= UPDATE_PHASES.indexOf('SWITCHING_TRAFFIC'))) finalState.status = 'DEGRADED';
           else if (finalState.status === 'UPDATING') finalState.status = 'HEALTHY';
           writeDeploymentState(finalState);
         }

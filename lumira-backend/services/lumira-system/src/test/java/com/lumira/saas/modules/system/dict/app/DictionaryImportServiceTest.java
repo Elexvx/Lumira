@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.system.dict.app;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.lumira.saas.modules.system.dict.repository.DictionaryDatasetRepository;
@@ -38,6 +39,18 @@ class DictionaryImportServiceTest {
         assertThat(preview.errors()).extracting(DictionaryImportService.ImportError::message)
                 .anyMatch(message -> message.contains("Duplicate itemValue"))
                 .anyMatch(message -> message.contains("Parent item does not exist"));
+    }
+
+    @Test
+    void rejectsTxtAsSoonAsTheRowLimitIsExceeded() {
+        StringBuilder content = new StringBuilder("itemValue\titemLabel\n");
+        for (int index = 0; index <= DictionaryImportService.MAX_ROWS; index += 1) {
+            content.append(index).append('\t').append("Label ").append(index).append('\n');
+        }
+
+        assertThatThrownBy(() -> service.preview(new MockMultipartFile(
+                "file", "dictionary.txt", "text/plain", content.toString().getBytes(StandardCharsets.UTF_8)
+        ), "FLAT")).hasMessageContaining("exceeds 20000 rows");
     }
 
     @Test

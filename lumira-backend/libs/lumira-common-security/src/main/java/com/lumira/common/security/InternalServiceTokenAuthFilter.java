@@ -132,7 +132,10 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
     }
 
     static boolean isInternalServicePath(String requestUri) {
-        return requestUri != null && (requestUri.startsWith("/internal/") || requestUri.contains("/internal/"));
+        if (requestUri == null || requestUri.startsWith("/internal/runtime/") || requestUri.contains("/internal/runtime/")) {
+            return false;
+        }
+        return requestUri.startsWith("/internal/") || requestUri.contains("/internal/");
     }
 
     static boolean isAuthorized(String requestToken, String internalToken) {

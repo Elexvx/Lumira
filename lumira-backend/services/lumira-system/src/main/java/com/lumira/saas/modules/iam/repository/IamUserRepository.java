@@ -67,7 +67,7 @@ public interface IamUserRepository {
 
     int insertEvent(IamEvent event);
 
-    record IdentityBinding(Long id, Long userId, String userUuid, int deleted) {}
+    record IdentityBinding(Long id, Long userId, String userUuid, boolean verified, int deleted) {}
 
     record IdentityCommand(
             Long userId,

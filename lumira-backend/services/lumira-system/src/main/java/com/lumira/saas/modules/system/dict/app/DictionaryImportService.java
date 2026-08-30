@@ -5,6 +5,9 @@ import com.lumira.common.exception.BizException;
 import com.lumira.saas.modules.system.dict.dto.DictionaryImportMetadataRequest;
 import com.lumira.saas.modules.system.dict.repository.DictionaryDatasetRepository;
 import java.io.ByteArrayInputStream;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -170,19 +173,27 @@ public class DictionaryImportService {
         if (content.startsWith("\uFEFF")) {
             content = content.substring(1);
         }
-        String[] lines = content.split("\\R", -1);
-        if (lines.length == 0) {
-            throw badRequest("Dictionary TXT file is empty");
+        try (BufferedReader reader = new BufferedReader(new StringReader(content))) {
+            String header = reader.readLine();
+            if (header == null) {
+                throw badRequest("Dictionary TXT file is empty");
+            }
+            Map<Integer, String> headers = parseHeaders(List.of(header.split("\\t", -1)));
+            List<RawRow> rows = new ArrayList<>();
+            String line;
+            int rowNumber = 1;
+            while ((line = reader.readLine()) != null) {
+                rowNumber += 1;
+                if (line.isBlank()) continue;
+                if (rows.size() >= MAX_ROWS) {
+                    throw badRequest("Dictionary import file exceeds 20000 rows");
+                }
+                rows.add(rawRow(rowNumber, headers, List.of(line.split("\\t", -1))));
+            }
+            return rows;
+        } catch (IOException exception) {
+            throw badRequest("Failed to read dictionary TXT file");
         }
-        String[] headerCells = lines[0].split("\\t", -1);
-        Map<Integer, String> headers = parseHeaders(List.of(headerCells));
-        List<RawRow> rows = new ArrayList<>();
-        for (int index = 1; index < lines.length; index++) {
-            if (lines[index].isBlank()) continue;
-            String[] cells = lines[index].split("\\t", -1);
-            rows.add(rawRow(index + 1, headers, List.of(cells)));
-        }
-        return rows;
     }
 
     private List<RawRow> parseWorkbook(byte[] bytes) {
@@ -194,6 +205,9 @@ public class DictionaryImportService {
             Row headerRow = sheet.getRow(sheet.getFirstRowNum());
             if (headerRow == null) {
                 throw badRequest("Dictionary workbook header is missing");
+            }
+            if ((long) sheet.getLastRowNum() - headerRow.getRowNum() > MAX_ROWS) {
+                throw badRequest("Dictionary import file exceeds 20000 rows");
             }
             DataFormatter formatter = new DataFormatter(Locale.ROOT);
             List<String> headerValues = new ArrayList<>();
@@ -212,7 +226,12 @@ public class DictionaryImportService {
                     cells.add(value);
                     any |= StringUtils.hasText(value);
                 }
-                if (any) rows.add(rawRow(rowIndex + 1, headers, cells));
+                if (any) {
+                    if (rows.size() >= MAX_ROWS) {
+                        throw badRequest("Dictionary import file exceeds 20000 rows");
+                    }
+                    rows.add(rawRow(rowIndex + 1, headers, cells));
+                }
             }
             return rows;
         } catch (BizException exception) {

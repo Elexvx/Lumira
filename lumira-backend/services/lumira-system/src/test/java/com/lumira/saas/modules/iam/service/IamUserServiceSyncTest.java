@@ -20,10 +20,28 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class IamUserServiceSyncTest {
+
+    @Test
+    void unverifiedContactBindingCannotFallBackToLegacyPasswordLogin() {
+        com.lumira.saas.modules.iam.repository.IamUserRepository repository =
+                mock(com.lumira.saas.modules.iam.repository.IamUserRepository.class);
+        when(repository.findIdentityBinding(IamUserService.IDENTITY_EMAIL, "victim@example.com"))
+                .thenReturn(new com.lumira.saas.modules.iam.repository.IamUserRepository.IdentityBinding(
+                        11L, 1001L, "uuid-1001", false, 0
+                ));
+        IamUserService service = new IamUserService(repository);
+
+        assertTrue(service.findAccountByLoginAccount("victim@example.com").isEmpty());
+
+        verify(repository, never()).findLegacyActiveSysUser(anyString(), anyString(), anyString());
+    }
 
     @Test
     void syncEnabledSysUserKeepsIdentityAndCredentialEnabled() {
@@ -481,6 +499,7 @@ class IamUserServiceSyncTest {
             when(resultSet.getLong("id")).thenReturn(id);
             when(resultSet.getLong("user_id")).thenReturn(userId);
             when(resultSet.getString("user_uuid")).thenReturn(userUuid);
+            when(resultSet.getInt("verified")).thenReturn(1);
             when(resultSet.getInt("deleted")).thenReturn(deleted);
             return resultSet;
         }

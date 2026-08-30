@@ -63,7 +63,7 @@ public class PlatformUpdateMaintenanceService {
             String mode = normalizeMode(activeTask.getMaintenanceMode());
             if (("READ_ONLY".equals(mode) || "FULL_MAINTENANCE".equals(mode))
                     && (ACTIVE_STATUSES.contains(activeTask.getStatus()) || "FAILED".equals(activeTask.getStatus()))) {
-                return new MaintenanceState(mode, activeTask.getMaintenanceReason(), activeTask.getPhase(), true);
+                return new MaintenanceState(activeTask.getId(), mode, activeTask.getMaintenanceReason(), activeTask.getPhase(), true);
             }
             if (!ACTIVE_TASK_KEY.equals(activeTask.getActiveKey()) || !ACTIVE_STATUSES.contains(activeTask.getStatus())) {
                 return MaintenanceState.normal();
@@ -73,9 +73,9 @@ public class PlatformUpdateMaintenanceService {
                 return MaintenanceState.normal();
             }
             if (activeTask.getMaintenanceMode() == null) {
-                return new MaintenanceState("FULL_MAINTENANCE", "Legacy update task is active", activeTask.getPhase(), false);
+                return new MaintenanceState(activeTask.getId(), "FULL_MAINTENANCE", "Legacy update task is active", activeTask.getPhase(), false);
             }
-            return new MaintenanceState(mode, activeTask.getMaintenanceReason(), activeTask.getPhase(), false);
+            return new MaintenanceState(activeTask.getId(), mode, activeTask.getMaintenanceReason(), activeTask.getPhase(), false);
         } catch (RuntimeException exception) {
             // Operational maintenance is fail-open. The explicit administrator
             // switch is loaded separately and remains authoritative.
@@ -88,8 +88,8 @@ public class PlatformUpdateMaintenanceService {
         return mode != null && Set.of("NORMAL", "WRITE_DRAIN", "READ_ONLY", "FULL_MAINTENANCE").contains(mode) ? mode : "NORMAL";
     }
 
-    public record MaintenanceState(String mode, String reason, String phase, boolean requiresReconciliation) {
-        static MaintenanceState normal() { return new MaintenanceState("NORMAL", null, null, false); }
+    public record MaintenanceState(Long taskId, String mode, String reason, String phase, boolean requiresReconciliation) {
+        static MaintenanceState normal() { return new MaintenanceState(null, "NORMAL", null, null, false); }
     }
 
     Duration leaseTtl() {

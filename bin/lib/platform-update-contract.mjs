@@ -380,6 +380,14 @@ export function evaluateReleaseCompatibility({ currentRelease, targetRelease, pr
   if (current.releaseId && compareReleaseVersions(target.version || target.releaseId, current.version || current.releaseId) < 0) {
     installBlockers.push(`Release downgrade from ${current.releaseId} to ${target.releaseId} is not allowed during install.`);
   }
+  if (target.rollback?.supported !== true) {
+    installBlockers.push('Target release does not support rollback; installation is blocked.');
+    rollbackBlockers.push('The signed Release Set declares rollback unsupported.');
+  }
+  if (target.rollback?.applicationRollbackSupported !== true) {
+    installBlockers.push('Target release does not support application rollback; installation is blocked.');
+    rollbackBlockers.push('The signed Release Set declares application rollback unsupported.');
+  }
   const currentEventWrite = Number(current.compatibility?.event?.writeVersion);
   if (Number.isInteger(currentEventWrite) && !integerRangeContains(target.compatibility.event, currentEventWrite)) {
     installBlockers.push('Target Async cannot read the Event Schema currently written by the active Server.');

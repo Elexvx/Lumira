@@ -47,6 +47,7 @@ class PlatformUpdateMaintenanceServiceTest {
         );
 
         assertThat(service.isAutomaticMaintenanceActive()).isTrue();
+        assertThat(service.currentMode().taskId()).isEqualTo(42L);
     }
 
     @Test
@@ -134,6 +135,7 @@ class PlatformUpdateMaintenanceServiceTest {
 
     private static PlatformUpdateTaskEntity task(String status, String phase, LocalDateTime updatedAt) {
         PlatformUpdateTaskEntity task = new PlatformUpdateTaskEntity();
+        task.setId(42L);
         task.setActiveKey(PlatformUpdateMaintenanceService.ACTIVE_TASK_KEY);
         task.setStatus(status);
         task.setPhase(phase);

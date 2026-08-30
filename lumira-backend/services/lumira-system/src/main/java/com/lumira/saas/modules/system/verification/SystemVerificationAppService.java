@@ -698,6 +698,40 @@ public class SystemVerificationAppService {
         return challenge;
     }
 
+    /**
+     * Builds the same public acknowledgement shape as a real registration challenge without
+     * sending or persisting a code. This keeps anonymous callers from using the challenge
+     * endpoint as an account-existence oracle for an already-bound contact.
+     */
+    public LoginCodeChallengeVO registrationChallengeAcknowledgement(String contactType, String contact) {
+        String factorCode = this.normalizeRegistrationContactType(contactType);
+        String identityType = FACTOR_SMS.equals(factorCode) ? IamUserService.IDENTITY_MOBILE : IamUserService.IDENTITY_EMAIL;
+        String normalizedContact = this.iamUserService.normalizeIdentifier(identityType, contact);
+        if (!StringUtils.hasText(normalizedContact)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "联系方式不能为空");
+        }
+        if (FACTOR_SMS.equals(factorCode)) {
+            SmsVerificationSettingsRecord smsSettings = this.loadSmsSettingsRecord();
+            if (!smsSettings.enabled() || !smsSettings.configured()) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "短信验证码服务未配置");
+            }
+        } else if (!this.smtpMailService.isConfigured()) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "邮件验证码服务未配置");
+        }
+
+        LoginCodeChallengeVO challenge = new LoginCodeChallengeVO();
+        challenge.setLoginType(factorCode);
+        challenge.setFactorName(this.loginDefinitionOf(factorCode).factorName());
+        challenge.setChallengeId(this.generateChallengeId());
+        challenge.setMaskedContact(FACTOR_SMS.equals(factorCode) ? this.maskMobile(normalizedContact) : this.maskEmail(normalizedContact));
+        challenge.setPromptMessage(FACTOR_SMS.equals(factorCode)
+                ? "验证码已发送至该手机号，请输入 6 位验证码完成注册"
+                : "验证码已发送至该邮箱，请输入 6 位验证码完成注册");
+        challenge.setExpiresInSeconds(this.verificationCodeExpireSeconds());
+        challenge.setCooldownSeconds(this.verificationCodeCooldownSeconds());
+        return challenge;
+    }
+
     public void completeRegistrationCodeChallenge(
             String challengeId,
             String verificationCode,
