@@ -188,6 +188,79 @@ const USER_EDITOR_FALLBACK_MESSAGES = {
   },
 } as const;
 
+const WATERMARK_FALLBACK_MESSAGES = {
+  'zh-CN': {
+    'ui.settings.personalization.watermark': '全局水印',
+    'ui.settings.personalization.watermark.clear': '清除',
+    'ui.settings.personalization.watermark.clickOrDragToReplaceTheImage': '点击或拖拽更换图片',
+    'ui.settings.personalization.watermark.clickOrDragToUpload': '点击或拖拽上传',
+    'ui.settings.personalization.watermark.clickOrDragToUploadAnImage': '点击或拖拽上传图片',
+    'ui.settings.personalization.watermark.enableWatermark': '启用水印',
+    'ui.settings.personalization.watermark.fixedVisitorWatermarkText': '固定/访客水印文字',
+    'ui.settings.personalization.watermark.enterOneWatermarkLinePerRow': '每行输入一条水印文字',
+    'ui.settings.personalization.watermark.enterPersonalizedWatermarkTemplate': '例如：用户：{{username}}｜手机：{{mobile}}',
+    'ui.settings.personalization.watermark.personalizedWatermarkTemplate': '登录用户水印模板',
+    'ui.settings.personalization.watermark.personalizedWatermarkTemplateHint': '登录后按当前用户显示；手机号和邮箱会自动脱敏。点击参数按钮插入变量。',
+    'ui.settings.personalization.watermark.invalidPersonalizedWatermarkTemplate': '模板包含未知或格式错误的占位符，请使用参数按钮插入变量',
+    'ui.settings.personalization.watermark.username': '用户名',
+    'ui.settings.personalization.watermark.nickname': '昵称',
+    'ui.settings.personalization.watermark.mobile': '手机号',
+    'ui.settings.personalization.watermark.email': '邮箱',
+    'ui.settings.personalization.watermark.realName': '真实姓名',
+    'ui.settings.personalization.watermark.userId': '用户 ID',
+    'ui.settings.personalization.watermark.fontColor': '字体颜色',
+    'ui.settings.personalization.watermark.fontSize': '字号',
+    'ui.settings.personalization.watermark.horizontalSpacing': '横向间距',
+    'ui.settings.personalization.watermark.image': '图片',
+    'ui.settings.personalization.watermark.imageOpacity': '图片透明度',
+    'ui.settings.personalization.watermark.mode': '模式',
+    'ui.settings.personalization.watermark.multipleLinesOfTextOnePerLine': '多行文字（每行一个）',
+    'ui.settings.personalization.watermark.rotation': '旋转',
+    'ui.settings.personalization.watermark.saveSettings': '保存设置',
+    'ui.settings.personalization.watermark.selectFontColor': '选择字体颜色',
+    'ui.settings.personalization.watermark.text': '文字',
+    'ui.settings.personalization.watermark.textOpacity': '文字透明度',
+    'ui.settings.personalization.watermark.uploading': '上传中...',
+    'ui.settings.personalization.watermark.verticalSpacing': '纵向间距',
+    'ui.settings.personalization.watermark.watermarkImage': '水印图片',
+  },
+  'en-US': {
+    'ui.settings.personalization.watermark': 'Global watermark',
+    'ui.settings.personalization.watermark.clear': 'Clear',
+    'ui.settings.personalization.watermark.clickOrDragToReplaceTheImage': 'Click or drag to replace the image',
+    'ui.settings.personalization.watermark.clickOrDragToUpload': 'Click or drag to upload',
+    'ui.settings.personalization.watermark.clickOrDragToUploadAnImage': 'Click or drag to upload an image',
+    'ui.settings.personalization.watermark.enableWatermark': 'Enable watermark',
+    'ui.settings.personalization.watermark.fixedVisitorWatermarkText': 'Fixed/visitor watermark text',
+    'ui.settings.personalization.watermark.enterOneWatermarkLinePerRow': 'Enter one watermark line per row',
+    'ui.settings.personalization.watermark.enterPersonalizedWatermarkTemplate': 'For example: User: {{username}} | Mobile: {{mobile}}',
+    'ui.settings.personalization.watermark.personalizedWatermarkTemplate': 'Logged-in user watermark template',
+    'ui.settings.personalization.watermark.personalizedWatermarkTemplateHint': 'Shown for the current user after login; mobile numbers and emails are masked automatically. Click a parameter to insert it.',
+    'ui.settings.personalization.watermark.invalidPersonalizedWatermarkTemplate': 'The template contains an unknown or malformed placeholder. Use the parameter buttons to insert variables.',
+    'ui.settings.personalization.watermark.username': 'Username',
+    'ui.settings.personalization.watermark.nickname': 'Nickname',
+    'ui.settings.personalization.watermark.mobile': 'Mobile',
+    'ui.settings.personalization.watermark.email': 'Email',
+    'ui.settings.personalization.watermark.realName': 'Real name',
+    'ui.settings.personalization.watermark.userId': 'User ID',
+    'ui.settings.personalization.watermark.fontColor': 'Font color',
+    'ui.settings.personalization.watermark.fontSize': 'Font size',
+    'ui.settings.personalization.watermark.horizontalSpacing': 'Horizontal spacing',
+    'ui.settings.personalization.watermark.image': 'Image',
+    'ui.settings.personalization.watermark.imageOpacity': 'Image opacity',
+    'ui.settings.personalization.watermark.mode': 'Mode',
+    'ui.settings.personalization.watermark.multipleLinesOfTextOnePerLine': 'Multiple lines of text (one per line)',
+    'ui.settings.personalization.watermark.rotation': 'Rotation',
+    'ui.settings.personalization.watermark.saveSettings': 'Save settings',
+    'ui.settings.personalization.watermark.selectFontColor': 'Select font color',
+    'ui.settings.personalization.watermark.text': 'Text',
+    'ui.settings.personalization.watermark.textOpacity': 'Text opacity',
+    'ui.settings.personalization.watermark.uploading': 'Uploading...',
+    'ui.settings.personalization.watermark.verticalSpacing': 'Vertical spacing',
+    'ui.settings.personalization.watermark.watermarkImage': 'Watermark image',
+  },
+} as const;
+
 type LoginFallbackLocale = keyof typeof LOGIN_FALLBACK_MESSAGES;
 
 const currentLocale = () => {
@@ -205,7 +278,8 @@ export const resolveBuiltinFallbackMessage = (id?: string | null, localeCode = c
   return LOGIN_FALLBACK_MESSAGES[locale][id as keyof (typeof LOGIN_FALLBACK_MESSAGES)[typeof locale]]
     || ROLE_SIMULATION_FALLBACK_MESSAGES[locale][id as keyof (typeof ROLE_SIMULATION_FALLBACK_MESSAGES)[typeof locale]]
     || USER_MENU_FALLBACK_MESSAGES[locale][id as keyof (typeof USER_MENU_FALLBACK_MESSAGES)[typeof locale]]
-    || USER_EDITOR_FALLBACK_MESSAGES[locale][id as keyof (typeof USER_EDITOR_FALLBACK_MESSAGES)[typeof locale]];
+    || USER_EDITOR_FALLBACK_MESSAGES[locale][id as keyof (typeof USER_EDITOR_FALLBACK_MESSAGES)[typeof locale]]
+    || WATERMARK_FALLBACK_MESSAGES[locale][id as keyof (typeof WATERMARK_FALLBACK_MESSAGES)[typeof locale]];
 };
 
 const containsCjk = (value: string) => /[\u3400-\u9fff]/.test(value);

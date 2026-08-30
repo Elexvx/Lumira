@@ -41,5 +41,5 @@ test('fresh and upgraded plugin definitions contribute a checkout adapter and no
   }
   assert.doesNotMatch(migration, /checkout-route/);
   assert.match(runtime, /BUILTIN_MOCK_PAYMENT_PLUGIN,[\s\S]*?new BuiltinPluginRuntime\(\s*List\.of\(\)/);
-  assert.equal(baseline, '202608250001');
+  assert.equal(baseline, '202608310001');
 });

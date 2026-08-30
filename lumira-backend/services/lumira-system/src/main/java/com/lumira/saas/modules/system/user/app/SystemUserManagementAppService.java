@@ -33,6 +33,8 @@ import com.lumira.saas.modules.system.user.support.UserAvatarDefaults;
 import com.lumira.saas.modules.system.user.vo.UserDetailVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -56,6 +58,7 @@ import java.util.regex.Pattern;
 @ConditionalOnLumiraControlPlaneEnabled
 public class SystemUserManagementAppService {
 
+    private static final Logger log = LoggerFactory.getLogger(SystemUserManagementAppService.class);
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String ASYNC_EXPORT_SESSION_PREFIX = "internal-export-task-";
     private static final String STATUS_ENABLED = "ENABLED";
@@ -455,6 +458,10 @@ public class SystemUserManagementAppService {
         if ("DISABLED".equals(normalizedStatus)) {
             onlineSessionManagementAppService.revokeUserSessions(userId, userUuid);
         }
+        // Session-index cleanup is best effort under a Redis race. Advancing
+        // the authoritative authorization version on either status transition
+        // ensures a missed stale payload cannot become valid after re-enable.
+        permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + normalizedStatus);
         return true;
     }
@@ -1050,6 +1057,9 @@ public class SystemUserManagementAppService {
             }
             return;
         }
+        if (isAsyncExportSession(currentUser)) {
+            requireAuthoritativeAsyncExportPermissionSnapshot(snapshot);
+        }
         currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
@@ -1060,6 +1070,30 @@ public class SystemUserManagementAppService {
         currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
         currentUser.setPermissionsVersion(snapshot.getVersion());
         currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private void requireAuthoritativeAsyncExportPermissionSnapshot(
+            PermissionSnapshotService.PermissionSnapshot snapshot
+    ) {
+        if (snapshot == null || !StringUtils.hasText(snapshot.getVersion())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Export authorization snapshot is unavailable");
+        }
+        boolean current;
+        try {
+            current = permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(snapshot.getVersion());
+        } catch (BizException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Rejected async user export because IAM authorization version is unavailable reason={}",
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "IAM authorization version is unavailable");
+        }
+        if (!current) {
+            log.warn("Rejected async user export because IAM authorization snapshot is stale");
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Export authorization snapshot is stale");
+        }
     }
 
     private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {

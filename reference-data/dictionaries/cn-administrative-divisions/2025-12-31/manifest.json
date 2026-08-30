@@ -1,0 +1,13 @@
+{
+  "datasetCode": "sys_cn_administrative_division:2025-12-31",
+  "dictCode": "sys_cn_administrative_division",
+  "dictName": "中国大陆省市区县",
+  "structureType": "TREE",
+  "version": "2025-12-31",
+  "cutoffDate": "2025-12-31",
+  "sourceUrl": "https://dmfw.mca.gov.cn/XzqhVersionPublish.html",
+  "dataFile": "sys_cn_administrative_division.xlsx",
+  "fileSha256": "2f7e4150d1954851723f11ad595da3dd5c2aa1ada322d174fe2006dccc7f5afb",
+  "rowCount": 3217,
+  "remark": "中国大陆省、地、县三级行政区划，不含港澳台和乡镇街道；直辖市及省直辖县级区域包含不可选导航节点。"
+}

@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.architecture.application;
 
+import com.lumira.common.security.AuthorizationSnapshotMetricNames;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -36,6 +37,9 @@ public class OwnerRuntimeMetrics {
     public static final String AUTH_PERMISSION_SNAPSHOT_ROLE_HIT = "auth.permission_snapshot.role_hit";
     public static final String AUTH_PERMISSION_SNAPSHOT_USER_LOAD = "auth.permission_snapshot.user_load";
     public static final String AUTH_SESSION_ACTIVITY_REFRESH = "auth.session_activity_refresh";
+    public static final String AUTHZ_VERSION_STALE = AuthorizationSnapshotMetricNames.AUTHZ_VERSION_STALE;
+    public static final String AUTHZ_VERSION_UNAVAILABLE = AuthorizationSnapshotMetricNames.AUTHZ_VERSION_UNAVAILABLE;
+    public static final String AUTHZ_SESSION_REVOKED = AuthorizationSnapshotMetricNames.AUTHZ_SESSION_REVOKED;
 
     private final MeterRegistry meterRegistry;
 
@@ -111,6 +115,18 @@ public class OwnerRuntimeMetrics {
 
     public void recordAuthSessionActivityRefresh() {
         counter(AUTH_SESSION_ACTIVITY_REFRESH).increment();
+    }
+
+    public void recordAuthorizationVersionStale() {
+        counter(AUTHZ_VERSION_STALE).increment();
+    }
+
+    public void recordAuthorizationVersionUnavailable() {
+        counter(AUTHZ_VERSION_UNAVAILABLE).increment();
+    }
+
+    public void recordAuthorizationSessionRevoked() {
+        counter(AUTHZ_SESSION_REVOKED).increment();
     }
 
     public void recordIamPermissionSnapshotRoleIdsQuery() {

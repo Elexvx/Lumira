@@ -6,6 +6,7 @@ export const DEFAULT_WATERMARK_SETTINGS: WatermarkSettings = {
   enabled: false,
   mode: 'TEXT',
   textLines: [],
+  personalizedTextLines: [],
   imageUrl: '',
   fontColor: 'rgba(0,0,0,0.15)',
   fontSize: 14,

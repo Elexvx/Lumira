@@ -26,7 +26,10 @@ import com.lumira.saas.modules.system.controller.SystemVerificationController;
 import com.lumira.saas.modules.system.department.app.SystemDepartmentAppService;
 import com.lumira.saas.modules.system.department.infrastructure.JdbcSystemDepartmentRepository;
 import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
+import com.lumira.saas.modules.system.dict.app.DictionaryDatasetBootstrap;
+import com.lumira.saas.modules.system.dict.app.DictionaryImportService;
 import com.lumira.saas.modules.system.dict.infrastructure.JdbcDictRuntimeRepository;
+import com.lumira.saas.modules.system.dict.infrastructure.JdbcDictionaryDatasetRepository;
 import com.lumira.saas.modules.system.monitor.app.SystemMonitorAppService;
 import com.lumira.saas.modules.system.monitor.controller.SystemMonitorController;
 import com.lumira.saas.modules.system.online.OnlineSessionEventPublisher;
@@ -57,6 +60,7 @@ import com.lumira.saas.modules.system.support.BuiltinMockSmsAvailability;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.modules.system.update.app.PlatformUpdateAppService;
 import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceService;
+import com.lumira.saas.modules.system.update.app.PlatformUpdateWriteGuardFilter;
 import com.lumira.saas.modules.system.update.controller.PlatformUpdateController;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
@@ -97,12 +101,15 @@ import org.springframework.context.annotation.Import;
 @Import({
         DashboardController.class,
         DictRuntimeService.class,
+        DictionaryDatasetBootstrap.class,
+        DictionaryImportService.class,
         SystemDictionaryItemLookupAdapter.class,
         SystemDictionaryValueNormalizer.class,
         SystemAiSystemManagementToolPort.class,
         SystemAiSystemReadPort.class,
         SystemExpertAccountProvisioningPort.class,
         JdbcDictRuntimeRepository.class,
+        JdbcDictionaryDatasetRepository.class,
         JdbcInternalSystemRepository.class,
         InternalSystemApplicationService.class,
         InternalSystemController.class,
@@ -118,6 +125,7 @@ import org.springframework.context.annotation.Import;
         PasskeyCredentialAppService.class,
         PlatformUpdateAppService.class,
         PlatformUpdateMaintenanceService.class,
+        PlatformUpdateWriteGuardFilter.class,
         PlatformUpdateController.class,
         ProfileController.class,
         JdbcSystemProfileSettingsRepository.class,

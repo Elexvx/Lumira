@@ -19,6 +19,7 @@ import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceService;
+import com.lumira.saas.modules.system.watermark.support.WatermarkTemplateValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.lumira.saas.modules.system.settings.repository.SystemPlatformSettingsRepository;
 import org.springframework.mail.MailException;
@@ -99,6 +100,7 @@ public class SystemPlatformSettingsAppService {
     private static final String WATERMARK_ENABLED_KEY = "watermark.enabled";
     private static final String WATERMARK_MODE_KEY = "watermark.mode";
     private static final String WATERMARK_TEXT_LINES_KEY = "watermark.text-lines";
+    private static final String WATERMARK_PERSONALIZED_TEXT_LINES_KEY = "watermark.personalized-text-lines";
     private static final String WATERMARK_IMAGE_URL_KEY = "watermark.image-url";
     private static final String WATERMARK_FONT_COLOR_KEY = "watermark.font-color";
     private static final String WATERMARK_FONT_SIZE_KEY = "watermark.font-size";
@@ -407,8 +409,9 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Watermark settings request is required");
+        WatermarkTemplateValidator.validate(request.getPersonalizedTextLines());
         SystemConfigVersioningService.GovernanceSession configVersion = beginGovernance(GROUP_WATERMARK, request.getExpectedConfigVersion(), request.getChangeReason(), currentUser, List.of(
-                WATERMARK_ENABLED_KEY, WATERMARK_MODE_KEY, WATERMARK_TEXT_LINES_KEY, WATERMARK_IMAGE_URL_KEY,
+                WATERMARK_ENABLED_KEY, WATERMARK_MODE_KEY, WATERMARK_TEXT_LINES_KEY, WATERMARK_PERSONALIZED_TEXT_LINES_KEY, WATERMARK_IMAGE_URL_KEY,
                 WATERMARK_FONT_COLOR_KEY, WATERMARK_FONT_SIZE_KEY, WATERMARK_FONT_WEIGHT_KEY, WATERMARK_ROTATE_KEY,
                 WATERMARK_GAP_X_KEY, WATERMARK_GAP_Y_KEY, WATERMARK_OFFSET_X_KEY, WATERMARK_OFFSET_Y_KEY,
                 WATERMARK_Z_INDEX_KEY, WATERMARK_OPACITY_KEY
@@ -416,7 +419,10 @@ public class SystemPlatformSettingsAppService {
         Map<String, String> current = loadConfigValuesByGroup(GROUP_WATERMARK, true);
         upsertConfigValue(WATERMARK_ENABLED_KEY, request.getEnabled() == null ? settingValue(current, WATERMARK_ENABLED_KEY) : String.valueOf(request.getEnabled()), operatorId);
         upsertConfigValue(WATERMARK_MODE_KEY, defaultIfBlank(request.getMode(), settingValue(current, WATERMARK_MODE_KEY)), operatorId);
-        upsertConfigValue(WATERMARK_TEXT_LINES_KEY, request.getTextLines() == null ? settingValue(current, WATERMARK_TEXT_LINES_KEY) : String.join("\\n", request.getTextLines()), operatorId);
+        upsertConfigValue(WATERMARK_TEXT_LINES_KEY, request.getTextLines() == null ? settingValue(current, WATERMARK_TEXT_LINES_KEY) : String.join("\n", request.getTextLines()), operatorId);
+        upsertConfigValue(WATERMARK_PERSONALIZED_TEXT_LINES_KEY, request.getPersonalizedTextLines() == null
+                ? settingValue(current, WATERMARK_PERSONALIZED_TEXT_LINES_KEY)
+                : String.join("\n", request.getPersonalizedTextLines()), operatorId);
         upsertConfigValue(WATERMARK_IMAGE_URL_KEY, request.getImageUrl() == null ? settingValue(current, WATERMARK_IMAGE_URL_KEY) : request.getImageUrl(), operatorId);
         upsertConfigValue(WATERMARK_FONT_COLOR_KEY, defaultIfBlank(request.getFontColor(), settingValue(current, WATERMARK_FONT_COLOR_KEY)), operatorId);
         upsertConfigValue(WATERMARK_FONT_SIZE_KEY, request.getFontSize() == null ? settingValue(current, WATERMARK_FONT_SIZE_KEY) : String.valueOf(request.getFontSize()), operatorId);
@@ -648,6 +654,7 @@ public class SystemPlatformSettingsAppService {
         settings.setEnabled(Boolean.parseBoolean(settingValue(valueByKey, WATERMARK_ENABLED_KEY)));
         settings.setMode(settingValue(valueByKey, WATERMARK_MODE_KEY));
         settings.setTextLines(parseWatermarkTextLines(valueByKey.get(WATERMARK_TEXT_LINES_KEY)));
+        settings.setPersonalizedTextLines(parseWatermarkTextLines(valueByKey.get(WATERMARK_PERSONALIZED_TEXT_LINES_KEY)));
         settings.setImageUrl(settingValue(valueByKey, WATERMARK_IMAGE_URL_KEY));
         settings.setFontColor(settingValue(valueByKey, WATERMARK_FONT_COLOR_KEY));
         settings.setFontSize(Integer.parseInt(settingValue(valueByKey, WATERMARK_FONT_SIZE_KEY)));
@@ -904,7 +911,7 @@ public class SystemPlatformSettingsAppService {
         if (!StringUtils.hasText(value)) {
             return List.of();
         }
-        return value.lines()
+        return value.replace("\\n", "\n").lines()
                 .map(String::trim)
                 .filter(StringUtils::hasText)
                 .toList();

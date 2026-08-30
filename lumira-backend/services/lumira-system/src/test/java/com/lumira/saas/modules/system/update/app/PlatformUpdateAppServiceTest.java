@@ -363,6 +363,18 @@ class PlatformUpdateAppServiceTest {
     }
 
     @Test
+    void productionUpdateRequestsBindReleaseIdInsteadOfCallerSuppliedManifest() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/lumira/saas/modules/system/update/app/PlatformUpdateAppService.java"
+        ));
+
+        assertThat(source)
+                .contains("Map.of(\"releaseId\", requireReleaseId(latest))")
+                .contains("new UpdaterRequest(\n                task.getReleaseId()")
+                .doesNotContain("manifestPayload(");
+    }
+
+    @Test
     void platformTaskIdentityUsesDatabaseStableTimestampPrecision() throws Exception {
         String source = java.nio.file.Files.readString(java.nio.file.Path.of(
                 "src/main/java/com/lumira/saas/modules/system/update/app/PlatformUpdateAppService.java"

@@ -68,7 +68,7 @@ public interface AiSystemManagementToolPort {
         UPDATE_AGREEMENT("system:config:update", fields(
                 "userAgreementMarkdown", "privacyAgreementMarkdown", "expectedConfigVersion", "changeReason")),
         UPDATE_WATERMARK("system:config:update", fields(
-                "enabled", "mode", "textLines", "imageUrl", "fontColor", "fontSize", "fontWeight", "rotate",
+                "enabled", "mode", "textLines", "personalizedTextLines", "imageUrl", "fontColor", "fontSize", "fontWeight", "rotate",
                 "gapX", "gapY", "offsetX", "offsetY", "zIndex", "opacity", "expectedConfigVersion", "changeReason")),
         UPDATE_FLOATING_WINDOW("system:config:update", fields(
                 "apiDocsQrEnabled", "apiDocsQrTitle", "apiDocsQrImageUrl", "expectedConfigVersion", "changeReason"));

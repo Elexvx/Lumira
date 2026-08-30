@@ -1,11 +1,13 @@
 import type { WatermarkSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { DEFAULT_WATERMARK_SETTINGS } from './settingsTypes';
+import { normalizeWatermarkTextLines } from './template';
 
 export const normalizeWatermarkSettings = (settings?: Partial<WatermarkSettings> | null): WatermarkSettings => ({
   enabled: normalizeBoolean(settings?.enabled, DEFAULT_WATERMARK_SETTINGS.enabled),
   mode: settings?.mode === 'IMAGE' ? 'IMAGE' : DEFAULT_WATERMARK_SETTINGS.mode,
-  textLines: normalizeTextLines(settings?.textLines, DEFAULT_WATERMARK_SETTINGS.textLines),
+  textLines: normalizeWatermarkTextLines(settings?.textLines),
+  personalizedTextLines: normalizeWatermarkTextLines(settings?.personalizedTextLines),
   imageUrl: normalizeUploadUrl(settings?.imageUrl),
   fontColor: normalizeText(settings?.fontColor, DEFAULT_WATERMARK_SETTINGS.fontColor),
   fontSize: normalizePositiveNumber(settings?.fontSize, DEFAULT_WATERMARK_SETTINGS.fontSize),
@@ -59,14 +61,4 @@ const normalizeText = (value: unknown, fallback: string) => {
   }
   const trimmed = value.trim();
   return trimmed || fallback;
-};
-
-const normalizeTextLines = (value: unknown, fallback: string[]) => {
-  if (!Array.isArray(value)) {
-    return fallback;
-  }
-  const lines = value
-    .map((line) => (typeof line === 'string' ? line.trim() : ''))
-    .filter(Boolean);
-  return lines.length ? lines : fallback;
 };

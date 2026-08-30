@@ -53,6 +53,7 @@ const resolveBuildInfo = () => {
 
   return {
     app: 'lumira-ui',
+    releaseId: firstText(process.env.UMI_APP_RELEASE_ID, process.env.LUMIRA_RELEASE_ID, 'local'),
     version,
     buildTime: firstText(process.env.UMI_APP_BUILD_TIME, process.env.BUILD_TIME, new Date().toISOString()),
     gitCommit: gitCommit || 'unknown',

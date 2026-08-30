@@ -48,23 +48,48 @@ public class PlatformUpdateMaintenanceService {
     }
 
     public boolean isAutomaticMaintenanceActive() {
+        return !"NORMAL".equals(currentMode().mode());
+    }
+
+    public MaintenanceState currentMode() {
         try {
             LocalDateTime heartbeatCutoff = LocalDateTime.now(clock).minus(leaseTtl);
             PlatformUpdateTaskEntity activeTask = taskMapper.selectOne(new QueryWrapper<PlatformUpdateTaskEntity>()
-                    .eq("active_key", ACTIVE_TASK_KEY)
-                    .in("status", ACTIVE_STATUSES)
+                    .orderByDesc("created_at")
                     .last("LIMIT 1"));
-            return activeTask != null
-                    && ACTIVE_TASK_KEY.equals(activeTask.getActiveKey())
-                    && ACTIVE_STATUSES.contains(activeTask.getStatus())
-                    && activeTask.getUpdatedAt() != null
-                    && !activeTask.getUpdatedAt().isBefore(heartbeatCutoff);
+            if (activeTask == null) {
+                return MaintenanceState.normal();
+            }
+            String mode = normalizeMode(activeTask.getMaintenanceMode());
+            if (("READ_ONLY".equals(mode) || "FULL_MAINTENANCE".equals(mode))
+                    && (ACTIVE_STATUSES.contains(activeTask.getStatus()) || "FAILED".equals(activeTask.getStatus()))) {
+                return new MaintenanceState(mode, activeTask.getMaintenanceReason(), activeTask.getPhase(), true);
+            }
+            if (!ACTIVE_TASK_KEY.equals(activeTask.getActiveKey()) || !ACTIVE_STATUSES.contains(activeTask.getStatus())) {
+                return MaintenanceState.normal();
+            }
+            boolean leaseFresh = activeTask.getUpdatedAt() != null && !activeTask.getUpdatedAt().isBefore(heartbeatCutoff);
+            if (!leaseFresh) {
+                return MaintenanceState.normal();
+            }
+            if (activeTask.getMaintenanceMode() == null) {
+                return new MaintenanceState("FULL_MAINTENANCE", "Legacy update task is active", activeTask.getPhase(), false);
+            }
+            return new MaintenanceState(mode, activeTask.getMaintenanceReason(), activeTask.getPhase(), false);
         } catch (RuntimeException exception) {
             // Operational maintenance is fail-open. The explicit administrator
             // switch is loaded separately and remains authoritative.
             log.debug("Unable to resolve automatic platform update maintenance state", exception);
-            return false;
+            return MaintenanceState.normal();
         }
+    }
+
+    private String normalizeMode(String mode) {
+        return mode != null && Set.of("NORMAL", "WRITE_DRAIN", "READ_ONLY", "FULL_MAINTENANCE").contains(mode) ? mode : "NORMAL";
+    }
+
+    public record MaintenanceState(String mode, String reason, String phase, boolean requiresReconciliation) {
+        static MaintenanceState normal() { return new MaintenanceState("NORMAL", null, null, false); }
     }
 
     Duration leaseTtl() {

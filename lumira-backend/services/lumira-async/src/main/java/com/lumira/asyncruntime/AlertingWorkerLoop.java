@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,15 +23,27 @@ public class AlertingWorkerLoop {
     private final RestClient client;
     private final String token;
     private final MeterRegistry meterRegistry;
+    private final AsyncRuntimeDrainCoordinator drainCoordinator;
 
     public AlertingWorkerLoop(
             @Value("${lumira.async.owner-relay.control-plane-base-url:http://api-proxy:80}") String baseUrl,
             @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String token,
             MeterRegistry meterRegistry
     ) {
+        this(baseUrl, token, meterRegistry, new AsyncRuntimeDrainCoordinator());
+    }
+
+    @Autowired
+    public AlertingWorkerLoop(
+            @Value("${lumira.async.owner-relay.control-plane-base-url:http://api-proxy:80}") String baseUrl,
+            @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String token,
+            MeterRegistry meterRegistry,
+            AsyncRuntimeDrainCoordinator drainCoordinator
+    ) {
         this.client = RestClient.builder().baseUrl(RemoteOwnerOutboxRelay.requireTrustedBaseUrl(baseUrl)).build();
         this.token = token == null ? "" : token.trim();
         this.meterRegistry = meterRegistry;
+        this.drainCoordinator = drainCoordinator;
     }
 
     @Scheduled(
@@ -38,6 +51,11 @@ public class AlertingWorkerLoop {
             fixedDelayString = "${lumira.alerting.worker.fixed-delay-ms:15000}"
     )
     public void run() {
+        var lease = drainCoordinator.tryAcquire();
+        if (lease == null) {
+            return;
+        }
+        try (lease) {
         if (token.isBlank()) {
             meterRegistry.counter("alert_worker_failures", "reason", "token_missing").increment();
             return;
@@ -57,6 +75,7 @@ public class AlertingWorkerLoop {
         } catch (RuntimeException exception) {
             meterRegistry.counter("alert_worker_failures", "reason", "control_plane").increment();
             log.warn("alert worker run failed: {}", exception.getMessage());
+        }
         }
     }
 }

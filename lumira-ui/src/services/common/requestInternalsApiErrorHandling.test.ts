@@ -75,6 +75,12 @@ const sessionExpiredError = () =>
     httpStatus: 401,
   });
 
+const dependencyUnavailableError = () =>
+  new ApiRequestError(ErrorCode.DEPENDENCY_UNAVAILABLE, 'authentication dependency unavailable', {
+    userMessage: 'authentication dependency unavailable',
+    httpStatus: 503,
+  });
+
 const handle = (pathname: string, authSnapshot: AuthRequestSnapshot = baseAuthSnapshot, options: RequestOptions = {}) => {
   mocks.buildUnauthorizedRuntimeState.mockReturnValue(runtimeAt(pathname));
   handleApiError(forbiddenError(), options, authSnapshot);
@@ -234,6 +240,18 @@ describe('handleApiError', () => {
     await vi.waitFor(() => {
       expect(mocks.performLogout).toHaveBeenCalledWith({ reason: 'forced_expired' });
     });
+  });
+
+  it('keeps the authenticated session on a 503 authorization dependency failure', () => {
+    handleApiError(dependencyUnavailableError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.messageError).toHaveBeenCalledWith('authentication dependency unavailable');
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+    expect(mocks.withAuthSessionMutationLock).not.toHaveBeenCalled();
   });
 
   it('does not force logout when unauthorized side effects are suppressed', () => {

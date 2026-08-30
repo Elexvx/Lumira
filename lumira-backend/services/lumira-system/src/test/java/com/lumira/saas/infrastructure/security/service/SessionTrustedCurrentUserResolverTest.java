@@ -30,6 +30,36 @@ class SessionTrustedCurrentUserResolverTest {
     }
 
     @Test
+    void doesNotTreatAMissingUsernameAsARequestTrustedUser() {
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        CurrentUser adapterTicket = trustedUser();
+        adapterTicket.setUsername(null);
+
+        CurrentUser actual = new SessionTrustedCurrentUserResolver(sessionAuthenticationService).resolve(adapterTicket);
+
+        assertThat(actual).isSameAs(adapterTicket);
+        verifyNoInteractions(sessionAuthenticationService);
+    }
+
+    @Test
+    void resolvesACompleteSessionTicketThroughTheExistingSessionTicketPath() {
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        CurrentUser resolvedUser = trustedUser();
+        resolvedUser.setUsername("refreshed-user");
+        when(sessionAuthenticationService.authenticateSessionTicket(
+                "session-1", 1001L, "user-uuid", 7L, 3, "permissions-v3"))
+                .thenReturn(new SessionAuthenticationService.AuthenticatedAccess(resolvedUser, null, false));
+
+        CurrentUser actual = new SessionTrustedCurrentUserResolver(sessionAuthenticationService).resolveSessionTicket(
+                "session-1", 1001L, "user-uuid", 7L, 3, "permissions-v3"
+        );
+
+        assertThat(actual).isSameAs(resolvedUser);
+        verify(sessionAuthenticationService).authenticateSessionTicket(
+                "session-1", 1001L, "user-uuid", 7L, 3, "permissions-v3");
+    }
+
+    @Test
     void leavesUntrustedInputForTheCallerToRejectWithoutOpeningASessionLookup() {
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
         CurrentUser anonymous = new CurrentUser(0L, "anonymous", null, 0, false, Set.of());

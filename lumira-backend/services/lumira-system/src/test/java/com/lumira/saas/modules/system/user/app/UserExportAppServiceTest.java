@@ -377,6 +377,8 @@ class UserExportAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(permissionSnapshot(Set.of("system:user:export")));
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent("permissions-2"))
+                .thenReturn(true);
 
         CurrentUser queuedUser = service.buildQueuedAsyncUser(1001L, "user-uuid-1001", null, 9001L);
 
@@ -384,6 +386,66 @@ class UserExportAppServiceTest {
         assertThat(queuedUser.getUserUuid()).isEqualTo("user-uuid-1001");
         assertThat(queuedUser.getSessionId()).isEqualTo("internal-export-task-9001");
         assertThat(queuedUser.getPermissions()).containsExactly("system:user:export");
+        service.shutdown();
+    }
+
+    @Test
+    void buildQueuedAsyncUserShouldRejectAnAuthorizationSnapshotThatIsNoLongerAuthoritative() {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserExportAppService service = new UserExportAppService(
+                mock(SystemUserManagementAppService.class),
+                mock(ExcelExportService.class),
+                mock(ExportTaskService.class),
+                permissionSnapshotService,
+                systemInternalApi,
+                null,
+                executorServiceProvider(mock(ExecutorService.class))
+        );
+        PermissionSnapshotService.PermissionSnapshot staleSnapshot = permissionSnapshot(Set.of("system:user:export"));
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "operator-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(staleSnapshot);
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(staleSnapshot.getVersion()))
+                .thenReturn(false);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.buildQueuedAsyncUser(1001L, "user-uuid-1001", null, 9001L)
+        );
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.SESSION_EXPIRED);
+        service.shutdown();
+    }
+
+    @Test
+    void buildQueuedAsyncUserShouldClassifyAuthorizationVersionDependencyFailure() {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserExportAppService service = new UserExportAppService(
+                mock(SystemUserManagementAppService.class),
+                mock(ExcelExportService.class),
+                mock(ExportTaskService.class),
+                permissionSnapshotService,
+                systemInternalApi,
+                null,
+                executorServiceProvider(mock(ExecutorService.class))
+        );
+        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshot(Set.of("system:user:export"));
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "operator-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(snapshot);
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(snapshot.getVersion()))
+                .thenThrow(new IllegalStateException("version dependency unavailable"));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.buildQueuedAsyncUser(1001L, "user-uuid-1001", null, 9001L)
+        );
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.DEPENDENCY_UNAVAILABLE);
         service.shutdown();
     }
 
@@ -415,6 +477,8 @@ class UserExportAppServiceTest {
         CurrentUser currentUser = trustedUser(Set.of("system:user:export"));
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(permissionSnapshot(Set.of("system:user:export")));
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent("permissions-2"))
+                .thenReturn(true);
 
         service.exportUsers(currentUser, request(List.of("id")));
         currentUser.setUserUuid(" ");
@@ -674,6 +738,8 @@ class UserExportAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadGrantedRoleSnapshot(1001L, "user-uuid-1001", 77L))
                 .thenReturn(permissionSnapshot(Set.of("system:user:export")));
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent("permissions-2"))
+                .thenReturn(true);
 
         service.exportUsers(currentUser, request(List.of("id")));
         executorService.runSubmitted();
@@ -722,6 +788,8 @@ class UserExportAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(permissionSnapshot(Set.of("system:user:export")));
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent("permissions-2"))
+                .thenReturn(true);
         UserExportAppService service = new UserExportAppService(
                 userManagementAppService,
                 mock(ExcelExportService.class),
@@ -774,6 +842,8 @@ class UserExportAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(permissionSnapshot(Set.of("system:user:export")));
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent("permissions-2"))
+                .thenReturn(true);
         when(exportTaskService.uploadExportFileFromTrustedSnapshot(any(CurrentUser.class), any(byte[].class), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(new FileObjectDTO(
                         501L,
@@ -903,6 +973,46 @@ class UserExportAppServiceTest {
         );
 
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN);
+        verify(userManagementAppService, never()).listUsersFromTrustedSnapshot(
+                any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
+        );
+    }
+
+    @Test
+    void exportUsersFromTrustedSnapshotShouldRejectAnAsyncSnapshotThatIsNoLongerAuthoritativeBeforeLookup() {
+        SystemUserManagementAppService userManagementAppService = mock(SystemUserManagementAppService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        ExcelExportService excelExportService = mock(ExcelExportService.class);
+        UserExportAppService service = new UserExportAppService(
+                userManagementAppService,
+                excelExportService,
+                mock(ExportTaskService.class),
+                permissionSnapshotService,
+                null,
+                null,
+                executorServiceProvider(mock(ExecutorService.class))
+        );
+        PermissionSnapshotService.PermissionSnapshot staleSnapshot = permissionSnapshot(Set.of("system:user:export"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(staleSnapshot);
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(staleSnapshot.getVersion()))
+                .thenReturn(false);
+        PageResponse<com.lumira.saas.modules.system.vo.SystemVO.UserVO> page = new PageResponse<>();
+        page.setRecords(List.of());
+        page.setHasMore(false);
+        when(userManagementAppService.listUsersFromTrustedSnapshot(
+                any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
+        )).thenReturn(page);
+        when(excelExportService.export(anyString(), anyList(), anyList())).thenReturn(new byte[] {1});
+        CurrentUser asyncUser = trustedUser(Set.of("system:user:export"));
+        asyncUser.setSessionId("internal-export-task-9001");
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.exportUsersFromTrustedSnapshot(asyncUser, request(List.of("id")))
+        );
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.SESSION_EXPIRED);
         verify(userManagementAppService, never()).listUsersFromTrustedSnapshot(
                 any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
         );

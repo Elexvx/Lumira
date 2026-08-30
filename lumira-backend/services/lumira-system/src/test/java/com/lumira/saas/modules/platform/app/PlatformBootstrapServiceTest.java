@@ -70,11 +70,13 @@ class PlatformBootstrapServiceTest {
         SystemVO.BrandingSettingsVO brandingSettings = new SystemVO.BrandingSettingsVO();
         SystemVO.SecuritySettingsVO securitySettings = new SystemVO.SecuritySettingsVO();
         SystemVO.AgreementSettingsVO agreementSettings = new SystemVO.AgreementSettingsVO();
+        SystemVO.WatermarkSettingsVO watermarkSettings = new SystemVO.WatermarkSettingsVO();
         SystemVO.LoginCapabilitiesVO loginCapabilities = new SystemVO.LoginCapabilitiesVO();
 
         when(systemManagementAppService.getPublicBrandingSettings()).thenReturn(brandingSettings);
         when(systemManagementAppService.getPublicSecuritySettings()).thenReturn(securitySettings);
         when(systemManagementAppService.getPublicAgreementSettings()).thenReturn(agreementSettings);
+        when(systemManagementAppService.getPublicWatermarkSettings()).thenReturn(watermarkSettings);
         when(systemVerificationAppService.loadLoginCapabilitiesFresh()).thenReturn(loginCapabilities);
         when(readModelVersionService.currentVersions(any())).thenReturn(versions(10L, 20L), versions(10L, 20L));
 
@@ -92,10 +94,12 @@ class PlatformBootstrapServiceTest {
         SystemVO.PublicBootstrapVO second = service.getPublicBootstrap();
 
         assertThat(first.getBrandingSettings()).isSameAs(brandingSettings);
+        assertThat(first.getWatermarkSettings()).isSameAs(watermarkSettings);
         assertThat(second).isSameAs(first);
         verify(systemManagementAppService, times(1)).getPublicBrandingSettings();
         verify(systemManagementAppService, times(1)).getPublicSecuritySettings();
         verify(systemManagementAppService, times(1)).getPublicAgreementSettings();
+        verify(systemManagementAppService, times(1)).getPublicWatermarkSettings();
         verify(systemVerificationAppService, times(1)).loadLoginCapabilitiesFresh();
         verify(readModelVersionService, times(2)).currentVersions(any());
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_BOOTSTRAP_CACHE_HIT)).isEqualTo(1.0);

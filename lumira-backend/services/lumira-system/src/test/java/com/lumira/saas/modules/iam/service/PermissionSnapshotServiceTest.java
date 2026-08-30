@@ -262,6 +262,89 @@ class PermissionSnapshotServiceTest {
     }
 
     @Test
+    void invalidatePermissionsFailsClosedWhenAuthorizationVersionCannotAdvance() {
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        when(readModelVersionService.bump(
+                eq("IAM"),
+                eq("permission-snapshot"),
+                org.mockito.ArgumentMatchers.anyString()
+        )).thenThrow(new IllegalStateException("version store unavailable"));
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new MyBatisQueryOperations(new RecordingJdbcTemplate(List.of("team:view"))),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules(),
+                null,
+                readModelVersionService,
+                null
+        );
+
+        BizException exception = assertThrows(BizException.class, service::invalidatePermissions);
+
+        assertEquals(ErrorCode.DEPENDENCY_UNAVAILABLE, exception.getErrorCode());
+    }
+
+    @Test
+    void invalidatePermissionsTreatsCompatibilityCacheFailureAsBestEffortAfterAuthoritativeBump() {
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new MyBatisQueryOperations(new RecordingJdbcTemplate(List.of("team:view"))),
+                new FailingPutCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules(),
+                null,
+                readModelVersionService,
+                null
+        );
+
+        service.invalidatePermissions();
+
+        verify(readModelVersionService).bump(
+                eq("IAM"),
+                eq("permission-snapshot"),
+                argThat(eventKey -> eventKey.startsWith("iam.permission.invalidate:"))
+        );
+    }
+
+    @Test
+    void authoritativeSessionVersionComparisonUsesUncachedExactIamVersion() {
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        when(readModelVersionService.currentVersion("IAM", "permission-snapshot")).thenReturn(123L);
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new MyBatisQueryOperations(new RecordingJdbcTemplate(List.of("team:view"))),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules(),
+                null,
+                readModelVersionService,
+                null
+        );
+
+        assertTrue(service.isAuthoritativeSessionPermissionSnapshotCurrent("v123:data-scope-cache-v4"));
+        assertFalse(service.isAuthoritativeSessionPermissionSnapshotCurrent("v123:older-schema"));
+        verify(readModelVersionService, times(2)).currentVersion("IAM", "permission-snapshot");
+    }
+
+    @Test
+    void authoritativeSessionVersionComparisonFailsClosedWhenVersionServiceIsUnavailable() {
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        when(readModelVersionService.currentVersion("IAM", "permission-snapshot"))
+                .thenThrow(new IllegalStateException("version service unavailable"));
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new MyBatisQueryOperations(new RecordingJdbcTemplate(List.of("team:view"))),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules(),
+                null,
+                readModelVersionService,
+                null
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.isAuthoritativeSessionPermissionSnapshotCurrent("v123:data-scope-cache-v4")
+        );
+
+        assertEquals(ErrorCode.DEPENDENCY_UNAVAILABLE, exception.getErrorCode());
+    }
+
+    @Test
     void requestedScopeDoesNotPartitionGlobalSnapshotCache() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("team:view"));
         PermissionSnapshotService service = new PermissionSnapshotService(
@@ -562,6 +645,18 @@ class PermissionSnapshotServiceTest {
         @Override
         public String get(String key) {
             return values.get(key);
+        }
+    }
+
+    private static final class FailingPutCacheTemplate extends CacheTemplate {
+
+        private FailingPutCacheTemplate() {
+            super((StringRedisTemplate) null);
+        }
+
+        @Override
+        public void put(String key, String value, Duration ttl) {
+            throw new IllegalStateException("compatibility cache unavailable");
         }
     }
 

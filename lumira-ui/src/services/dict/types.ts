@@ -13,6 +13,7 @@ export interface DictTypeMutationPayload {
   dictCode: string;
   dictName: string;
   status: string;
+  structureType?: 'FLAT' | 'TREE';
   remark?: string;
 }
 
@@ -22,6 +23,9 @@ export interface DictItemMutationPayload {
   sortNo: number;
   status: string;
   remark?: string;
+  parentItemValue?: string;
+  levelNo?: number;
+  leaf?: boolean;
 }
 
 export type { DictItemRecord, DictTypeRecord, PagedResult };

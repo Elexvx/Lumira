@@ -52,7 +52,11 @@ const allowDirtyBuildIdentity = args.has('--allow-dirty-build-identity') || proc
 const configuredActiveSlot = normalizeSlot(
   process.env.LUMIRA_ACTIVE_SLOT || (existsSync(envPath) ? parseEnvFile(envPath).LUMIRA_ACTIVE_SLOT : 'blue')
 );
-const serviceNames = parseServiceNames(rawArgs).map((name) => name === 'lumira-server' ? `lumira-server-${configuredActiveSlot}` : name);
+const serviceNames = parseServiceNames(rawArgs).map((name) => {
+  if (name === 'lumira-server') return `lumira-server-${configuredActiveSlot}`;
+  if (name === 'lumira-ui') return `lumira-ui-${configuredActiveSlot}`;
+  return name;
+});
 const resetConfirmPhrase = 'DELETE_LEGENDARY_DATA';
 const allowedServices = new Set([
   'lumira-server-blue',
@@ -64,7 +68,8 @@ const allowedServices = new Set([
   'xxl-job-admin',
   'api-proxy',
   'edge-proxy',
-  'lumira-ui',
+  'lumira-ui-blue',
+  'lumira-ui-green',
   'prometheus',
   'loki',
   'tempo',
@@ -1422,7 +1427,7 @@ policies:
 
 function composeArgs(...extraArgs) {
   const env = parseEnvFile(envPath);
-  const useLocalFrontendPreview = serviceNames.includes('lumira-ui');
+  const useLocalFrontendPreview = serviceNames.some((service) => service.startsWith('lumira-ui-'));
   const composeBuildIdentityPath = path.relative(repoRoot, buildIdentityPath).replaceAll(path.sep, '/');
   const composeFilePath = path.relative(repoRoot, composeFile).replaceAll(path.sep, '/');
   const profileArgs = [

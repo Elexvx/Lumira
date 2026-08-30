@@ -323,6 +323,7 @@ public class UserExportAppService {
         if (permissionSnapshot == null || permissionSnapshot.getVersion() == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Export user permission snapshot is unavailable");
         }
+        requireAuthoritativeAsyncExportPermissionSnapshot(permissionSnapshot);
         CurrentUser currentUser = buildCurrentUserSnapshot(
                 userId,
                 currentUsername,
@@ -581,6 +582,9 @@ public class UserExportAppService {
             requireExportPermission(trustedSnapshot);
             return trustedSnapshot;
         }
+        if (isAsyncExportSession(trustedSnapshot)) {
+            requireAuthoritativeAsyncExportPermissionSnapshot(permissionSnapshot);
+        }
         CurrentUser refreshedSnapshot = buildCurrentUserSnapshot(
                 trustedSnapshot.getUserId(),
                 trustedSnapshot.getUsername(),
@@ -614,6 +618,33 @@ public class UserExportAppService {
         return currentUser != null
                 && currentUser.getSessionId() != null
                 && currentUser.getSessionId().startsWith(ASYNC_EXPORT_SESSION_PREFIX);
+    }
+
+    private void requireAuthoritativeAsyncExportPermissionSnapshot(
+            PermissionSnapshotService.PermissionSnapshot permissionSnapshot
+    ) {
+        if (permissionSnapshot == null
+                || !org.springframework.util.StringUtils.hasText(permissionSnapshot.getVersion())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Export authorization snapshot is unavailable");
+        }
+        boolean current;
+        try {
+            current = permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(
+                    permissionSnapshot.getVersion()
+            );
+        } catch (BizException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Rejected async user export because IAM authorization version is unavailable reason={}",
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "IAM authorization version is unavailable");
+        }
+        if (!current) {
+            log.warn("Rejected async user export because IAM authorization snapshot is stale");
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Export authorization snapshot is stale");
+        }
     }
 
     private String asyncExportSessionId(Long taskId) {

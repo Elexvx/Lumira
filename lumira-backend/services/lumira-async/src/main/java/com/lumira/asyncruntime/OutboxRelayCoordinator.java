@@ -5,6 +5,7 @@ import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -23,13 +24,24 @@ public class OutboxRelayCoordinator {
 
     private final List<OwnerOutboxRelayPort> ownerRelays;
     private final MeterRegistry meterRegistry;
+    private final AsyncRuntimeDrainCoordinator drainCoordinator;
 
     public OutboxRelayCoordinator(
             List<OwnerOutboxRelayPort> ownerRelays,
             MeterRegistry meterRegistry
     ) {
+        this(ownerRelays, meterRegistry, new AsyncRuntimeDrainCoordinator());
+    }
+
+    @Autowired
+    public OutboxRelayCoordinator(
+            List<OwnerOutboxRelayPort> ownerRelays,
+            MeterRegistry meterRegistry,
+            AsyncRuntimeDrainCoordinator drainCoordinator
+    ) {
         this.ownerRelays = ownerRelays == null ? List.of() : List.copyOf(ownerRelays);
         this.meterRegistry = meterRegistry;
+        this.drainCoordinator = drainCoordinator;
     }
 
     @Scheduled(
@@ -42,11 +54,17 @@ public class OutboxRelayCoordinator {
 
     /** Invoked by the scheduled loop and the job-executor compatibility endpoint. */
     public int relayNow() {
-        int total = 0;
-        for (OwnerOutboxRelayPort relay : ownerRelays) {
-            total += run(relay);
+        var lease = drainCoordinator.tryAcquire();
+        if (lease == null) {
+            return 0;
         }
-        return total;
+        try (lease) {
+            int total = 0;
+            for (OwnerOutboxRelayPort relay : ownerRelays) {
+                total += run(relay);
+            }
+            return total;
+        }
     }
 
     private int run(OwnerOutboxRelayPort relay) {

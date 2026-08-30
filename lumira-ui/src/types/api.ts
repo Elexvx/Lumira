@@ -71,7 +71,13 @@ export interface LoginCapabilities {
   wechatLoginAvailable?: boolean;
   passkeyLoginAvailable?: boolean;
   passkeyPasswordlessAvailable?: boolean;
+  registrationSmsVerificationRequired?: boolean;
+  registrationEmailVerificationRequired?: boolean;
   loginModeOrder?: string[];
+}
+
+export interface RegistrationContactAvailability {
+  available: boolean;
 }
 
 export interface PasskeyOptions {
@@ -368,6 +374,7 @@ export interface WatermarkSettings {
   enabled: boolean;
   mode: 'TEXT' | 'IMAGE';
   textLines: string[];
+  personalizedTextLines: string[];
   imageUrl?: string;
   fontColor: string;
   fontSize: number;
@@ -1425,6 +1432,7 @@ export interface PlatformUpdateCurrentVersion {
 }
 
 export interface PlatformUpdateLatestVersion {
+  releaseId?: string | null;
   version?: string | null;
   commitId?: string | null;
   branch?: string | null;
@@ -1474,7 +1482,13 @@ export interface PlatformUpdateTask {
   activeSlot?: string | null;
   targetSlot?: string | null;
   preflightId?: string | null;
+  releaseId?: string | null;
   manifestHash?: string | null;
+  signatureKeyId?: string | null;
+  operationEpoch?: number | null;
+  rollbackExpiresAt?: string | null;
+  maintenanceMode?: 'NORMAL' | 'WRITE_DRAIN' | 'READ_ONLY' | 'FULL_MAINTENANCE' | string | null;
+  maintenanceReason?: string | null;
   rollbackOfTaskId?: number | null;
   targetVersion?: string | null;
   targetCommit?: string | null;
@@ -1503,6 +1517,8 @@ export interface PlatformUpdaterCapabilities {
 
 export interface PlatformUpdatePreflight {
   preflightId: string;
+  releaseId?: string | null;
+  signatureKeyId?: string | null;
   ready: boolean;
   strategy?: string | null;
   activeSlot?: string | null;
@@ -1511,10 +1527,23 @@ export interface PlatformUpdatePreflight {
   targetVersion?: string | null;
   migrationMode?: string | null;
   databaseTargetVersion?: string | null;
+  maintenanceMode?: string | null;
+  compatibility?: Record<string, unknown> | null;
   blockers?: string[];
   warnings?: string[];
   checkedAt?: string | null;
   expiresAt?: string | null;
+}
+
+export interface PlatformRollbackPreflight {
+  ready: boolean;
+  currentReleaseId?: string | null;
+  targetReleaseId?: string | null;
+  rollbackExpiresAt?: string | null;
+  activeSlot?: string | null;
+  targetSlot?: string | null;
+  blockers?: string[];
+  compatibility?: Record<string, unknown> | null;
 }
 
 export interface PlatformUpdateStatus {
@@ -1808,6 +1837,7 @@ export interface DictTypeRecord {
   dictName: string;
   status: string;
   isSystem: number;
+  structureType?: 'FLAT' | 'TREE';
   remark?: string | null;
 }
 
@@ -1819,6 +1849,10 @@ export interface DictItemRecord {
   sortNo: number;
   status: string;
   remark?: string | null;
+  parentItemValue?: string | null;
+  levelNo?: number;
+  leaf?: boolean;
+  children?: DictItemRecord[];
 }
 
 export interface SystemConfigRecord {

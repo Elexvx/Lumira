@@ -8,6 +8,7 @@ public class DictTypeVO {
     private String status;
     private Integer isSystem;
     private String remark;
+    private String structureType;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -21,4 +22,6 @@ public class DictTypeVO {
     public void setIsSystem(Integer isSystem) { this.isSystem = isSystem; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
+    public String getStructureType() { return structureType; }
+    public void setStructureType(String structureType) { this.structureType = structureType; }
 }

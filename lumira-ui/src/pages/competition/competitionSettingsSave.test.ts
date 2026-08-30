@@ -339,9 +339,12 @@ describe('competition settings page-level save guards', () => {
     })).toBe(false);
   });
 
-  it('checks team member limits only on the team-information page', () => {
+  it('checks team member limits on each independent participant page', () => {
     expect(shouldValidateTeamMemberLimitsForPage('fields', 'TEAM_FIELD')).toBe(true);
-    expect(shouldValidateTeamMemberLimitsForPage('fields', 'MEMBER_FIELD')).toBe(false);
+    expect(shouldValidateTeamMemberLimitsForPage('fields', 'MEMBER_FIELD')).toBe(true);
+    expect(shouldValidateTeamMemberLimitsForPage('fields', 'TEACHER_FIELD')).toBe(true);
+    expect(shouldValidateTeamMemberLimitsForPage('fields', 'PROJECT_FIELD')).toBe(false);
+    expect(shouldValidateTeamMemberLimitsForPage('fields', 'EXPERT_FIELD')).toBe(false);
     expect(shouldValidateTeamMemberLimitsForPage('documents')).toBe(false);
   });
 

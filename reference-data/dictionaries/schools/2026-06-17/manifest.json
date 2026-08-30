@@ -1,0 +1,13 @@
+{
+  "datasetCode": "sys_school:2026-06-17",
+  "dictCode": "sys_school",
+  "dictName": "全国高等学校",
+  "structureType": "FLAT",
+  "version": "2026-06-17",
+  "cutoffDate": "2026-06-17",
+  "sourceUrl": "https://www.moe.gov.cn/jyb_xxgk/s5743/s5744/202606/t20260618_1441074.html",
+  "dataFile": "sys_school.xlsx",
+  "fileSha256": "54cd4bbe38ccf0d035db074208f05b645c1ac402f6878a9bef47214c62c49202",
+  "rowCount": 3196,
+  "remark": "教育部全国高等学校名单：普通高等学校 2952 所、成人高等学校 244 所，不含港澳台。"
+}

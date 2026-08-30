@@ -898,6 +898,82 @@ html[data-theme="dark"] .saas-login-page__agreement {
   }
 }
 
+/* Dedicated self-registration flow. The right-hand shell remains the only
+   scroll container on desktop so the hero artwork stays fixed. */
+.saas-login-page__auth-shell:has(.saas-login-page__panel[data-auth-entry-mode="registration"]) {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.saas-login-page__auth-shell:has(.saas-login-page__panel[data-auth-entry-mode="registration"]) .saas-login-page__stage {
+  justify-content: safe center;
+  padding-top: clamp(72px, 8vh, 112px);
+  padding-bottom: clamp(72px, 8vh, 112px);
+}
+
+.saas-registration {
+  min-height: 0;
+}
+
+.saas-registration__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.saas-registration__fields > .ant-form-item,
+.saas-registration__fields > .saas-login-page__code-row {
+  flex: 0 0 auto;
+}
+
+.saas-registration .ant-form-item-explain {
+  padding-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.saas-registration__available {
+  color: var(--ant-color-success);
+}
+
+.saas-registration__password-hint.ant-typography {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.saas-registration__agreement {
+  margin-top: 10px;
+}
+
+.saas-registration .saas-login-page__submit-button {
+  margin-top: 14px;
+}
+
+.saas-registration__back-button.ant-btn {
+  order: 5;
+  height: auto;
+  margin-top: 8px;
+  padding: 2px 0;
+}
+
+.saas-registration__agreement {
+  order: 6;
+}
+
+@media (max-width: 900px) {
+  .saas-login-page__auth-shell:has(.saas-login-page__panel[data-auth-entry-mode="registration"]) {
+    overflow: visible;
+  }
+
+  /* stylelint-disable-next-line max-line-length */
+  .saas-login-page__auth-shell:has(.saas-login-page__panel[data-auth-entry-mode="registration"]) .saas-login-page__stage {
+    justify-content: flex-start;
+    padding-top: 72px;
+    padding-bottom: 32px;
+  }
+}
+
 /* Split-screen authentication layout */
 html.saas-login-viewport,
 body.saas-login-viewport {

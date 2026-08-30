@@ -58,6 +58,7 @@ VALUES
     ('WATERMARK','watermark.enabled','false',10,'ENABLED',0,0,0),
     ('WATERMARK','watermark.mode','TEXT',20,'ENABLED',0,0,0),
     ('WATERMARK','watermark.text-lines','',30,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.personalized-text-lines','',35,'ENABLED',0,0,0),
     ('WATERMARK','watermark.image-url','',40,'ENABLED',0,0,0),
     ('WATERMARK','watermark.font-color','rgba(0,0,0,0.15)',50,'ENABLED',0,0,0),
     ('WATERMARK','watermark.font-size','14',60,'ENABLED',0,0,0),

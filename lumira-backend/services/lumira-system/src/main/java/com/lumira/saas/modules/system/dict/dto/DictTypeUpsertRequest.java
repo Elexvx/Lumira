@@ -11,6 +11,7 @@ public class DictTypeUpsertRequest {
     @NotBlank
     private String status;
     private String remark;
+    private String structureType;
 
     public String getDictCode() { return dictCode; }
     public void setDictCode(String dictCode) { this.dictCode = dictCode; }
@@ -20,4 +21,6 @@ public class DictTypeUpsertRequest {
     public void setStatus(String status) { this.status = status; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
+    public String getStructureType() { return structureType; }
+    public void setStructureType(String structureType) { this.structureType = structureType; }
 }

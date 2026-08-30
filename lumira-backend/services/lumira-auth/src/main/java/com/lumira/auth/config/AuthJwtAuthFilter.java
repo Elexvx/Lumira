@@ -9,6 +9,8 @@ import com.lumira.auth.service.JwtTokenService;
 import com.lumira.auth.service.SecuritySettingsService;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.AccessTokenAuthenticationPort;
+import com.lumira.common.security.AuthorizationSnapshotVersionVerifier;
+import com.lumira.common.security.AuthorizationSnapshotMetricNames;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
@@ -18,13 +20,18 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -37,6 +44,7 @@ import java.util.stream.Collectors;
 @Component
 public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTokenAuthenticationPort {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthJwtAuthFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
     private static final int MAX_BEARER_TOKEN_LENGTH = 8 * 1024;
     private static final int MAX_SESSION_ID_LENGTH = 128;
@@ -47,17 +55,59 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
     private final AuthSessionStore authSessionStore;
     private final SystemInternalApi systemInternalApi;
     private final SecuritySettingsService securitySettingsService;
+    private final AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier;
+    private final MeterRegistry meterRegistry;
 
     public AuthJwtAuthFilter(
             JwtTokenService jwtTokenService,
             AuthSessionStore authSessionStore,
             SystemInternalApi systemInternalApi,
-            SecuritySettingsService securitySettingsService
+            SecuritySettingsService securitySettingsService,
+            AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier
+    ) {
+        this(
+                jwtTokenService,
+                authSessionStore,
+                systemInternalApi,
+                securitySettingsService,
+                authorizationSnapshotVersionVerifier,
+                (MeterRegistry) null
+        );
+    }
+
+    @Autowired
+    public AuthJwtAuthFilter(
+            JwtTokenService jwtTokenService,
+            AuthSessionStore authSessionStore,
+            SystemInternalApi systemInternalApi,
+            SecuritySettingsService securitySettingsService,
+            AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier,
+            ObjectProvider<MeterRegistry> meterRegistry
+    ) {
+        this(
+                jwtTokenService,
+                authSessionStore,
+                systemInternalApi,
+                securitySettingsService,
+                authorizationSnapshotVersionVerifier,
+                meterRegistry.getIfAvailable()
+        );
+    }
+
+    AuthJwtAuthFilter(
+            JwtTokenService jwtTokenService,
+            AuthSessionStore authSessionStore,
+            SystemInternalApi systemInternalApi,
+            SecuritySettingsService securitySettingsService,
+            AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier,
+            MeterRegistry meterRegistry
     ) {
         this.jwtTokenService = jwtTokenService;
         this.authSessionStore = authSessionStore;
         this.systemInternalApi = systemInternalApi;
         this.securitySettingsService = securitySettingsService;
+        this.authorizationSnapshotVersionVerifier = authorizationSnapshotVersionVerifier;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -122,8 +172,14 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
             throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Session store is unavailable");
         }
         if (!isTrustedSession(session, claims)
-                || !isSessionWithinIdleTimeout(session)
-                || !isTrustedActiveSessionUser(session)) {
+                || !isSessionWithinIdleTimeout(session)) {
+            return null;
+        }
+        if (!isCurrentAuthorizationSnapshot(session)) {
+            discardStaleAuthorizationSession(session);
+            return null;
+        }
+        if (!isTrustedActiveSessionUser(session)) {
             return null;
         }
         try {
@@ -148,11 +204,59 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
             throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Session store is unavailable");
         }
         if (!isTrustedSession(currentSession, claims)
-                || !isSessionWithinIdleTimeout(currentSession)
-                || !isTrustedActiveSessionUser(currentSession)) {
+                || !isSessionWithinIdleTimeout(currentSession)) {
+            return null;
+        }
+        if (!isCurrentAuthorizationSnapshot(currentSession)) {
+            discardStaleAuthorizationSession(currentSession);
+            return null;
+        }
+        if (!isTrustedActiveSessionUser(currentSession)) {
             return null;
         }
         return currentSession;
+    }
+
+    private boolean isCurrentAuthorizationSnapshot(AuthSession session) {
+        try {
+            boolean current = authorizationSnapshotVersionVerifier.isCurrent(session.getPermissionsVersion());
+            if (!current) {
+                recordAuthorizationMetric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_STALE);
+            }
+            return current;
+        } catch (RuntimeException exception) {
+            recordAuthorizationMetric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_UNAVAILABLE);
+            log.warn(
+                    "Authorization snapshot verification unavailable reason={}",
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Authorization version verifier is unavailable");
+        }
+    }
+
+    private void discardStaleAuthorizationSession(AuthSession session) {
+        try {
+            boolean removed = authSessionStore.removeIfUnchanged(session, true);
+            if (removed) {
+                recordAuthorizationMetric(AuthorizationSnapshotMetricNames.AUTHZ_SESSION_REVOKED);
+            }
+            log.warn(
+                    "Rejected stale authorization session sessionInvalidated={}",
+                    removed
+            );
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Failed to invalidate stale authorization session reason={}",
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Session store is unavailable");
+        }
+    }
+
+    private void recordAuthorizationMetric(String name) {
+        if (meterRegistry != null) {
+            meterRegistry.counter(name).increment();
+        }
     }
 
     private boolean isTrustedAccessClaims(JwtTokenClaims claims) {

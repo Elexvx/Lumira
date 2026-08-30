@@ -44,6 +44,11 @@ public class LumiraAsyncSecurityConfiguration {
                                 "/api/v2/async/readiness",
                                 "/api/v2/async/health",
                                 "/api/v2/async/metrics",
+                                "/internal/runtime/quiesce",
+                                "/internal/runtime/drain-status",
+                                "/internal/runtime/resume",
+                                "/internal/runtime/version",
+                                "/internal/runtime/health",
                                 "/error"
                         ).permitAll()
                         .requestMatchers(new RegexRequestMatcher(".*/internal/.*", null)).authenticated()

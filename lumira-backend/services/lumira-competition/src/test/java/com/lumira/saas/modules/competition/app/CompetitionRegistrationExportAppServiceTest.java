@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.dictionary.DictionaryItemLookupPort;
 import com.lumira.api.export.ExportTaskPort;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -312,6 +313,66 @@ class CompetitionRegistrationExportAppServiceTest {
             assertThat(formatter.formatCellValue(row.getCell(columnByHeader.get("学生1-学号")))).isEqualTo("20****01");
             assertThat(formatter.formatCellValue(row.getCell(columnByHeader.get("学生3-学生姓名")))).isEmpty();
             assertThat(formatter.formatCellValue(row.getCell(columnByHeader.get("指导老师1-指导老师姓名")))).isEqualTo("李**");
+        }
+    }
+
+    @Test
+    void dataExportResolvesCurrentDictionaryLabelsAndCascaderPath() throws Exception {
+        CompetitionRegistrationAppService registrationAppService = mock(CompetitionRegistrationAppService.class);
+        RegistrationDatasetRepository datasetRepository = mock(RegistrationDatasetRepository.class);
+        TrustedUserSnapshotResolver userSnapshotResolver = mock(TrustedUserSnapshotResolver.class);
+        DictionaryItemLookupPort dictionaryLookup = mock(DictionaryItemLookupPort.class);
+        CompetitionRegistrationVO.Registration registration = new CompetitionRegistrationVO.Registration();
+        registration.setId(103L);
+        registration.setCompetitionId(88L);
+        registration.setRegistrationNo("REG-DICT");
+        registration.setStatus("CONFIRMED");
+        registration.setRegistrationSnapshotJson("{\"extraValues\":{\"deliveryArea\":\"110101\"}}");
+        registration.setCollectionSchemaSnapshotJson("""
+                [
+                  {"scope":"REGISTRATION_FIELD","itemKey":"deliveryArea","title":"收件地区","fieldType":"CASCADER","groupLabel":"","optionSource":"DICTIONARY","dictCode":"sys_cn_administrative_division"}
+                ]
+                """);
+        when(registrationAppService.getRegistration(any(), eq(103L))).thenReturn(registration);
+        when(datasetRepository.isLinked(88L, 103L)).thenReturn(true);
+        when(dictionaryLookup.enabledItems("sys_cn_administrative_division")).thenReturn(List.of(
+                new DictionaryItemLookupPort.DictionaryItem("北京市", "110000", null, 10, null, 1, false),
+                new DictionaryItemLookupPort.DictionaryItem("北京市", "110100", null, 20, "110000", 2, false),
+                new DictionaryItemLookupPort.DictionaryItem("东城区", "110101", null, 30, "110100", 3, true)
+        ));
+        CurrentUser user = trustedUser();
+        user.setPermissions(Set.of(
+                CompetitionRegistrationExportAppService.EXPORT_PERMISSION,
+                CompetitionRegistrationExportAppService.SENSITIVE_EXPORT_PERMISSION
+        ));
+        when(userSnapshotResolver.resolve(any(), any(), any(), any(), any())).thenReturn(user);
+        CompetitionRegistrationExportAppService service = new CompetitionRegistrationExportAppService(
+                registrationAppService,
+                datasetRepository,
+                new CompetitionExcelExportService(),
+                mock(ExportTaskPort.class),
+                userSnapshotResolver,
+                mock(FileInternalApi.class),
+                new ObjectMapper(),
+                provider(null),
+                provider(mock(ExecutorService.class))
+        );
+        service.setDictionaryItemLookupPortProvider(provider(dictionaryLookup));
+        CompetitionRegistrationDTO.RegistrationExportRequest request = new CompetitionRegistrationDTO.RegistrationExportRequest();
+        request.setCompetitionId(88L);
+        request.setRegistrationIds(List.of(103L));
+
+        byte[] exported = service.exportFromTrustedSnapshot(user, request, 9003L);
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(exported))) {
+            var sheet = workbook.getSheet("报名与材料");
+            DataFormatter formatter = new DataFormatter();
+            Map<String, Integer> columnByHeader = new LinkedHashMap<>();
+            for (int index = 0; index < sheet.getRow(0).getLastCellNum(); index += 1) {
+                columnByHeader.put(formatter.formatCellValue(sheet.getRow(0).getCell(index)), index);
+            }
+            assertThat(formatter.formatCellValue(sheet.getRow(1).getCell(columnByHeader.get("收件地区"))))
+                    .isEqualTo("北京市 / 北京市 / 东城区");
         }
     }
 

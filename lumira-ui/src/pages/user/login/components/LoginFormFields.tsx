@@ -503,7 +503,7 @@ export const WechatLoginPanel = ({
   return <OfficialWechatLoginPanel available={available} onWechatLogin={onWechatLogin} showCopy={showCopy} />;
 };
 
-const PasswordLoginImageCaptcha = ({
+export const PasswordLoginImageCaptcha = ({
   captchaChallenge,
   captchaLoading,
   captchaImageLoadFailed,

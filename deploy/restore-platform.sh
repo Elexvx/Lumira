@@ -180,7 +180,10 @@ const values = [
 for (const value of values) process.stdout.write(`${value}\0`);
 NODE
 
-mapfile -d '' -t MANIFEST_VALUES < "${MANIFEST_FIELDS}"
+MANIFEST_VALUES=()
+while IFS= read -r -d '' manifest_value; do
+  MANIFEST_VALUES+=("${manifest_value}")
+done < "${MANIFEST_FIELDS}"
 [[ "${#MANIFEST_VALUES[@]}" -eq 14 ]] || die "Unable to read required manifest fields."
 BACKUP_ID="${MANIFEST_VALUES[0]}"
 BACKUP_CREATED_AT="${MANIFEST_VALUES[1]}"

@@ -219,14 +219,14 @@ networks:
     `LUMIRA_SERVER_IMAGE=${runtimeImages.server}`,
     `LUMIRA_SERVER_BLUE_IMAGE=${runtimeImages.server}`,
     `LUMIRA_SERVER_GREEN_IMAGE=${runtimeImages.server}`,
-    'LUMIRA_SERVER_BLUE_APP_VERSION=old',
-    'LUMIRA_SERVER_GREEN_APP_VERSION=old',
+    'LUMIRA_SERVER_BLUE_APP_VERSION=1.0.0',
+    'LUMIRA_SERVER_GREEN_APP_VERSION=1.0.0',
     `LUMIRA_SERVER_BLUE_GIT_COMMIT=${oldCommit}`,
     `LUMIRA_SERVER_GREEN_GIT_COMMIT=${oldCommit}`,
     'LUMIRA_SERVER_BLUE_FAIL_PUBLIC_VERSION=false',
     'LUMIRA_SERVER_GREEN_FAIL_PUBLIC_VERSION=false',
-    `APP_VERSION=old`,
-    `BUILD_VERSION=old+${oldCommit}`,
+    `APP_VERSION=1.0.0`,
+    `BUILD_VERSION=1.0.0+${oldCommit}`,
     `GIT_COMMIT=${oldCommit}`,
     'DATABASE_VERSION=baseline',
     `LUMIRA_ASYNC_IMAGE=${runtimeImages.async}`,
@@ -246,6 +246,8 @@ networks:
       LUMIRA_CONTAINER_PREFIX: containerPrefix,
       LUMIRA_WSL_DISTRO: process.env.LUMIRA_WSL_DISTRO || 'Ubuntu-24.04',
       PLATFORM_UPDATE_AGENT_TOKEN: token,
+      LUMIRA_UPDATER_ALLOW_INLINE_MANIFEST: 'true',
+      LUMIRA_TEST_RESOURCE_PREFLIGHT: 'true',
       PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES: 'node@sha256:',
       DEPLOY_CHECK_BASE_URL: `http://127.0.0.1:${proxyPort}`,
       LUMIRA_SLOT_PROBE_URL_BLUE: `http://127.0.0.1:${bluePort}`,
@@ -298,7 +300,7 @@ networks:
   trafficStage = 'install';
   const manifest = {
     schemaVersion: 2,
-    version: 'new',
+    version: '2.0.0',
     commit: newCommit,
     images: {
       server: runtimeImages.server,
@@ -316,7 +318,7 @@ networks:
     },
   };
   const preflight = await call('/v1/update/preflight', { method: 'POST', body: JSON.stringify({ manifest }) });
-  assert.equal(preflight.body.ready, true, JSON.stringify(preflight.body.blockers));
+  assert.equal(preflight.body.ready, true, JSON.stringify(preflight.body));
   const install = await call('/v1/update/install', { method: 'POST', body: JSON.stringify({ preflightId: preflight.body.preflightId }) });
   assert.equal(install.response.status, 202);
   const installed = await waitFor(async () => {

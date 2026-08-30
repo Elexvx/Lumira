@@ -428,6 +428,11 @@ class JwtAuthFilterTest {
         }
 
         @Override
+        public boolean isAuthoritativeSessionPermissionSnapshotCurrent(String sessionPermissionsVersion) {
+            return sessionPermissionsVersion != null && !sessionPermissionsVersion.isBlank();
+        }
+
+        @Override
         public boolean isTrustedActiveUser(Long userId, String userUuid) {
             return userId != null && userId > 0 && userUuid != null && !userUuid.isBlank();
         }

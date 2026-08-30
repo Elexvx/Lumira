@@ -2,15 +2,15 @@
 
 import http from 'node:http';
 import os from 'node:os';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import {
   closeSync,
   existsSync,
+  fsyncSync,
   mkdirSync,
   openSync,
   readFileSync,
   readdirSync,
-  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -23,6 +23,10 @@ import { parseEnvFile, setEnvValue } from './lib/env-utils.mjs';
 import { probeHttp, sleep } from './lib/http-utils.mjs';
 import { runManagedCommand } from './lib/managed-command.mjs';
 import { validateBackupEvidence } from './lib/platform-backup-contract.mjs';
+import { atomicWriteDurable, DeploymentStateRepository } from './lib/deployment-state-repository.mjs';
+import { loadTrustedPublicKeys } from './lib/release-envelope.mjs';
+import { resolveSignedRelease } from './lib/release-manifest-resolver.mjs';
+import { RuntimeDrainClient } from './lib/runtime-drain-client.mjs';
 import {
   TERMINAL_UPDATE_STATUSES,
   UPDATER_PROTOCOL_VERSION,
@@ -30,6 +34,7 @@ import {
   UPDATE_STRATEGY,
   buildPreflightReport,
   createInitialDeploymentState,
+  evaluateReleaseCompatibility,
   inactiveSlot,
   normalizeReleaseManifest,
   normalizeSlot,
@@ -64,13 +69,45 @@ const allowedImagePrefixes = String(
   .split(',').map((item) => item.trim().toLowerCase()).filter(Boolean);
 const activeCommandControllers = new Map();
 const bootstrapAdminSecretContainerPath = '/run/secrets/lumira_bootstrap_admin_password';
+const allowInlineManifest = process.env.LUMIRA_UPDATER_ALLOW_INLINE_MANIFEST === 'true';
+const trustedPublicKeysFile = process.env.LUMIRA_RELEASE_TRUSTED_PUBLIC_KEYS_FILE || '';
+const allowedReleaseKeyIds = process.env.LUMIRA_RELEASE_ALLOWED_KEY_IDS || '';
+const allowedReleaseChannels = process.env.LUMIRA_RELEASE_ALLOWED_CHANNELS || 'stable';
+const allowedReleaseHosts = process.env.LUMIRA_RELEASE_ALLOWED_HOSTS || 'api.github.com,github.com,objects.githubusercontent.com';
+const maximumManifestBytes = Number(process.env.LUMIRA_RELEASE_MAX_MANIFEST_BYTES || 512 * 1024);
+const maximumManifestAgeSeconds = Number(process.env.LUMIRA_RELEASE_MAX_AGE_SECONDS || 90 * 24 * 60 * 60);
+const deploymentStateRepository = new DeploymentStateRepository(statePath);
+const processStartIdentity = `${process.pid}:${Date.now() - Math.round(process.uptime() * 1000)}`;
+const hostBootIdentity = readHostBootIdentity();
 
 for (const directory of [tasksDir, preflightDir, upstreamDir]) mkdirSync(directory, { recursive: true });
 
+function readHostBootIdentity() {
+  try {
+    return readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim();
+  } catch {
+    return `${os.hostname()}:${Math.floor((Date.now() - os.uptime() * 1000) / 60_000)}`;
+  }
+}
+
+function assertTaskFence(task) {
+  if (!task?.operationEpoch) return;
+  const lock = readJson(lockPath);
+  const state = existsSync(statePath) ? deploymentStateRepository.read() : null;
+  if (!lock
+      || lock.taskId !== task.taskId
+      || Number(lock.operationEpoch) !== Number(task.operationEpoch)
+      || lock.processStartIdentity !== processStartIdentity
+      || lock.hostBootIdentity !== hostBootIdentity
+      || (!dryRun && Number(state?.operationEpoch) !== Number(task.operationEpoch))) {
+    const error = new Error('update operation fence was lost; refusing to perform a stale dangerous action');
+    error.code = 'STALE_OPERATION_EPOCH';
+    throw error;
+  }
+}
+
 function atomicWrite(file, content, mode = 0o600) {
-  const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
-  writeFileSync(temporary, content, { mode });
-  renameSync(temporary, file);
+  atomicWriteDurable(file, content, mode);
 }
 
 function json(res, statusCode, body) {
@@ -111,6 +148,7 @@ const findTaskByPlatformTaskId = (platformTaskId, platformTaskCreatedAt) => {
 };
 const containerName = (service) => `${containerPrefix}${String(service).replace(/^lumira-/, '')}`;
 const serverContainer = (slot) => containerName(`server-${normalizeSlot(slot)}`);
+const uiContainer = (slot) => containerName(`ui-${normalizeSlot(slot)}`);
 
 function writeTask(task) {
   // Cancellation is written by the HTTP request handler while the update task
@@ -133,10 +171,18 @@ function appendLog(task, message) {
   writeTask(task);
 }
 
-function setPhase(task, phase, message) {
+function maintenanceModeForPhase(phase, requestedMigrationMode = 'NORMAL') {
+  if (phase === 'MIGRATING') return requestedMigrationMode;
+  if (phase === 'SWITCHING_TRAFFIC' || phase === 'UPDATING_WORKERS') return 'WRITE_DRAIN';
+  return 'NORMAL';
+}
+
+function setPhase(task, phase, message, requestedMaintenanceMode = 'NORMAL') {
   if (!UPDATE_PHASES.includes(phase)) throw new Error(`Unknown update phase: ${phase}`);
   task.phase = phase;
   task.progressPercent = phaseProgress(phase);
+  task.maintenanceMode = maintenanceModeForPhase(phase, requestedMaintenanceMode);
+  task.maintenanceReason = task.maintenanceMode === 'NORMAL' ? null : (message || phase);
   appendLog(task, message || phase);
 }
 
@@ -224,6 +270,7 @@ function commandInvocation(command, args) {
 }
 
 function runCommand(task, command, args, options = {}) {
+  assertTaskFence(task);
   appendLog(task, `$ ${command} ${args.join(' ')}`);
   if (dryRun) {
     appendLog(task, `[dry-run] skipped ${command}`);
@@ -268,7 +315,7 @@ function updateEnv(values) {
 
 function deploymentState() {
   const existing = readJson(statePath);
-  if (existing) return existing;
+  if (existing) return deploymentStateRepository.read();
   const env = parseEnvFile(envPath);
   const activeSlot = normalizeSlot(env.LUMIRA_ACTIVE_SLOT || 'blue');
   const slotPrefix = `LUMIRA_SERVER_${activeSlot.toUpperCase()}_`;
@@ -292,23 +339,31 @@ function deploymentState() {
 
 function writeDeploymentState(state) {
   state.updatedAt = new Date().toISOString();
-  if (!dryRun) atomicWrite(statePath, `${JSON.stringify(state, null, 2)}\n`);
+  if (!dryRun) deploymentStateRepository.write(state);
 }
 
 function acquireLock(taskId) {
+  const state = deploymentState();
+  const operationEpoch = Number(state.operationEpoch || 0) + 1;
   try {
     const descriptor = openSync(lockPath, 'wx', 0o600);
-    writeFileSync(descriptor, `${JSON.stringify({ taskId, pid: process.pid, createdAt: new Date().toISOString() })}\n`);
+    writeFileSync(descriptor, `${JSON.stringify({ taskId, operationEpoch, pid: process.pid, processStartIdentity, hostBootIdentity, createdAt: new Date().toISOString() })}\n`);
+    fsyncSync(descriptor);
     closeSync(descriptor);
+    state.operationEpoch = operationEpoch;
+    state.status = 'UPDATING';
+    state.candidateRelease = { taskId, operationEpoch, releaseId: '' };
+    writeDeploymentState(state);
+    return operationEpoch;
   } catch (error) {
     if (error?.code === 'EEXIST') throw new Error('Another platform update task is already running.');
     throw error;
   }
 }
 
-function releaseLock(taskId) {
+function releaseLock(taskId, operationEpoch) {
   const lock = readJson(lockPath);
-  if (!lock || lock.taskId === taskId) rmSync(lockPath, { force: true });
+  if (!lock || (lock.taskId === taskId && (!operationEpoch || Number(lock.operationEpoch) === Number(operationEpoch)))) rmSync(lockPath, { force: true });
 }
 
 function processIsAlive(pid) {
@@ -331,7 +386,7 @@ async function recoverInterruptedTask() {
     .filter((task) => task?.status === 'RUNNING' || task?.status === 'PENDING')
     .sort((left, right) => Date.parse(right.updatedAt || 0) - Date.parse(left.updatedAt || 0))[0];
   if (!interrupted) return;
-  acquireLock(interrupted.taskId);
+  interrupted.operationEpoch = acquireLock(interrupted.taskId);
   try {
     const switched = UPDATE_PHASES.indexOf(interrupted.phase) >= UPDATE_PHASES.indexOf('SWITCHING_TRAFFIC');
     if (switched && interrupted.activeSlot) {
@@ -367,7 +422,7 @@ async function recoverInterruptedTask() {
     interrupted.finishedAt = new Date().toISOString();
     interrupted.updatedAt = new Date().toISOString();
     writeTask(interrupted);
-    releaseLock(interrupted.taskId);
+    releaseLock(interrupted.taskId, interrupted.operationEpoch);
   }
 }
 
@@ -377,6 +432,7 @@ async function cleanupExpiredRollbackSlot() {
   if (!state.previousSlot || !state.rollbackDeadline || Date.parse(state.rollbackDeadline) > Date.now()) return;
   const housekeeping = { taskId: 'housekeeping', status: 'RUNNING', log: [], updatedAt: new Date().toISOString() };
   await runCommand(housekeeping, 'docker', ['rm', '-f', serverContainer(state.previousSlot)]).catch(() => {});
+  await runCommand(housekeeping, 'docker', ['rm', '-f', uiContainer(state.previousSlot)]).catch(() => {});
   rmSync(taskPath(housekeeping.taskId), { force: true });
   state.previousSlot = null;
   state.rollbackDeadline = null;
@@ -384,25 +440,34 @@ async function cleanupExpiredRollbackSlot() {
 }
 
 async function resolveManifest(request) {
-  if (request.manifest) return normalizeReleaseManifest(request.manifest);
-  const env = parseEnvFile(envPath);
-  const sourceUrl = env.PLATFORM_UPDATE_MANIFEST_URL || process.env.PLATFORM_UPDATE_MANIFEST_URL;
-  if (sourceUrl) {
-    const response = await probeHttp(sourceUrl, {
-      timeoutMs: 10_000,
-      headers: { Accept: 'application/vnd.github+json, application/json', 'User-Agent': 'lumira-updater-v2' },
-    });
-    if (!response.ok) throw new Error(`Unable to fetch release manifest: HTTP ${response.status}`);
-    const root = JSON.parse(response.text);
-    return normalizeReleaseManifest(typeof root.body === 'string' ? JSON.parse(root.body) : root);
+  if (request.manifest) {
+    if (!allowInlineManifest) throw httpError(400, 'Inline release manifests are disabled; submit a releaseId.');
+    return normalizeReleaseManifest(request.manifest);
   }
-  return normalizeReleaseManifest({
-    schemaVersion: 1,
-    version: request.targetVersion,
-    commit: request.targetCommit,
-    serverImage: request.serverImage,
-    frontendImage: request.frontendImage,
+  const env = parseEnvFile(envPath);
+  const releaseId = String(request.releaseId || '').trim();
+  if (!releaseId) throw httpError(400, 'releaseId is required.');
+  const sourceUrl = env.LUMIRA_RELEASE_SOURCE_URL || process.env.LUMIRA_RELEASE_SOURCE_URL;
+  const keysFile = env.LUMIRA_RELEASE_TRUSTED_PUBLIC_KEYS_FILE || trustedPublicKeysFile;
+  if (!sourceUrl) throw new Error('LUMIRA_RELEASE_SOURCE_URL is not configured.');
+  if (!keysFile) throw new Error('LUMIRA_RELEASE_TRUSTED_PUBLIC_KEYS_FILE is not configured.');
+  const resolved = await resolveSignedRelease({
+    releaseId,
+    sourceUrl,
+    allowedHosts: env.LUMIRA_RELEASE_ALLOWED_HOSTS || allowedReleaseHosts,
+    trustedKeys: loadTrustedPublicKeys(path.resolve(deployDir, keysFile)),
+    allowedKeyIds: env.LUMIRA_RELEASE_ALLOWED_KEY_IDS || allowedReleaseKeyIds,
+    allowedChannels: env.LUMIRA_RELEASE_ALLOWED_CHANNELS || allowedReleaseChannels,
+    maxManifestBytes: Number(env.LUMIRA_RELEASE_MAX_MANIFEST_BYTES || maximumManifestBytes),
+    maxAgeSeconds: Number(env.LUMIRA_RELEASE_MAX_AGE_SECONDS || maximumManifestAgeSeconds),
   });
+  return { ...resolved.manifest, manifestDigest: resolved.manifestDigest, signatureKeyId: resolved.keyId };
+}
+
+function httpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
 }
 
 function imageHostAllowed(image) {
@@ -517,7 +582,7 @@ async function createPreflight(request) {
   const report = buildPreflightReport({
     manifest,
     state,
-    freeMemoryBytes: dryRun ? 2 * 1024 ** 3 : os.freemem(),
+    freeMemoryBytes: dryRun || (allowInlineManifest && process.env.LUMIRA_TEST_RESOURCE_PREFLIGHT === 'true') ? 2 * 1024 ** 3 : os.freemem(),
     freeDiskBytes: await freeDiskBytes(),
     dockerAvailable: await commandAvailable('docker', ['version', '--format', '{{.Server.Version}}']),
     composeAvailable: await commandAvailable('docker', ['compose', 'version']),
@@ -552,19 +617,51 @@ async function createPreflight(request) {
     ...report,
     preflightId: randomUUID(),
     manifest,
-    manifestHash: createHash('sha256').update(JSON.stringify(manifest)).digest('hex'),
+    manifestHash: manifest.manifestDigest || createHash('sha256').update(JSON.stringify(manifest)).digest('hex'),
+    releaseId: manifest.releaseId,
+    signatureKeyId: manifest.signatureKeyId || null,
     expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
   };
   atomicWrite(preflightPath(preflight.preflightId), `${JSON.stringify(preflight, null, 2)}\n`);
   return preflight;
 }
 
-function requirePreflight(preflightId) {
+function requirePreflight(preflightId, expectedReleaseId) {
   const preflight = readJson(preflightPath(preflightId));
   if (!preflight) throw new Error('Preflight result not found.');
   if (Date.parse(preflight.expiresAt) <= Date.now()) throw new Error('Preflight result has expired.');
   if (!preflight.ready) throw new Error(`Preflight failed: ${preflight.blockers.join(' ')}`);
+  if (expectedReleaseId && preflight.releaseId !== expectedReleaseId) throw httpError(409, 'Preflight releaseId does not match the install request.');
   return preflight;
+}
+
+function createRollbackPreflight() {
+  const state = deploymentState();
+  const blockers = [];
+  if (!state.currentRelease || !state.previousRelease) blockers.push('No previous Release Set is retained for rollback.');
+  if (!state.rollbackExpiresAt || Date.parse(state.rollbackExpiresAt) <= Date.now()) blockers.push('The application rollback window has expired.');
+  let compatibility = { rollbackCompatible: false, rollbackBlockers: [] };
+  if (state.currentRelease && state.previousRelease) {
+    compatibility = evaluateReleaseCompatibility({
+      currentRelease: state.currentRelease,
+      targetRelease: state.currentRelease,
+      previousRelease: state.previousRelease,
+      databaseVersion: state.currentRelease.databaseVersion,
+      frontendManaged: Number(state.currentRelease.schemaVersion || 1) < 3 || Boolean(state.currentRelease.images?.frontend),
+    });
+    blockers.push(...compatibility.rollbackBlockers);
+  }
+  return {
+    ready: blockers.length === 0,
+    targetReleaseId: state.previousRelease?.releaseId || null,
+    currentReleaseId: state.currentRelease?.releaseId || null,
+    rollbackExpiresAt: state.rollbackExpiresAt || null,
+    activeSlot: state.activeSlot,
+    targetSlot: inactiveSlot(state.activeSlot),
+    compatibility,
+    blockers,
+    checkedAt: new Date().toISOString(),
+  };
 }
 
 async function containerAddress(task, targetContainerName) {
@@ -613,6 +710,23 @@ async function waitForSlot(task, slot, expectedCommit, timeoutMs = 240_000) {
   throw new Error(`lumira-server-${slot} did not become ready as lumira-server@${expectedCommit}; observed ${observed}.`);
 }
 
+async function waitForUi(task, slot, expectedReleaseId, expectedCommit, timeoutMs = 120_000) {
+  if (dryRun) return;
+  const address = await containerAddress(task, uiContainer(slot));
+  const startedAt = Date.now();
+  let observed = null;
+  while (Date.now() - startedAt < timeoutMs) {
+    const response = await probeHttp(`http://${address}:80/__version.json`, { timeoutMs: 3_000 });
+    if (response.ok) {
+      try { observed = JSON.parse(response.text); } catch { observed = null; }
+      const commitMatches = observed?.gitCommit && (observed.gitCommit.startsWith(expectedCommit) || expectedCommit.startsWith(observed.gitCommit));
+      if (observed?.releaseId === expectedReleaseId && commitMatches) return;
+    }
+    await sleep(1_000);
+  }
+  throw new Error(`lumira-ui-${slot} did not become ready as ${expectedReleaseId}@${expectedCommit}; observed ${JSON.stringify(observed)}.`);
+}
+
 function writeActiveUpstreams(slot) {
   const content = renderActiveUpstreams(slot);
   if (!dryRun) atomicWrite(upstreamPath, content, 0o644);
@@ -624,8 +738,11 @@ async function reloadProxy(task, slot) {
   try {
     await runCommand(task, 'docker', ['cp', upstreamPath, `${containerName('api-proxy')}:/etc/nginx/lumira-upstreams/active-upstreams.conf`])
       .catch(() => appendLog(task, 'API proxy uses the read-only bind-mounted upstream file.'));
+    const edgeRunning = await containerIsRunning(task, containerName('edge-proxy'));
     await runCommand(task, 'docker', ['exec', containerName('api-proxy'), 'nginx', '-t']);
+    if (edgeRunning) await runCommand(task, 'docker', ['exec', containerName('edge-proxy'), 'nginx', '-t']);
     await runCommand(task, 'docker', ['exec', containerName('api-proxy'), 'nginx', '-s', 'reload']);
+    if (edgeRunning) await runCommand(task, 'docker', ['exec', containerName('edge-proxy'), 'nginx', '-s', 'reload']);
   } catch (error) {
     if (!dryRun && previous !== null) atomicWrite(upstreamPath, previous, 0o644);
     throw error;
@@ -732,10 +849,20 @@ async function verifyBackupMatchesMigrationTarget(task, evidence, environment) {
   appendLog(task, `Backup evidence is bound to migration target MySQL server UUID ${targetServerUuid}.`);
 }
 
-async function updateWorker(task, service, imageKey, image) {
+async function updateWorker(task, service, imageKey, image, release) {
   if (!image) return;
   appendLog(task, `Pausing new work and allowing ${service} in-flight work to drain.`);
   const workerContainer = containerName(service);
+  const useDrainProtocol = Number(release?.schemaVersion || 0) >= 3;
+  const runtimeToken = parseEnvFile(envPath).LUMIRA_RUNTIME_CONTROL_TOKEN || process.env.LUMIRA_RUNTIME_CONTROL_TOKEN || '';
+  let oldClient;
+  if (useDrainProtocol) {
+    const oldAddress = await containerAddress(task, workerContainer);
+    oldClient = new RuntimeDrainClient({ baseUrl: `http://${oldAddress}:8080`, token: runtimeToken });
+    await oldClient.quiesce();
+    const drained = await oldClient.waitUntilDrained(release.drainTimeoutSeconds);
+    appendLog(task, `${service} drained safely with ${drained.inflightTasks} in-flight tasks.`);
+  }
   await runCommand(task, 'docker', ['stop', '--time', '60', workerContainer]).catch((error) => appendLog(task, `${service} was already stopped: ${error.message}`));
   // Fixed container names may have been created by an older Compose project.
   // Removing the stopped container avoids a name conflict while preserving the
@@ -743,6 +870,15 @@ async function updateWorker(task, service, imageKey, image) {
   await runCommand(task, 'docker', ['rm', '-f', workerContainer]).catch((error) => appendLog(task, `${service} cleanup warning: ${error.message}`));
   updateEnv({ [imageKey]: image });
   await runCompose(task, 'up', '-d', '--no-deps', '--force-recreate', service);
+  if (useDrainProtocol) {
+    const newAddress = await containerAddress(task, workerContainer);
+    const client = new RuntimeDrainClient({ baseUrl: `http://${newAddress}:8080`, token: runtimeToken });
+    const expectedService = service === 'lumira-job-executor' ? 'lumira-job-executor' : 'lumira-async';
+    await client.verify({ serviceName: expectedService, releaseId: release.releaseId, commit: release.commit, event: release.compatibility.event });
+    await client.resume();
+    const resumed = await client.status();
+    if (resumed.acceptingNewWork !== true) throw new Error(`${service} did not resume accepting work`);
+  }
 }
 
 async function containerIsRunning(task, containerName) {
@@ -777,10 +913,15 @@ async function rollbackTraffic(task, state, failedSlot) {
   });
   await runCompose(task, '--profile', previousSlot, 'up', '-d', '--no-deps', `lumira-server-${previousSlot}`);
   await waitForSlot(task, previousSlot, state.slots?.[previousSlot]?.commit || '');
+  if (state.currentRelease?.images?.frontend || state.slots?.[previousSlot]?.frontendImage) {
+    updateEnv({ [`LUMIRA_FRONTEND_${previousSlot.toUpperCase()}_IMAGE`]: state.currentRelease?.images?.frontend || state.slots?.[previousSlot]?.frontendImage });
+    await runCompose(task, '--profile', 'local-lumira-ui', 'up', '-d', '--no-deps', `lumira-ui-${previousSlot}`);
+    if (state.currentRelease?.releaseId) await waitForUi(task, previousSlot, state.currentRelease.releaseId, state.currentRelease.commit || '');
+  }
   await reloadProxy(task, previousSlot);
-  if (UPDATE_PHASES.indexOf(task.phase) >= UPDATE_PHASES.indexOf('UPDATING_WORKERS')) {
-    await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.workers?.asyncImage);
-    await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.workers?.jobExecutorImage);
+  if (UPDATE_PHASES.indexOf(task.phase) >= UPDATE_PHASES.indexOf('DRAINING_WORKERS')) {
+    await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.workers?.asyncImage, state.currentRelease);
+    await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.workers?.jobExecutorImage, state.currentRelease);
   }
   if (failedSlot) {
     appendLog(task, `Draining Nginx workers from failed ${failedSlot} slot before stopping it.`);
@@ -798,7 +939,7 @@ async function honorPostSwitchCancellation(task, state, failedSlot) {
 }
 
 async function runInstall(task, request) {
-  const preflight = request.preflightId ? requirePreflight(request.preflightId) : await createPreflight(request);
+  const preflight = request.preflightId ? requirePreflight(request.preflightId, request.releaseId) : await createPreflight(request);
   if (!preflight.ready) throw new Error(`Preflight failed: ${preflight.blockers.join(' ')}`);
   const manifest = preflight.manifest;
   const targetBuildTime = manifest.releasedAt || new Date().toISOString();
@@ -809,15 +950,32 @@ async function runInstall(task, request) {
   const targetSlot = inactiveSlot(activeSlot);
   task.preflightId = preflight.preflightId;
   task.manifestHash = preflight.manifestHash;
+  task.signatureKeyId = preflight.signatureKeyId;
   task.activeSlot = activeSlot;
   task.targetSlot = targetSlot;
   task.targetCommit = manifest.commit;
   task.targetVersion = manifest.version;
+  task.releaseId = manifest.releaseId;
+  task.operationEpoch = task.operationEpoch || readJson(lockPath)?.operationEpoch;
   task.serverImage = manifest.images.server;
+  const fencedState = deploymentState();
+  fencedState.candidateRelease = {
+    taskId: task.taskId,
+    operationEpoch: task.operationEpoch,
+    releaseId: manifest.releaseId,
+    manifestDigest: preflight.manifestHash,
+    commit: manifest.commit,
+    version: manifest.version,
+    databaseVersion: manifest.database.targetVersion,
+    images: manifest.images,
+    compatibility: manifest.compatibility,
+  };
+  writeDeploymentState(fencedState);
   writeTask(task);
 
   let switched = false;
   let localFrontendRunning = false;
+  let workersUpdated = false;
   try {
     setPhase(task, 'BACKUP', 'Creating a platform backup before the online update.');
     const deploymentEnv = parseEnvFile(envPath);
@@ -893,9 +1051,19 @@ async function runInstall(task, request) {
     }
     checkCancellation(task);
 
-    setPhase(task, 'MIGRATING', 'Applying expand-only database migrations.');
+    setPhase(task, 'MIGRATING', 'Applying expand-only database migrations.', manifest.databaseRequiredRuntimeMode);
     await migrate(task, manifest);
     checkCancellation(task);
+
+    if (manifest.schemaVersion >= 3) {
+      localFrontendRunning = true;
+      updateEnv({
+        [`LUMIRA_FRONTEND_${targetSlot.toUpperCase()}_IMAGE`]: manifest.images.frontend,
+        LUMIRA_RELEASE_ID: manifest.releaseId,
+      });
+      await runCompose(task, '--profile', 'local-lumira-ui', 'up', '-d', '--no-deps', '--force-recreate', `lumira-ui-${targetSlot}`);
+      await waitForUi(task, targetSlot, manifest.releaseId, manifest.commit);
+    }
 
     setPhase(task, 'STARTING_INACTIVE', `Starting inactive ${targetSlot} slot.`);
     updateEnv({
@@ -916,11 +1084,23 @@ async function runInstall(task, request) {
       GIT_COMMIT: manifest.commit,
       GIT_BRANCH: 'main',
       DATABASE_VERSION: manifest.database.targetVersion,
+      LUMIRA_RELEASE_ID: manifest.releaseId,
+      LUMIRA_WORKER_GENERATION: task.operationEpoch,
+      LUMIRA_EVENT_SCHEMA_READ_MIN: manifest.compatibility.event.readMin,
+      LUMIRA_EVENT_SCHEMA_READ_MAX: manifest.compatibility.event.readMax,
+      LUMIRA_EVENT_SCHEMA_WRITE_VERSION: manifest.compatibility.event.writeVersion,
     });
     await runCompose(task, '--profile', targetSlot, 'up', '-d', '--no-deps', '--force-recreate', `lumira-server-${targetSlot}`);
 
     setPhase(task, 'VERIFYING_INACTIVE', `Verifying ${targetSlot} readiness and build identity.`);
     await waitForSlot(task, targetSlot, manifest.commit);
+    checkCancellation(task);
+
+    setPhase(task, 'PREPARING_WORKERS', 'Confirming target worker Event Schema compatibility.');
+    setPhase(task, 'DRAINING_WORKERS', 'Quiescing, draining, replacing, and verifying async and job workers serially.');
+    await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', manifest.images.async, manifest);
+    await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', manifest.images.jobExecutor, manifest);
+    workersUpdated = true;
     checkCancellation(task);
 
     setPhase(task, 'SWITCHING_TRAFFIC', `Hot switching API traffic from ${activeSlot} to ${targetSlot}.`);
@@ -934,15 +1114,7 @@ async function runInstall(task, request) {
     setPhase(task, 'DRAINING_OLD', `Gracefully draining old ${activeSlot} slot.`);
     if (!dryRun) await sleep(manifest.drainTimeoutSeconds * 1000);
     await runCommand(task, 'docker', ['stop', '--time', '10', serverContainer(activeSlot)]).catch((error) => appendLog(task, `Old slot stop warning: ${error.message}`));
-    if (await honorPostSwitchCancellation(task, state, targetSlot)) return;
-
-    setPhase(task, 'UPDATING_WORKERS', 'Replacing async and job workers serially.');
-    await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', manifest.images.async);
-    if (await honorPostSwitchCancellation(task, state, targetSlot)) return;
-    await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', manifest.images.jobExecutor);
-    if (localFrontendRunning) {
-      await updateWorker(task, 'lumira-ui', 'LUMIRA_FRONTEND_IMAGE', manifest.images.frontend);
-    }
+    if (localFrontendRunning) appendLog(task, `Keeping lumira-ui-${activeSlot} until the rollback window expires.`);
     if (await honorPostSwitchCancellation(task, state, targetSlot)) return;
 
     setPhase(task, 'FINALIZING', 'Persisting the active slot and rollback window.');
@@ -959,12 +1131,31 @@ async function runInstall(task, request) {
       branch: 'main',
       databaseVersion: manifest.database.targetVersion,
       serverImage: manifest.images.server,
+      frontendImage: manifest.images.frontend,
       activatedAt: new Date().toISOString(),
     };
     state.previousWorkers = state.workers || null;
     state.workers = { asyncImage: manifest.images.async, jobExecutorImage: manifest.images.jobExecutor };
     state.lastSuccessfulTaskId = task.taskId;
     state.lastSuccessfulPlatformTaskId = task.platformTaskId || null;
+    state.previousRelease = state.currentRelease || null;
+    state.currentRelease = {
+      schemaVersion: manifest.schemaVersion,
+      releaseId: manifest.releaseId,
+      manifestDigest: preflight.manifestHash,
+      commit: manifest.commit,
+      version: manifest.version,
+      databaseVersion: manifest.database.targetVersion,
+      images: manifest.images,
+      compatibility: manifest.compatibility,
+      frontend: manifest.frontend,
+      rollback: manifest.rollback,
+      activatedAt: new Date().toISOString(),
+    };
+    state.candidateRelease = null;
+    state.status = 'HEALTHY';
+    state.rollbackExpiresAt = state.rollbackDeadline;
+    task.rollbackExpiresAt = state.rollbackExpiresAt;
     writeDeploymentState(state);
     updateEnv({ LUMIRA_ACTIVE_SLOT: targetSlot, LUMIRA_SERVER_IMAGE: manifest.images.server });
   } catch (error) {
@@ -979,6 +1170,10 @@ async function runInstall(task, request) {
         appendLog(task, `Automatic traffic rollback failed: ${rollbackError.message}`);
       }
     } else {
+      if (workersUpdated) {
+        await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.workers?.asyncImage, state.currentRelease).catch((workerError) => appendLog(task, `Async restoration failed: ${workerError.message}`));
+        await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.workers?.jobExecutorImage, state.currentRelease).catch((workerError) => appendLog(task, `Job restoration failed: ${workerError.message}`));
+      }
       await runCommand(task, 'docker', ['rm', '-f', serverContainer(targetSlot)]).catch(() => {});
     }
     throw error;
@@ -986,6 +1181,8 @@ async function runInstall(task, request) {
 }
 
 async function runRollback(task) {
+  const rollbackPreflight = createRollbackPreflight();
+  if (!rollbackPreflight.ready) throw new Error(`Rollback preflight failed: ${rollbackPreflight.blockers.join(' ')}`);
   const state = deploymentState();
   const currentSlot = normalizeSlot(state.activeSlot);
   const previousSlot = state.previousSlot ? normalizeSlot(state.previousSlot) : null;
@@ -996,6 +1193,8 @@ async function runRollback(task) {
   task.targetVersion = state.slots[previousSlot].version;
   task.targetCommit = state.slots[previousSlot].commit;
   task.serverImage = state.slots[previousSlot].serverImage;
+  task.releaseId = state.previousRelease?.releaseId || null;
+  task.rollbackExpiresAt = state.rollbackExpiresAt || state.rollbackDeadline || null;
   task.rollbackOfTaskId = state.lastSuccessfulPlatformTaskId || null;
   updateEnv({
     APP_VERSION: state.slots[previousSlot].version,
@@ -1011,6 +1210,14 @@ async function runRollback(task) {
   await runCompose(task, '--profile', previousSlot, 'up', '-d', '--no-deps', `lumira-server-${previousSlot}`);
   setPhase(task, 'VERIFYING_INACTIVE', `Verifying previous ${previousSlot} slot.`);
   await waitForSlot(task, previousSlot, state.slots[previousSlot].commit);
+  if (state.previousRelease?.images?.frontend || state.slots[previousSlot].frontendImage) {
+    updateEnv({
+      [`LUMIRA_FRONTEND_${previousSlot.toUpperCase()}_IMAGE`]: state.previousRelease?.images?.frontend || state.slots[previousSlot].frontendImage,
+      LUMIRA_RELEASE_ID: state.previousRelease?.releaseId,
+    });
+    await runCompose(task, '--profile', 'local-lumira-ui', 'up', '-d', '--no-deps', `lumira-ui-${previousSlot}`);
+    if (state.previousRelease?.releaseId) await waitForUi(task, previousSlot, state.previousRelease.releaseId, state.previousRelease.commit || '');
+  }
   setPhase(task, 'SWITCHING_TRAFFIC', `Hot switching traffic back to ${previousSlot}.`);
   await reloadProxy(task, previousSlot);
   setPhase(task, 'VERIFYING_ACTIVE', 'Verifying public traffic after rollback.');
@@ -1020,12 +1227,15 @@ async function runRollback(task) {
   await runCommand(task, 'docker', ['stop', '--time', '10', serverContainer(currentSlot)]).catch(() => {});
   setPhase(task, 'UPDATING_WORKERS', 'Restoring the previous compatible worker images.');
   const currentWorkers = state.workers || null;
-  await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.previousWorkers?.asyncImage);
-  await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.previousWorkers?.jobExecutorImage);
+  await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.previousWorkers?.asyncImage, state.previousRelease);
+  await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.previousWorkers?.jobExecutorImage, state.previousRelease);
   state.activeSlot = previousSlot;
   state.previousSlot = currentSlot;
   state.workers = state.previousWorkers || state.workers;
   state.previousWorkers = currentWorkers;
+  const currentRelease = state.currentRelease || null;
+  state.currentRelease = state.previousRelease || state.currentRelease;
+  state.previousRelease = currentRelease;
   state.rollbackDeadline = new Date(Date.now() + 1800_000).toISOString();
   writeDeploymentState(state);
   updateEnv({ LUMIRA_ACTIVE_SLOT: previousSlot, LUMIRA_SERVER_IMAGE: state.slots[previousSlot].serverImage });
@@ -1060,7 +1270,7 @@ function startTask(type, request) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  acquireLock(task.taskId);
+  task.operationEpoch = acquireLock(task.taskId);
   writeTask(task);
   setImmediate(async () => {
     try {
@@ -1072,12 +1282,31 @@ function startTask(type, request) {
     } catch (error) {
       task.status = error?.code === 'UPDATE_CANCELLED' ? 'CANCELLED' : 'FAILED';
       task.errorMessage = error instanceof Error ? error.message : String(error);
+      if (['MIGRATING', 'SWITCHING_TRAFFIC'].includes(task.phase)) {
+        task.maintenanceMode = 'READ_ONLY';
+        task.maintenanceReason = `Updater lost certainty in critical phase ${task.phase}: ${task.errorMessage}`;
+      }
       appendLog(task, task.errorMessage);
     } finally {
+      try {
+        const finalState = deploymentState();
+        if (Number(finalState.operationEpoch) === Number(task.operationEpoch)) {
+          finalState.candidateRelease = null;
+          if (task.status === 'FAILED' && UPDATE_PHASES.indexOf(task.phase) >= UPDATE_PHASES.indexOf('SWITCHING_TRAFFIC')) finalState.status = 'DEGRADED';
+          else if (finalState.status === 'UPDATING') finalState.status = 'HEALTHY';
+          writeDeploymentState(finalState);
+        }
+      } catch (stateError) {
+        task.errorMessage = `${task.errorMessage || ''} Deployment state finalization failed: ${stateError.message}`.trim();
+      }
       task.finishedAt = new Date().toISOString();
+      if (!['FAILED'].includes(task.status) || task.maintenanceMode !== 'READ_ONLY') {
+        task.maintenanceMode = 'NORMAL';
+        task.maintenanceReason = null;
+      }
       task.updatedAt = new Date().toISOString();
       writeTask(task);
-      releaseLock(task.taskId);
+      releaseLock(task.taskId, task.operationEpoch);
     }
   });
   return task;
@@ -1102,7 +1331,10 @@ function authorized(req) {
   if (!token) {
     return false;
   }
-  return req.headers['x-lumira-updater-token'] === token;
+  const provided = String(req.headers['x-lumira-updater-token'] || '');
+  const expectedBytes = Buffer.from(token);
+  const providedBytes = Buffer.from(provided);
+  return expectedBytes.length === providedBytes.length && timingSafeEqual(expectedBytes, providedBytes);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -1118,8 +1350,12 @@ const server = http.createServer(async (req, res) => {
       supportsCancel: true,
       supportsPlatformTaskLookup: true,
       supportsExpandOnlyMigration: true,
+      supportsReleaseSet: true,
+      supportsSignedEnvelope: true,
+      acceptsInlineManifest: allowInlineManifest,
     });
     if (req.method === 'POST' && req.url === '/v1/update/preflight') return json(res, 200, await createPreflight(await readBody(req)));
+    if (req.method === 'POST' && req.url === '/v1/update/rollback-preflight') return json(res, 200, createRollbackPreflight());
     if (req.method === 'POST' && req.url === '/v1/update/install') return json(res, 202, startTask('INSTALL', await readBody(req)));
     if (req.method === 'POST' && req.url === '/v1/update/rollback') return json(res, 202, startTask('ROLLBACK', await readBody(req)));
     const requestUrl = new URL(req.url || '/', 'http://localhost');
@@ -1145,7 +1381,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 404, { errorMessage: 'Not found' });
   } catch (error) {
     const conflict = String(error?.message || '').includes('already running');
-    return json(res, conflict ? 409 : 500, { errorMessage: error instanceof Error ? error.message : String(error) });
+    return json(res, Number(error?.statusCode) || (conflict ? 409 : 500), { errorMessage: error instanceof Error ? error.message : String(error) });
   }
 });
 

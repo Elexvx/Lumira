@@ -15,10 +15,24 @@ const forbidden = [
   /\bTRUNCATE\b/i,
   /\bDELETE\s+FROM\b(?![\s\S]*\bWHERE\b)/i,
 ];
+const metadataRequiredFrom = '202608310001';
+const requiredMetadata = [
+  /^-- lumira:migration-phase=expand$/m,
+  /^-- lumira:rollback=(?:application-only|not-required)$/m,
+  /^-- lumira:compatible-readers=\S+$/m,
+  /^-- lumira:cleanup-after=\S+$/m,
+];
 
 const failures = [];
 for (const name of readdirSync(migrationDir).filter((value) => value.endsWith('.sql')).sort()) {
-  const source = readFileSync(path.join(migrationDir, name), 'utf8')
+  const rawSource = readFileSync(path.join(migrationDir, name), 'utf8');
+  const version = /^V(\d+)__/u.exec(name)?.[1];
+  if (version && version.localeCompare(metadataRequiredFrom) >= 0) {
+    for (const pattern of requiredMetadata) {
+      if (!pattern.test(rawSource)) failures.push(`${name}: missing migration metadata ${pattern}`);
+    }
+  }
+  const source = rawSource
     .replace(/--.*$/gm, '')
     .replace(/\/\*[\s\S]*?\*\//g, '');
   for (const pattern of forbidden) {

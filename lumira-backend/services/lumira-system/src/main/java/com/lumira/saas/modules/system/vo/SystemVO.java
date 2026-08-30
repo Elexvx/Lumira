@@ -241,6 +241,7 @@ public final class SystemVO {
         private BrandingSettingsVO brandingSettings;
         private SecuritySettingsVO securitySettings;
         private AgreementSettingsVO agreementSettings;
+        private WatermarkSettingsVO watermarkSettings;
         private LoginCapabilitiesVO loginCapabilities;
 
         public BrandingSettingsVO getBrandingSettings() {
@@ -265,6 +266,14 @@ public final class SystemVO {
 
         public void setAgreementSettings(AgreementSettingsVO agreementSettings) {
             this.agreementSettings = agreementSettings;
+        }
+
+        public WatermarkSettingsVO getWatermarkSettings() {
+            return watermarkSettings;
+        }
+
+        public void setWatermarkSettings(WatermarkSettingsVO watermarkSettings) {
+            this.watermarkSettings = watermarkSettings;
         }
 
         public LoginCapabilitiesVO getLoginCapabilities() {

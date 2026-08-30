@@ -2,6 +2,7 @@ package com.lumira.saas.modules.system.update.vo;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public final class PlatformUpdateVO {
 
@@ -83,6 +84,7 @@ public final class PlatformUpdateVO {
     }
 
     public static class LatestVersionVO {
+        private String releaseId;
         private String version;
         private String commitId;
         private String branch;
@@ -102,6 +104,8 @@ public final class PlatformUpdateVO {
         private Boolean migrationRequired;
         private Boolean rollbackSupported;
 
+        public String getReleaseId() { return releaseId; }
+        public void setReleaseId(String releaseId) { this.releaseId = releaseId; }
         public String getVersion() { return version; }
         public void setVersion(String version) { this.version = version; }
         public String getCommitId() { return commitId; }
@@ -202,7 +206,13 @@ public final class PlatformUpdateVO {
         private String activeSlot;
         private String targetSlot;
         private String preflightId;
+        private String releaseId;
         private String manifestHash;
+        private String signatureKeyId;
+        private Long operationEpoch;
+        private LocalDateTime rollbackExpiresAt;
+        private String maintenanceMode;
+        private String maintenanceReason;
         private Long rollbackOfTaskId;
         private String targetVersion;
         private String targetCommit;
@@ -238,8 +248,20 @@ public final class PlatformUpdateVO {
         public void setTargetSlot(String targetSlot) { this.targetSlot = targetSlot; }
         public String getPreflightId() { return preflightId; }
         public void setPreflightId(String preflightId) { this.preflightId = preflightId; }
+        public String getReleaseId() { return releaseId; }
+        public void setReleaseId(String releaseId) { this.releaseId = releaseId; }
         public String getManifestHash() { return manifestHash; }
         public void setManifestHash(String manifestHash) { this.manifestHash = manifestHash; }
+        public String getSignatureKeyId() { return signatureKeyId; }
+        public void setSignatureKeyId(String signatureKeyId) { this.signatureKeyId = signatureKeyId; }
+        public Long getOperationEpoch() { return operationEpoch; }
+        public void setOperationEpoch(Long operationEpoch) { this.operationEpoch = operationEpoch; }
+        public LocalDateTime getRollbackExpiresAt() { return rollbackExpiresAt; }
+        public void setRollbackExpiresAt(LocalDateTime rollbackExpiresAt) { this.rollbackExpiresAt = rollbackExpiresAt; }
+        public String getMaintenanceMode() { return maintenanceMode; }
+        public void setMaintenanceMode(String maintenanceMode) { this.maintenanceMode = maintenanceMode; }
+        public String getMaintenanceReason() { return maintenanceReason; }
+        public void setMaintenanceReason(String maintenanceReason) { this.maintenanceReason = maintenanceReason; }
         public Long getRollbackOfTaskId() { return rollbackOfTaskId; }
         public void setRollbackOfTaskId(Long rollbackOfTaskId) { this.rollbackOfTaskId = rollbackOfTaskId; }
         public String getTargetVersion() { return targetVersion; }
@@ -301,6 +323,8 @@ public final class PlatformUpdateVO {
 
     public static class PreflightVO {
         private String preflightId;
+        private String releaseId;
+        private String signatureKeyId;
         private Boolean ready;
         private String strategy;
         private String activeSlot;
@@ -309,6 +333,8 @@ public final class PlatformUpdateVO {
         private String targetVersion;
         private String migrationMode;
         private String databaseTargetVersion;
+        private String maintenanceMode;
+        private Map<String, Object> compatibility;
         private List<String> blockers;
         private List<String> warnings;
         private String checkedAt;
@@ -316,6 +342,10 @@ public final class PlatformUpdateVO {
 
         public String getPreflightId() { return preflightId; }
         public void setPreflightId(String preflightId) { this.preflightId = preflightId; }
+        public String getReleaseId() { return releaseId; }
+        public void setReleaseId(String releaseId) { this.releaseId = releaseId; }
+        public String getSignatureKeyId() { return signatureKeyId; }
+        public void setSignatureKeyId(String signatureKeyId) { this.signatureKeyId = signatureKeyId; }
         public Boolean getReady() { return ready; }
         public void setReady(Boolean ready) { this.ready = ready; }
         public String getStrategy() { return strategy; }
@@ -332,6 +362,10 @@ public final class PlatformUpdateVO {
         public void setMigrationMode(String migrationMode) { this.migrationMode = migrationMode; }
         public String getDatabaseTargetVersion() { return databaseTargetVersion; }
         public void setDatabaseTargetVersion(String databaseTargetVersion) { this.databaseTargetVersion = databaseTargetVersion; }
+        public String getMaintenanceMode() { return maintenanceMode; }
+        public void setMaintenanceMode(String maintenanceMode) { this.maintenanceMode = maintenanceMode; }
+        public Map<String, Object> getCompatibility() { return compatibility; }
+        public void setCompatibility(Map<String, Object> compatibility) { this.compatibility = compatibility; }
         public List<String> getBlockers() { return blockers; }
         public void setBlockers(List<String> blockers) { this.blockers = blockers; }
         public List<String> getWarnings() { return warnings; }
@@ -344,10 +378,13 @@ public final class PlatformUpdateVO {
 
     public static class InstallRequest {
         private String preflightId;
+        private String releaseId;
         private String targetCommit;
 
         public String getPreflightId() { return preflightId; }
         public void setPreflightId(String preflightId) { this.preflightId = preflightId; }
+        public String getReleaseId() { return releaseId; }
+        public void setReleaseId(String releaseId) { this.releaseId = releaseId; }
         public String getTargetCommit() { return targetCommit; }
         public void setTargetCommit(String targetCommit) { this.targetCommit = targetCommit; }
     }

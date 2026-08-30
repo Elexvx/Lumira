@@ -10,6 +10,8 @@ public class LoginCapabilitiesVO {
     private Boolean wechatLoginAvailable;
     private Boolean passkeyLoginAvailable;
     private Boolean passkeyPasswordlessAvailable;
+    private Boolean registrationSmsVerificationRequired;
+    private Boolean registrationEmailVerificationRequired;
     private List<String> loginModeOrder;
 
     public Boolean getPasswordLoginAvailable() {
@@ -58,6 +60,22 @@ public class LoginCapabilitiesVO {
 
     public void setPasskeyPasswordlessAvailable(Boolean passkeyPasswordlessAvailable) {
         this.passkeyPasswordlessAvailable = passkeyPasswordlessAvailable;
+    }
+
+    public Boolean getRegistrationSmsVerificationRequired() {
+        return registrationSmsVerificationRequired;
+    }
+
+    public void setRegistrationSmsVerificationRequired(Boolean registrationSmsVerificationRequired) {
+        this.registrationSmsVerificationRequired = registrationSmsVerificationRequired;
+    }
+
+    public Boolean getRegistrationEmailVerificationRequired() {
+        return registrationEmailVerificationRequired;
+    }
+
+    public void setRegistrationEmailVerificationRequired(Boolean registrationEmailVerificationRequired) {
+        this.registrationEmailVerificationRequired = registrationEmailVerificationRequired;
     }
 
     public List<String> getLoginModeOrder() {

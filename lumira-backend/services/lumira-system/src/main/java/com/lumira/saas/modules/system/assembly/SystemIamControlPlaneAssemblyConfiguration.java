@@ -7,6 +7,7 @@ import com.lumira.saas.modules.iam.infrastructure.JdbcIamUserRepository;
 import com.lumira.saas.modules.iam.controller.IamReadinessV2Controller;
 import com.lumira.saas.modules.iam.controller.IamV2Controller;
 import com.lumira.saas.modules.iam.service.IamUserService;
+import com.lumira.saas.modules.iam.service.IamAuthorizationSnapshotVersionVerifier;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Import;
         JdbcIamUserRepository.class,
         IamReadinessV2Controller.class,
         IamV2Controller.class,
+        IamAuthorizationSnapshotVersionVerifier.class,
         IamUserService.class,
         PermissionSnapshotService.class
 })

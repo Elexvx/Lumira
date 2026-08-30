@@ -10,6 +10,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Range;
@@ -73,6 +74,7 @@ public class PaymentEventStreamConsumer {
     private final Counter failedCounter;
     private final Counter reclaimedCounter;
     private final Counter deadLetterCounter;
+    private final AsyncRuntimeDrainCoordinator drainCoordinator;
     private StreamMessageListenerContainer<String, MapRecord<String, String, String>> container;
     private ScheduledExecutorService recoveryExecutor;
 
@@ -94,6 +96,26 @@ public class PaymentEventStreamConsumer {
             Duration configuredPendingRecoveryInterval,
             @Value("${lumira.event.payment-consumer.max-delivery-count:8}")
             int configuredMaxDeliveryCount
+    ) {
+        this(connectionFactory, redis, objectMapper, handler, meterRegistry, configuredStreamKey, configuredGroupName,
+                configuredConsumerName, configuredPendingRecoveryMinimumIdle, configuredPendingRecoveryInterval,
+                configuredMaxDeliveryCount, new AsyncRuntimeDrainCoordinator());
+    }
+
+    @Autowired
+    public PaymentEventStreamConsumer(
+            RedisConnectionFactory connectionFactory,
+            StringRedisTemplate redis,
+            ObjectMapper objectMapper,
+            CompetitionPaymentEventHandler handler,
+            MeterRegistry meterRegistry,
+            @Value("${lumira.event.payment-consumer.stream-key:lumira.events.payment.v1}") String configuredStreamKey,
+            @Value("${lumira.event.payment-consumer.group-name:competition-payment-v1}") String configuredGroupName,
+            @Value("${lumira.event.payment-consumer.consumer-name:}") String configuredConsumerName,
+            @Value("${lumira.event.payment-consumer.pending-recovery-minimum-idle:30s}") Duration configuredPendingRecoveryMinimumIdle,
+            @Value("${lumira.event.payment-consumer.pending-recovery-interval:30s}") Duration configuredPendingRecoveryInterval,
+            @Value("${lumira.event.payment-consumer.max-delivery-count:8}") int configuredMaxDeliveryCount,
+            AsyncRuntimeDrainCoordinator drainCoordinator
     ) {
         this.connectionFactory = connectionFactory;
         this.redis = redis;
@@ -117,6 +139,7 @@ public class PaymentEventStreamConsumer {
                 configuredMaxDeliveryCount,
                 "max delivery count"
         );
+        this.drainCoordinator = drainCoordinator;
         this.consumedCounter = Counter.builder("lumira.payment.consumer.events.consumed")
                 .description("Paid-order events whose side effect was applied")
                 .register(meterRegistry);
@@ -180,8 +203,35 @@ public class PaymentEventStreamConsumer {
         return container != null && container.isRunning();
     }
 
-    void onMessage(MapRecord<String, String, String> message) {
+    void quiesce() {
+        if (container != null && container.isRunning()) {
+            container.stop();
+        }
+    }
+
+    void resume() {
+        if (container != null && !container.isRunning()) {
+            container.start();
+        }
+    }
+
+    long pendingMessageCount() {
         try {
+            var summary = redis.opsForStream().pending(streamKey, groupName);
+            return summary == null ? 0L : summary.getTotalPendingMessages();
+        } catch (RuntimeException exception) {
+            log.warn("Unable to inspect payment event pending count stream={} group={}: {}", streamKey, groupName, exception.getMessage());
+            return -1L;
+        }
+    }
+
+    void onMessage(MapRecord<String, String, String> message) {
+        var lease = drainCoordinator.tryAcquire();
+        if (lease == null) {
+            return;
+        }
+        try (lease) {
+          try {
             Map<String, String> values = message.getValue();
             if (!"PAYMENT_ORDER_PAID".equals(values.get("eventType"))) {
                 acknowledge(message);
@@ -212,10 +262,10 @@ public class PaymentEventStreamConsumer {
                 duplicateCounter.increment();
             }
             acknowledge(message);
-        } catch (IllegalArgumentException exception) {
+          } catch (IllegalArgumentException exception) {
             failedCounter.increment();
             deadLetter(message, exception.getMessage());
-        } catch (RuntimeException exception) {
+          } catch (RuntimeException exception) {
             failedCounter.increment();
             log.warn(
                     "Payment event consumption failed stream={} group={} streamId={} reason={}",
@@ -225,6 +275,7 @@ public class PaymentEventStreamConsumer {
                     exception.getMessage(),
                     exception
             );
+          }
         }
     }
 
@@ -276,6 +327,9 @@ public class PaymentEventStreamConsumer {
     }
 
     void recoverPendingMessagesSafely() {
+        if (!drainCoordinator.snapshot().acceptingNewWork()) {
+            return;
+        }
         try {
             recoverPendingMessages(pendingRecoveryMinimumIdle);
         } catch (RuntimeException exception) {

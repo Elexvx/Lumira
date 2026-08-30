@@ -280,7 +280,7 @@ const getConfigModuleItemsInValidationScope = (
 export const shouldValidateTeamMemberLimitsForPage = (
   moduleKey: CompetitionSettingsConfigModuleKey,
   fieldScope?: string | null,
-) => moduleKey === 'fields' && (!fieldScope || fieldScope === 'TEAM_FIELD');
+) => moduleKey === 'fields' && (!fieldScope || ['TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD'].includes(fieldScope));
 
 export const isConfigModuleReadyToSave = (
   moduleKey: CompetitionSettingsConfigModuleKey,

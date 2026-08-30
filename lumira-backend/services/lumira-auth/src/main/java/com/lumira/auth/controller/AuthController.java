@@ -55,6 +55,40 @@ public class AuthController {
         return loginSuccess(authAppService.completeLoginCodeLogin(request, httpServletRequest), httpServletResponse);
     }
 
+    @PostMapping("/registration/contact/availability")
+    @RepeatSubmit
+    public ApiResponse<RegistrationContactAvailabilityDTO> registrationContactAvailability(
+            @Valid @RequestBody RegistrationContactAvailabilityRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        return ApiResponse.success(
+                authAppService.registrationContactAvailability(request, httpServletRequest),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/registration/code/challenge")
+    @RepeatSubmit
+    public ApiResponse<LoginCodeChallengeDTO> registrationCodeChallenge(
+            @Valid @RequestBody RegistrationCodeChallengeRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        return ApiResponse.success(
+                authAppService.registrationCodeChallenge(request, httpServletRequest),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/registration/complete")
+    @RepeatSubmit
+    public ApiResponse<LoginResponseDTO> completeRegistration(
+            @Valid @RequestBody RegistrationCompleteRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
+    ) {
+        return loginSuccess(authAppService.completeRegistration(request, httpServletRequest), httpServletResponse);
+    }
+
     @PostMapping("/password-reset/challenge")
     @RepeatSubmit
     public ApiResponse<LoginCodeChallengeDTO> passwordResetChallenge(@Valid @RequestBody PasswordResetChallengeRequest request, HttpServletRequest httpServletRequest) {

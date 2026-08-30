@@ -3,6 +3,7 @@ package com.lumira.saas.modules.competition.app;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.dictionary.DictionaryItemLookupPort;
 import com.lumira.api.export.ExportTaskPort;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -37,6 +38,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -92,6 +94,7 @@ public class CompetitionRegistrationExportAppService {
     private final ObjectMapper objectMapper;
     private final ObjectProvider<CompetitionRegistrationExportTaskWorkerService> workerProvider;
     private final ExecutorService executorService;
+    private ObjectProvider<DictionaryItemLookupPort> dictionaryItemLookupPortProvider;
 
     public CompetitionRegistrationExportAppService(
             CompetitionRegistrationAppService registrationAppService,
@@ -113,6 +116,11 @@ public class CompetitionRegistrationExportAppService {
         this.objectMapper = objectMapper;
         this.workerProvider = workerProvider;
         this.executorService = executorServiceProvider.getIfAvailable(Executors::newVirtualThreadPerTaskExecutor);
+    }
+
+    @Autowired
+    void setDictionaryItemLookupPortProvider(ObjectProvider<DictionaryItemLookupPort> dictionaryItemLookupPortProvider) {
+        this.dictionaryItemLookupPortProvider = dictionaryItemLookupPortProvider;
     }
 
     public ExportVO.ExportStartVO startExport(
@@ -190,6 +198,7 @@ public class CompetitionRegistrationExportAppService {
                 loadRegistrations(currentUser, normalizedRequest, taskId);
         List<CollectedExportField> collectedFields = collectExportFields(registrations);
         ExportShape exportShape = buildExportShape(registrations, collectedFields);
+        DictionaryLabelResolver dictionaryResolver = buildDictionaryLabelResolver(exportShape);
         List<RegistrationExportRow> rows = new ArrayList<>();
         for (CompetitionRegistrationVO.Registration registration : registrations) {
             CurrentUser refreshedUser = buildQueuedAsyncUser(
@@ -201,7 +210,8 @@ public class CompetitionRegistrationExportAppService {
             rows.add(toRow(
                     registration,
                     hasPermission(refreshedUser, SENSITIVE_EXPORT_PERMISSION),
-                    exportShape
+                    exportShape,
+                    dictionaryResolver
             ));
         }
         return excelExportService.export("报名与材料", columns(exportShape), rows);
@@ -218,6 +228,7 @@ public class CompetitionRegistrationExportAppService {
                 loadRegistrations(currentUser, normalizedRequest, taskId);
         List<CollectedExportField> collectedFields = collectExportFields(registrations);
         ExportShape exportShape = buildExportShape(registrations, collectedFields);
+        DictionaryLabelResolver dictionaryResolver = buildDictionaryLabelResolver(exportShape);
         List<Map<String, Object>> manifest = new ArrayList<>();
         List<RegistrationExportRow> rows = new ArrayList<>();
         long totalBytes = 0L;
@@ -238,7 +249,8 @@ public class CompetitionRegistrationExportAppService {
                 rows.add(toRow(
                         registration,
                         hasPermission(refreshedUser, SENSITIVE_EXPORT_PERMISSION),
-                        exportShape
+                        exportShape,
+                        dictionaryResolver
                 ));
                 String registrationFolder = registrationFolder(registration, registrationIndex + 1);
                 String directoryPath = registrationFolder + "/";
@@ -446,7 +458,8 @@ public class CompetitionRegistrationExportAppService {
     private RegistrationExportRow toRow(
             CompetitionRegistrationVO.Registration registration,
             boolean includeSensitiveData,
-            ExportShape exportShape
+            ExportShape exportShape,
+            DictionaryLabelResolver dictionaryResolver
     ) {
         JsonNode registrationSnapshot = readJson(registration.getRegistrationSnapshotJson());
         JsonNode teamSnapshot = readJson(registration.getTeamSnapshotJson());
@@ -471,7 +484,8 @@ public class CompetitionRegistrationExportAppService {
                             teamSnapshot,
                             projectSnapshot,
                             null,
-                            includeSensitiveData
+                            includeSensitiveData,
+                            dictionaryResolver
                     )
             );
         }
@@ -485,7 +499,8 @@ public class CompetitionRegistrationExportAppService {
                 registrationSnapshot,
                 teamSnapshot,
                 projectSnapshot,
-                includeSensitiveData
+                includeSensitiveData,
+                dictionaryResolver
         );
         putParticipantValues(
                 values,
@@ -497,7 +512,8 @@ public class CompetitionRegistrationExportAppService {
                 registrationSnapshot,
                 teamSnapshot,
                 projectSnapshot,
-                includeSensitiveData
+                includeSensitiveData,
+                dictionaryResolver
         );
         values.put("materialSubmissionCount", registration.getMaterialSubmissionCount());
         values.put("materialFileCount", registration.getMaterialFileCount());
@@ -514,7 +530,8 @@ public class CompetitionRegistrationExportAppService {
             JsonNode registrationSnapshot,
             JsonNode teamSnapshot,
             JsonNode projectSnapshot,
-            boolean includeSensitiveData
+            boolean includeSensitiveData,
+            DictionaryLabelResolver dictionaryResolver
     ) {
         for (int index = 0; index < maxParticipants; index += 1) {
             JsonNode participant = index < participants.size() ? participants.get(index) : null;
@@ -528,7 +545,8 @@ public class CompetitionRegistrationExportAppService {
                                 teamSnapshot,
                                 projectSnapshot,
                                 participant,
-                                includeSensitiveData
+                                includeSensitiveData,
+                                dictionaryResolver
                         )
                 );
             }
@@ -602,7 +620,9 @@ public class CompetitionRegistrationExportAppService {
                         itemKey,
                         StringUtils.hasText(title) ? title : itemKey,
                         fieldType,
-                        groupLabel
+                        groupLabel,
+                        item.path("optionSource").asText("CUSTOM").trim().toUpperCase(Locale.ROOT),
+                        item.path("dictCode").asText("").trim()
                 );
                 fields.putIfAbsent(collectedFieldIdentity(field), field);
             }
@@ -621,7 +641,7 @@ public class CompetitionRegistrationExportAppService {
             String itemKey,
             String title
     ) {
-        CollectedExportField fallback = new CollectedExportField(scope, itemKey, title, "TEXT", "");
+        CollectedExportField fallback = new CollectedExportField(scope, itemKey, title, "TEXT", "", "CUSTOM", "");
         fields.putIfAbsent(collectedFieldIdentity(fallback), fallback);
     }
 
@@ -710,7 +730,8 @@ public class CompetitionRegistrationExportAppService {
             JsonNode teamSnapshot,
             JsonNode projectSnapshot,
             JsonNode memberSnapshot,
-            boolean includeSensitiveData
+            boolean includeSensitiveData,
+            DictionaryLabelResolver dictionaryResolver
     ) {
         String value;
         if (isIntellectualPropertyField(field)) {
@@ -728,8 +749,37 @@ public class CompetitionRegistrationExportAppService {
                 node = fallbackStandardFieldNode(registration, field);
             }
             value = humanValue(node);
+            value = dictionaryResolver.resolve(field, node, value);
         }
         return applySensitiveFieldPolicy(field, value, includeSensitiveData);
+    }
+
+    private DictionaryLabelResolver buildDictionaryLabelResolver(ExportShape exportShape) {
+        DictionaryItemLookupPort lookupPort = dictionaryItemLookupPortProvider == null
+                ? null
+                : dictionaryItemLookupPortProvider.getIfAvailable();
+        if (lookupPort == null) {
+            return DictionaryLabelResolver.empty();
+        }
+        Map<String, Map<String, DictionaryItemLookupPort.DictionaryItem>> itemsByCode = new LinkedHashMap<>();
+        List<CollectedExportField> fields = new ArrayList<>();
+        fields.addAll(exportShape.commonFields());
+        fields.addAll(exportShape.studentFields());
+        fields.addAll(exportShape.teacherFields());
+        for (CollectedExportField field : fields) {
+            if (!"DICTIONARY".equals(field.optionSource()) || !StringUtils.hasText(field.dictCode())
+                    || itemsByCode.containsKey(field.dictCode())) {
+                continue;
+            }
+            Map<String, DictionaryItemLookupPort.DictionaryItem> byValue = new LinkedHashMap<>();
+            for (DictionaryItemLookupPort.DictionaryItem item : lookupPort.enabledItems(field.dictCode())) {
+                if (item != null && StringUtils.hasText(item.value())) {
+                    byValue.putIfAbsent(item.value().trim(), item);
+                }
+            }
+            itemsByCode.put(field.dictCode(), Map.copyOf(byValue));
+        }
+        return new DictionaryLabelResolver(Map.copyOf(itemsByCode));
     }
 
     private JsonNode resolveCollectedFieldNode(JsonNode source, CollectedExportField field) {
@@ -1117,8 +1167,68 @@ public class CompetitionRegistrationExportAppService {
             String itemKey,
             String title,
             String fieldType,
-            String groupLabel
+            String groupLabel,
+            String optionSource,
+            String dictCode
     ) {
+    }
+
+    record DictionaryLabelResolver(
+            Map<String, Map<String, DictionaryItemLookupPort.DictionaryItem>> itemsByCode
+    ) {
+        static DictionaryLabelResolver empty() {
+            return new DictionaryLabelResolver(Map.of());
+        }
+
+        String resolve(CollectedExportField field, JsonNode node, String fallback) {
+            if (field == null || node == null || !"DICTIONARY".equals(field.optionSource())
+                    || !StringUtils.hasText(field.dictCode())) {
+                return fallback;
+            }
+            Map<String, DictionaryItemLookupPort.DictionaryItem> byValue = itemsByCode.get(field.dictCode());
+            if (byValue == null || byValue.isEmpty()) {
+                return fallback;
+            }
+            List<String> values = new ArrayList<>();
+            if (node.isArray()) {
+                node.forEach(item -> {
+                    if (item.isValueNode() && StringUtils.hasText(item.asText())) values.add(item.asText().trim());
+                });
+            } else if (node.isValueNode() && StringUtils.hasText(node.asText())) {
+                values.add(node.asText().trim());
+            }
+            if (values.isEmpty()) {
+                return fallback;
+            }
+            if ("CASCADER".equals(field.fieldType())) {
+                return resolvePath(values.get(values.size() - 1), byValue, fallback);
+            }
+            List<String> labels = new ArrayList<>();
+            for (String value : values) {
+                DictionaryItemLookupPort.DictionaryItem item = byValue.get(value);
+                labels.add(item == null || !StringUtils.hasText(item.label()) ? value : item.label());
+            }
+            return String.join("、", labels);
+        }
+
+        private String resolvePath(
+                String leafValue,
+                Map<String, DictionaryItemLookupPort.DictionaryItem> byValue,
+                String fallback
+        ) {
+            List<String> labels = new ArrayList<>();
+            Set<String> visited = new LinkedHashSet<>();
+            String currentValue = leafValue;
+            while (StringUtils.hasText(currentValue) && visited.add(currentValue)) {
+                DictionaryItemLookupPort.DictionaryItem item = byValue.get(currentValue);
+                if (item == null || !StringUtils.hasText(item.label())) {
+                    return fallback;
+                }
+                labels.add(0, item.label());
+                currentValue = item.parentValue();
+            }
+            return labels.isEmpty() ? fallback : String.join(" / ", labels);
+        }
     }
 
     record ExportShape(

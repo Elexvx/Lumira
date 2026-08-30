@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   clearStoredSessionState: vi.fn(),
   clearSecuritySettings: vi.fn(),
   clearWatermarkSettings: vi.fn(),
+  getStoredWatermarkSettings: vi.fn(() => null),
   removeSessionItem: vi.fn(),
 }));
 
@@ -24,6 +25,7 @@ vi.mock('@/auth/securitySettingsStorage', () => ({
 
 vi.mock('@/watermark/settingsStorage', () => ({
   clearWatermarkSettings: mocks.clearWatermarkSettings,
+  getStoredWatermarkSettings: mocks.getStoredWatermarkSettings,
 }));
 
 import { clearClientRuntimeState } from './clientRuntimeState';
@@ -48,7 +50,7 @@ describe('clearClientRuntimeState', () => {
     expect(mocks.clearQueries).toHaveBeenCalledOnce();
     expect(mocks.clearStoredSessionState).toHaveBeenCalledOnce();
     expect(mocks.clearSecuritySettings).toHaveBeenCalledOnce();
-    expect(mocks.clearWatermarkSettings).toHaveBeenCalledOnce();
+    expect(mocks.clearWatermarkSettings).not.toHaveBeenCalled();
     expect(mocks.removeSessionItem).toHaveBeenCalledWith('lumira_wechat_contact_bind_required');
   });
 });

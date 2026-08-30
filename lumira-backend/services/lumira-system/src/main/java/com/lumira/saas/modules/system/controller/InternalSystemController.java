@@ -5,6 +5,10 @@ import com.lumira.api.auth.LoginCodeCompleteRequest;
 import com.lumira.api.auth.LoginResponseDTO;
 import com.lumira.api.auth.PasswordResetChallengeRequest;
 import com.lumira.api.auth.PasswordResetCompleteRequest;
+import com.lumira.api.auth.RegistrationCodeChallengeRequest;
+import com.lumira.api.auth.RegistrationCompleteInternalRequest;
+import com.lumira.api.auth.RegistrationContactAvailabilityDTO;
+import com.lumira.api.auth.RegistrationContactAvailabilityRequest;
 import com.lumira.api.auth.SecondFactorCompleteRequest;
 import com.lumira.api.auth.VerificationBindRequest;
 import com.lumira.api.system.CaptchaValidationRequestDTO;
@@ -60,6 +64,7 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -429,6 +434,12 @@ public class InternalSystemController {
         );
     }
 
+    @GetMapping("/permissions/snapshot/current")
+    public Boolean isPermissionSnapshotVersionCurrent(@RequestParam("version") String version) {
+        requireInternalServicePrincipal();
+        return permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(version);
+    }
+
     @GetMapping("/permissions/role-snapshot")
     public PermissionSnapshotDTO permissionRoleSnapshot(
             @RequestParam("userId") Long userId,
@@ -578,6 +589,8 @@ public class InternalSystemController {
                 Boolean.TRUE.equals(capabilities.getWechatLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getPasskeyLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getPasskeyPasswordlessAvailable()),
+                Boolean.TRUE.equals(capabilities.getRegistrationSmsVerificationRequired()),
+                Boolean.TRUE.equals(capabilities.getRegistrationEmailVerificationRequired()),
                 capabilities.getLoginModeOrder()
         );
     }
@@ -855,10 +868,7 @@ public class InternalSystemController {
         String normalizedAccount = normalizeLoginCodeAccount(account, normalizedLoginType);
         var existingUser = userDomainService.findLoginUser(normalizedAccount);
         if (existingUser.isEmpty()) {
-            if (FACTOR_SMS.equals(normalizedLoginType)) {
-                return toChallenge(verificationAppService.startPendingLoginCodeChallenge(normalizedAccount, normalizedLoginType));
-            }
-            throw loginCodeChallengeAccountMismatch();
+            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "账号尚未注册，请先完成注册", "账号尚未注册，请先完成注册");
         }
         SysUserEntity user = resolveLoginCodeChallengeUser(existingUser.get());
         var challenge = verificationAppService.startLoginCodeChallenge(user, normalizedLoginType);
@@ -884,21 +894,92 @@ public class InternalSystemController {
         com.lumira.saas.modules.auth.dto.LoginCodeCompleteRequest backendRequest = new com.lumira.saas.modules.auth.dto.LoginCodeCompleteRequest();
         backendRequest.setChallengeId(request.challengeId());
         backendRequest.setVerificationCode(request.verificationCode());
-        Optional<SystemVerificationAppService.PendingLoginCodeVerification> pendingVerification =
-                verificationAppService.completePendingLoginCodeLoginIfPresent(backendRequest);
-        if (pendingVerification.isPresent()) {
-            SystemVerificationAppService.PendingLoginCodeVerification verification = pendingVerification.get();
-            SysUserEntity user = resolveVerifiedLoginCodeUser(verification.normalizedAccount(), verification.factorCode());
-            return new VerificationVerificationDTO(
-                    true,
-                    verification.message(),
-                    user.getId(),
-                    user.getUuid(),
-                    verification.factorCode(),
-                    null
+        return toVerification(verificationAppService.completeLoginCodeLogin(backendRequest), null);
+    }
+
+    @PostMapping("/registration/contact/availability")
+    public RegistrationContactAvailabilityDTO registrationContactAvailability(
+            @Valid @RequestBody RegistrationContactAvailabilityRequest request
+    ) {
+        requireInternalServicePrincipal();
+        String identityType = normalizeRegistrationIdentityType(request.contactType());
+        String normalizedContact = normalizeRegistrationContact(identityType, request.contact());
+        return new RegistrationContactAvailabilityDTO(
+                !userDomainService.registrationContactExists(identityType, normalizedContact)
+        );
+    }
+
+    @PostMapping("/registration/code/challenge")
+    public LoginCodeChallengeDTO registrationCodeChallenge(
+            @Valid @RequestBody RegistrationCodeChallengeRequest request
+    ) {
+        requireInternalServicePrincipal();
+        String identityType = normalizeRegistrationIdentityType(request.contactType());
+        String normalizedContact = normalizeRegistrationContact(identityType, request.contact());
+        if (userDomainService.registrationContactExists(identityType, normalizedContact)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, registrationContactInUseMessage(identityType));
+        }
+        return toChallenge(verificationAppService.startRegistrationCodeChallenge(identityType, normalizedContact));
+    }
+
+    @PostMapping("/registration/complete")
+    @Transactional
+    public VerificationVerificationDTO completeRegistration(
+            @RequestBody RegistrationCompleteInternalRequest request
+    ) {
+        requireInternalServicePrincipal();
+        if (request == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "注册信息不能为空");
+        }
+        String normalizedMobile = normalizeRegistrationContact(IamUserService.IDENTITY_MOBILE, request.mobile());
+        String normalizedEmail = normalizeRegistrationContact(IamUserService.IDENTITY_EMAIL, request.email());
+        ensureRegistrationContactAvailable(IamUserService.IDENTITY_MOBILE, normalizedMobile);
+        ensureRegistrationContactAvailable(IamUserService.IDENTITY_EMAIL, normalizedEmail);
+
+        String rawPassword = requireText(request.rawPassword(), "password");
+        passwordPolicyService.validatePassword(rawPassword);
+        boolean smsVerificationRequired = verificationAppService.isRegistrationSmsVerificationRequired();
+        boolean emailVerificationRequired = verificationAppService.isRegistrationEmailVerificationRequired();
+        if (smsVerificationRequired) {
+            requireRegistrationVerificationPair(request.mobileChallengeId(), request.mobileVerificationCode(), "手机");
+            verificationAppService.completeRegistrationCodeChallenge(
+                    request.mobileChallengeId(),
+                    request.mobileVerificationCode(),
+                    IamUserService.IDENTITY_MOBILE,
+                    normalizedMobile
             );
         }
-        return toVerification(verificationAppService.completeLoginCodeLogin(backendRequest), null);
+        if (emailVerificationRequired) {
+            requireRegistrationVerificationPair(request.emailChallengeId(), request.emailVerificationCode(), "邮箱");
+            verificationAppService.completeRegistrationCodeChallenge(
+                    request.emailChallengeId(),
+                    request.emailVerificationCode(),
+                    IamUserService.IDENTITY_EMAIL,
+                    normalizedEmail
+            );
+        }
+
+        captchaService.validateImageCaptcha(
+                requireText(request.captchaId(), "captchaId"),
+                requireText(request.captchaCode(), "captchaCode")
+        );
+
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+        String username = insertRegistrationUser(encodedPassword, normalizedMobile, normalizedEmail);
+        Long createdUserId = internalSystemApplicationService.findActiveUserIdByUsername(username);
+        SysUserEntity user = userDomainService.findById(createdUserId)
+                .orElseThrow(() -> new IllegalStateException("注册用户创建失败"));
+        iamUserService.createRegisteredUser(user, smsVerificationRequired, emailVerificationRequired, "SELF_REGISTRATION");
+        iamUserService.recordUserRegistered(
+                user.getId(),
+                user.getUuid(),
+                "SELF_REGISTRATION",
+                request.registrationIp(),
+                request.userAgent()
+        );
+        grantDefaultLoginRole(user);
+        permissionSnapshotService.invalidatePermissions();
+        return new VerificationVerificationDTO(true, "注册成功", user.getId(), user.getUuid(), "REGISTRATION", null);
     }
 
     @PostMapping("/verification/password-reset/challenge")
@@ -947,22 +1028,6 @@ public class InternalSystemController {
         } catch (BizException exception) {
             throw loginCodeChallengeAccountMismatch();
         }
-    }
-
-    private SysUserEntity resolveVerifiedLoginCodeUser(String normalizedAccount, String normalizedLoginType) {
-        Optional<SysUserEntity> existingUser = userDomainService.findLoginUser(normalizedAccount);
-        if (existingUser.isPresent()) {
-            SysUserEntity user = existingUser.get();
-            requireTrustedSnapshotUser(user);
-            if (!"ENABLED".equalsIgnoreCase(user.getStatus())) {
-                throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用");
-            }
-            return user;
-        }
-        if (FACTOR_SMS.equals(normalizedLoginType)) {
-            return registerLoginCodeUser(normalizedAccount, normalizedLoginType);
-        }
-        throw loginCodeChallengeAccountMismatch();
     }
 
     private BizException loginCodeChallengeAccountMismatch() {
@@ -1404,41 +1469,6 @@ public class InternalSystemController {
         return user;
     }
 
-    private SysUserEntity registerLoginCodeUser(String account, String loginType) {
-        String normalizedLoginType = normalizeLoginCodeType(loginType);
-        String identityType = iamUserService.detectIdentityType(account);
-        if (FACTOR_SMS.equals(normalizedLoginType) && !IamUserService.IDENTITY_MOBILE.equals(identityType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "短信验证码登录请使用手机号");
-        }
-        if (FACTOR_EMAIL.equals(normalizedLoginType) && !IamUserService.IDENTITY_EMAIL.equals(identityType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "邮箱验证码登录请使用邮箱地址");
-        }
-
-        String normalizedAccount = iamUserService.normalizeIdentifier(identityType, account);
-        String username = nextLoginCodeUsername(normalizedLoginType, normalizedAccount);
-        String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
-        String nickname = FACTOR_SMS.equals(normalizedLoginType) ? "短信注册用户" : "邮箱注册用户";
-        int inserted = internalSystemApplicationService.insertLoginCodeUser(
-                UserUidGenerator.nextNumericUid(),
-                username,
-                randomPassword,
-                FACTOR_SMS.equals(normalizedLoginType) ? normalizedAccount : null,
-                nickname,
-                FACTOR_EMAIL.equals(normalizedLoginType) ? normalizedAccount : null
-        );
-        if (inserted != 1) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "Login code user changed, please retry");
-        }
-        Long createdUserId = internalSystemApplicationService.findActiveUserIdByUsername(username);
-        SysUserEntity user = userDomainService.findById(createdUserId)
-                .orElseThrow(() -> new IllegalStateException("验证码登录自动注册用户失败"));
-        iamUserService.createUserWithIdentity(user, normalizedAccount, "LOGIN_CODE_REGISTER");
-        iamUserService.recordUserRegistered(user.getId(), user.getUuid(), "LOGIN_CODE_REGISTER", null, null);
-        grantDefaultLoginRole(user);
-        permissionSnapshotService.invalidatePermissions();
-        return user;
-    }
-
     private String normalizeLoginCodeType(String loginType) {
         if (!StringUtils.hasText(loginType)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "登录方式不能为空");
@@ -1448,6 +1478,76 @@ public class InternalSystemController {
             throw new BizException(ErrorCode.NOT_FOUND, "验证码登录方式不存在");
         }
         return normalized;
+    }
+
+    private String normalizeRegistrationIdentityType(String contactType) {
+        if (!StringUtils.hasText(contactType)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "联系方式类型不能为空");
+        }
+        String normalized = contactType.trim().toUpperCase(Locale.ROOT);
+        if ("SMS".equals(normalized) || IamUserService.IDENTITY_MOBILE.equals(normalized)) {
+            return IamUserService.IDENTITY_MOBILE;
+        }
+        if (IamUserService.IDENTITY_EMAIL.equals(normalized)) {
+            return IamUserService.IDENTITY_EMAIL;
+        }
+        throw new BizException(ErrorCode.VALIDATION_ERROR, "联系方式类型不合法");
+    }
+
+    private String normalizeRegistrationContact(String identityType, String contact) {
+        String normalizedType = normalizeRegistrationIdentityType(identityType);
+        String detectedType = iamUserService.detectIdentityType(contact);
+        if (!normalizedType.equals(detectedType)) {
+            throw new BizException(
+                    ErrorCode.VALIDATION_ERROR,
+                    IamUserService.IDENTITY_MOBILE.equals(normalizedType) ? "请输入有效手机号" : "请输入有效邮箱地址"
+            );
+        }
+        String normalizedContact = iamUserService.normalizeIdentifier(normalizedType, contact);
+        if (!StringUtils.hasText(normalizedContact)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "联系方式不能为空");
+        }
+        return normalizedContact;
+    }
+
+    private void ensureRegistrationContactAvailable(String identityType, String normalizedContact) {
+        if (userDomainService.registrationContactExists(identityType, normalizedContact)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, registrationContactInUseMessage(identityType));
+        }
+    }
+
+    private String registrationContactInUseMessage(String identityType) {
+        return IamUserService.IDENTITY_MOBILE.equals(identityType)
+                ? "该手机号已注册，请直接登录"
+                : "该邮箱已注册，请直接登录";
+    }
+
+    private void requireRegistrationVerificationPair(String challengeId, String verificationCode, String label) {
+        if (!StringUtils.hasText(challengeId) || !StringUtils.hasText(verificationCode)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, label + "验证码不能为空");
+        }
+    }
+
+    private String insertRegistrationUser(String encodedPassword, String mobile, String email) {
+        for (int attempt = 0; attempt < 16; attempt++) {
+            String username = "user_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+            try {
+                int inserted = internalSystemApplicationService.insertLoginCodeUser(
+                        UserUidGenerator.nextNumericUid(),
+                        username,
+                        encodedPassword,
+                        mobile,
+                        null,
+                        email
+                );
+                if (inserted == 1) {
+                    return username;
+                }
+            } catch (DuplicateKeyException ignored) {
+                // Retry with a new database-constrained username and UID.
+            }
+        }
+        throw new BizException(ErrorCode.BIZ_ERROR, "注册信息已变化，请重试");
     }
 
     private String normalizeLoginCodeAccount(String account, String normalizedLoginType) {
@@ -1463,32 +1563,6 @@ public class InternalSystemController {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "account must not be blank");
         }
         return normalizedAccount;
-    }
-
-    private String nextLoginCodeUsername(String loginType, String normalizedAccount) {
-        String prefix = FACTOR_SMS.equals(loginType) ? "sms" : "email";
-        String safeAccount = StringUtils.hasText(normalizedAccount)
-                ? normalizedAccount.replaceAll("[^A-Za-z0-9_]", "_").replaceAll("_+", "_")
-                : UUID.randomUUID().toString().replace("-", "");
-        if (!StringUtils.hasText(safeAccount)) {
-            safeAccount = UUID.randomUUID().toString().replace("-", "");
-        }
-        int maxAccountLength = 48 - prefix.length() - 1;
-        if (safeAccount.length() > maxAccountLength) {
-            safeAccount = safeAccount.substring(0, maxAccountLength);
-        }
-        String baseUsername = prefix + "_" + safeAccount;
-        String username = baseUsername;
-        int suffix = 1;
-        while (userDomainService.findLoginUser(username).isPresent()) {
-            String suffixText = "_" + suffix;
-            int maxBaseLength = 64 - suffixText.length();
-            username = baseUsername.length() > maxBaseLength
-                    ? baseUsername.substring(0, maxBaseLength) + suffixText
-                    : baseUsername + suffixText;
-            suffix++;
-        }
-        return username;
     }
 
     private String nextWechatUsername(WechatLoginUserRequestDTO request) {

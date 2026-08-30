@@ -974,7 +974,13 @@ CREATE TABLE `platform_update_task` (
   `active_slot` varchar(16) DEFAULT NULL,
   `target_slot` varchar(16) DEFAULT NULL,
   `preflight_id` varchar(64) DEFAULT NULL,
+  `release_id` varchar(128) DEFAULT NULL,
   `manifest_hash` char(64) DEFAULT NULL,
+  `signature_key_id` varchar(128) DEFAULT NULL,
+  `operation_epoch` bigint DEFAULT NULL,
+  `rollback_expires_at` datetime DEFAULT NULL,
+  `maintenance_mode` varchar(32) DEFAULT NULL,
+  `maintenance_reason` varchar(512) DEFAULT NULL,
   `rollback_of_task_id` bigint DEFAULT NULL,
   `active_key` varchar(32) DEFAULT NULL,
   `target_version` varchar(64) DEFAULT NULL,
@@ -1084,8 +1090,12 @@ CREATE TABLE `sys_dict_item` (
   `deleted` tinyint NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `remark` varchar(512) DEFAULT NULL,
+  `parent_item_value` varchar(64) DEFAULT NULL,
+  `level_no` tinyint NOT NULL DEFAULT '1',
+  `leaf` tinyint NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_dict_item_value` (`dict_type_id`,`item_value`),
+  KEY `idx_sys_dict_item_parent` (`dict_type_id`,`parent_item_value`,`status`,`deleted`,`sort_no`),
   KEY `idx_sys_dict_item_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -1103,9 +1113,24 @@ CREATE TABLE `sys_dict_type` (
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `is_system` tinyint NOT NULL DEFAULT '0',
   `remark` varchar(512) DEFAULT NULL,
+  `structure_type` varchar(16) NOT NULL DEFAULT 'FLAT',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_dict_type_code` (`dict_code`),
   KEY `idx_sys_dict_type_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `sys_dictionary_dataset_installation` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `dataset_code` varchar(64) NOT NULL,
+  `dataset_version` varchar(64) NOT NULL,
+  `file_sha256` char(64) NOT NULL,
+  `row_count` int NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'INSTALLED',
+  `installed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_sys_dictionary_dataset_code` (`dataset_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_export_task` (
@@ -4689,6 +4714,7 @@ VALUES
     ('watermark.enabled', 'Watermark enabled', 'false', 'PLATFORM', 0, 'Global watermark enabled flag', 0, 0, 0),
     ('watermark.mode', '水印模式', 'TEXT', 'PLATFORM', 0, 'TEXT/IMAGE', 0, 0, 0),
     ('watermark.text-lines', '水印文本', '', 'PLATFORM', 0, '多行文本水印', 0, 0, 0),
+    ('watermark.personalized-text-lines', '登录用户水印模板', '', 'PLATFORM', 0, '登录用户水印模板，支持白名单账号字段占位符', 0, 0, 0),
     ('watermark.image-url', '水印图片', '', 'PLATFORM', 0, '图片水印 URL', 0, 0, 0),
     ('watermark.font-color', '字体颜色', 'rgba(0,0,0,0.15)', 'PLATFORM', 0, '字体颜色', 0, 0, 0),
     ('watermark.font-size', '字体大小', '14', 'PLATFORM', 0, '字体大小', 0, 0, 0),
@@ -5990,6 +6016,7 @@ VALUES
     ('WATERMARK','watermark.enabled','false',10,'ENABLED',0,0,0),
     ('WATERMARK','watermark.mode','TEXT',20,'ENABLED',0,0,0),
     ('WATERMARK','watermark.text-lines','',30,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.personalized-text-lines','',35,'ENABLED',0,0,0),
     ('WATERMARK','watermark.image-url','',40,'ENABLED',0,0,0),
     ('WATERMARK','watermark.font-color','rgba(0,0,0,0.15)',50,'ENABLED',0,0,0),
     ('WATERMARK','watermark.font-size','14',60,'ENABLED',0,0,0),

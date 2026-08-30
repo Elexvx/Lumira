@@ -4666,6 +4666,208 @@
       }
     },
     {
+      "messageKey": "app.theme.switchToLight",
+      "namespaceCode": "app",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/user/Login.tsx",
+      "translations": { "zh-CN": "切换为日间模式", "en-US": "Switch to light mode" }
+    },
+    {
+      "messageKey": "app.theme.switchToDark",
+      "namespaceCode": "app",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/user/Login.tsx",
+      "translations": { "zh-CN": "切换为夜间模式", "en-US": "Switch to dark mode" }
+    },
+    {
+      "messageKey": "page.login.registration.mobileChecking",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "正在校验手机号…", "en-US": "Checking mobile number…" }
+    },
+    {
+      "messageKey": "page.login.registration.title",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/Login.tsx",
+      "translations": { "zh-CN": "注册账号", "en-US": "Create account" }
+    },
+    {
+      "messageKey": "page.login.registration.emailChecking",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "正在校验邮箱…", "en-US": "Checking email address…" }
+    },
+    {
+      "messageKey": "page.login.registration.contactAvailable",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "可以注册", "en-US": "Available for registration" }
+    },
+    {
+      "messageKey": "page.login.registration.mobileExists",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "该手机号已注册", "en-US": "This mobile number is already registered" }
+    },
+    {
+      "messageKey": "page.login.registration.emailExists",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "该邮箱已注册", "en-US": "This email address is already registered" }
+    },
+    {
+      "messageKey": "page.login.registration.goToLogin",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "去登录", "en-US": "Go to login" }
+    },
+    {
+      "messageKey": "page.login.registration.contactCheckFailed",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "暂时无法校验，请重试", "en-US": "Unable to check right now. Please retry" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordMinLength",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "密码长度不能少于 {minLength} 位", "en-US": "Password must be at least {minLength} characters" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordUppercaseRequired",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "密码必须包含大写字母", "en-US": "Password must contain an uppercase letter" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordLowercaseRequired",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "密码必须包含小写字母", "en-US": "Password must contain a lowercase letter" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordSpecialRequired",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "密码必须包含特殊字符", "en-US": "Password must contain a special character" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordConsecutiveForbidden",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "密码不能包含连续字符", "en-US": "Password cannot contain consecutive characters" }
+    },
+    {
+      "messageKey": "page.login.registration.failed",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "注册失败，请重试", "en-US": "Registration failed. Please retry" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordHintMinLength",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "至少 {minLength} 位", "en-US": "at least {minLength} characters" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordHintUppercase",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "包含大写字母", "en-US": "include an uppercase letter" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordHintLowercase",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "包含小写字母", "en-US": "include a lowercase letter" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordHintSpecial",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "包含特殊字符", "en-US": "include a special character" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordHintNoConsecutive",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "不能包含连续字符", "en-US": "no consecutive characters" }
+    },
+    {
+      "messageKey": "page.login.registration.requirementSeparator",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "，", "en-US": ", " }
+    },
+    {
+      "messageKey": "page.login.registration.mobileCodeRequired",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "请输入手机验证码", "en-US": "Please enter the mobile verification code" }
+    },
+    {
+      "messageKey": "page.login.sendCode",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "发送验证码", "en-US": "Send code" }
+    },
+    {
+      "messageKey": "page.login.registration.emailCodeRequired",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "请输入邮箱验证码", "en-US": "Please enter the email verification code" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordPlaceholder",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "设置密码", "en-US": "Set a password" }
+    },
+    {
+      "messageKey": "page.login.registration.confirmPasswordRequired",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "请再次输入密码", "en-US": "Please enter the password again" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordMismatch",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "两次输入的密码不一致", "en-US": "The two passwords do not match" }
+    },
+    {
+      "messageKey": "page.login.registration.confirmPasswordPlaceholder",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "再次输入密码", "en-US": "Enter the password again" }
+    },
+    {
+      "messageKey": "page.login.registration.passwordHint",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "密码要求：{requirements}", "en-US": "Password requirements: {requirements}" }
+    },
+    {
+      "messageKey": "page.login.registration.agreementPrefix",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/components/RegistrationPanel.tsx",
+      "translations": { "zh-CN": "注册即代表同意", "en-US": "By registering, you agree to" }
+    },
+    {
+      "messageKey": "page.login.error.encryptionUnavailable",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/hooks/useLoginFlowRuntime.ts",
+      "translations": { "zh-CN": "暂时无法安全提交密码，请稍后重试", "en-US": "Unable to submit the password securely right now. Please try again later" }
+    },
+    {
+      "messageKey": "page.login.registrationRequired",
+      "namespaceCode": "page", "sourceLocale": "zh-CN", "sourceType": "UI",
+      "sourceRef": "src/pages/user/login/hooks/useLoginFlowRuntime.ts",
+      "translations": { "zh-CN": "该手机号尚未注册，请先完成注册", "en-US": "This mobile number is not registered. Please create an account first" }
+    },
+    {
       "messageKey": "page.login.initialPasswordChange.confirmPassword",
       "namespaceCode": "page",
       "sourceLocale": "zh-CN",
@@ -22083,6 +22285,17 @@
       }
     },
     {
+      "messageKey": "ui.settings.personalization.watermark.fixedVisitorWatermarkText",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "固定/访客水印文字",
+        "en-US": "Fixed/visitor watermark text"
+      }
+    },
+    {
       "messageKey": "ui.settings.personalization.watermark.enterOneWatermarkLinePerRow",
       "namespaceCode": "ui",
       "sourceLocale": "zh-CN",
@@ -22091,6 +22304,116 @@
       "translations": {
         "zh-CN": "每行输入一条水印文字",
         "en-US": "Enter one watermark line per row"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.enterPersonalizedWatermarkTemplate",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "例如：用户：{{username}}｜手机：{{mobile}}",
+        "en-US": "For example: User: {{username}} | Mobile: {{mobile}}"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.personalizedWatermarkTemplate",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "登录用户水印模板",
+        "en-US": "Logged-in user watermark template"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.personalizedWatermarkTemplateHint",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "登录后按当前用户显示；手机号和邮箱会自动脱敏。点击参数按钮插入变量。",
+        "en-US": "Shown for the current user after login; mobile numbers and emails are masked automatically. Click a parameter to insert it."
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.invalidPersonalizedWatermarkTemplate",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "模板包含未知或格式错误的占位符，请使用参数按钮插入变量",
+        "en-US": "The template contains an unknown or malformed placeholder. Use the parameter buttons to insert variables."
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.username",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "用户名",
+        "en-US": "Username"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.nickname",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "昵称",
+        "en-US": "Nickname"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.mobile",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "手机号",
+        "en-US": "Mobile"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.email",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "邮箱",
+        "en-US": "Email"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.realName",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "真实姓名",
+        "en-US": "Real name"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.watermark.userId",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/WatermarkTab.tsx",
+      "translations": {
+        "zh-CN": "用户 ID",
+        "en-US": "User ID"
       }
     },
     {

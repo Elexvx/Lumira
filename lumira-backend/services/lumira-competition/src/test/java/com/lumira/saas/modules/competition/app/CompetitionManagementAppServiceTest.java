@@ -1240,6 +1240,47 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void saveSettingsModulePreservesExistingOrderAndAppendsNewItemsWhenSortOrderIsMissing() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionDTO.ConfigItemRequest existingRequest = new CompetitionDTO.ConfigItemRequest();
+        existingRequest.setItemType("PROJECT_FIELD");
+        existingRequest.setItemKey("description");
+        existingRequest.setTitle("项目简介");
+        existingRequest.setContentJson("{\"fieldType\":\"TEXTAREA\"}");
+        CompetitionDTO.ConfigItemRequest newRequest = new CompetitionDTO.ConfigItemRequest();
+        newRequest.setItemType("PROJECT_FIELD");
+        newRequest.setItemKey("stage");
+        newRequest.setTitle("项目阶段");
+        newRequest.setContentJson("{\"fieldType\":\"TEXT\"}");
+        CompetitionDTO.SettingsModuleRequest request = new CompetitionDTO.SettingsModuleRequest();
+        request.setItems(List.of(existingRequest, newRequest));
+        CompetitionVO.ConfigItem existing = configItem(
+                "PROJECT_FIELD",
+                "description",
+                "项目简介",
+                null,
+                "{\"fieldType\":\"TEXTAREA\"}"
+        );
+        existing.setSortOrder(230);
+        jdbcTemplate.enqueue(
+                List.of(competition("draft")),
+                List.of(configSet()),
+                List.of(existing),
+                List.of(competition("draft")),
+                List.of(configSet())
+        );
+        jdbcTemplate.updateCount = 1;
+
+        service.saveSettingsModule(admin(), "competition-uuid", "fields", request);
+
+        assertThat(jdbcTemplate.updates.get(0)).contains("update competition_config_item");
+        assertThat(jdbcTemplate.updateArguments.get(0)[3]).isEqualTo(230);
+        assertThat(jdbcTemplate.updates.get(1)).contains("insert into competition_config_item");
+        assertThat(jdbcTemplate.updateArguments.get(1)[7]).isEqualTo(240);
+    }
+
+    @Test
     void saveSettingsModuleMatchesKeysCaseInsensitivelyLikeTheDatabaseUniqueIndex() {
         StubOperations jdbcTemplate = new StubOperations();
         CompetitionManagementAppService service = service(jdbcTemplate);

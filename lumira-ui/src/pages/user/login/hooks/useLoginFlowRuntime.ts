@@ -34,6 +34,7 @@ import type { BrandingSettings, FloatingWindowSettings, WatermarkSettings } from
 import { API_OPTS } from '@/utils/errorMessage';
 import { isLoginPasswordPayloadError, resolveLoginErrorFeedback, shouldFallbackToLegacyPasswordLogin } from '@/pages/user/login/utils/loginErrorFeedback';
 import { consumeWechatOAuthCallback } from '@/pages/user/login/utils/wechatOAuthCallback';
+import { ErrorCode } from '@/enums/errorCode';
 
 export type LoginInputKind = 'account' | 'mobile' | 'email' | 'verificationCode';
 
@@ -291,6 +292,20 @@ export type LoginFlowState = {
   loginForm: FormInstance<import('@/pages/user/login/components/LoginFormFields').LoginFormValues>;
   forcedPasswordChangeForm: FormInstance<ForcedPasswordChangeFormValues>;
   resetSecondFactorFlow: () => void;
+  registrationSuggestion: { mobile: string; nonce: number } | null;
+  setRegistrationSuggestion: Dispatch<SetStateAction<{ mobile: string; nonce: number } | null>>;
+};
+
+export type RegistrationSubmissionValues = {
+  mobile: string;
+  email: string;
+  password: string;
+  captchaId: string;
+  captchaCode: string;
+  mobileChallengeId?: string;
+  mobileVerificationCode?: string;
+  emailChallengeId?: string;
+  emailVerificationCode?: string;
 };
 
 type UseLoginFlowInteractionsParams = {
@@ -1023,6 +1038,47 @@ export const useLoginFlowAuthInteractions = ({
     [loginCodeChallenges],
   );
 
+  const handleRegistrationSubmit = useCallback(
+    async (values: RegistrationSubmissionValues) => {
+      const encryptionKey: LoginEncryptionKey | null = bootstrapFlow.loginEncryptionKey || (await bootstrapFlow.loadLoginEncryptionKey());
+      if (!encryptionKey && canEncryptLoginPassword()) {
+        throw new Error(formatMessage({ id: 'page.login.error.encryptionUnavailable', defaultMessage: '暂时无法安全提交密码，请稍后重试' }));
+      }
+
+      const submitRegistration = async (key: LoginEncryptionKey | null) => {
+        const passwordPayload = await buildPasswordLoginPayload(values.password, key);
+        return request<LoginResponse>('/v1/auth/registration/complete', {
+          method: 'POST',
+          headers: passwordPayload.headers,
+          data: {
+            ...values,
+            password: passwordPayload.password,
+          },
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          skipAuth: true,
+          silent: true,
+          allowDuplicate: true,
+        });
+      };
+
+      let response: LoginResponse;
+      try {
+        response = await submitRegistration(encryptionKey);
+      } catch (error) {
+        if (!encryptionKey || !canEncryptLoginPassword() || !isRecoverableLoginEncryptionError(error)) {
+          throw error;
+        }
+        const refreshedKey = await bootstrapFlow.loadLoginEncryptionKey(true);
+        response = await submitRegistration(refreshedKey);
+      }
+      clearWechatContactBindRequired();
+      await completeSuccessfulLogin(response, false);
+      return true;
+    },
+    [bootstrapFlow, completeSuccessfulLogin],
+  );
+
   const handleWechatLogin = useCallback(async () => {
     flowState.setSubmitting(true);
     try {
@@ -1095,6 +1151,7 @@ export const useLoginFlowAuthInteractions = ({
     handleSendLoginCode,
     handlePasswordLogin,
     handleCodeLogin,
+    handleRegistrationSubmit,
   };
 
   const buildLoginSecondFactorPrompt = useCallback(
@@ -1273,6 +1330,18 @@ export const useLoginFlowAuthInteractions = ({
 
         return handleLoginResponse(loginResponse, values);
       } catch (error) {
+        if (
+          submitLoginMode === 'sms'
+          && error instanceof ApiRequestError
+          && error.code === ErrorCode.ACCOUNT_NOT_FOUND
+        ) {
+          flowState.setRegistrationSuggestion({
+            mobile: sanitizeLoginInputValue(values.smsAccount, 'mobile'),
+            nonce: Date.now(),
+          });
+          message.info(formatMessage({ id: 'page.login.registrationRequired', defaultMessage: '该手机号尚未注册，请先完成注册' }));
+          return false;
+        }
         return handleLoginSubmissionError(error);
       } finally {
         endLoginFlow();
@@ -1387,6 +1456,7 @@ export const useLoginFlowRuntime = ({
     loginCodeChallenges,
     loginCodeCooldownSeconds,
     handleSendLoginCode,
+    handleRegistrationSubmit,
     pendingSecondFactorPrompt,
     handleSubmit,
     handleFinishFailed,
@@ -1637,6 +1707,7 @@ export const useLoginFlowRuntime = ({
       captchaImageLoadFailed,
       loginCodeChallenges,
       loginCodeCooldownSeconds,
+      registrationSuggestion: flowState.registrationSuggestion,
       forcedPasswordChangeOpen,
       passwordChangeSubmitting: flowState.passwordChangeSubmitting,
     },
@@ -1650,6 +1721,8 @@ export const useLoginFlowRuntime = ({
     actions: {
       openAgreementPreview: bootstrapFlow.openAgreementPreview,
       handleSendLoginCode,
+      handleRegistrationSubmit,
+      clearRegistrationSuggestion: () => flowState.setRegistrationSuggestion(null),
       handleWechatLogin,
       handlePasskeyLogin,
       refreshCaptcha,

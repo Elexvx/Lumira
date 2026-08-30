@@ -25,6 +25,9 @@ class SecurityRateLimitFilterTest {
         for (String path : List.of(
                 "/api/v1/auth/login/code/challenge",
                 "/api/v1/auth/login/code/complete",
+                "/api/v1/auth/registration/contact/availability",
+                "/api/v1/auth/registration/code/challenge",
+                "/api/v1/auth/registration/complete",
                 "/api/v1/auth/second-factor/complete",
                 "/api/v1/auth/passkeys/authentication/options",
                 "/api/v1/auth/passkeys/authentication/complete",

@@ -143,6 +143,38 @@ class AiKnowledgeBaseAppServiceTest {
     }
 
     @Test
+    void listKnowledgeBasesShouldPreserveSessionTicketDependencyUnavailableClassification() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        AiTrustedSessionResolver sessionAuthenticationService = mock(AiTrustedSessionResolver.class);
+        when(sessionAuthenticationService.authenticateSessionTicket(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "IAM version unavailable"));
+        JdbcAiKnowledgeBasePersistenceAdapter service = new JdbcAiKnowledgeBasePersistenceAdapter(
+                queryOperations,
+                mock(com.lumira.api.client.FileInternalApi.class),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(AiOperationAuditLogger.class),
+                mock(TransactionalEventOutboxPort.class),
+                mock(DomainEventPublisher.class),
+                vectorService(),
+                null,
+                sessionAuthenticationService
+        );
+
+        assertThatThrownBy(() -> service.listKnowledgeBases(
+                trusted(new CurrentUser(7L, "admin", "session", 1, true, Set.of("ai:knowledge:view"))),
+                null,
+                null,
+                "OWNED",
+                1,
+                10
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.DEPENDENCY_UNAVAILABLE));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.updateSql).isEmpty();
+    }
+
+    @Test
     void listKnowledgeBasesShouldRejectTrustedUserWhenNoTrustedResolverIsAvailable() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         JdbcAiKnowledgeBasePersistenceAdapter service = new JdbcAiKnowledgeBasePersistenceAdapter(

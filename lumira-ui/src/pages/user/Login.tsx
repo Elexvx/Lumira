@@ -1,14 +1,16 @@
 import { getLocale, setLocale, useLocation } from '@umijs/max';
 import { formatMessage } from '@/i18n/formatMessage';
-import { Alert, App, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
+import { App, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
 import { GlobalOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
 import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
 import { useResponsive } from '@/hooks/useResponsive';
 import { resolveResponsiveValue } from '@/theme/spacing';
-import type { AgreementSettings, CaptchaChallenge, LoginCapabilities, LoginCodeChallenge, LoginResponse } from '@/types/api';
+import type { AgreementSettings, CaptchaChallenge, LoginCapabilities, LoginCodeChallenge, LoginResponse, SecuritySettings } from '@/types/api';
 import { LoginFormFields, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
+import { RegistrationPanel } from '@/pages/user/login/components/RegistrationPanel';
+import type { RegistrationSubmissionValues } from '@/pages/user/login/hooks/useLoginFlowRuntime';
 import { resolvePresentedLoginMode, resolvePresentedLoginModes } from '@/pages/user/login/utils/loginModePresentation';
 import { AUTH_AGREEMENT_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { request } from '@/services/common/request';
@@ -73,23 +75,21 @@ type LoginPageMainSectionProps = {
   showLogin: () => void;
   showRegistration: () => void;
   showPasswordReset: () => void;
+  registrationInitialMobile?: string;
+  handleRegistrationSubmit: (values: RegistrationSubmissionValues) => Promise<boolean>;
+  registrationSecuritySettings: SecuritySettings;
 };
 
-const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, brandingFooterItems, submitButtonText, activeLoginMode, availableLoginModes, pendingSecondFactorLogin, pendingSecondFactorPrompt, agreementSettings, authEntryMode, securityCaptchaEnabled, securityCaptchaType, captchaChallenge, captchaLoading, captchaImageLoadFailed, sendingLoginType, loginCodeChallenges, loginCodeCooldownSeconds, loginCapabilities, submitting, passkeySubmitting, setActiveLoginMode, openAgreementPreview, handleSendLoginCode, handleWechatLogin, handlePasskeyLogin, refreshCaptcha, setCaptchaImageLoadFailed, setCaptchaChallenge, handleSubmit, handleFinishFailed, setCaptchaProof, resetCaptchaProof, showLogin, showRegistration, showPasswordReset }: LoginPageMainSectionProps) => {
+const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, brandingFooterItems, submitButtonText, activeLoginMode, availableLoginModes, pendingSecondFactorLogin, pendingSecondFactorPrompt, agreementSettings, authEntryMode, securityCaptchaEnabled, securityCaptchaType, captchaChallenge, captchaLoading, captchaImageLoadFailed, sendingLoginType, loginCodeChallenges, loginCodeCooldownSeconds, loginCapabilities, submitting, passkeySubmitting, setActiveLoginMode, openAgreementPreview, handleSendLoginCode, handleWechatLogin, handlePasskeyLogin, refreshCaptcha, setCaptchaImageLoadFailed, setCaptchaChallenge, handleSubmit, handleFinishFailed, setCaptchaProof, resetCaptchaProof, showLogin, showRegistration, showPasswordReset, registrationInitialMobile, handleRegistrationSubmit, registrationSecuritySettings }: LoginPageMainSectionProps) => {
   const { resolvedColorMode, setThemePreference } = useThemePreference();
   const currentLocale = getLocale();
   const nextLocale = currentLocale.startsWith('zh') ? 'en-US' : 'zh-CN';
   const nextColorMode = resolvedColorMode === 'dark' ? 'light' : 'dark';
-  const themeToggleLabel = currentLocale.startsWith('zh')
-    ? nextColorMode === 'light'
-      ? '切换为日间模式'
-      : '切换为夜间模式'
-    : nextColorMode === 'light'
-      ? 'Switch to light mode'
-      : 'Switch to dark mode';
-  const registrationAvailable = availableLoginModes.includes('sms');
+  const themeToggleLabel = nextColorMode === 'light'
+    ? formatMessage({ id: 'app.theme.switchToLight', defaultMessage: '切换为日间模式' })
+    : formatMessage({ id: 'app.theme.switchToDark', defaultMessage: '切换为夜间模式' });
   const entryTitle = authEntryMode === 'registration'
-    ? formatMessage({ id: 'page.login.joinUs', defaultMessage: '注册账号' })
+    ? formatMessage({ id: 'page.login.registration.title', defaultMessage: '注册账号' })
     : authEntryMode === 'password-reset'
       ? formatMessage({ id: 'page.login.passwordReset.title', defaultMessage: '重置密码' })
       : formatMessage({ id: 'page.login.title', defaultMessage: '登录' });
@@ -118,7 +118,7 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
             })}
             onClick={() => setLocale(nextLocale, true)}
           >
-            {nextLocale === 'en-US' ? 'EN' : '中'}
+            {nextLocale === 'en-US' ? 'EN' : formatMessage({ id: 'app.locale.zh-CN', defaultMessage: '中文' })}
           </Button>
         </div>
 
@@ -145,20 +145,19 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
             ) : null}
             {authEntryMode === 'password-reset' ? (
               <PasswordResetPanel onBack={showLogin} onComplete={showLogin} />
+            ) : authEntryMode === 'registration' ? (
+              <RegistrationPanel
+                loginCapabilities={loginCapabilities}
+                securitySettings={registrationSecuritySettings}
+                initialMobile={registrationInitialMobile}
+                onOpenAgreementPreview={openAgreementPreview}
+                onSubmit={handleRegistrationSubmit}
+                onBackToLogin={showLogin}
+              />
             ) : (
             <Form<LoginFormValues> form={loginForm} className="saas-login-page__form" onFinish={handleSubmit} onFinishFailed={handleFinishFailed}>
-              {authEntryMode === 'registration' && !registrationAvailable ? (
-                <Alert
-                  type="warning"
-                  showIcon
-                  message={formatMessage({
-                    id: 'page.login.registrationUnavailable',
-                    defaultMessage: '暂时无法注册，请联系管理员配置注册与验证码服务',
-                  })}
-                />
-              ) : null}
               <LoginFormFields
-                variant={authEntryMode === 'registration' ? 'registration' : 'login'}
+                variant="login"
                 activeLoginMode={activeLoginMode}
                 availableLoginModes={availableLoginModes}
                 pendingSecondFactorLogin={pendingSecondFactorLogin}
@@ -230,11 +229,7 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
                       })}
                     </span>
                   </button>
-                  ) : (
-                    <Button type="link" block data-testid="auth-entry-back-to-login" onClick={showLogin}>
-                      {formatMessage({ id: 'page.login.backToLogin', defaultMessage: '返回登录' })}
-                    </Button>
-                  )}
+                  ) : null}
                 </>
               )}
             </Form>
@@ -523,6 +518,13 @@ const Login = () => {
     );
   }, [sessionExpired]);
 
+  useEffect(() => {
+    if (!loginFlow.viewState.registrationSuggestion) {
+      return;
+    }
+    setAuthEntryMode('registration');
+  }, [loginFlow.viewState.registrationSuggestion]);
+
   return (
     <>
       <LoginPageMainSection
@@ -535,6 +537,7 @@ const Login = () => {
         authEntryMode={authEntryMode}
         securityCaptchaEnabled={loginFlow.viewState.securitySettings.captchaEnabled}
         securityCaptchaType={loginFlow.viewState.securitySettings.captchaType}
+        registrationSecuritySettings={loginFlow.viewState.securitySettings}
         captchaChallenge={loginFlow.viewState.captchaChallenge}
         captchaLoading={loginFlow.viewState.captchaLoading}
         captchaImageLoadFailed={loginFlow.viewState.captchaImageLoadFailed}
@@ -547,6 +550,7 @@ const Login = () => {
         setActiveLoginMode={loginFlow.setActiveLoginMode}
         openAgreementPreview={loginFlow.actions.openAgreementPreview}
         handleSendLoginCode={loginFlow.actions.handleSendLoginCode}
+        handleRegistrationSubmit={loginFlow.actions.handleRegistrationSubmit}
         handleWechatLogin={() => void loginFlow.actions.handleWechatLogin()}
         handlePasskeyLogin={() => void loginFlow.actions.handlePasskeyLogin()}
         refreshCaptcha={() => void loginFlow.actions.refreshCaptcha()}
@@ -556,10 +560,14 @@ const Login = () => {
         handleFinishFailed={loginFlow.actions.handleFinishFailed}
         setCaptchaProof={loginFlow.actions.setCaptchaProof}
         resetCaptchaProof={loginFlow.actions.resetCaptchaProof}
-        showLogin={() => setAuthEntryMode('login')}
+        showLogin={() => {
+          loginFlow.actions.clearRegistrationSuggestion();
+          setAuthEntryMode('login');
+        }}
         showRegistration={() => {
           loginFlow.loginForm.resetFields();
           loginFlow.setActiveLoginMode('sms');
+          loginFlow.actions.clearRegistrationSuggestion();
           setAuthEntryMode('registration');
         }}
         showPasswordReset={() => setAuthEntryMode('password-reset')}
@@ -567,6 +575,7 @@ const Login = () => {
         brandingWebsiteName={loginFlow.brandingWebsiteName}
         brandingFooterItems={loginFlow.brandingFooterItems}
         submitButtonText={submitButtonText}
+        registrationInitialMobile={loginFlow.viewState.registrationSuggestion?.mobile}
       />
       <Modal
         className="saas-login-page__agreement-modal"

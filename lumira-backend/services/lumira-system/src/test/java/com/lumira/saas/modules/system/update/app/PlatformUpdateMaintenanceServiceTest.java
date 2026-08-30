@@ -109,6 +109,20 @@ class PlatformUpdateMaintenanceServiceTest {
     }
 
     @Test
+    void criticalFailureRemainsReadOnlyAfterHeartbeatAndTaskCompletion() {
+        PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
+        PlatformUpdateTaskEntity task = task("FAILED", "MIGRATING", LocalDateTime.now(CLOCK).minusHours(1));
+        task.setActiveKey(null);
+        task.setMaintenanceMode("READ_ONLY");
+        task.setMaintenanceReason("database migration outcome is unknown");
+        when(taskMapper.selectOne(any())).thenReturn(task);
+        PlatformUpdateMaintenanceService service = new PlatformUpdateMaintenanceService(taskMapper, CLOCK, Duration.ofSeconds(30));
+
+        assertThat(service.currentMode().mode()).isEqualTo("READ_ONLY");
+        assertThat(service.currentMode().requiresReconciliation()).isTrue();
+    }
+
+    @Test
     void leaseTtlIsBoundedToPreventZeroOrIndefiniteMaintenance() {
         PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
 

@@ -31,7 +31,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -309,7 +308,7 @@ public class PlatformUpdateAppService {
         requireUpdater(status);
         PlatformUpdateVO.LatestVersionVO latest = requireInstallableLatest(status);
         try {
-            JsonNode response = postUpdater("/v1/update/preflight", Map.of("manifest", manifestPayload(latest)));
+            JsonNode response = postUpdater("/v1/update/preflight", Map.of("releaseId", requireReleaseId(latest)));
             PlatformUpdateVO.PreflightVO result = toPreflightVO(response);
             Metrics.counter("lumira.platform.update.preflight", "ready", String.valueOf(Boolean.TRUE.equals(result.getReady()))).increment();
             return result;
@@ -332,11 +331,15 @@ public class PlatformUpdateAppService {
                 && !latest.getCommitId().equalsIgnoreCase(normalizeCommit(request.getTargetCommit(), false))) {
             throw new IllegalStateException("The release changed after preflight. Run preflight again.");
         }
+        if (request != null && StringUtils.hasText(request.getReleaseId())
+                && !requireReleaseId(latest).equals(request.getReleaseId().trim())) {
+            throw new IllegalStateException("The releaseId changed after preflight. Run preflight again.");
+        }
         PlatformUpdateTaskEntity task = createTask(TASK_INSTALL, latest, currentUser);
         task.setPreflightId(request == null ? null : boundedText(request.getPreflightId(), 128, "preflightId"));
         return startUpdaterTask(task, "/v1/update/install", new UpdaterRequest(
-                task.getTargetVersion(), task.getTargetCommit(), task.getServerImage(), task.getFrontendImage(), task.getId(),
-                task.getCreatedAt().toString(), task.getPreflightId(), manifestPayload(latest)
+                task.getReleaseId(), task.getTargetVersion(), task.getTargetCommit(), task.getId(),
+                task.getCreatedAt().toString(), task.getPreflightId()
         ));
     }
 
@@ -348,9 +351,21 @@ public class PlatformUpdateAppService {
         PlatformUpdateVO.LatestVersionVO latest = getStatusInternal().getLatest();
         PlatformUpdateTaskEntity task = createTask(TASK_ROLLBACK, latest, currentUser);
         return startUpdaterTask(task, "/v1/update/rollback", new UpdaterRequest(
-                task.getTargetVersion(), task.getTargetCommit(), task.getServerImage(), task.getFrontendImage(), task.getId(),
-                task.getCreatedAt().toString(), null, null
+                task.getReleaseId(), task.getTargetVersion(), task.getTargetCommit(), task.getId(),
+                task.getCreatedAt().toString(), null
         ));
+    }
+
+    public Map<String, Object> rollbackPreflight(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_ROLLBACK);
+        if (!isUpdaterAvailable()) {
+            throw new IllegalStateException("Platform update agent is unavailable. Configure and start lumira-updater first.");
+        }
+        try {
+            return objectMapper.convertValue(postUpdater("/v1/update/rollback-preflight", Map.of()), Map.class);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Platform rollback preflight failed: " + ex.getMessage(), ex);
+        }
     }
 
     public PlatformUpdateVO.TaskVO cancel(CurrentUser currentUser, Long id) {
@@ -662,6 +677,8 @@ public class PlatformUpdateAppService {
         task.setPhase("PREFLIGHT");
         task.setProgressPercent(0);
         task.setActiveKey(ACTIVE_TASK_KEY);
+        task.setMaintenanceMode("NORMAL");
+        task.setReleaseId(latest == null ? null : boundedText(latest.getReleaseId(), 128, "releaseId"));
         task.setTargetVersion(latest == null ? null : boundedText(latest.getVersion(), MAX_VERSION_LENGTH, "version"));
         task.setTargetCommit(latest == null ? null : normalizeCommit(latest.getCommitId(), false));
         task.setServerImage(latest == null ? null : requireDigestPinnedImage(latest.getServerImage(), "serverImage"));
@@ -994,6 +1011,7 @@ public class PlatformUpdateAppService {
         JsonNode update = manifest.path("update");
         JsonNode database = update.path("database");
         PlatformUpdateVO.LatestVersionVO latest = new PlatformUpdateVO.LatestVersionVO();
+        latest.setReleaseId(boundedText(firstText(manifest.path("releaseId").asText(null), manifest.path("version").asText(null)), 128, "releaseId"));
         latest.setCommitId(normalizeCommit(firstText(manifest.path("commit").asText(null), manifest.path("commitId").asText(null)), true));
         latest.setVersion(boundedText(firstText(manifest.path("version").asText(null), latest.getCommitId()), MAX_VERSION_LENGTH, "version"));
         latest.setBranch(boundedText(firstText(manifest.path("branch").asText(null), manifest.path("channel").asText(null), DEFAULT_BRANCH), MAX_BRANCH_LENGTH, "branch"));
@@ -1425,39 +1443,18 @@ public class PlatformUpdateAppService {
         return latest;
     }
 
-    private Map<String, Object> manifestPayload(PlatformUpdateVO.LatestVersionVO latest) {
-        Map<String, Object> images = new LinkedHashMap<>();
-        images.put("server", latest.getServerImage());
-        images.put("frontend", latest.getFrontendImage());
-        images.put("async", latest.getAsyncImage());
-        images.put("jobExecutor", latest.getJobExecutorImage());
-        images.put("migrator", latest.getMigratorImage());
-        Map<String, Object> database = new LinkedHashMap<>();
-        database.put("mode", latest.getMigrationMode());
-        database.put("targetVersion", latest.getDatabaseVersion());
-        database.put("required", latest.getMigrationRequired());
-        Map<String, Object> update = new LinkedHashMap<>();
-        update.put("strategy", latest.getStrategy());
-        update.put("minUpdaterProtocol", latest.getMinUpdaterProtocol());
-        update.put("rollbackCompatible", latest.getRollbackSupported());
-        update.put("database", database);
-        Map<String, Object> manifest = new LinkedHashMap<>();
-        manifest.put("schemaVersion", latest.getSchemaVersion());
-        manifest.put("version", latest.getVersion());
-        manifest.put("commit", latest.getCommitId());
-        manifest.put("branch", latest.getBranch());
-        manifest.put("serverImage", latest.getServerImage());
-        manifest.put("frontendImage", latest.getFrontendImage());
-        manifest.put("images", images);
-        manifest.put("update", update);
-        manifest.put("migrationRequired", latest.getMigrationRequired());
-        manifest.put("rollbackSupported", latest.getRollbackSupported());
-        return manifest;
+    private String requireReleaseId(PlatformUpdateVO.LatestVersionVO latest) {
+        if (latest == null || !StringUtils.hasText(latest.getReleaseId())) {
+            throw new IllegalStateException("Update source does not provide a releaseId.");
+        }
+        return boundedText(latest.getReleaseId(), 128, "releaseId");
     }
 
     private PlatformUpdateVO.PreflightVO toPreflightVO(JsonNode response) {
         PlatformUpdateVO.PreflightVO vo = new PlatformUpdateVO.PreflightVO();
         vo.setPreflightId(response.path("preflightId").asText(null));
+        vo.setReleaseId(response.path("releaseId").asText(null));
+        vo.setSignatureKeyId(response.path("signatureKeyId").asText(null));
         vo.setReady(response.path("ready").asBoolean(false));
         vo.setStrategy(response.path("strategy").asText(null));
         vo.setActiveSlot(response.path("activeSlot").asText(null));
@@ -1466,6 +1463,10 @@ public class PlatformUpdateAppService {
         vo.setTargetVersion(response.path("targetVersion").asText(null));
         vo.setMigrationMode(response.path("migrationMode").asText(null));
         vo.setDatabaseTargetVersion(response.path("databaseTargetVersion").asText(null));
+        vo.setMaintenanceMode(response.path("maintenanceMode").asText("NORMAL"));
+        if (response.path("compatibility").isObject()) {
+            vo.setCompatibility(objectMapper.convertValue(response.path("compatibility"), Map.class));
+        }
         vo.setBlockers(jsonStringList(response.path("blockers")));
         vo.setWarnings(jsonStringList(response.path("warnings")));
         vo.setCheckedAt(response.path("checkedAt").asText(null));
@@ -1490,7 +1491,15 @@ public class PlatformUpdateAppService {
         task.setTargetCommit(normalizeCommit(firstText(response.path("targetCommit").asText(null), task.getTargetCommit()), true));
         task.setServerImage(requireDigestPinnedImage(firstText(response.path("serverImage").asText(null), task.getServerImage()), "serverImage"));
         task.setPreflightId(boundedText(firstText(response.path("preflightId").asText(null), task.getPreflightId()), 128, "preflightId"));
+        task.setReleaseId(boundedText(firstText(response.path("releaseId").asText(null), task.getReleaseId()), 128, "releaseId"));
         task.setManifestHash(boundedText(firstText(response.path("manifestHash").asText(null), task.getManifestHash()), 128, "manifestHash"));
+        task.setSignatureKeyId(boundedText(firstText(response.path("signatureKeyId").asText(null), task.getSignatureKeyId()), 128, "signatureKeyId"));
+        if (response.path("operationEpoch").canConvertToLong()) task.setOperationEpoch(response.path("operationEpoch").asLong());
+        if (StringUtils.hasText(response.path("rollbackExpiresAt").asText(null))) {
+            task.setRollbackExpiresAt(java.time.OffsetDateTime.parse(response.path("rollbackExpiresAt").asText()).toLocalDateTime());
+        }
+        task.setMaintenanceMode(boundedText(firstText(response.path("maintenanceMode").asText(null), task.getMaintenanceMode(), "NORMAL"), 32, "maintenanceMode"));
+        task.setMaintenanceReason(boundedText(firstText(response.path("maintenanceReason").asText(null), task.getMaintenanceReason()), 512, "maintenanceReason"));
         if (response.path("rollbackOfTaskId").canConvertToLong()) task.setRollbackOfTaskId(response.path("rollbackOfTaskId").asLong());
         if (isTerminal(task.getStatus())) task.setActiveKey(null);
     }
@@ -1570,7 +1579,13 @@ public class PlatformUpdateAppService {
         vo.setActiveSlot(entity.getActiveSlot());
         vo.setTargetSlot(entity.getTargetSlot());
         vo.setPreflightId(entity.getPreflightId());
+        vo.setReleaseId(entity.getReleaseId());
         vo.setManifestHash(entity.getManifestHash());
+        vo.setSignatureKeyId(entity.getSignatureKeyId());
+        vo.setOperationEpoch(entity.getOperationEpoch());
+        vo.setRollbackExpiresAt(entity.getRollbackExpiresAt());
+        vo.setMaintenanceMode(entity.getMaintenanceMode());
+        vo.setMaintenanceReason(entity.getMaintenanceReason());
         vo.setRollbackOfTaskId(entity.getRollbackOfTaskId());
         vo.setTargetVersion(entity.getTargetVersion());
         vo.setTargetCommit(entity.getTargetCommit());
@@ -1606,8 +1621,7 @@ public class PlatformUpdateAppService {
         }
     }
 
-    private record UpdaterRequest(String targetVersion, String targetCommit, String serverImage, String frontendImage,
-                                  Long platformTaskId, String platformTaskCreatedAt, String preflightId,
-                                  Map<String, Object> manifest) {
+    private record UpdaterRequest(String releaseId, String targetVersion, String targetCommit,
+                                  Long platformTaskId, String platformTaskCreatedAt, String preflightId) {
     }
 }

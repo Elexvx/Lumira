@@ -138,6 +138,39 @@ class SystemVerificationSettingsAppServiceTest {
     }
 
     @Test
+    void registrationVerificationRequirementsShouldMatchEachSenderCombination() {
+        for (boolean smsConfigured : List.of(false, true)) {
+            for (boolean emailConfigured : List.of(false, true)) {
+                Map<String, String> values = defaultConfigValues();
+                if (smsConfigured) {
+                    values.put("verification.sms.enabled", "true");
+                    values.put("verification.sms.sign-name", "Lumira");
+                    values.put("verification.sms.template-code", "SMS_10001");
+                    values.put("verification.sms.access-key-id", "access-key-id");
+                    values.put("verification.sms.access-key-secret", "access-key-secret");
+                }
+                SmtpMailService smtpMailService = Mockito.mock(SmtpMailService.class);
+                when(smtpMailService.isConfigured()).thenReturn(emailConfigured);
+                WechatLoginSettingsService wechatLoginSettingsService = Mockito.mock(WechatLoginSettingsService.class);
+                when(wechatLoginSettingsService.loadSettings()).thenReturn(wechatSettings(false));
+                SystemVerificationSettingsAppService service = new SystemVerificationSettingsAppService(
+                        new RecordingQueryOperations(values),
+                        new SystemVerificationProperties(),
+                        smtpMailService,
+                        wechatLoginSettingsService,
+                        cryptoService(),
+                        null
+                );
+
+                SystemVO.LoginCapabilitiesVO capabilities = service.loadLoginCapabilities();
+
+                assertThat(capabilities.getRegistrationSmsVerificationRequired()).isEqualTo(smsConfigured);
+                assertThat(capabilities.getRegistrationEmailVerificationRequired()).isEqualTo(emailConfigured);
+            }
+        }
+    }
+
+    @Test
     void loadLoginCapabilitiesFreshShouldBypassCachedConfigSnapshots() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
         SmtpMailService smtpMailService = Mockito.mock(SmtpMailService.class);

@@ -11,4 +11,5 @@ public final class LoginValidationPatterns {
     public static final String CAPTCHA_CODE = "^(?:$|[A-Za-z0-9]{1,8})$";
     public static final String VERIFICATION_CODE = "^[A-Za-z0-9]{1,12}$";
     public static final String SYSTEM_TOKEN = "^[A-Za-z0-9_-]{1,128}$";
+    public static final String REGISTRATION_CONTACT = "^[A-Za-z0-9@.!#$%&'*+/=?^_`{|}~-]{1,128}$";
 }

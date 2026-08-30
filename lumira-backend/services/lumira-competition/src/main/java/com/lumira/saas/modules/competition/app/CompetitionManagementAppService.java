@@ -488,11 +488,31 @@ public class CompetitionManagementAppService {
                 throw biz(ErrorCode.VALIDATION_ERROR, "同一配置类型内不能使用重复的设置项标识：" + normalized.getItemKey());
             }
         }
+        int nextFallbackSortOrder = Math.max(
+                existingByKey.values().stream()
+                        .map(CompetitionVO.ConfigItem::getSortOrder)
+                        .filter(Objects::nonNull)
+                        .max(Integer::compareTo)
+                        .orElse(0),
+                normalizedItems.stream()
+                        .map(CompetitionDTO.ConfigItemRequest::getSortOrder)
+                        .filter(Objects::nonNull)
+                        .max(Integer::compareTo)
+                        .orElse(0)
+        );
+        nextFallbackSortOrder = Math.max(0, nextFallbackSortOrder);
         Set<Long> retainedIds = new LinkedHashSet<>();
-        int index = 0;
         for (CompetitionDTO.ConfigItemRequest normalized : normalizedItems) {
             String identity = configItemIdentity(normalized);
             CompetitionVO.ConfigItem existing = existingByKey.get(identity);
+            Integer effectiveSortOrder = normalized.getSortOrder();
+            if (effectiveSortOrder == null && existing != null) {
+                effectiveSortOrder = existing.getSortOrder();
+            }
+            if (effectiveSortOrder == null) {
+                nextFallbackSortOrder += 10;
+                effectiveSortOrder = nextFallbackSortOrder;
+            }
             if (existing == null) {
                 insertConfigItem(
                         competition.getUuid(),
@@ -502,7 +522,7 @@ public class CompetitionManagementAppService {
                         normalized.getTitle(),
                         trimToNull(normalized.getContentJson()),
                         trimToNull(normalized.getContentText()),
-                        normalized.getSortOrder() == null ? (index + 1) * 10 : normalized.getSortOrder(),
+                        effectiveSortOrder,
                         Boolean.TRUE.equals(normalized.getRequiredFlag()),
                         normalized.getEnabled() == null || Boolean.TRUE.equals(normalized.getEnabled()),
                         userId,
@@ -520,7 +540,7 @@ public class CompetitionManagementAppService {
                                 normalized.getTitle(),
                                 trimToNull(normalized.getContentJson()),
                                 trimToNull(normalized.getContentText()),
-                                normalized.getSortOrder() == null ? (index + 1) * 10 : normalized.getSortOrder(),
+                                effectiveSortOrder,
                                 Boolean.TRUE.equals(normalized.getRequiredFlag()),
                                 normalized.getEnabled() == null || Boolean.TRUE.equals(normalized.getEnabled()),
                                 new CompetitionSettingsRepository.Actor(userId, userUuid),
@@ -529,7 +549,6 @@ public class CompetitionManagementAppService {
                 );
                 requireCompetitionWrite(itemUpdated, "Competition config item changed, please retry");
             }
-            index += 1;
         }
         List<CompetitionVO.ConfigItem> deletedItems = existingByKey.values().stream()
                 .filter(item -> item.getId() != null && !retainedIds.contains(item.getId()))
@@ -1468,6 +1487,36 @@ public class CompetitionManagementAppService {
         metadata.put("validationRule", RegistrationFieldValidationPolicy.resolveValidationRule(
                 item.getItemType(), item.getItemKey(), fieldType, configuredRule
         ));
+        if (Set.of("SELECT", "MULTI_SELECT", "CASCADER").contains(fieldType)) {
+            String optionSource = metadata.path("optionSource").asText(
+                    "CASCADER".equals(fieldType) ? "DICTIONARY" : "CUSTOM"
+            ).trim().toUpperCase(Locale.ROOT);
+            if (!Set.of("CUSTOM", "DICTIONARY").contains(optionSource)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "不支持的选项来源：" + optionSource);
+            }
+            if ("CASCADER".equals(fieldType) && !"DICTIONARY".equals(optionSource)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "级联选择只能引用系统层级字典");
+            }
+            metadata.put("optionSource", optionSource);
+            if ("DICTIONARY".equals(optionSource)) {
+                String dictCode = metadata.path("dictCode").asText("").trim();
+                if (!StringUtils.hasText(dictCode)) {
+                    throw biz(ErrorCode.VALIDATION_ERROR, "引用系统字典时必须选择字典");
+                }
+                metadata.put("dictCode", dictCode);
+                metadata.remove("options");
+                metadata.remove("placeholder");
+            } else {
+                metadata.remove("dictCode");
+                metadata.remove("placeholder");
+            }
+        } else {
+            metadata.remove("optionSource");
+            metadata.remove("dictCode");
+            if (!Set.of("TEXT", "TEXTAREA", "NUMBER", "DATE", "MOBILE", "EMAIL").contains(fieldType)) {
+                metadata.remove("placeholder");
+            }
+        }
         if (participantNameField) {
             metadata.put("standardField", true);
             item.setRequiredFlag(true);

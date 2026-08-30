@@ -13,13 +13,13 @@ import { TableActionBar, type TableActionItem } from '@/features/table/TableActi
 import { buildTableRequest } from '@/features/table/proTableRequest';
 import { request } from '@/services/common/request';
 import type { DictItemMutationPayload, DictTypeMutationPayload } from '@/services/dict/types';
-import { API_OPTS } from '@/utils/errorMessage';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { DictManagementDrawers } from './dicts/components/DictManagementDrawers';
 import type { ManagementTableProps } from '@/features/management/ManagementTable';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
 import type { PagedResponse } from '@/features/table/proTableRequest';
-import type { ProColumns } from '@ant-design/pro-components';
-import { useCallback, useMemo, useState } from 'react';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirm';
 
 import { databaseMessage } from '@/i18n/databaseMessage';
@@ -58,19 +58,34 @@ const renderCopyableRemark = (remark?: string | null) =>
     '-'
   );
 
+const attachTreeChildren = (
+  rows: DictItemRecord[],
+  parentValue: string,
+  children: DictItemRecord[],
+): DictItemRecord[] => rows.map((row) => row.itemValue === parentValue
+  ? { ...row, children }
+  : { ...row, children: row.children ? attachTreeChildren(row.children, parentValue, children) : undefined });
+
 const buildDictItemColumns = ({
   isMobile,
+  treeMode,
   buildRowActions,
   onOpenEdit,
   onDelete,
 }: {
   isMobile: boolean;
+  treeMode: boolean;
   buildRowActions: (items: PermissionAwareTableAction[]) => TableActionItem[];
   onOpenEdit: (record: DictItemRecord) => void;
   onDelete: (record: DictItemRecord) => void;
 }): ProColumns<DictItemRecord>[] => [
   { title: t('ui.settings.dicts.label'), dataIndex: 'itemLabel' },
   { title: t('ui.settings.dicts.value'), dataIndex: 'itemValue' },
+  ...(treeMode ? [
+    { title: '父级值', dataIndex: 'parentItemValue', search: false, responsive: ['lg', 'xl', 'xxl'], render: (_: unknown, record: DictItemRecord) => record.parentItemValue || '根节点' } as ProColumns<DictItemRecord>,
+    { title: '层级', dataIndex: 'levelNo', search: false, width: 80 },
+    { title: '末级', dataIndex: 'leaf', search: false, width: 80, render: (_: unknown, record: DictItemRecord) => (record.leaf ? '是' : '否') },
+  ] : []),
   { title: t('ui.settings.dicts.sortOrder'), dataIndex: 'sortNo', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
   {
     title: t('ui.settings.dicts.status'),
@@ -205,11 +220,22 @@ const useDictManagement = () => {
   const [typeForm] = Form.useForm<DictTypeMutationPayload>();
   const [typeDetail, setTypeDetail] = useState<DictTypeRecord | null>(null);
   const [typeItems, setTypeItems] = useState<DictItemRecord[]>([]);
+  const treeMode = typeDetail?.structureType === 'TREE';
+  const itemTableActionRef = useRef<ActionType>(null);
   const [typeSaving, setTypeSaving] = useState(false);
+  const [importFile, setImportFile] = useState<File>();
+  const [importPreview, setImportPreview] = useState<{
+    fileSha256: string;
+    totalRows: number;
+    validRows: number;
+    invalidRows: number;
+    errors?: Array<{ rowNumber: number; message: string }>;
+  }>();
+  const [importPreviewLoading, setImportPreviewLoading] = useState(false);
   const canSaveType = actionPermission.can(typeCrud.drawer.editingId ? 'system:dict:update' : 'system:dict:create');
   const typeFormProps = useStandardFormProps({
     form: typeForm,
-    initialValues: { status: 'ENABLED' },
+    initialValues: { status: 'ENABLED', structureType: 'FLAT' },
   });
   const detailProps = useDetailProDescriptionsProps<DictTypeRecord>({
     column: responsive.isMobile ? 1 : 2,
@@ -221,21 +247,30 @@ const useDictManagement = () => {
   const canSaveItem = actionPermission.can('system:dict:update');
   const itemFormProps = useStandardFormProps({
     form: itemForm,
-    initialValues: { sortNo: 0, status: 'ENABLED' },
+    initialValues: { sortNo: 0, status: 'ENABLED', levelNo: 1, leaf: true },
   });
 
-  const refreshDictItems = useCallback(async (dictTypeId: number) => {
-    const dictItems = await request<DictItemRecord[]>(`/v1/system/dict-types/${dictTypeId}/items`, {
+  const loadTreeItems = useCallback(async (dictTypeId: number, parentItemValue = '__ROOT__') => {
+    const result = await request<PagedResponse<DictItemRecord>>(`/v1/system/dict-types/${dictTypeId}/items/page`, {
       method: 'GET',
+      params: { parentItemValue, pageNo: 1, pageSize: 100 },
       ...API_OPTS.NO_REDIRECT,
     });
-    setTypeItems(dictItems);
-  }, [setTypeItems]);
+    return result.records;
+  }, []);
+
+  const refreshDictItems = useCallback(async (dictTypeId: number) => {
+    if (treeMode) {
+      setTypeItems(await loadTreeItems(dictTypeId));
+      return;
+    }
+    await itemTableActionRef.current?.reload();
+  }, [loadTreeItems, treeMode]);
 
   const openCreateItem = useCallback(() => {
     itemDrawer.openCreate();
     itemForm.resetFields();
-    itemForm.setFieldsValue({ sortNo: 0, status: 'ENABLED' });
+    itemForm.setFieldsValue({ sortNo: 0, status: 'ENABLED', levelNo: 1, leaf: true });
   }, [itemDrawer, itemForm]);
 
   const openEditItem = useCallback(
@@ -247,6 +282,9 @@ const useDictManagement = () => {
         sortNo: record.sortNo,
         status: record.status,
         remark: record.remark ?? undefined,
+        parentItemValue: record.parentItemValue ?? undefined,
+        levelNo: record.levelNo ?? 1,
+        leaf: record.leaf ?? true,
       });
     },
     [itemDrawer, itemForm],
@@ -311,35 +349,37 @@ const useDictManagement = () => {
     () =>
       buildDictItemColumns({
         isMobile: responsive.isMobile,
+        treeMode,
         buildRowActions: actionPermission.buildTableActions,
         onOpenEdit: openEditItem,
         onDelete: deleteItem,
       }),
-    [actionPermission.buildTableActions, deleteItem, openEditItem, responsive.isMobile],
+    [actionPermission.buildTableActions, deleteItem, openEditItem, responsive.isMobile, treeMode],
   );
   const openDetail = useCallback(
     async (record: DictTypeRecord) => {
       typeCrud.detail.openDetail(record);
       typeCrud.detail.setLoading(true);
       try {
-        const [detailResult, dictItems] = await Promise.all([
-          request<DictTypeRecord>(`/v1/system/dict-types/${record.id}`, {
-            method: 'GET',
-            ...API_OPTS.NO_REDIRECT,
-          }),
-          request<DictItemRecord[]>(`/v1/system/dict-types/${record.id}/items`, {
-            method: 'GET',
-            ...API_OPTS.NO_REDIRECT,
-          }),
-        ]);
+        const detailResult = await request<DictTypeRecord>(`/v1/system/dict-types/${record.id}`, {
+          method: 'GET',
+          ...API_OPTS.NO_REDIRECT,
+        });
         setTypeDetail(detailResult);
-        setTypeItems(dictItems);
+        setTypeItems(detailResult.structureType === 'TREE' ? await loadTreeItems(detailResult.id) : []);
       } finally {
         typeCrud.detail.setLoading(false);
       }
     },
-    [setTypeDetail, setTypeItems, typeCrud.detail],
+    [loadTreeItems, setTypeDetail, setTypeItems, typeCrud.detail],
   );
+
+  const expandTreeItem = useCallback((expanded: boolean, record: DictItemRecord) => {
+    if (!expanded || record.leaf || record.children !== undefined || !typeDetail?.id) return;
+    void loadTreeItems(typeDetail.id, record.itemValue).then((children) => {
+      setTypeItems((current) => attachTreeChildren(current, record.itemValue, children));
+    });
+  }, [loadTreeItems, typeDetail?.id]);
 
   const closeDetail = useCallback(() => {
     typeCrud.detail.close();
@@ -350,7 +390,9 @@ const useDictManagement = () => {
   const openCreateType = useCallback(() => {
     typeCrud.drawer.openCreate();
     typeForm.resetFields();
-    typeForm.setFieldsValue({ status: 'ENABLED' });
+    typeForm.setFieldsValue({ status: 'ENABLED', structureType: 'FLAT' });
+    setImportFile(undefined);
+    setImportPreview(undefined);
   }, [typeCrud.drawer, typeForm]);
 
   const openEditType = useCallback(
@@ -364,11 +406,37 @@ const useDictManagement = () => {
         dictCode: detailResult.dictCode,
         dictName: detailResult.dictName,
         status: detailResult.status,
+        structureType: detailResult.structureType || 'FLAT',
         remark: detailResult.remark ?? undefined,
       });
+      setImportFile(undefined);
+      setImportPreview(undefined);
     },
     [typeCrud.drawer, typeForm],
   );
+
+  const selectImportFile = useCallback(async (file?: File) => {
+    setImportFile(file);
+    setImportPreview(undefined);
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    setImportPreviewLoading(true);
+    try {
+      const preview = await request<NonNullable<typeof importPreview>>('/v1/system/dict-types/import-preview', {
+        method: 'POST',
+        headers: {},
+        params: { structureType: typeForm.getFieldValue('structureType') || 'FLAT' },
+        data: formData,
+        ...API_OPTS.NO_REDIRECT,
+      });
+      setImportPreview(preview);
+    } catch (error) {
+      showErrorMessage(error, '字典文件校验失败');
+    } finally {
+      setImportPreviewLoading(false);
+    }
+  }, [typeForm]);
 
   const saveType = useCallback(async () => {
     setTypeSaving(true);
@@ -381,6 +449,24 @@ const useDictManagement = () => {
           ...API_OPTS.NO_REDIRECT,
         });
         message.success('字典类型已更新');
+      } else if (importFile) {
+        if (!importPreview || importPreview.invalidRows > 0) {
+          message.warning('请先选择并通过字典文件校验');
+          return;
+        }
+        const formData = new FormData();
+        formData.append('metadata', new Blob([JSON.stringify({
+          ...values,
+          expectedSha256: importPreview.fileSha256,
+        })], { type: 'application/json' }));
+        formData.append('file', importFile);
+        await request('/v1/system/dict-types/import', {
+          method: 'POST',
+          headers: {},
+          data: formData,
+          ...API_OPTS.NO_REDIRECT,
+        });
+        message.success(`字典类型已创建并导入 ${importPreview.validRows} 项`);
       } else {
         await request<DictTypeRecord>('/v1/system/dict-types', {
           method: 'POST',
@@ -390,11 +476,13 @@ const useDictManagement = () => {
         message.success('字典类型已创建');
       }
       typeCrud.drawer.close();
+      setImportFile(undefined);
+      setImportPreview(undefined);
       typeCrud.reloadTable();
     } finally {
       setTypeSaving(false);
     }
-  }, [setTypeSaving, typeCrud, typeForm]);
+  }, [importFile, importPreview, setTypeSaving, typeCrud, typeForm]);
 
   const deleteType = useCallback(
     (record: DictTypeRecord) => {
@@ -426,6 +514,17 @@ const useDictManagement = () => {
       }),
     [actionPermission.buildTableActions, deleteType, openDetail, openEditType, responsive.isMobile],
   );
+  const itemTableRequest = useMemo(() => typeDetail?.id && !treeMode
+    ? buildTableRequest((params) => request<PagedResponse<DictItemRecord>>(`/v1/system/dict-types/${typeDetail.id}/items/page`, {
+        method: 'GET',
+        params: {
+          pageNo: params.pageNo,
+          pageSize: params.pageSize,
+          keyword: params.keyword || params.itemLabel || params.itemValue,
+        },
+        ...API_OPTS.NO_REDIRECT,
+      }))
+    : undefined, [treeMode, typeDetail?.id]);
   const saving = useMemo(() => typeSaving || itemSaving, [itemSaving, typeSaving]);
 
   return {
@@ -444,6 +543,9 @@ const useDictManagement = () => {
     setTypeSaving,
     canSaveType,
     typeFormProps,
+    importPreview,
+    importPreviewLoading,
+    selectImportFile,
     detailProps,
     refreshDictItems,
     openCreateType,
@@ -461,6 +563,10 @@ const useDictManagement = () => {
     openCreateItem,
     saveItem,
     dictItemColumns,
+    itemTableActionRef,
+    itemTableRequest,
+    treeMode,
+    expandTreeItem,
     saving,
   };
 };
@@ -479,6 +585,10 @@ const DictManagementPage = () => {
     responsive,
     typeColumns,
     dictItemColumns,
+    itemTableActionRef,
+    itemTableRequest,
+    treeMode,
+    expandTreeItem,
     openCreateType,
     openCreateItem,
     saveType,
@@ -487,6 +597,9 @@ const DictManagementPage = () => {
     typeFormProps,
     itemFormProps,
     detailProps,
+    importPreview,
+    importPreviewLoading,
+    selectImportFile,
   } = useDictManagement();
 
   const typeTableRequest = useMemo(
@@ -534,7 +647,11 @@ const DictManagementPage = () => {
         typeDrawerTitle={typeCrud.drawer.editingId ? t('ui.settings.dicts.editDictionaryType') : t('ui.settings.dicts.addDictionaryType')}
         typeDrawerSaving={saving}
         canSaveType={canSaveType}
+        allowTypeImport={!typeCrud.drawer.editingId}
         typeFormProps={typeFormProps}
+        importPreview={importPreview}
+        importPreviewLoading={importPreviewLoading}
+        onImportFileSelected={(file) => { void selectImportFile(file); }}
         onCloseTypeDrawer={typeCrud.drawer.close}
         onSaveType={() => void saveType()}
         typeDetailDrawerOpen={typeCrud.detail.open}
@@ -544,6 +661,10 @@ const DictManagementPage = () => {
         detailProps={detailProps}
         itemColumns={dictItemColumns}
         itemRows={items}
+        itemTableActionRef={itemTableActionRef}
+        itemTableRequest={itemTableRequest as ManagementTableProps<DictItemRecord>['request']}
+        treeMode={treeMode}
+        onTreeExpand={expandTreeItem}
         isMobile={responsive.isMobile}
         searchConfig={searchConfig}
         buildToolbarButtons={buildToolbarButtons}

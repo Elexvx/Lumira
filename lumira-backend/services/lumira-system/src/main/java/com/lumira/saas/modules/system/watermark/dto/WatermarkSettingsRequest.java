@@ -7,6 +7,7 @@ public class WatermarkSettingsRequest {
     private Boolean enabled;
     private String mode;
     private List<String> textLines;
+    private List<String> personalizedTextLines;
     private String imageUrl;
     private String fontColor;
     private Integer fontSize;
@@ -27,6 +28,8 @@ public class WatermarkSettingsRequest {
     public void setMode(String mode) { this.mode = mode; }
     public List<String> getTextLines() { return textLines; }
     public void setTextLines(List<String> textLines) { this.textLines = textLines; }
+    public List<String> getPersonalizedTextLines() { return personalizedTextLines; }
+    public void setPersonalizedTextLines(List<String> personalizedTextLines) { this.personalizedTextLines = personalizedTextLines; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public String getFontColor() { return fontColor; }

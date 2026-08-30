@@ -11,6 +11,7 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import type {
   PlatformUpdateStatus,
   PlatformUpdatePreflight,
+  PlatformRollbackPreflight,
   PlatformUpdateTask,
   RedisMonitorClient,
   RedisMonitorCommandStat,
@@ -490,7 +491,7 @@ const usePlatformUpdateMonitor = () => {
         try {
           await request<PlatformUpdateTask>('/v1/system/update/install', {
             method: 'POST',
-            data: { preflightId: preflight.preflightId, targetCommit: preflight.targetCommit },
+            data: { preflightId: preflight.preflightId, releaseId: preflight.releaseId, targetCommit: preflight.targetCommit },
             ...API_OPTS.NO_REDIRECT,
           });
           message.success(t('ui.settings.monitoring.monitoring.updateTaskSubmitted'));
@@ -503,12 +504,28 @@ const usePlatformUpdateMonitor = () => {
   };
 
   const handleRollback = async () => {
+    let preflight: PlatformRollbackPreflight;
+    try {
+      preflight = await request<PlatformRollbackPreflight>('/v1/system/update/rollback-preflight', {
+        method: 'POST',
+        ...API_OPTS.NO_REDIRECT,
+      });
+    } catch (error) {
+      showErrorMessage(error, t('ui.settings.monitoring.monitoring.failedToSubmitRollbackTask'));
+      return;
+    }
     modal.confirm({
       title: t('ui.settings.monitoring.monitoring.rollbackPlatformVersion'),
-      content: t('ui.settings.monitoring.monitoring.trafficWillHotSwitchToThePreviousStable'),
+      content: (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text>{preflight.currentReleaseId || '-'} → {preflight.targetReleaseId || '-'}</Typography.Text>
+          <Typography.Text type="secondary">Rollback deadline: {formatDateTime(preflight.rollbackExpiresAt)}</Typography.Text>
+          {(preflight.blockers || []).map((item) => <Alert key={item} type="error" showIcon message={item} />)}
+        </Space>
+      ),
       okText: t('ui.settings.monitoring.monitoring.startRollback'),
       cancelText: t('ui.settings.monitoring.monitoring.cancel'),
-      okButtonProps: { danger: true },
+      okButtonProps: { danger: true, disabled: !preflight.ready },
       onOk: async () => {
         try {
           await request<PlatformUpdateTask>('/v1/system/update/rollback', {
@@ -1121,6 +1138,8 @@ const PlatformUpdateContent = () => {
             <Progress percent={activeTask.progressPercent || 0} status={activeTask.status === 'FAILED' ? 'exception' : activeTask.status === 'SUCCEEDED' || activeTask.status === 'ROLLED_BACK' ? 'success' : 'active'} />
             <Descriptions size="small" column={{ xs: 1, md: 3 }}>
               <Descriptions.Item label={t('ui.settings.monitoring.monitoring.phase')}>{activeTask.phase || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Release ID">{activeTask.releaseId || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Maintenance mode"><Tag color={activeTask.maintenanceMode === 'NORMAL' ? 'green' : 'orange'}>{activeTask.maintenanceMode || 'NORMAL'}</Tag></Descriptions.Item>
               <Descriptions.Item label={t('ui.settings.monitoring.monitoring.activeSlot')}>{activeTask.activeSlot || '-'}</Descriptions.Item>
               <Descriptions.Item label={t('ui.settings.monitoring.monitoring.targetSlot')}>{activeTask.targetSlot || '-'}</Descriptions.Item>
             </Descriptions>
@@ -1155,6 +1174,7 @@ const PlatformUpdateContent = () => {
             <Card title={t('ui.settings.monitoring.monitoring.sourceVersion')} className="saas-update-version-card">
               <Descriptions size="small" column={1}>
                 <Descriptions.Item label={t('ui.settings.monitoring.monitoring.version')}>{updateStatus?.latest?.version || '-'}</Descriptions.Item>
+                <Descriptions.Item label="Release ID"><Typography.Text copyable>{updateStatus?.latest?.releaseId || '-'}</Typography.Text></Descriptions.Item>
                 <Descriptions.Item label={t('ui.settings.monitoring.monitoring.commit')}>
                   <Typography.Text copyable={{ text: updateStatus?.latest?.commitId || '' }} className="saas-update-mono">
                     {updateStatus?.latest?.commitId?.slice(0, 12) || '-'}

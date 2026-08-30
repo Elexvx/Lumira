@@ -21,12 +21,27 @@ public class SystemDictionaryItemLookupAdapter implements DictionaryItemLookupPo
                 .toList();
     }
 
+    @Override
+    public List<DictionaryItem> enabledItemsByValues(String dictionaryCode, List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        return dictRuntimeService.searchEnabledItems(
+                        dictionaryCode, null, null, false, values, 1L, (long) Math.min(100, values.size())
+                ).getRecords().stream()
+                .map(this::toDictionaryItem)
+                .toList();
+    }
+
     private DictionaryItem toDictionaryItem(SystemVO.DictItemVO item) {
         return new DictionaryItem(
                 item.getItemLabel(),
                 item.getItemValue(),
                 item.getRemark(),
-                item.getSortNo() == null ? 0 : item.getSortNo()
+                item.getSortNo() == null ? 0 : item.getSortNo(),
+                item.getParentItemValue(),
+                item.getLevelNo() == null ? 1 : item.getLevelNo(),
+                item.getLeaf() == null || item.getLeaf()
         );
     }
 }

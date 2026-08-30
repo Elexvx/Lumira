@@ -4,12 +4,13 @@ import type { FormProps } from 'antd';
 import { useRef } from 'react';
 import { useResponsive } from '@/hooks/useResponsive';
 import type { WatermarkSettings } from '@/types/api';
+import { insertWatermarkTemplateToken, isValidWatermarkTemplateLines, normalizeWatermarkTextLines, WATERMARK_TEMPLATE_VARIABLES } from '@/watermark/template';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
-import { databaseMessage } from '@/i18n/databaseMessage';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 
-const t = databaseMessage;
+const t = (id: string) => resolveBuiltinMessage(id);
 
 type PersonalizationUploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
@@ -220,6 +221,64 @@ const WatermarkColorControl = ({
   );
 };
 
+type WatermarkTemplateInputProps = {
+  value?: string[];
+  onChange?: (value: string[]) => void;
+  disabled?: boolean;
+};
+
+const WatermarkTemplateInput = ({ value, onChange, disabled }: WatermarkTemplateInputProps) => {
+  const inputRef = useRef<{ resizableTextArea?: { textArea?: HTMLTextAreaElement } } | null>(null);
+  const textValue = normalizeWatermarkTextLines(value).join('\n');
+
+  const insertToken = (token: string) => {
+    const textarea = inputRef.current?.resizableTextArea?.textArea;
+    const start = textarea?.selectionStart ?? textValue.length;
+    const end = textarea?.selectionEnd ?? textValue.length;
+    const inserted = insertWatermarkTemplateToken(textValue, token, start, end);
+    onChange?.(inserted.lines);
+    const nextCursor = inserted.cursor;
+    const restoreCursor = () => {
+      textarea?.focus();
+      textarea?.setSelectionRange(nextCursor, nextCursor);
+    };
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(restoreCursor);
+    }
+  };
+
+  return (
+    <Space direction="vertical" size={8} style={{ width: '100%', minWidth: 0 }}>
+      <Input.TextArea
+        ref={(instance) => {
+          inputRef.current = instance;
+        }}
+        data-watermark-personalized-text-lines="true"
+        rows={4}
+        value={textValue}
+        disabled={disabled}
+        onChange={(event) => onChange?.(normalizeWatermarkTextLines(event.target.value))}
+        placeholder={t('ui.settings.personalization.watermark.enterPersonalizedWatermarkTemplate')}
+      />
+      <Space wrap size={[8, 8]} style={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
+        {WATERMARK_TEMPLATE_VARIABLES.map(({ name, token }) => (
+          <Button
+            key={name}
+            size="small"
+            disabled={disabled}
+            title={token}
+            aria-label={`${t(`ui.settings.personalization.watermark.${name}`)} ${token}`}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => insertToken(token)}
+          >
+            {t(`ui.settings.personalization.watermark.${name}`)} {token}
+          </Button>
+        ))}
+      </Space>
+    </Space>
+  );
+};
+
 interface WatermarkTabProps {
   formProps: FormProps;
   watermarkPreview: WatermarkSettings;
@@ -346,8 +405,25 @@ export const WatermarkTab = ({
         </Form.Item>
         {!isImageMode ? (
           <Form.Item
+            name="personalizedTextLines"
+            label={t('ui.settings.personalization.watermark.personalizedWatermarkTemplate')}
+            extra={t('ui.settings.personalization.watermark.personalizedWatermarkTemplateHint')}
+            rules={[{
+              validator: async (_, value) => {
+                if (isValidWatermarkTemplateLines(value)) {
+                  return;
+                }
+                throw new Error(t('ui.settings.personalization.watermark.invalidPersonalizedWatermarkTemplate'));
+              },
+            }]}
+          >
+            <WatermarkTemplateInput disabled={watermarkControlsDisabled} />
+          </Form.Item>
+        ) : null}
+        {!isImageMode ? (
+          <Form.Item
             name="textLines"
-            label={t('ui.settings.personalization.watermark.multipleLinesOfTextOnePerLine')}
+            label={t('ui.settings.personalization.watermark.fixedVisitorWatermarkText')}
             getValueProps={(value?: string[]) => ({ value: (value || []).join('\n') })}
             getValueFromEvent={(event: { target: { value: string } }) =>
               event.target.value

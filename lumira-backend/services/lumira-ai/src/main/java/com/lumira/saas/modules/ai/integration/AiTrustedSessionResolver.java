@@ -1,8 +1,8 @@
 package com.lumira.saas.modules.ai.integration;
 
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.TrustedCurrentUserResolver;
-import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /** AI adapter over the System-owned trusted-session contract. */
@@ -23,19 +23,17 @@ public class AiTrustedSessionResolver {
             Integer sessionVersion,
             String permissionsVersion
     ) {
-        CurrentUser candidate = new CurrentUser(
-                userId,
-                null,
+        CurrentUser resolved = trustedCurrentUserResolver.resolveSessionTicket(
                 sessionId,
+                userId,
+                userUuid,
+                simulatedRoleId,
                 sessionVersion,
-                true,
-                Set.of()
+                permissionsVersion
         );
-        candidate.setUserUuid(userUuid);
-        candidate.setSimulatedRoleId(simulatedRoleId);
-        candidate.setPermissionsVersion(permissionsVersion);
-        CurrentUser resolved = trustedCurrentUserResolver.resolve(candidate);
-        return resolved == null ? null : new AuthenticatedAccess(resolved);
+        return AuthenticationTrustSupport.isTrustedCurrentUser(resolved)
+                ? new AuthenticatedAccess(resolved)
+                : null;
     }
 
     public record AuthenticatedAccess(CurrentUser currentUser) {

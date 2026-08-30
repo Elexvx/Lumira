@@ -29,11 +29,13 @@ COPY lumira-ui/ ./
 # Volatile release metadata belongs after dependency installation so a new
 # deployment identity does not invalidate the pnpm layer.
 ARG FRONTEND_VERSION=0.1.0
+ARG RELEASE_ID=local
 ARG BUILD_TIME=
 ARG GIT_COMMIT=
 ARG GIT_BRANCH=
 
 ENV UMI_APP_FRONTEND_VERSION=${FRONTEND_VERSION} \
+    UMI_APP_RELEASE_ID=${RELEASE_ID} \
     UMI_APP_BUILD_TIME=${BUILD_TIME} \
     UMI_APP_GIT_COMMIT=${GIT_COMMIT} \
     UMI_APP_GIT_BRANCH=${GIT_BRANCH}

@@ -172,6 +172,12 @@ public class PlatformBootstrapService {
                         systemManagementAppService::getPublicAgreementSettings,
                         BLOCKING_IO_EXECUTOR
                 );
+        CompletableFuture<SystemVO.WatermarkSettingsVO> watermarkFuture = runtimeAppearanceUnchanged
+                ? null
+                : CompletableFuture.supplyAsync(
+                        systemManagementAppService::getPublicWatermarkSettings,
+                        BLOCKING_IO_EXECUTOR
+                );
         CompletableFuture<SystemVO.SecuritySettingsVO> securityFuture = publicBootstrapUnchanged
                 ? null
                 : CompletableFuture.supplyAsync(
@@ -187,6 +193,7 @@ public class PlatformBootstrapService {
 
         bootstrap.setBrandingSettings(runtimeAppearanceUnchanged ? stalePayload.getBrandingSettings() : brandingFuture.join());
         bootstrap.setAgreementSettings(runtimeAppearanceUnchanged ? stalePayload.getAgreementSettings() : agreementFuture.join());
+        bootstrap.setWatermarkSettings(runtimeAppearanceUnchanged ? stalePayload.getWatermarkSettings() : watermarkFuture.join());
         bootstrap.setSecuritySettings(publicBootstrapUnchanged ? stalePayload.getSecuritySettings() : securityFuture.join());
         bootstrap.setLoginCapabilities(publicBootstrapUnchanged ? stalePayload.getLoginCapabilities() : loginCapabilitiesFuture.join());
         publicBootstrapCache = new PublicBootstrapCache(targetVersion, bootstrap);

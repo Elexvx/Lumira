@@ -1,10 +1,10 @@
 import { DeleteOutlined, DownloadOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Descriptions, Form, Image, Input, InputNumber, Modal, Result, Select, Space, Spin, Steps, Tag, Tooltip, Typography, Upload } from 'antd';
-import type { DatePickerProps, TableProps, UploadFile } from 'antd';
+import { Alert, Avatar, Button, Card, Cascader, Checkbox, DatePicker, Descriptions, Form, Image, Input, InputNumber, Modal, Result, Select, Space, Spin, Steps, Tag, Tooltip, Typography, Upload } from 'antd';
+import type { CascaderProps, DatePickerProps, TableProps, UploadFile } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 import { history, useLocation, useModel } from '@umijs/max';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { XMarkdown } from '@ant-design/x-markdown';
@@ -154,6 +154,7 @@ import {
   DEFAULT_INDEPENDENT_MEMBER_ROLE_OPTIONS,
   isIndependentMemberRoleField,
   normalizeIndependentMemberRoleMetadata,
+  normalizeSchoolDictionaryMetadata,
   prioritizeRequiredMemberNameField,
 } from './utils/competitionFieldConfig';
 import {
@@ -634,6 +635,8 @@ type RegistrationCollectedField = {
   placeholder?: string;
   required?: boolean;
   options?: string;
+  optionSource?: 'CUSTOM' | 'DICTIONARY';
+  dictCode?: string;
   validationRule?: string;
   groupLabel?: string;
   cropAspectRatio?: string;
@@ -718,10 +721,14 @@ const RegistrationImageFieldInput = ({
 
 const toRegistrationCollectedField = (item: CompetitionConfigItem): RegistrationCollectedField => {
   const scope = resolveRegistrationFieldScope(item);
-  const metadata = normalizeIndependentMemberRoleMetadata(
-    scope,
+  const metadata = normalizeSchoolDictionaryMetadata(
     item.itemKey,
-    parseConfigItemMetadata(item.contentJson),
+    item.title,
+    normalizeIndependentMemberRoleMetadata(
+      scope,
+      item.itemKey,
+      parseConfigItemMetadata(item.contentJson),
+    ),
   );
   return {
     scope,
@@ -731,6 +738,8 @@ const toRegistrationCollectedField = (item: CompetitionConfigItem): Registration
     placeholder: metadata.placeholder,
     required: Boolean(item.requiredFlag),
     options: metadata.options,
+    optionSource: metadata.optionSource || 'CUSTOM',
+    dictCode: metadata.dictCode,
     validationRule: resolveRegistrationFieldValidationRule(
       metadata.fieldType,
       metadata.validationRule,
@@ -818,6 +827,201 @@ const parseConfigFieldOptions = (options?: string) =>
     .filter(Boolean)
     .map((item) => ({ label: item, value: item }));
 
+type RuntimeDictionaryItem = {
+  itemLabel: string;
+  itemValue: string;
+  parentItemValue?: string;
+  levelNo?: number;
+  leaf?: boolean;
+};
+
+type RuntimeDictionaryPage = {
+  records: RuntimeDictionaryItem[];
+  total: number;
+  pageNo: number;
+  pageSize: number;
+};
+
+const loadRuntimeDictionaryPage = (
+  dictCode: string,
+  params: { keyword?: string; parentItemValue?: string; rootOnly?: boolean; values?: string[]; pageNo?: number; pageSize?: number; limit?: number },
+) => request<RuntimeDictionaryPage>(`/v1/system/dictionaries/${encodeURIComponent(dictCode)}/items`, {
+  method: 'GET',
+  params: {
+    keyword: params.keyword || undefined,
+    parentItemValue: params.parentItemValue || undefined,
+    rootOnly: params.rootOnly || undefined,
+    values: params.values?.join(',') || undefined,
+    pageNo: params.pageNo || 1,
+    pageSize: params.pageSize || params.limit || 50,
+  },
+  ...API_OPTS.SILENT,
+});
+
+const loadRuntimeDictionaryItems = async (
+  dictCode: string,
+  params: { keyword?: string; parentItemValue?: string; rootOnly?: boolean; values?: string[]; pageNo?: number; pageSize?: number; limit?: number },
+) => (await loadRuntimeDictionaryPage(dictCode, params)).records;
+
+const mergeDictionaryItems = (current: RuntimeDictionaryItem[], next: RuntimeDictionaryItem[]) => {
+  const merged = new Map(current.map((item) => [item.itemValue, item]));
+  next.forEach((item) => merged.set(item.itemValue, item));
+  return [...merged.values()];
+};
+
+type DictionaryRemoteSelectProps = {
+  dictCode: string;
+  mode?: 'multiple';
+  value?: string | string[];
+  onChange?: (value: string | string[]) => void;
+};
+
+const DictionaryRemoteSelect = ({ dictCode, mode, value, onChange }: DictionaryRemoteSelectProps) => {
+  const [items, setItems] = useState<RuntimeDictionaryItem[]>([]);
+  const [keyword, setKeyword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [pageNo, setPageNo] = useState(1);
+  const [total, setTotal] = useState(0);
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      void loadRuntimeDictionaryPage(dictCode, { keyword, pageNo: 1, pageSize: 50 })
+        .then((loaded) => {
+          if (!active) return;
+          setItems((current) => mergeDictionaryItems(
+            current.filter((item) => (Array.isArray(value) ? value : value ? [value] : []).map(String).includes(item.itemValue)),
+            loaded.records,
+          ));
+          setPageNo(1);
+          setTotal(loaded.total);
+        })
+        .finally(() => { if (active) setLoading(false); });
+    }, keyword ? 250 : 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [dictCode, keyword]);
+  const loadNextPage = useCallback(() => {
+    if (loading || items.length >= total) return;
+    const nextPage = pageNo + 1;
+    setLoading(true);
+    void loadRuntimeDictionaryPage(dictCode, { keyword, pageNo: nextPage, pageSize: 50 })
+      .then((loaded) => {
+        setItems((current) => mergeDictionaryItems(current, loaded.records));
+        setPageNo(nextPage);
+        setTotal(loaded.total);
+      })
+      .finally(() => setLoading(false));
+  }, [dictCode, items.length, keyword, loading, pageNo, total]);
+  useEffect(() => {
+    const selectedValues = (Array.isArray(value) ? value : value ? [value] : []).map(String);
+    if (!selectedValues.length) return;
+    let active = true;
+    void loadRuntimeDictionaryItems(dictCode, { values: selectedValues, limit: Math.max(50, selectedValues.length) })
+      .then((loaded) => { if (active) setItems((current) => mergeDictionaryItems(current, loaded)); });
+    return () => { active = false; };
+  }, [dictCode, value]);
+  return (
+    <Select
+      allowClear
+      filterOption={false}
+      loading={loading}
+      mode={mode}
+      onChange={onChange}
+      onPopupScroll={(event: UIEvent<HTMLElement>) => {
+        const target = event.currentTarget;
+        if (target.scrollTop + target.clientHeight >= target.scrollHeight - 24) loadNextPage();
+      }}
+      onSearch={setKeyword}
+      options={items.map((item) => ({ label: item.itemLabel, value: item.itemValue }))}
+      showSearch
+      value={value}
+    />
+  );
+};
+
+type DictionaryCascaderOption = {
+  label: string;
+  value: string;
+  isLeaf: boolean;
+  children?: DictionaryCascaderOption[];
+};
+
+const toCascaderOptions = (items: RuntimeDictionaryItem[]): DictionaryCascaderOption[] => items.map((item) => ({
+  label: item.itemLabel,
+  value: item.itemValue,
+  isLeaf: Boolean(item.leaf),
+}));
+
+const attachCascaderChildren = (
+  options: DictionaryCascaderOption[],
+  parentValue: string,
+  children: DictionaryCascaderOption[],
+): DictionaryCascaderOption[] => options.map((option) => option.value === parentValue
+  ? { ...option, children }
+  : { ...option, children: option.children ? attachCascaderChildren(option.children, parentValue, children) : undefined });
+
+const resolveDictionaryPath = async (dictCode: string, leafValue: string) => {
+  const reversed: RuntimeDictionaryItem[] = [];
+  let currentValue: string | undefined = leafValue;
+  for (let level = 0; currentValue && level < 8; level += 1) {
+    const [current] = await loadRuntimeDictionaryItems(dictCode, { values: [currentValue], limit: 1 });
+    if (!current) break;
+    reversed.push(current);
+    currentValue = current.parentItemValue;
+  }
+  return reversed.reverse();
+};
+
+type DictionaryCascaderInputProps = {
+  dictCode: string;
+  value?: string;
+  onChange?: (value?: string) => void;
+};
+
+const DictionaryCascaderInput = ({ dictCode, value, onChange }: DictionaryCascaderInputProps) => {
+  const [options, setOptions] = useState<DictionaryCascaderOption[]>([]);
+  const [path, setPath] = useState<string[]>([]);
+  useEffect(() => {
+    let active = true;
+    void loadRuntimeDictionaryItems(dictCode, { rootOnly: true, limit: 50 }).then(async (roots) => {
+      if (!active) return;
+      let nextOptions = toCascaderOptions(roots);
+      if (value) {
+        const resolvedPath = await resolveDictionaryPath(dictCode, value);
+        if (!active) return;
+        for (const parent of resolvedPath.slice(0, -1)) {
+          const children = await loadRuntimeDictionaryItems(dictCode, { parentItemValue: parent.itemValue, limit: 100 });
+          if (!active) return;
+          nextOptions = attachCascaderChildren(nextOptions, parent.itemValue, toCascaderOptions(children));
+        }
+        setPath(resolvedPath.map((item) => item.itemValue));
+      } else {
+        setPath([]);
+      }
+      setOptions(nextOptions);
+    });
+    return () => { active = false; };
+  }, [dictCode, value]);
+  const loadData: NonNullable<CascaderProps<DictionaryCascaderOption>['loadData']> = async (selectedOptions) => {
+    const target = selectedOptions[selectedOptions.length - 1];
+    const children = await loadRuntimeDictionaryItems(dictCode, { parentItemValue: String(target.value), limit: 100 });
+    setOptions((current) => attachCascaderChildren(current, String(target.value), toCascaderOptions(children)));
+  };
+  return (
+    <Cascader<DictionaryCascaderOption>
+      changeOnSelect={false}
+      loadData={loadData}
+      onChange={(selected) => {
+        const selectedPath = selected.map(String);
+        setPath(selectedPath);
+        onChange?.(selectedPath.at(-1));
+      }}
+      options={options}
+      value={path}
+    />
+  );
+};
+
 const buildCollectedFieldRule = (field: RegistrationCollectedField) => {
   return [
     ...(field.required ? [{ required: true, message: `请输入${field.title}` }] : []),
@@ -867,7 +1071,6 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
       return (
         <Select
           options={parseConfigFieldOptions(field.options || DEFAULT_INDEPENDENT_MEMBER_ROLE_OPTIONS)}
-          placeholder={placeholder}
         />
       );
     }
@@ -889,9 +1092,15 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
       );
     }
     case 'SELECT':
-      return <Select options={parseConfigFieldOptions(field.options)} placeholder={placeholder} />;
+      return field.optionSource === 'DICTIONARY' && field.dictCode
+        ? <DictionaryRemoteSelect dictCode={field.dictCode} />
+        : <Select options={parseConfigFieldOptions(field.options)} />;
     case 'MULTI_SELECT':
-      return <Select mode="multiple" options={parseConfigFieldOptions(field.options)} placeholder={placeholder} />;
+      return field.optionSource === 'DICTIONARY' && field.dictCode
+        ? <DictionaryRemoteSelect dictCode={field.dictCode} mode="multiple" />
+        : <Select mode="multiple" options={parseConfigFieldOptions(field.options)} />;
+    case 'CASCADER':
+      return field.dictCode ? <DictionaryCascaderInput dictCode={field.dictCode} /> : <Cascader options={[]} />;
     case 'MOBILE':
       return <Input inputMode="numeric" placeholder={placeholder} maxLength={11} />;
     case 'EMAIL':
@@ -1066,10 +1275,31 @@ const getRegistrationCollectedFieldDisplayText = (field: RegistrationCollectedFi
   return normalizeDisplayText(normalizeSnapshotValue(value)) || '-';
 };
 
+const DictionaryDisplayValue = ({ field, value }: { field: RegistrationCollectedField; value: unknown }) => {
+  const [label, setLabel] = useState(() => normalizeDisplayText(normalizeSnapshotValue(value)) || '-');
+  useEffect(() => {
+    if (!field.dictCode || !hasCollectedValue(value)) return;
+    let active = true;
+    const values = (Array.isArray(value) ? value : [value]).map(String);
+    const load = (field.fieldType || '').toUpperCase() === 'CASCADER'
+      ? resolveDictionaryPath(field.dictCode, values[0]).then((pathItems) => pathItems.map((item) => item.itemLabel).join(' / '))
+      : loadRuntimeDictionaryItems(field.dictCode, { values, limit: Math.max(50, values.length) }).then((items) => {
+          const labels = new Map(items.map((item) => [item.itemValue, item.itemLabel]));
+          return values.map((itemValue) => labels.get(itemValue) || itemValue).join('、');
+        });
+    void load.then((nextLabel) => { if (active) setLabel(nextLabel || values.join('、')); });
+    return () => { active = false; };
+  }, [field.dictCode, field.fieldType, value]);
+  return <Typography.Text>{label}</Typography.Text>;
+};
+
 const renderCollectedFieldReviewValue = (field: RegistrationCollectedField, value: unknown) => {
   if (!hasCollectedValue(value)) return <Typography.Text type="secondary">未填写</Typography.Text>;
   if ((field.fieldType || 'TEXT').toUpperCase() === 'IMAGE' && typeof value === 'string') {
     return <Image width={72} height={72} src={normalizeUploadUrl(value)} alt={field.title} />;
+  }
+  if (field.optionSource === 'DICTIONARY' && field.dictCode) {
+    return <DictionaryDisplayValue field={field} value={value} />;
   }
   return <Typography.Text>{getRegistrationCollectedFieldDisplayText(field, value)}</Typography.Text>;
 };

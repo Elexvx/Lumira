@@ -1,0 +1,2 @@
+itemValue	itemLabel	parentItemValue	levelNo	sortNo	status	remark	leaf
+EXAMPLE	示例选项		1	10	ENABLED	普通字典示例	true

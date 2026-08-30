@@ -43,6 +43,9 @@ lumira:
       languages: ${LUMIRA_FILE_OCR_LANGUAGES:eng+chi_sim}
       timeout-millis: ${LUMIRA_FILE_OCR_TIMEOUT_MILLIS:5000}
 
+lumira.dictionary-datasets.bootstrap-enabled: ${LUMIRA_DICTIONARY_DATASETS_ENABLED:true}
+lumira.dictionary-datasets.root: ${LUMIRA_DICTIONARY_DATASET_ROOT:reference-data/dictionaries}
+
 server:
   port: 8080
 
@@ -110,6 +113,9 @@ saas:
       - /api/v1/auth/login
       - /api/v1/auth/login/code/challenge
       - /api/v1/auth/login/code/complete
+      - /api/v1/auth/registration/contact/availability
+      - /api/v1/auth/registration/code/challenge
+      - /api/v1/auth/registration/complete
       - /api/v1/auth/password-reset/challenge
       - /api/v1/auth/password-reset/complete
       - /api/v1/auth/login-encryption-key

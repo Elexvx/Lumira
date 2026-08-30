@@ -161,6 +161,8 @@ class SystemUserManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(permissionSnapshot(Set.of("system:user:export")));
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent("permissions-2"))
+                .thenReturn(true);
 
         BizException exception = assertThrows(BizException.class, () -> service.getUser(currentUser(), 2001L));
 
@@ -634,6 +636,17 @@ class SystemUserManagementAppServiceTest {
     }
 
     @Test
+    void updateUserStatusShouldAdvanceAuthorizationSnapshotVersionToPreventMissedSessionIndexRevival() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
+
+        assertTrue(service.updateUserStatus(currentUser(), 2001L, "DISABLED"));
+
+        verify(permissionSnapshotService).invalidatePermissions();
+    }
+
+    @Test
     void createUserShouldUseLastInsertIdAfterInsert() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         UserDomainService userDomainService = mock(UserDomainService.class);
@@ -895,6 +908,8 @@ class SystemUserManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(permissionSnapshot(Set.of("system:user:export")));
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent("permissions-2"))
+                .thenReturn(true);
         UserDomainService userDomainService = mock(UserDomainService.class);
         when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
         SystemUserManagementAppService service = buildService(
@@ -940,6 +955,59 @@ class SystemUserManagementAppServiceTest {
                 anyInt(),
                 org.mockito.ArgumentMatchers.anyString()
         );
+    }
+
+    @Test
+    void listUsersFromTrustedSnapshotShouldRejectAnAsyncExportSnapshotThatIsNoLongerAuthoritative() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PermissionSnapshotService.PermissionSnapshot staleSnapshot = permissionSnapshot(Set.of("system:user:export"));
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(staleSnapshot);
+        when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(staleSnapshot.getVersion()))
+                .thenReturn(false);
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
+        SystemUserManagementAppService service = buildService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                null,
+                userDomainService,
+                defaultIamUserService()
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSessionId("internal-export-task-9001");
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.listUsersFromTrustedSnapshot(
+                        currentUser,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        1,
+                        10
+                )
+        );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
     }
 
     @Test

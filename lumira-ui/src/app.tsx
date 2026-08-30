@@ -9,6 +9,8 @@ import { queryClient } from '@/query/queryClient';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { getWatermarkSettingsSnapshot, subscribeWatermarkSettings } from '@/watermark/settingsStorage';
 import { applyWatermarkOpacity } from '@/watermark/color';
+import { getStoredCurrentUser, subscribeSessionState } from '@/auth/sessionState';
+import { resolveWatermarkTextLines } from '@/watermark/template';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { MaintenanceModeGate } from '@/maintenance/MaintenanceModeGate';
 import { startFrontendVersionPolling, startPublicBrandingPolling } from '@/app.runtime';
@@ -40,6 +42,8 @@ const AppWatermarkLayer = ({ children }: { children: ReactNode }) => {
     getWatermarkSettingsSnapshot,
     () => DEFAULT_WATERMARK_SETTINGS,
   );
+  const currentUser = useSyncExternalStore(subscribeSessionState, getStoredCurrentUser, () => null);
+  const personalizedTextLines = resolveWatermarkTextLines(watermark.personalizedTextLines, currentUser);
 
   if (!watermark.enabled) {
     return <>{children}</>;
@@ -51,7 +55,7 @@ const AppWatermarkLayer = ({ children }: { children: ReactNode }) => {
       rotate={watermark.rotate}
       gap={[watermark.gapX, watermark.gapY]}
       offset={[watermark.offsetX, watermark.offsetY]}
-      content={watermark.mode === 'TEXT' ? watermark.textLines : undefined}
+      content={watermark.mode === 'TEXT' ? (personalizedTextLines.length ? personalizedTextLines : watermark.textLines) : undefined}
       image={watermark.mode === 'IMAGE' ? normalizeUploadUrl(watermark.imageUrl) : undefined}
       font={{
         color: applyWatermarkOpacity(watermark.fontColor, watermark.opacity),

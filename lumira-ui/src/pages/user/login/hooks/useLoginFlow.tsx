@@ -37,6 +37,8 @@ const DEFAULT_LOGIN_CAPABILITIES: LoginCapabilitiesState = {
   wechatLoginAvailable: false,
   passkeyLoginAvailable: false,
   passkeyPasswordlessAvailable: false,
+  registrationSmsVerificationRequired: false,
+  registrationEmailVerificationRequired: false,
   loginModeOrder: ['passkey', 'sms', 'email', 'wechat', 'password'],
 };
 
@@ -397,6 +399,7 @@ export const useLoginFlow = () => {
   const [pendingPasswordChangeLogin, setPendingPasswordChangeLogin] = useState<LoginResponse | null>(null);
   const [restoredPasswordChangeRequired, setRestoredPasswordChangeRequired] = useState(false);
   const [passwordChangeSubmitting, setPasswordChangeSubmitting] = useState(false);
+  const [registrationSuggestion, setRegistrationSuggestion] = useState<{ mobile: string; nonce: number } | null>(null);
   const [loginForm] = Form.useForm<LoginFormValues>();
   const [forcedPasswordChangeForm] = Form.useForm<ForcedPasswordChangeFormValues>();
 
@@ -421,6 +424,8 @@ export const useLoginFlow = () => {
     loginForm,
     forcedPasswordChangeForm,
     resetSecondFactorFlow,
+    registrationSuggestion,
+    setRegistrationSuggestion,
   };
   const { initialState, setInitialState } = useInitialStateModel();
   const location = useLocation();

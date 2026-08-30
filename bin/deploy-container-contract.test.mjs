@@ -671,17 +671,17 @@ test('continuous release manifest uses digest-pinned images and a stable GitHub 
   assert.match(envExample, /PLATFORM_UPDATE_MANIFEST_URL=https:\/\/api\.github\.com\/repos\/Elexvx\/Lumira\/releases\/tags\/continuous/);
 });
 
-test('frontend preview container stays opt-in for production compose', () => {
-  const localUiService = composeProd.slice(composeProd.indexOf('  lumira-ui:'), composeProd.indexOf('  edge-proxy:'));
+test('frontend blue-green containers stay opt-in and independently addressable', () => {
+  const localUiService = composeProd.slice(composeProd.indexOf('  lumira-ui-blue:'), composeProd.indexOf('  edge-proxy:'));
   assert.match(
     composeProd,
-    /lumira-ui:\r?\n\s+profiles:\r?\n\s+- local-lumira-ui/,
-    'lumira-ui must be guarded by the local-lumira-ui profile'
+    /lumira-ui-blue:[\s\S]*?profiles:\r?\n\s+- local-lumira-ui\r?\n\s+- blue[\s\S]*?lumira-ui-green:[\s\S]*?- green/,
+    'both UI slots must be guarded by local and slot profiles'
   );
   assert.doesNotMatch(
     composeProd,
-    /edge-proxy:[\s\S]*depends_on:\r?\n(?:\s+- .*\r?\n)*\s+- lumira-ui/,
-    'edge-proxy must not require lumira-ui when frontend preview is disabled'
+    /edge-proxy:[\s\S]*depends_on:\r?\n(?:\s+- .*\r?\n)*\s+- lumira-ui-(?:blue|green)/,
+    'edge-proxy must not start a UI slot implicitly'
   );
   assert.match(
     deployScript,
@@ -695,9 +695,9 @@ test('frontend preview container stays opt-in for production compose', () => {
   );
 });
 
-test('edge proxy root path does not hard-depend on frontend preview container', () => {
-  assert.doesNotMatch(edgeNginx, /proxy_pass http:\/\/lumira-ui/, 'edge proxy must not proxy root traffic to lumira-ui by default');
-  assert.match(edgeNginx, /location \/ \{\r?\n\s+return 410;/, 'edge proxy root path must explicitly reject non-API traffic by default');
+test('edge proxy root path follows the atomically generated frontend upstream', () => {
+  assert.doesNotMatch(edgeNginx, /proxy_pass http:\/\/lumira-ui-(?:blue|green)/, 'edge proxy must not hard-code a UI slot');
+  assert.match(edgeNginx, /proxy_pass http:\/\/\$frontend_upstream\$request_uri;/, 'edge proxy root path must use the active frontend upstream');
 });
 
 test('api proxy does not override backend CORS policy with a hard-coded origin allowlist', () => {

@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 final class RegistrationFieldValidationPolicy {
 
     static final Set<String> FIELD_TYPES = Set.of(
-            "TEXT", "TEXTAREA", "IMAGE", "ROLE", "NUMBER", "DATE", "SELECT", "MULTI_SELECT", "MOBILE", "EMAIL"
+            "TEXT", "TEXTAREA", "IMAGE", "ROLE", "NUMBER", "DATE", "SELECT", "MULTI_SELECT", "CASCADER", "MOBILE", "EMAIL"
     );
     static final Set<String> VALIDATION_RULES = Set.of(
             "NONE", "PERSON_NAME", "DISPLAY_NAME", "CHINA_MOBILE", "EMAIL", "ID_CARD"

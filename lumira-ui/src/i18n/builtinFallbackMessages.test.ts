@@ -28,6 +28,13 @@ describe('resolveBuiltinFallbackMessage', () => {
     expect(resolveBuiltinFallbackMessage('nav.user.profile', 'en-US')).toBe('Profile');
   });
 
+  it('provides readable watermark copy when the runtime catalog is unavailable', () => {
+    expect(resolveBuiltinFallbackMessage('ui.settings.personalization.watermark.personalizedWatermarkTemplate', 'zh-CN')).toBe('登录用户水印模板');
+    expect(resolveBuiltinFallbackMessage('ui.settings.personalization.watermark.enterPersonalizedWatermarkTemplate', 'zh-CN')).toContain('用户：{{username}}');
+    expect(resolveBuiltinFallbackMessage('ui.settings.personalization.watermark.username', 'zh-CN')).toBe('用户名');
+    expect(resolveBuiltinFallbackMessage('ui.settings.personalization.watermark.userId', 'en-US')).toBe('User ID');
+  });
+
   it('does not override unrelated message ids', () => {
     expect(resolveBuiltinFallbackMessage('common.confirm', 'zh-CN')).toBeUndefined();
   });

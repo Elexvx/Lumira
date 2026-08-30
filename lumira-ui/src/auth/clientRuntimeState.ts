@@ -3,7 +3,7 @@ import { DEFAULT_BRANDING_SETTINGS, getStoredBrandingSettings, normalizeBranding
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { clearSecuritySettings } from '@/auth/securitySettingsStorage';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
-import { clearWatermarkSettings } from '@/watermark/settingsStorage';
+import { getStoredWatermarkSettings } from '@/watermark/settingsStorage';
 import { clearStoredSessionState } from '@/auth/sessionState';
 import { queryClient } from '@/query/queryClient';
 
@@ -26,7 +26,6 @@ export const clearClientRuntimeState = () => {
   queryClient.clear();
   clearStoredSessionState();
   clearSecuritySettings();
-  clearWatermarkSettings();
   clearUserScopedSessionStorage();
 };
 
@@ -37,5 +36,5 @@ export const buildLoggedOutInitialState = (): AppInitialState => ({
   availablePlugins: [],
   securitySettings: DEFAULT_SECURITY_SETTINGS,
   brandingSettings: normalizeBrandingSettings(getStoredBrandingSettings() || DEFAULT_BRANDING_SETTINGS),
-  watermarkSettings: DEFAULT_WATERMARK_SETTINGS,
+  watermarkSettings: getStoredWatermarkSettings() || DEFAULT_WATERMARK_SETTINGS,
 });

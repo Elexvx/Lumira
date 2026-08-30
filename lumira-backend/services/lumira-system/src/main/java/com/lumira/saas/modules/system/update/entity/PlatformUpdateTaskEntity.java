@@ -17,7 +17,13 @@ public class PlatformUpdateTaskEntity {
     private String activeSlot;
     private String targetSlot;
     private String preflightId;
+    private String releaseId;
     private String manifestHash;
+    private String signatureKeyId;
+    private Long operationEpoch;
+    private LocalDateTime rollbackExpiresAt;
+    private String maintenanceMode;
+    private String maintenanceReason;
     private Long rollbackOfTaskId;
     private String activeKey;
     private String targetVersion;
@@ -54,8 +60,20 @@ public class PlatformUpdateTaskEntity {
     public void setTargetSlot(String targetSlot) { this.targetSlot = targetSlot; }
     public String getPreflightId() { return preflightId; }
     public void setPreflightId(String preflightId) { this.preflightId = preflightId; }
+    public String getReleaseId() { return releaseId; }
+    public void setReleaseId(String releaseId) { this.releaseId = releaseId; }
     public String getManifestHash() { return manifestHash; }
     public void setManifestHash(String manifestHash) { this.manifestHash = manifestHash; }
+    public String getSignatureKeyId() { return signatureKeyId; }
+    public void setSignatureKeyId(String signatureKeyId) { this.signatureKeyId = signatureKeyId; }
+    public Long getOperationEpoch() { return operationEpoch; }
+    public void setOperationEpoch(Long operationEpoch) { this.operationEpoch = operationEpoch; }
+    public LocalDateTime getRollbackExpiresAt() { return rollbackExpiresAt; }
+    public void setRollbackExpiresAt(LocalDateTime rollbackExpiresAt) { this.rollbackExpiresAt = rollbackExpiresAt; }
+    public String getMaintenanceMode() { return maintenanceMode; }
+    public void setMaintenanceMode(String maintenanceMode) { this.maintenanceMode = maintenanceMode; }
+    public String getMaintenanceReason() { return maintenanceReason; }
+    public void setMaintenanceReason(String maintenanceReason) { this.maintenanceReason = maintenanceReason; }
     public Long getRollbackOfTaskId() { return rollbackOfTaskId; }
     public void setRollbackOfTaskId(Long rollbackOfTaskId) { this.rollbackOfTaskId = rollbackOfTaskId; }
     public String getActiveKey() { return activeKey; }

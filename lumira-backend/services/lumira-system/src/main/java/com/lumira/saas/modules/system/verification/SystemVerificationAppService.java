@@ -89,6 +89,7 @@ public class SystemVerificationAppService {
     private static final String FACTOR_EMAIL = "email";
     private static final String CHALLENGE_TYPE_BIND = "BIND";
     private static final String CHALLENGE_TYPE_LOGIN = "LOGIN";
+    private static final String CHALLENGE_TYPE_REGISTRATION = "REGISTRATION";
     private static final String SMS_CONFIG_ENABLED_KEY = "verification.sms.enabled";
     private static final String SMS_CONFIG_PROVIDER_KEY = "verification.sms.provider";
     private static final String SMS_CONFIG_SIGN_NAME_KEY = "verification.sms.sign-name";
@@ -101,7 +102,8 @@ public class SystemVerificationAppService {
     private static final String AUDIT_SCENE_LOGIN_CODE = "LOGIN_CODE";
     private static final String AUDIT_SCENE_SECOND_FACTOR = "SECOND_FACTOR";
     private static final String AUDIT_SCENE_CONTACT_BIND = "CONTACT_BIND";
-    private static final String PENDING_LOGIN_REGISTRATION_MARKER = "PENDING_LOGIN_REGISTRATION";
+    private static final String AUDIT_SCENE_REGISTRATION = "REGISTRATION";
+    private static final String REGISTRATION_CHALLENGE_MARKER = "REGISTRATION_CONTACT";
     private static final String PERMISSION_VERIFICATION_VIEW = "system:verification:view";
     private static final String PERMISSION_VERIFICATION_MANAGE = "system:verification:manage";
     private static final String PERMISSION_CONFIG_VIEW = "system:config:view";
@@ -613,60 +615,80 @@ public class SystemVerificationAppService {
         return challenge;
     }
 
-    public LoginCodeChallengeVO startPendingLoginCodeChallenge(String account, String loginType) {
-        String normalizedLoginType = this.normalizeFactorCode(loginType);
-        if (!FACTOR_SMS.equals(normalizedLoginType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "Only sms login supports automatic registration");
+    public boolean isRegistrationSmsVerificationRequired() {
+        return this.isSmsLoginAvailable();
+    }
+
+    public boolean isRegistrationEmailVerificationRequired() {
+        return this.smtpMailService.isConfigured();
+    }
+
+    public LoginCodeChallengeVO startRegistrationCodeChallenge(String contactType, String contact) {
+        String factorCode = this.normalizeRegistrationContactType(contactType);
+        String identityType = FACTOR_SMS.equals(factorCode) ? IamUserService.IDENTITY_MOBILE : IamUserService.IDENTITY_EMAIL;
+        String normalizedContact = this.iamUserService.normalizeIdentifier(identityType, contact);
+        if (!StringUtils.hasText(normalizedContact)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "联系方式不能为空");
         }
-        String normalizedAccount = this.normalizePendingLoginRegistrationAccount(account, normalizedLoginType);
-        this.ensureLoginSupported(normalizedLoginType);
-        SmsVerificationSettingsRecord smsSettings = this.loadSmsSettingsRecord();
-        if (!smsSettings.enabled() || !smsSettings.configured()) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "请先配置并启用短信验证码登录");
+
+        SmsVerificationSettingsRecord smsSettings = null;
+        if (FACTOR_SMS.equals(factorCode)) {
+            smsSettings = this.loadSmsSettingsRecord();
+            if (!smsSettings.enabled() || !smsSettings.configured()) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "短信验证码服务未配置");
+            }
+        } else if (!this.smtpMailService.isConfigured()) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "邮件验证码服务未配置");
         }
-        PendingLoginRegistrationIdentity pendingIdentity = this.pendingLoginRegistrationIdentity(normalizedLoginType, normalizedAccount);
+
+        RegistrationChallengeOwner owner = this.registrationChallengeOwnerIdentity(factorCode, normalizedContact);
         String challengeId = this.generateChallengeId();
         String verificationCode = this.generateNumericCode(6);
         String codeHash = this.totpService.sha256(challengeId + ":" + verificationCode);
-        String maskedContact = this.maskMobile(normalizedAccount);
-        String promptMessage = "验证码已发送至待验证手机号，请输入 6 位验证码完成登录";
-        this.ensureVerificationCodeCooldown(pendingIdentity.userId(), pendingIdentity.userUuid(), normalizedLoginType, CHALLENGE_TYPE_LOGIN);
+        String maskedContact = FACTOR_SMS.equals(factorCode) ? this.maskMobile(normalizedContact) : this.maskEmail(normalizedContact);
+        String promptMessage = FACTOR_SMS.equals(factorCode)
+                ? "验证码已发送至该手机号，请输入 6 位验证码完成注册"
+                : "验证码已发送至该邮箱，请输入 6 位验证码完成注册";
+
+        this.ensureVerificationCodeCooldown(owner.userId(), owner.userUuid(), factorCode, CHALLENGE_TYPE_REGISTRATION);
         this.persistChallenge(
                 challengeId,
-                pendingIdentity.userId(),
-                pendingIdentity.userUuid(),
-                normalizedLoginType,
-                CHALLENGE_TYPE_LOGIN,
-                normalizedAccount,
-                PENDING_LOGIN_REGISTRATION_MARKER,
+                owner.userId(),
+                owner.userUuid(),
+                factorCode,
+                CHALLENGE_TYPE_REGISTRATION,
+                normalizedContact,
+                REGISTRATION_CHALLENGE_MARKER,
                 List.of(),
                 codeHash,
                 maskedContact,
-                null,
-                pendingIdentity.userId()
+                FACTOR_EMAIL.equals(factorCode) ? verificationCode : null,
+                owner.userId()
         );
+
         MockSmsDeliveryDTO mockSmsDelivery;
         try {
             mockSmsDelivery = this.deliverVerificationCode(
-                    pendingIdentity.userId(),
-                    pendingIdentity.userUuid(),
-                    pendingIdentity.auditUsername(),
-                    normalizedLoginType,
-                    AUDIT_SCENE_LOGIN_CODE,
-                    normalizedAccount,
+                    owner.userId(),
+                    owner.userUuid(),
+                    owner.auditUsername(),
+                    factorCode,
+                    AUDIT_SCENE_REGISTRATION,
+                    normalizedContact,
                     maskedContact,
                     verificationCode,
                     challengeId,
-                    "Email verification code",
+                    "注册验证码",
                     smsSettings
             );
         } catch (RuntimeException exception) {
-            this.discardChallenge(challengeId, pendingIdentity.userId(), pendingIdentity.userUuid(), normalizedLoginType, CHALLENGE_TYPE_LOGIN);
+            this.discardChallenge(challengeId, owner.userId(), owner.userUuid(), factorCode, CHALLENGE_TYPE_REGISTRATION);
             throw exception;
         }
+
         LoginCodeChallengeVO challenge = new LoginCodeChallengeVO();
-        challenge.setLoginType(normalizedLoginType);
-        challenge.setFactorName(this.loginDefinitionOf(normalizedLoginType).factorName());
+        challenge.setLoginType(factorCode);
+        challenge.setFactorName(this.loginDefinitionOf(factorCode).factorName());
         challenge.setChallengeId(challengeId);
         challenge.setMaskedContact(maskedContact);
         challenge.setPromptMessage(promptMessage);
@@ -676,23 +698,28 @@ public class SystemVerificationAppService {
         return challenge;
     }
 
-    public Optional<PendingLoginCodeVerification> completePendingLoginCodeLoginIfPresent(LoginCodeCompleteRequest request) {
-        this.requireRequest(request, "Login code request is required");
-        ChallengeRecord challenge = this.loadChallengeById(request.getChallengeId(), CHALLENGE_TYPE_LOGIN);
-        if (!this.isPendingLoginRegistrationChallenge(challenge)) {
-            return Optional.empty();
+    public void completeRegistrationCodeChallenge(
+            String challengeId,
+            String verificationCode,
+            String contactType,
+            String normalizedContact
+    ) {
+        String factorCode = this.normalizeRegistrationContactType(contactType);
+        ChallengeRecord challenge = this.loadChallenge(challengeId, factorCode, CHALLENGE_TYPE_REGISTRATION);
+        RegistrationChallengeOwner owner = this.registrationChallengeOwnerIdentity(factorCode, normalizedContact);
+        if (!REGISTRATION_CHALLENGE_MARKER.equals(challenge.setupUri())
+                || !Objects.equals(normalizedContact, challenge.setupSecret())
+                || !Objects.equals(owner.userId(), challenge.userId())
+                || !Objects.equals(owner.userUuid(), challenge.userUuid())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "验证码与当前联系方式不匹配");
         }
-        this.verifySmsCode(challenge, request.getVerificationCode());
+        this.verifyChallengeCode(challenge, verificationCode);
         this.markChallengeConsumed(challenge);
-        return Optional.of(new PendingLoginCodeVerification(challenge.setupSecret(), challenge.factorCode(), "验证成功"));
     }
 
     public SystemVO.VerificationVerificationVO completeLoginCodeLogin(LoginCodeCompleteRequest request) {
         this.requireRequest(request, "Login code request is required");
         ChallengeRecord challenge = this.loadChallengeById(request.getChallengeId(), CHALLENGE_TYPE_LOGIN);
-        if (this.isPendingLoginRegistrationChallenge(challenge)) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "Pending login registration challenge must be completed by control plane");
-        }
         SysUserEntity user = this.requireUserIdentity(challenge.userId(), challenge.userUuid());
         String factorCode = this.normalizeFactorCode(challenge.factorCode());
         if (!FACTOR_SMS.equals(factorCode) && !FACTOR_EMAIL.equals(factorCode)) {
@@ -1020,18 +1047,6 @@ public class SystemVerificationAppService {
         this.verifyChallengeCode(challenge, verificationCode);
     }
 
-    private String normalizePendingLoginRegistrationAccount(String account, String normalizedLoginType) {
-        String identityType = this.iamUserService.detectIdentityType(account);
-        if (FACTOR_SMS.equals(normalizedLoginType) && !IamUserService.IDENTITY_MOBILE.equals(identityType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "sms login requires a mobile account");
-        }
-        String normalizedAccount = this.iamUserService.normalizeIdentifier(identityType, account);
-        if (!StringUtils.hasText((String)normalizedAccount)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "account must not be blank");
-        }
-        return normalizedAccount;
-    }
-
     private void verifyChallengeCode(ChallengeRecord challenge, String verificationCode) {
         String normalizedCode = this.normalizeVerificationCode(verificationCode);
         if (!StringUtils.hasText((String)challenge.codeHash())) {
@@ -1292,19 +1307,6 @@ public class SystemVerificationAppService {
         return FACTOR_SMS.equals(factorCode) || FACTOR_EMAIL.equals(factorCode);
     }
 
-    private boolean isPendingLoginRegistrationChallenge(ChallengeRecord challenge) {
-        if (challenge == null
-                || !CHALLENGE_TYPE_LOGIN.equals(challenge.challengeType())
-                || !FACTOR_SMS.equals(challenge.factorCode())
-                || !PENDING_LOGIN_REGISTRATION_MARKER.equals(challenge.setupUri())
-                || !StringUtils.hasText((String)challenge.setupSecret())) {
-            return false;
-        }
-        PendingLoginRegistrationIdentity pendingIdentity = this.pendingLoginRegistrationIdentity(challenge.factorCode(), challenge.setupSecret());
-        return Objects.equals(challenge.userId(), pendingIdentity.userId())
-                && Objects.equals(challenge.userUuid(), pendingIdentity.userUuid());
-    }
-
     private void discardChallenge(String challengeId, Long userId, String userUuid, String factorCode, String challengeType) {
         this.jdbcTemplate.update("update sys_verification_challenge\nset deleted = 1,\n    updated_by = ?,\n    updated_by_uuid = ?,\n    updated_at = current_timestamp\nwhere challenge_id = ?\n  and user_id = ?\n  and user_uuid = ?\n  and factor_code = ?\n  and challenge_type = ?\n  and consumed_flag = 0\n  and deleted = 0\n", userId, userUuid, challengeId, userId, userUuid, factorCode, challengeType);
     }
@@ -1547,16 +1549,30 @@ public class SystemVerificationAppService {
         return UUID.randomUUID().toString().replace("-", "");
     }
 
-    private PendingLoginRegistrationIdentity pendingLoginRegistrationIdentity(String factorCode, String normalizedAccount) {
-        UUID challengeOwnerUuid = UUID.nameUUIDFromBytes(("pending-login:" + factorCode + ":" + normalizedAccount).getBytes(StandardCharsets.UTF_8));
+    private RegistrationChallengeOwner registrationChallengeOwnerIdentity(String factorCode, String normalizedContact) {
+        UUID challengeOwnerUuid = UUID.nameUUIDFromBytes(("registration:" + factorCode + ":" + normalizedContact).getBytes(StandardCharsets.UTF_8));
         long raw = challengeOwnerUuid.getMostSignificantBits() ^ challengeOwnerUuid.getLeastSignificantBits();
         long stableMagnitude = raw == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(raw);
         long pendingUserId = -Math.max(1L, stableMagnitude);
-        return new PendingLoginRegistrationIdentity(
+        return new RegistrationChallengeOwner(
                 pendingUserId,
                 challengeOwnerUuid.toString(),
-                "pending-" + factorCode + "-" + challengeOwnerUuid.toString().substring(0, 12)
+                "registration-" + factorCode + "-" + challengeOwnerUuid.toString().substring(0, 12)
         );
+    }
+
+    private String normalizeRegistrationContactType(String contactType) {
+        if (!StringUtils.hasText(contactType)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "联系方式类型不能为空");
+        }
+        String normalized = contactType.trim().toLowerCase(Locale.ROOT);
+        if ("mobile".equals(normalized) || FACTOR_SMS.equals(normalized)) {
+            return FACTOR_SMS;
+        }
+        if (FACTOR_EMAIL.equals(normalized)) {
+            return FACTOR_EMAIL;
+        }
+        throw new BizException(ErrorCode.VALIDATION_ERROR, "联系方式类型不合法");
     }
 
     private String generateNumericCode(int digits) {
@@ -1669,13 +1685,10 @@ public class SystemVerificationAppService {
     private record SmsVerificationSettingsRecord(boolean enabled, String provider, String signName, String templateCode, String accessKeyId, String accessKeySecret, String endpoint, String region, boolean configured) {
     }
 
-    private record PendingLoginRegistrationIdentity(Long userId, String userUuid, String auditUsername) {
+    private record RegistrationChallengeOwner(Long userId, String userUuid, String auditUsername) {
     }
 
     private record ChallengeRecord(String challengeId, Long userId, String userUuid, String factorCode, String challengeType, String setupSecret, String setupUri, List<String> recoveryCodes, String codeHash, String maskedContact, String debugCode, LocalDateTime expiresAt, boolean consumedFlag) {
-    }
-
-    public record PendingLoginCodeVerification(String normalizedAccount, String factorCode, String message) {
     }
 
     private record VerificationMethodDefinition(String factorCode, String factorName, boolean emailRequired, boolean mobileRequired, boolean bindSupported) {

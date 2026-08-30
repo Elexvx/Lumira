@@ -5,6 +5,10 @@ import com.lumira.api.auth.LoginCodeCompleteRequest;
 import com.lumira.api.auth.LoginResponseDTO;
 import com.lumira.api.auth.PasswordResetChallengeRequest;
 import com.lumira.api.auth.PasswordResetCompleteRequest;
+import com.lumira.api.auth.RegistrationCodeChallengeRequest;
+import com.lumira.api.auth.RegistrationCompleteInternalRequest;
+import com.lumira.api.auth.RegistrationContactAvailabilityDTO;
+import com.lumira.api.auth.RegistrationContactAvailabilityRequest;
 import com.lumira.api.auth.SecondFactorCompleteRequest;
 import com.lumira.api.auth.VerificationBindRequest;
 import com.lumira.api.system.CaptchaValidationRequestDTO;
@@ -118,6 +122,9 @@ public interface SystemInternalApi {
             @RequestParam("userId") Long userId,
             @RequestParam("userUuid") String userUuid
     );
+
+    @GetExchange("/internal/system/permissions/snapshot/current")
+    Boolean isPermissionSnapshotVersionCurrent(@RequestParam("version") String version);
 
     @GetExchange("/internal/system/permissions/role-snapshot")
     PermissionSnapshotDTO permissionRoleSnapshot(
@@ -276,6 +283,17 @@ public interface SystemInternalApi {
 
     @PostExchange("/internal/system/verification/login-code/complete")
     VerificationVerificationDTO completeLoginCodeLogin(@RequestBody LoginCodeCompleteRequest request);
+
+    @PostExchange("/internal/system/registration/contact/availability")
+    RegistrationContactAvailabilityDTO registrationContactAvailability(
+            @RequestBody RegistrationContactAvailabilityRequest request
+    );
+
+    @PostExchange("/internal/system/registration/code/challenge")
+    LoginCodeChallengeDTO registrationCodeChallenge(@RequestBody RegistrationCodeChallengeRequest request);
+
+    @PostExchange("/internal/system/registration/complete")
+    VerificationVerificationDTO completeRegistration(@RequestBody RegistrationCompleteInternalRequest request);
 
     @PostExchange("/internal/system/verification/password-reset/challenge")
     LoginCodeChallengeDTO passwordResetChallenge(@RequestBody PasswordResetChallengeRequest request);

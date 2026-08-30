@@ -120,7 +120,7 @@ class InternalSystemControllerTest {
                 .contains("requireWechatBindingAvailableForRegistration(normalizedRequest.unionid(), normalizedRequest.openid())")
                 .contains("Wechat user changed, please retry")
                 .contains("Wechat account is unavailable")
-                .contains("Login code user changed, please retry")
+                .contains("注册信息已变化，请重试")
                 .contains("Wechat profile changed, please retry")
                 .contains("requireDefaultRoleGranted(user.getId(), userUuid, roleId)")
                 .contains("Default role binding changed, please retry");
@@ -1121,26 +1121,23 @@ class InternalSystemControllerTest {
 
         assertThatThrownBy(() -> controller.loginCodeChallenge("missing@example.com", "email"))
                 .isInstanceOf(com.lumira.common.exception.BizException.class)
-                .hasMessage("账号不存在或暂不支持该登录方式");
+                .hasMessage("账号尚未注册，请先完成注册");
 
         verify(userDomainService).findLoginUser("missing@example.com");
         verify(verificationAppService, never()).startLoginCodeChallenge(any(), anyString());
     }
 
     @Test
-    void loginCodeChallengeShouldAlwaysStartRegistrationForUnknownMobile() {
-        LoginCodeChallengeVO challenge = new LoginCodeChallengeVO();
-        challenge.setLoginType("sms");
-        challenge.setChallengeId("challenge-sms-always-open");
+    void loginCodeChallengeShouldGuideUnknownMobileToRegistration() {
         when(iamUserService.detectIdentityType("13800138001")).thenReturn(IamUserService.IDENTITY_MOBILE);
         when(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_MOBILE, "13800138001")).thenReturn("13800138001");
         when(userDomainService.findLoginUser("13800138001")).thenReturn(Optional.empty());
-        when(verificationAppService.startPendingLoginCodeChallenge("13800138001", "sms")).thenReturn(challenge);
 
-        var response = controller.loginCodeChallenge("13800138001", "sms");
+        assertThatThrownBy(() -> controller.loginCodeChallenge("13800138001", "sms"))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessage("账号尚未注册，请先完成注册");
 
-        assertThat(response.getChallengeId()).isEqualTo("challenge-sms-always-open");
-        verify(verificationAppService).startPendingLoginCodeChallenge("13800138001", "sms");
+        verify(verificationAppService, never()).startLoginCodeChallenge(any(), anyString());
         verifyNoInteractions(securitySettingsService);
     }
 
@@ -1165,99 +1162,31 @@ class InternalSystemControllerTest {
     }
 
     @Test
-    void loginCodeChallengeShouldStartPendingSmsChallengeForUnknownMobileAccount() {
-        LoginCodeChallengeVO challenge = new LoginCodeChallengeVO();
-        challenge.setLoginType("sms");
-        challenge.setChallengeId("challenge-sms-pending");
+    void registrationContactAvailabilityShouldNormalizeAndCheckLegacyAndIamData() {
         when(iamUserService.detectIdentityType("13800138000")).thenReturn(IamUserService.IDENTITY_MOBILE);
         when(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_MOBILE, "13800138000")).thenReturn("13800138000");
-        when(userDomainService.findLoginUser("13800138000")).thenReturn(Optional.empty());
-        when(verificationAppService.startPendingLoginCodeChallenge("13800138000", "sms")).thenReturn(challenge);
+        when(userDomainService.registrationContactExists(IamUserService.IDENTITY_MOBILE, "13800138000")).thenReturn(false);
 
-        var response = controller.loginCodeChallenge("13800138000", "sms");
+        var response = controller.registrationContactAvailability(
+                new com.lumira.api.auth.RegistrationContactAvailabilityRequest("MOBILE", "13800138000")
+        );
 
-        assertThat(response.getChallengeId()).isEqualTo("challenge-sms-pending");
-        verify(verificationAppService).startPendingLoginCodeChallenge("13800138000", "sms");
-        verify(verificationAppService, never()).startLoginCodeChallenge(any(), anyString());
+        assertThat(response.available()).isTrue();
+        verify(userDomainService).registrationContactExists(IamUserService.IDENTITY_MOBILE, "13800138000");
     }
 
     @Test
-    void completeLoginCodeLoginShouldRegisterPendingSmsUserAfterVerification() {
-        MyBatisQueryOperations localJdbcTemplate = mock(MyBatisQueryOperations.class, invocation -> {
-            String methodName = invocation.getMethod().getName();
-            if ("update".equals(methodName)) {
-                return 1;
-            }
-            if ("queryForObject".equals(methodName)) {
-                return 3002L;
-            }
-            if ("exists".equals(methodName)) {
-                return true;
-            }
-            if ("queryForList".equals(methodName)) {
-                if (invocation.getArguments().length > 1 && invocation.getArguments()[1] == String.class) {
-                    return List.of("dashboard:view");
-                }
-                return List.of();
-            }
-            if ("query".equals(methodName)) {
-                String sql = String.valueOf(invocation.getArguments()[0]);
-                if (sql.contains("from sys_role")) {
-                    @SuppressWarnings("unchecked")
-                    com.lumira.saas.infrastructure.persistence.mybatis.ResultSetExtractor<Object> extractor =
-                            (com.lumira.saas.infrastructure.persistence.mybatis.ResultSetExtractor<Object>) invocation.getArguments()[1];
-                    return extractor.extractData(new com.lumira.saas.infrastructure.persistence.mybatis.SqlRowCursor(List.of(
-                            Map.of("id", 3001L, "role_code", "commonuser", "role_type", "BUSINESS")
-                    )));
-                }
-            }
-            return org.mockito.Mockito.RETURNS_DEFAULTS.answer(invocation);
-        });
-        SecuritySettingsService localSecuritySettingsService = mock(SecuritySettingsService.class);
-        InternalSystemController localController = new InternalSystemController(
-                userDomainService,
-                iamUserService,
-                permissionSnapshotService,
-                mock(CaptchaService.class),
-                verificationAppService,
-                mock(WechatLoginSettingsService.class),
-                passkeyCredentialAppService,
-                applicationService(localJdbcTemplate),
-                passwordEncoder,
-                loginAuditService,
-                operationAuditService,
-                localSecuritySettingsService,
-                mock(PasswordPolicyService.class),
-                authSessionStore,
-                mock(ReadModelVersionService.class)
-        );
-        authenticateInternalService();
-        SysUserEntity createdUser = new SysUserEntity();
-        createdUser.setId(3002L);
-        createdUser.setUuid("user-uuid-3002");
-        createdUser.setUsername("sms_13800138000");
-        createdUser.setMobile("13800138000");
-        createdUser.setStatus("ENABLED");
-        when(verificationAppService.completePendingLoginCodeLoginIfPresent(any())).thenReturn(Optional.of(
-                new SystemVerificationAppService.PendingLoginCodeVerification("13800138000", "sms", "验证成功")
-        ));
-        when(iamUserService.detectIdentityType("13800138000")).thenReturn(IamUserService.IDENTITY_MOBILE);
-        when(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_MOBILE, "13800138000")).thenReturn("13800138000");
-        when(passwordEncoder.encode(anyString())).thenReturn("encoded-password");
-        when(userDomainService.findLoginUser("13800138000")).thenReturn(Optional.empty());
-        when(userDomainService.findLoginUser("sms_13800138000")).thenReturn(Optional.empty());
-        when(userDomainService.findById(3002L)).thenReturn(Optional.of(createdUser));
+    void registrationCodeChallengeShouldRejectExistingContactBeforeSending() {
+        when(iamUserService.detectIdentityType("registered@example.com")).thenReturn(IamUserService.IDENTITY_EMAIL);
+        when(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_EMAIL, "registered@example.com")).thenReturn("registered@example.com");
+        when(userDomainService.registrationContactExists(IamUserService.IDENTITY_EMAIL, "registered@example.com")).thenReturn(true);
 
-        VerificationVerificationDTO response = localController.completeLoginCodeLogin(
-                new LoginCodeCompleteRequest("challenge-1", "123456")
-        );
+        assertThatThrownBy(() -> controller.registrationCodeChallenge(
+                new com.lumira.api.auth.RegistrationCodeChallengeRequest("EMAIL", "registered@example.com")
+        )).isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessage("该邮箱已注册，请直接登录");
 
-        assertThat(response.verified()).isTrue();
-        assertThat(response.userId()).isEqualTo(3002L);
-        assertThat(response.userUuid()).isEqualTo("user-uuid-3002");
-        verify(permissionSnapshotService).invalidatePermissions();
-        verify(iamUserService).createUserWithIdentity(createdUser, "13800138000", "LOGIN_CODE_REGISTER");
-        verify(verificationAppService, never()).completeLoginCodeLogin(any());
+        verify(verificationAppService, never()).startRegistrationCodeChallenge(anyString(), anyString());
     }
 
     @Test

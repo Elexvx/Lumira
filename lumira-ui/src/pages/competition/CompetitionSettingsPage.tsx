@@ -1,6 +1,9 @@
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, InboxOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, ConfigProvider, Divider, Form, Input, InputNumber, Menu, Modal, Popconfirm, Radio, Select, Space, Switch, Tabs, Tag, Typography } from 'antd';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react';
+import { DeleteOutlined, DragOutlined, InboxOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, ConfigProvider, Form, Input, InputNumber, Menu, Modal, Popconfirm, Radio, Select, Space, Switch, Table, Tabs, Tag, Typography } from 'antd';
+import { DndContext, KeyboardSensor, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { createContext, forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type HTMLAttributes, type ReactNode } from 'react';
 import { history, useLocation, useParams } from '@umijs/max';
 import { formatMessage } from '@/i18n/formatMessage';
 import { useOptionalCompetitionWorkspace } from '@/features/competition-workspace/CompetitionWorkspaceContext';
@@ -51,6 +54,8 @@ import {
   MAX_REGISTRATION_PARTICIPANTS_PER_TYPE,
 } from './utils/competitionParticipantConfig';
 import {
+  competitionSettingsMenuItems,
+  competitionSettingsRegistrationTabItems,
   createCompetitionSettingsSearch,
   getCompetitionSettingsStageTabFallback,
   parseCompetitionSettingsNavigation,
@@ -64,7 +69,9 @@ import {
 } from './utils/registrationFieldScope';
 import { resolveRegistrationFieldValidationRule } from './utils/registrationFieldValidation';
 import {
+  getNextScopedConfigItemSortOrder,
   normalizeIndependentMemberRoleMetadata,
+  normalizeSchoolDictionaryMetadata,
   reorderScopedConfigItems,
 } from './utils/competitionFieldConfig';
 import {
@@ -129,6 +136,13 @@ type PaymentProviderOption = {
   label: string;
   value: string;
   disabled?: boolean;
+};
+
+type DictionaryTypeOption = {
+  id: number;
+  dictCode: string;
+  dictName: string;
+  structureType: 'FLAT' | 'TREE';
 };
 
 const localizeLegacyConfigItemTitle = (item: CompetitionConfigItem): CompetitionConfigItem => {
@@ -223,14 +237,6 @@ const getCompetitionSettingsFieldLabel = (
   }[fieldScope];
 };
 
-const competitionSettingsMenuItems = [
-  { key: 'basic' as const, label: '基础信息' },
-  { key: 'registration' as const, label: '报名设置' },
-  { key: 'stages' as const, label: '赛程与材料' },
-  { key: 'payments' as const, label: '费用设置' },
-  { key: 'awards' as const, label: '获奖设置' },
-];
-
 const isCompetitionConfigFieldType = (itemType: CompetitionConfigItemType): itemType is CompetitionConfigFieldScope =>
   ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD', 'PROJECT_FIELD', 'EXPERT_FIELD'].includes(itemType);
 
@@ -239,10 +245,14 @@ const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetit
     const fieldScope = isCompetitionConfigFieldType(item.itemType)
       ? item.itemType === 'EXPERT_FIELD' ? 'EXPERT_FIELD' : resolveRegistrationFieldScope(item)
       : undefined;
-    const metadata = normalizeIndependentMemberRoleMetadata(
-      fieldScope,
+    const metadata = normalizeSchoolDictionaryMetadata(
       item.itemKey,
-      parseConfigItemMetadata(item.contentJson),
+      item.title,
+      normalizeIndependentMemberRoleMetadata(
+        fieldScope,
+        item.itemKey,
+        parseConfigItemMetadata(item.contentJson),
+      ),
     );
     return {
       ...item,
@@ -331,7 +341,7 @@ const toConfigItems = (items: EditableCompetitionConfigItem[]): CompetitionConfi
       itemType,
       itemKey,
       contentJson: serializeConfigItemMetadata({ ...nextMetadata, fieldScope: undefined, documentKind: undefined }),
-      sortOrder: item.sortOrder ?? 0,
+      sortOrder: item.sortOrder,
       requiredFlag: isDocumentItem ? true : Boolean(item.requiredFlag),
       enabled: item.enabled ?? true,
     };
@@ -347,6 +357,7 @@ const fieldTypeOptions = [
   { label: '日期', value: 'DATE' },
   { label: '下拉选择', value: 'SELECT' },
   { label: '多选', value: 'MULTI_SELECT' },
+  { label: '省市区县级联', value: 'CASCADER' },
   { label: '手机号（自动校验）', value: 'MOBILE' },
   { label: '邮箱（自动校验）', value: 'EMAIL' },
 ];
@@ -484,14 +495,23 @@ const ensureCombinedTeamFieldItems = (
       standardField: true,
     }),
   }])[0];
+  const nextSortOrderForScope = (scope: CompetitionConfigFieldScope) => getNextScopedConfigItemSortOrder(
+    normalizedItems,
+    normalizedItems.reduce<number[]>((indexes, item, index) => {
+      if ((item.metadata?.fieldScope || item.itemType) === scope) {
+        indexes.push(index);
+      }
+      return indexes;
+    }, []),
+  );
 
   return [
     ...normalizedItems,
     ...(!hasField('MEMBER_FIELD', 'memberName')
-      ? [requiredNameField('MEMBER_FIELD', '学生姓名', 110)]
+      ? [requiredNameField('MEMBER_FIELD', '学生姓名', nextSortOrderForScope('MEMBER_FIELD'))]
       : []),
     ...(!hasField('TEACHER_FIELD', 'memberName')
-      ? [requiredNameField('TEACHER_FIELD', '指导老师姓名', 110)]
+      ? [requiredNameField('TEACHER_FIELD', '指导老师姓名', nextSortOrderForScope('TEACHER_FIELD'))]
       : []),
   ];
 };
@@ -690,208 +710,361 @@ const renderConfigItemFields = (
   return null;
 };
 
-const renderFieldSettingsTable = (
-  fields: Array<{ key: number; name: number }>,
-  add: (defaultValue?: EditableCompetitionConfigItem) => void,
-  remove: (index: number | number[]) => void,
-  scope: CompetitionConfigFieldScope,
-  markDraftChanged: () => void,
-  reorderField: (fields: Array<{ key: number; name: number }>, fromIndex: number, toIndex: number) => void,
-  openOptionsEditor: (fieldName: number, fieldTitle?: string, options?: string) => void,
-  fieldGroupLabel?: string,
+type FieldListEntry = { key: number; name: number };
+type FieldTableRecord = FieldListEntry & { rowKey: string; position: number };
+type SortableFieldRowContextValue = Pick<ReturnType<typeof useSortable>, 'attributes' | 'listeners' | 'setActivatorNodeRef'>;
+
+const SortableFieldRowContext = createContext<SortableFieldRowContextValue | null>(null);
+
+const SortableFieldRow = ({ children, ...props }: HTMLAttributes<HTMLTableRowElement> & { 'data-row-key'?: string }) => {
+  const rowKey = String(props['data-row-key'] || '');
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({ id: rowKey });
+  const style: CSSProperties = {
+    ...props.style,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    position: isDragging ? 'relative' : undefined,
+    zIndex: isDragging ? 2 : undefined,
+  };
+  return (
+    <SortableFieldRowContext.Provider value={{ attributes, listeners, setActivatorNodeRef }}>
+      <tr {...props} ref={setNodeRef} style={style}>{children}</tr>
+    </SortableFieldRowContext.Provider>
+  );
+};
+
+const FieldDragHandle = ({ label }: { label: string }) => {
+  const sortable = useContext(SortableFieldRowContext);
+  if (!sortable) return null;
+  return (
+    <span ref={sortable.setActivatorNodeRef} {...sortable.attributes} {...sortable.listeners}>
+      <Button
+        aria-label={label}
+        className="competition-field-table__drag-handle"
+        icon={<DragOutlined />}
+        size="small"
+        title="拖动调整顺序"
+        type="text"
+      />
+    </span>
+  );
+};
+
+type FieldSettingsTableProps = {
+  fields: FieldListEntry[];
+  items: EditableCompetitionConfigItem[];
+  add: (defaultValue?: EditableCompetitionConfigItem) => void;
+  remove: (index: number | number[]) => void;
+  scope: CompetitionConfigFieldScope;
+  markDraftChanged: () => void;
+  reorderField: (fields: FieldListEntry[], fromIndex: number, toIndex: number) => void;
+  openOptionsEditor: (fieldName: number, fieldTitle?: string, options?: string) => void;
+  dictionaryTypes: DictionaryTypeOption[];
+  fieldGroupLabel?: string;
+  standalone?: boolean;
+};
+
+const FieldSettingsTable = ({
+  fields,
+  items,
+  add,
+  remove,
+  scope,
+  markDraftChanged,
+  reorderField,
+  openOptionsEditor,
+  dictionaryTypes,
+  fieldGroupLabel,
   standalone = false,
-) => {
+}: FieldSettingsTableProps) => {
+  const form = Form.useFormInstance();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const fieldName = (index: number, ...path: Array<string | number>) => standalone
     ? ['items', index, ...path]
     : [index, ...path];
+  const records: FieldTableRecord[] = fields.map((field, position) => ({
+    ...field,
+    rowKey: String(field.key),
+    position,
+  }));
+  const dictionaryOptions = (treeOnly = false) => dictionaryTypes
+    .filter((dictionary) => !treeOnly || dictionary.structureType === 'TREE')
+    .map((dictionary) => ({
+      label: `${dictionary.dictName}（${dictionary.dictCode}）`,
+      value: dictionary.dictCode,
+    }));
+  const updateFieldType = (fieldIndex: number, fieldType: string) => {
+    const current = (form.getFieldValue(['items', fieldIndex, 'metadata']) || {}) as ConfigItemMetadata;
+    const next: ConfigItemMetadata = { ...current, fieldType };
+    if (['SELECT', 'MULTI_SELECT'].includes(fieldType)) {
+      next.placeholder = undefined;
+      next.cropAspectRatio = undefined;
+      next.optionSource = current.optionSource === 'DICTIONARY' ? 'DICTIONARY' : 'CUSTOM';
+      if (next.optionSource === 'DICTIONARY') next.options = undefined;
+      else next.dictCode = undefined;
+    } else if (fieldType === 'CASCADER') {
+      next.placeholder = undefined;
+      next.cropAspectRatio = undefined;
+      next.options = undefined;
+      next.optionSource = 'DICTIONARY';
+    } else {
+      next.optionSource = undefined;
+      next.dictCode = undefined;
+      next.options = undefined;
+      if (fieldType === 'IMAGE') {
+        next.placeholder = undefined;
+        next.cropAspectRatio = normalizeImageCropAspectRatio(fieldType, current.cropAspectRatio);
+      } else {
+        next.cropAspectRatio = undefined;
+        if (!['TEXT', 'TEXTAREA', 'NUMBER', 'DATE', 'MOBILE', 'EMAIL'].includes(fieldType)) {
+          next.placeholder = undefined;
+        }
+      }
+    }
+    form.setFieldValue(['items', fieldIndex, 'metadata'], next);
+    markDraftChanged();
+  };
+  const renderFieldConfiguration = (record: FieldTableRecord) => (
+    <Form.Item noStyle shouldUpdate={(previous, current) => (
+      previous?.items?.[record.name]?.metadata !== current?.items?.[record.name]?.metadata
+    )}>
+      {({ getFieldValue }) => {
+        const fieldType = String(getFieldValue(['items', record.name, 'metadata', 'fieldType']) || 'TEXT');
+        const optionSource = String(getFieldValue(['items', record.name, 'metadata', 'optionSource'])
+          || (fieldType === 'CASCADER' ? 'DICTIONARY' : 'CUSTOM'));
+        if (['TEXT', 'TEXTAREA', 'NUMBER', 'DATE', 'MOBILE', 'EMAIL'].includes(fieldType)) {
+          return (
+            <Form.Item name={fieldName(record.name, 'metadata', 'placeholder')}>
+              <Input aria-label="文字提示" placeholder="可选文字提示" maxLength={120} />
+            </Form.Item>
+          );
+        }
+        if (['SELECT', 'MULTI_SELECT'].includes(fieldType)) {
+          return (
+            <Space.Compact block className="competition-field-table__configuration">
+              <Form.Item name={fieldName(record.name, 'metadata', 'optionSource')} initialValue="CUSTOM">
+                <Select
+                  aria-label="选项来源"
+                  options={[{ label: '自定义', value: 'CUSTOM' }, { label: '系统字典', value: 'DICTIONARY' }]}
+                  onChange={(source) => {
+                    form.setFieldValue(['items', record.name, 'metadata', source === 'CUSTOM' ? 'dictCode' : 'options'], undefined);
+                    markDraftChanged();
+                  }}
+                />
+              </Form.Item>
+              {optionSource === 'DICTIONARY' ? (
+                <Form.Item
+                  name={fieldName(record.name, 'metadata', 'dictCode')}
+                  rules={[{ required: true, message: '请选择系统字典' }]}
+                >
+                  <Select
+                    aria-label="系统字典"
+                    showSearch
+                    optionFilterProp="label"
+                    options={dictionaryOptions()}
+                  />
+                </Form.Item>
+              ) : (
+                <>
+                  <Form.Item name={fieldName(record.name, 'metadata', 'options')} hidden><Input /></Form.Item>
+                  <Button
+                    icon={<SettingOutlined />}
+                    onClick={() => openOptionsEditor(
+                      record.name,
+                      getFieldValue(['items', record.name, 'title']),
+                      getFieldValue(['items', record.name, 'metadata', 'options']),
+                    )}
+                  >
+                    {String(getFieldValue(['items', record.name, 'metadata', 'options']) || '')
+                      .split('\n').filter((option) => option.trim()).length > 0
+                      ? `已设置 ${String(getFieldValue(['items', record.name, 'metadata', 'options']) || '')
+                          .split('\n').filter((option) => option.trim()).length} 项`
+                      : '设置选项'}
+                  </Button>
+                </>
+              )}
+            </Space.Compact>
+          );
+        }
+        if (fieldType === 'CASCADER') {
+          return (
+            <>
+              <Form.Item name={fieldName(record.name, 'metadata', 'optionSource')} initialValue="DICTIONARY" hidden><Input /></Form.Item>
+              <Form.Item
+                name={fieldName(record.name, 'metadata', 'dictCode')}
+                rules={[{ required: true, message: '请选择层级字典' }]}
+              >
+                <Select
+                  aria-label="层级字典"
+                  showSearch
+                  optionFilterProp="label"
+                  options={dictionaryOptions(true)}
+                />
+              </Form.Item>
+            </>
+          );
+        }
+        if (fieldType === 'IMAGE') {
+          return (
+            <Form.Item
+              name={fieldName(record.name, 'metadata', 'cropAspectRatio')}
+              rules={[{ required: true, message: '请选择裁切比例' }]}
+            >
+              <Select aria-label="裁切比例" options={[...IMAGE_CROP_ASPECT_RATIO_OPTIONS]} />
+            </Form.Item>
+          );
+        }
+        return <Typography.Text type="secondary">—</Typography.Text>;
+      }}
+    </Form.Item>
+  );
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const fromIndex = records.findIndex((record) => record.rowKey === String(active.id));
+    const toIndex = records.findIndex((record) => record.rowKey === String(over.id));
+    reorderField(fields, fromIndex, toIndex);
+  };
   return (
     <Space className="competition-config-list" orientation="vertical" size={16}>
-      <div className="competition-field-table">
-        <div className="competition-field-table__head">
-          <span>字段名称</span>
-          <span>字段标识</span>
-          <span>类型</span>
-          <span>占位提示</span>
-          <span>类型配置</span>
-          <span>必填</span>
-          <span>排序</span>
-          <span>启用</span>
-          <span>操作</span>
-        </div>
-        {fields.map((field, index) => (
-          <div className="competition-field-table__row" key={field.key}>
-            <Form.Item name={fieldName(field.name, 'title')} rules={[{ required: true, message: '请输入字段名称' }]}>
-              <Input placeholder="字段名称" maxLength={64} />
-            </Form.Item>
-            <Form.Item noStyle shouldUpdate>
-              {({ getFieldValue }) => {
-                const itemScope = (getFieldValue(['items', field.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
-                const itemKey = String(getFieldValue(['items', field.name, 'itemKey']) || '');
-                return (
-                  <Form.Item
-                    name={fieldName(field.name, 'itemKey')}
-                    normalize={normalizeConfigKey}
-                    rules={[
-                      { required: true, message: '请输入字段标识' },
-                      ({ getFieldValue: getFormFieldValue }) => ({
-                        validator: () => isConfigModuleItemKeyDuplicate(getFormFieldValue('items') || [], field.name)
-                          ? Promise.reject(new Error('同一适用范围内的字段标识不能重复'))
-                          : Promise.resolve(),
-                      }),
-                    ]}
-                  >
-                    <Input
-                      disabled={isParticipantNameStandardField(itemScope, itemKey)}
-                      placeholder="字段标识"
-                      maxLength={64}
-                    />
+      <DndContext collisionDetection={closestCenter} sensors={sensors} onDragEnd={handleDragEnd}>
+        <SortableContext items={records.map((record) => record.rowKey)} strategy={verticalListSortingStrategy}>
+          <Table<FieldTableRecord>
+            className="competition-field-table"
+            components={{ body: { row: SortableFieldRow } }}
+            dataSource={records}
+            pagination={false}
+            rowKey="rowKey"
+            scroll={{ x: 1120 }}
+            size="small"
+            columns={[
+              {
+                title: '', width: 48, align: 'center',
+                render: (_, record) => (
+                  <>
+                    <Form.Item name={fieldName(record.name, 'sortOrder')} hidden><InputNumber /></Form.Item>
+                    <FieldDragHandle label={`拖动字段 ${record.position + 1}`} />
+                  </>
+                ),
+              },
+              {
+                title: '字段名称', width: 150,
+                render: (_, record) => (
+                  <Form.Item name={fieldName(record.name, 'title')} rules={[{ required: true, message: '请输入字段名称' }]}>
+                    <Input placeholder="字段名称" maxLength={64} />
                   </Form.Item>
-                );
-              }}
-            </Form.Item>
-            <Form.Item noStyle shouldUpdate>
-              {({ getFieldValue }) => {
-                const itemScope = (getFieldValue(['items', field.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
-                const itemKey = String(getFieldValue(['items', field.name, 'itemKey']) || '');
-                return (
-                  <Form.Item name={fieldName(field.name, 'metadata', 'fieldType')} rules={[{ required: true, message: '请选择字段类型' }]}>
-                    <Select disabled={isParticipantNameStandardField(itemScope, itemKey)} options={fieldTypeOptions} />
-                  </Form.Item>
-                );
-              }}
-            </Form.Item>
-            <Form.Item name={fieldName(field.name, 'metadata', 'placeholder')}>
-              <Input placeholder="占位提示" maxLength={120} />
-            </Form.Item>
-            <Form.Item noStyle shouldUpdate={(previous, current) => (
-              previous?.items?.[field.name]?.metadata?.fieldType !== current?.items?.[field.name]?.metadata?.fieldType
-            )}>
-              {({ getFieldValue }) => {
-                const fieldType = getFieldValue(['items', field.name, 'metadata', 'fieldType']);
-                if (['SELECT', 'MULTI_SELECT'].includes(fieldType)) {
-                  return (
-                    <>
-                      <Form.Item name={fieldName(field.name, 'metadata', 'options')} hidden>
-                        <Input />
-                      </Form.Item>
-                      <Button
-                        icon={<SettingOutlined />}
-                        onClick={() => openOptionsEditor(
-                          field.name,
-                          getFieldValue(['items', field.name, 'title']),
-                          getFieldValue(['items', field.name, 'metadata', 'options']),
-                        )}
-                      >
-                        {String(getFieldValue(['items', field.name, 'metadata', 'options']) || '')
-                          .split('\n').filter((option) => option.trim()).length > 0
-                          ? `已设置 ${String(getFieldValue(['items', field.name, 'metadata', 'options']) || '')
-                              .split('\n').filter((option) => option.trim()).length} 项`
-                          : '设置选项'}
-                      </Button>
-                    </>
-                  );
-                }
-                if (fieldType === 'IMAGE') {
-                  return (
-                    <Form.Item
-                      name={fieldName(field.name, 'metadata', 'cropAspectRatio')}
-                      initialValue="1:1"
-                      rules={[{ required: true, message: '请选择裁切比例' }]}
-                    >
-                      <Select
-                        aria-label="裁切比例"
-                        options={[...IMAGE_CROP_ASPECT_RATIO_OPTIONS]}
-                      />
-                    </Form.Item>
-                  );
-                }
-                return <Typography.Text type="secondary">—</Typography.Text>;
-              }}
-            </Form.Item>
-            <Form.Item noStyle shouldUpdate>
-              {({ getFieldValue }) => {
-                const itemScope = (getFieldValue(['items', field.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
-                const itemKey = String(getFieldValue(['items', field.name, 'itemKey']) || '');
-                return (
-                  <Form.Item name={fieldName(field.name, 'requiredFlag')} valuePropName="checked">
-                    <Switch disabled={isParticipantNameStandardField(itemScope, itemKey)} />
-                  </Form.Item>
-                );
-              }}
-            </Form.Item>
-            <div className="competition-field-table__sort-cell">
-              <Form.Item name={fieldName(field.name, 'sortOrder')} hidden>
-                <InputNumber />
-              </Form.Item>
-              <Space className="competition-field-table__sort-actions" size={0}>
-                <Button
-                  aria-label={`上移字段 ${index + 1}`}
-                  disabled={index === 0}
-                  icon={<ArrowUpOutlined />}
-                  size="small"
-                  title="上移"
-                  type="text"
-                  onClick={() => reorderField(fields, index, index - 1)}
-                />
-                <Button
-                  aria-label={`下移字段 ${index + 1}`}
-                  disabled={index === fields.length - 1}
-                  icon={<ArrowDownOutlined />}
-                  size="small"
-                  title="下移"
-                  type="text"
-                  onClick={() => reorderField(fields, index, index + 1)}
-                />
-              </Space>
-            </div>
-            <Form.Item noStyle shouldUpdate>
-              {({ getFieldValue }) => {
-                const itemScope = (getFieldValue(['items', field.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
-                const itemKey = String(getFieldValue(['items', field.name, 'itemKey']) || '');
-                return (
-                  <Form.Item name={fieldName(field.name, 'enabled')} valuePropName="checked">
-                    <Switch disabled={isParticipantNameStandardField(itemScope, itemKey)} />
-                  </Form.Item>
-                );
-              }}
-            </Form.Item>
-            <Form.Item noStyle shouldUpdate>
-              {({ getFieldValue }) => {
-                const itemScope = (getFieldValue(['items', field.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
-                const itemKey = String(getFieldValue(['items', field.name, 'itemKey']) || '');
-                const isProtectedField = Boolean(protectedCollectionFieldKeys[itemScope]?.has(itemKey));
-                return (
-                  <Popconfirm
-                    title={isProtectedField
-                      ? '核心识别字段不可删除'
-                      : `确认删除${itemKey ? `“${String(getFieldValue(['items', field.name, 'title']) || itemKey)}”` : '该'}字段？`}
-                    okText="确认删除"
-                    cancelText="取消"
-                    onConfirm={() => {
-                      remove(field.name);
-                      markDraftChanged();
+                ),
+              },
+              {
+                title: '字段标识', width: 180,
+                render: (_, record) => (
+                  <Form.Item noStyle shouldUpdate>
+                    {({ getFieldValue }) => {
+                      const itemScope = (getFieldValue(['items', record.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
+                      const itemKey = String(getFieldValue(['items', record.name, 'itemKey']) || '');
+                      return (
+                        <Form.Item
+                          name={fieldName(record.name, 'itemKey')}
+                          normalize={normalizeConfigKey}
+                          rules={[
+                            { required: true, message: '请输入字段标识' },
+                            ({ getFieldValue: getFormFieldValue }) => ({
+                              validator: () => isConfigModuleItemKeyDuplicate(getFormFieldValue('items') || [], record.name)
+                                ? Promise.reject(new Error('同一适用范围内的字段标识不能重复'))
+                                : Promise.resolve(),
+                            }),
+                          ]}
+                        >
+                          <Input disabled={isParticipantNameStandardField(itemScope, itemKey)} placeholder="字段标识" maxLength={64} />
+                        </Form.Item>
+                      );
                     }}
-                  >
-                    <Button
-                      danger
-                      disabled={isProtectedField}
-                      title={isProtectedField ? '核心识别字段不可删除' : '删除字段'}
-                      type="link"
-                    >
-                      删除
-                    </Button>
-                  </Popconfirm>
-                );
-              }}
-            </Form.Item>
-          </div>
-        ))}
-      </div>
+                  </Form.Item>
+                ),
+              },
+              {
+                title: '类型', width: 150,
+                render: (_, record) => (
+                  <Form.Item noStyle shouldUpdate>
+                    {({ getFieldValue }) => {
+                      const itemScope = (getFieldValue(['items', record.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
+                      const itemKey = String(getFieldValue(['items', record.name, 'itemKey']) || '');
+                      return (
+                        <Form.Item name={fieldName(record.name, 'metadata', 'fieldType')} rules={[{ required: true, message: '请选择字段类型' }]}>
+                          <Select
+                            disabled={isParticipantNameStandardField(itemScope, itemKey)}
+                            options={fieldTypeOptions}
+                            onChange={(fieldType) => updateFieldType(record.name, fieldType)}
+                          />
+                        </Form.Item>
+                      );
+                    }}
+                  </Form.Item>
+                ),
+              },
+              { title: '字段配置', width: 320, render: (_, record) => renderFieldConfiguration(record) },
+              {
+                title: '必填', width: 68, align: 'center',
+                render: (_, record) => (
+                  <Form.Item noStyle shouldUpdate>
+                    {({ getFieldValue }) => {
+                      const itemScope = (getFieldValue(['items', record.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
+                      const itemKey = String(getFieldValue(['items', record.name, 'itemKey']) || '');
+                      return <Form.Item name={fieldName(record.name, 'requiredFlag')} valuePropName="checked"><Switch disabled={isParticipantNameStandardField(itemScope, itemKey)} /></Form.Item>;
+                    }}
+                  </Form.Item>
+                ),
+              },
+              {
+                title: '启用', width: 68, align: 'center',
+                render: (_, record) => (
+                  <Form.Item noStyle shouldUpdate>
+                    {({ getFieldValue }) => {
+                      const itemScope = (getFieldValue(['items', record.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
+                      const itemKey = String(getFieldValue(['items', record.name, 'itemKey']) || '');
+                      return <Form.Item name={fieldName(record.name, 'enabled')} valuePropName="checked"><Switch disabled={isParticipantNameStandardField(itemScope, itemKey)} /></Form.Item>;
+                    }}
+                  </Form.Item>
+                ),
+              },
+              {
+                title: '操作', width: 76, align: 'center', fixed: 'right',
+                render: (_, record) => (
+                  <Form.Item noStyle shouldUpdate>
+                    {({ getFieldValue }) => {
+                      const itemScope = (getFieldValue(['items', record.name, 'metadata', 'fieldScope']) || scope) as CompetitionConfigFieldScope;
+                      const itemKey = String(getFieldValue(['items', record.name, 'itemKey']) || '');
+                      const isProtectedField = Boolean(protectedCollectionFieldKeys[itemScope]?.has(itemKey));
+                      return (
+                        <Popconfirm
+                          title={isProtectedField ? '核心识别字段不可删除' : `确认删除“${String(getFieldValue(['items', record.name, 'title']) || itemKey)}”字段？`}
+                          okText="确认删除"
+                          cancelText="取消"
+                          onConfirm={() => { remove(record.name); markDraftChanged(); }}
+                        >
+                          <Button danger disabled={isProtectedField} title={isProtectedField ? '核心识别字段不可删除' : '删除字段'} type="link">删除</Button>
+                        </Popconfirm>
+                      );
+                    }}
+                  </Form.Item>
+                ),
+              },
+            ]}
+          />
+        </SortableContext>
+      </DndContext>
       <Button
         block
         icon={<PlusOutlined />}
         onClick={() => {
-          const nextItem = toEditableConfigItems([emptyConfigItem(scope, (fields.length + 1) * 10)])[0];
+          const nextSortOrder = getNextScopedConfigItemSortOrder(
+            items,
+            fields.map((field) => field.name),
+          );
+          const nextItem = toEditableConfigItems([emptyConfigItem(scope, nextSortOrder)])[0];
           nextItem.metadata = {
             ...nextItem.metadata,
             groupLabel: fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
@@ -915,6 +1088,7 @@ type ConfigModulePanelProps = {
   storageSpaceOptions: StorageSpaceOption[];
   fieldScope?: CompetitionConfigFieldScope;
   fieldGroupLabel?: string;
+  displayTitle?: string;
   fileStageCode?: string;
   paymentProviderOptions?: PaymentProviderOption[];
   onSaved: (settings: CompetitionSettingsRecord) => void;
@@ -929,6 +1103,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   storageSpaceOptions,
   fieldScope,
   fieldGroupLabel,
+  displayTitle,
   fileStageCode,
   paymentProviderOptions = EMPTY_PAYMENT_PROVIDER_OPTIONS,
   onSaved,
@@ -946,10 +1121,25 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     fieldTitle?: string;
     value: string;
   }>();
+  const [dictionaryTypes, setDictionaryTypes] = useState<DictionaryTypeOption[]>([]);
   const draftRevisionRef = useRef(0);
   const syncedRevisionRef = useRef(0);
   const hydratedContextKeyRef = useRef<string | undefined>(undefined);
   const draftContextKey = `${competitionUuid}:${module.key}:${fileStageCode || ''}`;
+
+  useEffect(() => {
+    if (module.key !== 'fields') return;
+    let active = true;
+    void request<DictionaryTypeOption[]>('/v1/system/dict-types/options', {
+      method: 'GET',
+      ...API_OPTS.SILENT,
+    }).then((options) => {
+      if (active) setDictionaryTypes(options || []);
+    }).catch(() => {
+      if (active) setDictionaryTypes([]);
+    });
+    return () => { active = false; };
+  }, [module.key]);
 
   const getInitialValues = useCallback(() => {
     const limits = getTeamMemberLimits(items);
@@ -999,7 +1189,8 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
           ...editableItems.filter((item) => !paymentProviderOptions.some((provider) => provider.value === item.itemKey)),
         ]
       : editableItems;
-    const initialItems = module.key === 'fields' && fieldScope === 'TEAM_FIELD'
+    const initialItems = module.key === 'fields'
+      && ['TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD'].includes(fieldScope || '')
       ? ensureCombinedTeamFieldItems(moduleItems)
       : moduleItems;
     return {
@@ -1025,11 +1216,12 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   const save = useCallback(async () => {
     const saveRevision = draftRevisionRef.current;
     const values = form.getFieldsValue(true);
-    const effectiveItems = module.key === 'fields' && fieldScope === 'TEAM_FIELD'
+    const effectiveItems = module.key === 'fields'
+      && ['TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD'].includes(fieldScope || '')
       ? ensureCombinedTeamFieldItems(values.items || [])
       : values.items || [];
     const validationScope = module.key === 'fields' && fieldScope
-      ? fieldScope === 'TEAM_FIELD'
+      ? ['TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD'].includes(fieldScope)
         ? { fieldScopes: ['TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD'] }
         : {
           fieldScope,
@@ -1144,14 +1336,26 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     saveNow: save,
   }), [save]);
 
-  const renderCombinedTeamSettings = () => (
+  const renderScopedFieldSettings = (
+    scope: CompetitionConfigFieldScope,
+    leadingContent?: ReactNode,
+  ) => (
     <Form.Item noStyle shouldUpdate>
       {({ getFieldValue }) => {
         const currentItems = (getFieldValue('items') || []) as EditableCompetitionConfigItem[];
         const fields = currentItems.map((_, index) => ({ key: index, name: index }));
-        const fieldsForScope = (scope: CompetitionConfigFieldScope) => fields.filter((field) => {
+        const scopedFields = fields.filter((field) => {
           const item = currentItems[field.name];
-          return (item?.metadata?.fieldScope || item?.itemType) === scope;
+          if ((item?.metadata?.fieldScope || item?.itemType) !== scope) {
+            return false;
+          }
+          if (scope !== 'PROJECT_FIELD' || !fieldGroupLabel) {
+            return true;
+          }
+          const isIntellectualProperty = item?.metadata?.groupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL;
+          return fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
+            ? isIntellectualProperty
+            : !isIntellectualProperty;
         });
         const add = (defaultValue?: EditableCompetitionConfigItem) => {
           if (defaultValue) {
@@ -1169,132 +1373,115 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
         });
         return (
           <div className="competition-config-sections">
-            <section className="competition-config-section">
-              <Typography.Title level={5} className="competition-config-section__title">团队设置</Typography.Title>
-              {renderFieldSettingsTable(
-                fieldsForScope('TEAM_FIELD'),
-                add,
-                remove,
-                'TEAM_FIELD',
-                markDraftChanged,
-                reorderField,
-                openOptionsEditor,
-                undefined,
-                true,
-              )}
-            </section>
-            <Divider className="competition-config-section__divider" />
-            <section className="competition-config-section">
-              <Typography.Title level={5} className="competition-config-section__title">学生信息设置</Typography.Title>
-              <div className="competition-config-grid">
-                <Form.Item
-                  name="studentMinMembers"
-                  label="学生最小人数"
-                  dependencies={['studentMaxMembers']}
-                  rules={[
-                    { required: true, message: '请输入学生最小人数' },
-                    ({ getFieldValue: getLimitFieldValue }) => ({
-                      validator: (_, value) => Number(value) <= Number(getLimitFieldValue('studentMaxMembers'))
-                        ? Promise.resolve()
-                        : Promise.reject(new Error('学生最小人数不能大于最大人数')),
-                    }),
-                  ]}
-                >
-                  <InputNumber min={1} max={MAX_REGISTRATION_PARTICIPANTS_PER_TYPE} precision={0} style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item
-                  name="studentMaxMembers"
-                  label="学生最大人数"
-                  dependencies={['studentMinMembers']}
-                  rules={[
-                    { required: true, message: '请输入学生最大人数' },
-                    ({ getFieldValue: getLimitFieldValue }) => ({
-                      validator: (_, value) => Number(value) >= Number(getLimitFieldValue('studentMinMembers'))
-                        ? Promise.resolve()
-                        : Promise.reject(new Error('学生最大人数不能小于最小人数')),
-                    }),
-                  ]}
-                >
-                  <InputNumber min={1} max={MAX_REGISTRATION_PARTICIPANTS_PER_TYPE} precision={0} style={{ width: '100%' }} />
-                </Form.Item>
-              </div>
-              <Typography.Paragraph type="secondary">学生人数用于报名资格校验；按人收费时仅计算学生人数。</Typography.Paragraph>
-              {renderFieldSettingsTable(
-                fieldsForScope('MEMBER_FIELD'),
-                add,
-                remove,
-                'MEMBER_FIELD',
-                markDraftChanged,
-                reorderField,
-                openOptionsEditor,
-                undefined,
-                true,
-              )}
-            </section>
-            <Divider className="competition-config-section__divider" />
-            <section className="competition-config-section">
-              <Typography.Title level={5} className="competition-config-section__title">指导老师信息设置</Typography.Title>
-              <div className="competition-config-grid">
-                <Form.Item
-                  name="teacherMinMembers"
-                  label="指导老师最小人数"
-                  dependencies={['teacherMaxMembers']}
-                  rules={[
-                    { required: true, message: '请输入指导老师最小人数' },
-                    ({ getFieldValue: getLimitFieldValue }) => ({
-                      validator: (_, value) => Number(value) <= Number(getLimitFieldValue('teacherMaxMembers'))
-                        ? Promise.resolve()
-                        : Promise.reject(new Error('指导老师最小人数不能大于最大人数')),
-                    }),
-                  ]}
-                >
-                  <InputNumber min={0} max={MAX_REGISTRATION_PARTICIPANTS_PER_TYPE} precision={0} style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item
-                  name="teacherMaxMembers"
-                  label="指导老师最大人数"
-                  dependencies={['teacherMinMembers']}
-                  rules={[
-                    { required: true, message: '请输入指导老师最大人数' },
-                    ({ getFieldValue: getLimitFieldValue }) => ({
-                      validator: (_, value) => Number(value) >= Number(getLimitFieldValue('teacherMinMembers'))
-                        ? Promise.resolve()
-                        : Promise.reject(new Error('指导老师最大人数不能小于最小人数')),
-                    }),
-                  ]}
-                >
-                  <InputNumber min={0} max={MAX_REGISTRATION_PARTICIPANTS_PER_TYPE} precision={0} style={{ width: '100%' }} />
-                </Form.Item>
-              </div>
-              <Typography.Paragraph type="secondary">指导老师独立校验人数，不计入学生人数和报名费用。</Typography.Paragraph>
-              {renderFieldSettingsTable(
-                fieldsForScope('TEACHER_FIELD'),
-                add,
-                remove,
-                'TEACHER_FIELD',
-                markDraftChanged,
-                reorderField,
-                openOptionsEditor,
-                undefined,
-                true,
-              )}
-            </section>
+            {leadingContent}
+            <FieldSettingsTable
+              fields={scopedFields}
+              items={currentItems}
+              add={add}
+              remove={remove}
+              scope={scope}
+              markDraftChanged={markDraftChanged}
+              reorderField={reorderField}
+              openOptionsEditor={openOptionsEditor}
+              dictionaryTypes={dictionaryTypes}
+              fieldGroupLabel={fieldGroupLabel}
+              standalone
+            />
           </div>
         );
       }}
     </Form.Item>
   );
 
+  const renderParticipantFieldSettings = () => {
+    if (!fieldScope || !['TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD'].includes(fieldScope)) {
+      return null;
+    }
+    const leadingContent = fieldScope === 'MEMBER_FIELD' ? (
+      <>
+        <div className="competition-config-grid">
+          <Form.Item
+            name="studentMinMembers"
+            label="学生最小人数"
+            dependencies={['studentMaxMembers']}
+            rules={[
+              { required: true, message: '请输入学生最小人数' },
+              ({ getFieldValue: getLimitFieldValue }) => ({
+                validator: (_, value) => Number(value) <= Number(getLimitFieldValue('studentMaxMembers'))
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('学生最小人数不能大于最大人数')),
+              }),
+            ]}
+          >
+            <InputNumber min={1} max={MAX_REGISTRATION_PARTICIPANTS_PER_TYPE} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            name="studentMaxMembers"
+            label="学生最大人数"
+            dependencies={['studentMinMembers']}
+            rules={[
+              { required: true, message: '请输入学生最大人数' },
+              ({ getFieldValue: getLimitFieldValue }) => ({
+                validator: (_, value) => Number(value) >= Number(getLimitFieldValue('studentMinMembers'))
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('学生最大人数不能小于最小人数')),
+              }),
+            ]}
+          >
+            <InputNumber min={1} max={MAX_REGISTRATION_PARTICIPANTS_PER_TYPE} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+        </div>
+        <Typography.Paragraph type="secondary">学生人数用于报名资格校验；按人收费时仅计算学生人数。</Typography.Paragraph>
+      </>
+    ) : fieldScope === 'TEACHER_FIELD' ? (
+      <>
+        <div className="competition-config-grid">
+          <Form.Item
+            name="teacherMinMembers"
+            label="指导老师最小人数"
+            dependencies={['teacherMaxMembers']}
+            rules={[
+              { required: true, message: '请输入指导老师最小人数' },
+              ({ getFieldValue: getLimitFieldValue }) => ({
+                validator: (_, value) => Number(value) <= Number(getLimitFieldValue('teacherMaxMembers'))
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('指导老师最小人数不能大于最大人数')),
+              }),
+            ]}
+          >
+            <InputNumber min={0} max={MAX_REGISTRATION_PARTICIPANTS_PER_TYPE} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            name="teacherMaxMembers"
+            label="指导老师最大人数"
+            dependencies={['teacherMinMembers']}
+            rules={[
+              { required: true, message: '请输入指导老师最大人数' },
+              ({ getFieldValue: getLimitFieldValue }) => ({
+                validator: (_, value) => Number(value) >= Number(getLimitFieldValue('teacherMinMembers'))
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('指导老师最大人数不能小于最小人数')),
+              }),
+            ]}
+          >
+            <InputNumber min={0} max={MAX_REGISTRATION_PARTICIPANTS_PER_TYPE} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+        </div>
+        <Typography.Paragraph type="secondary">指导老师独立校验人数，不计入学生人数和报名费用。</Typography.Paragraph>
+      </>
+    ) : undefined;
+
+    return renderScopedFieldSettings(fieldScope, leadingContent);
+  };
+
   return (
     <section className="competition-config-module">
-      {module.key === 'fields' && fieldScope === 'TEAM_FIELD'
-        ? null
-        : module.key === 'files' && fileStageCode ? null : (
+      {module.key === 'files' && fileStageCode ? null : (
         <div className="competition-config-module__header">
           <Typography.Title className="competition-config-module__title" level={4}>
-            {module.key === 'fields' && fieldScope
+            {displayTitle || (module.key === 'fields' && fieldScope
               ? getCompetitionSettingsFieldLabel(fieldScope, fieldGroupLabel)
-              : getCompetitionSettingsModuleLabel(module)}
+              : getCompetitionSettingsModuleLabel(module))}
           </Typography.Title>
         </div>
       )}
@@ -1313,7 +1500,11 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
         initialValues={getInitialValues()}
         onValuesChange={markDraftChanged}
       >
-        {module.key === 'fields' && fieldScope === 'TEAM_FIELD' ? renderCombinedTeamSettings() : (
+        {module.key === 'fields' && fieldScope && ['TEAM_FIELD', 'MEMBER_FIELD', 'TEACHER_FIELD'].includes(fieldScope)
+          ? renderParticipantFieldSettings()
+          : module.key === 'fields' && fieldScope
+            ? renderScopedFieldSettings(fieldScope)
+            : (
           <Form.List name="items">
             {(fields, { add, remove }) => module.key === 'fields' ? (
               <Tabs
@@ -1338,20 +1529,22 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     label: fieldGroupLabel || scopeOption.label,
                     children: (
                       <Space className="competition-config-list" orientation="vertical" size={16}>
-                        {renderFieldSettingsTable(
-                          scopedFields,
-                          add,
-                          remove,
-                          scopeOption.value,
-                          markDraftChanged,
-                          reorderField,
-                          (fieldName, fieldTitle, options) => setOptionsEditor({
+                        <FieldSettingsTable
+                          fields={scopedFields}
+                          items={(form.getFieldValue('items') || []) as EditableCompetitionConfigItem[]}
+                          add={add}
+                          remove={remove}
+                          scope={scopeOption.value}
+                          markDraftChanged={markDraftChanged}
+                          reorderField={reorderField}
+                          openOptionsEditor={(fieldName, fieldTitle, options) => setOptionsEditor({
                             fieldName,
                             fieldTitle,
                             value: options || '',
-                          }),
-                          fieldGroupLabel,
-                        )}
+                          })}
+                          dictionaryTypes={dictionaryTypes}
+                          fieldGroupLabel={fieldGroupLabel}
+                        />
                       </Space>
                     ),
                   };
@@ -1556,8 +1749,6 @@ type CompetitionBasicSettingsPanelProps = {
   categoryOptions: Array<{ label: string; value: string }>;
   levelOptions: Array<{ label: string; value: string }>;
   readOnly: boolean;
-  canArchive: boolean;
-  canDelete: boolean;
   onSaved: (competition: CompetitionRecord) => void;
 };
 
@@ -1569,13 +1760,9 @@ const CompetitionBasicSettingsPanel = forwardRef<
   categoryOptions,
   levelOptions,
   readOnly,
-  canArchive,
-  canDelete,
   onSaved,
 }, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
-  const [archiving, setArchiving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     form.resetFields();
@@ -1601,35 +1788,6 @@ const CompetitionBasicSettingsPanel = forwardRef<
     }
   }, [competition, form, onSaved]);
 
-  const archiveCompetition = useCallback(async () => {
-    setArchiving(true);
-    try {
-      const archived = await updateCompetition(competition.id, normalizePayload({
-        ...defaultCompetitionFormValues,
-        ...recordToFormValues(competition),
-        status: 'archived',
-      } as CompetitionFormValues, { preserveTimelineFrom: competition }), API_OPTS.SILENT);
-      onSaved(archived);
-      message.success('赛事已归档');
-    } catch (error) {
-      showErrorMessage(error, '赛事归档失败');
-    } finally {
-      setArchiving(false);
-    }
-  }, [competition, onSaved]);
-
-  const deleteCurrentCompetition = useCallback(async () => {
-    setDeleting(true);
-    try {
-      await deleteCompetition(competition.id);
-      message.success('赛事已删除');
-      history.replace('/competitions/management');
-    } catch (error) {
-      showErrorMessage(error, '赛事删除失败');
-    } finally {
-      setDeleting(false);
-    }
-  }, [competition.id]);
   useImperativeHandle(ref, () => ({
     saveNow: save,
   }), [save]);
@@ -1724,73 +1882,123 @@ const CompetitionBasicSettingsPanel = forwardRef<
         </Form>
       </CompetitionSettingsReadOnlyBoundary>
 
-      {canArchive || canDelete ? (
-        <section className="competition-basic-section competition-basic-section--danger">
-          <Typography.Title className="competition-basic-section__title" level={5}>
-            危险操作
-          </Typography.Title>
-          <div className="competition-danger-actions">
-            {canArchive ? (
-              <div className="competition-danger-action">
-                <div className="competition-danger-action__copy">
-                  <Typography.Text strong>归档赛事</Typography.Text>
-                  <Typography.Text type="secondary">
-                    {competition.status === 'archived'
-                      ? '赛事已归档，工作空间当前为只读状态。'
-                      : '归档后赛事将转为只读，不再接受报名、评审或设置修改。'}
-                  </Typography.Text>
-                </div>
-                <Popconfirm
-                  disabled={competition.status === 'archived'}
-                  title="确认归档该赛事？"
-                  description="归档后赛事工作空间将变为只读状态。"
-                  okText="确认归档"
-                  cancelText="取消"
-                  okButtonProps={{ danger: true }}
-                  onConfirm={() => archiveCompetition()}
-                >
-                  <Button
-                    danger
-                    type="primary"
-                    icon={<InboxOutlined />}
-                    loading={archiving}
-                    disabled={competition.status === 'archived'}
-                  >
-                    归档
-                  </Button>
-                </Popconfirm>
-              </div>
-            ) : null}
-            {canDelete ? (
-              <div className="competition-danger-action">
-                <div className="competition-danger-action__copy">
-                  <Typography.Text strong>删除赛事</Typography.Text>
-                  <Typography.Text type="secondary">
-                    删除后赛事将从列表移除，且无法通过页面恢复；已有报名记录的赛事无法删除。
-                  </Typography.Text>
-                </div>
-                <Popconfirm
-                  title="确认删除该赛事？"
-                  description="此操作不可通过页面恢复，请确认后再删除。"
-                  okText="确认删除"
-                  cancelText="取消"
-                  okButtonProps={{ danger: true }}
-                  onConfirm={() => deleteCurrentCompetition()}
-                >
-                  <Button danger type="primary" icon={<DeleteOutlined />} loading={deleting}>
-                    删除
-                  </Button>
-                </Popconfirm>
-              </div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
     </section>
   );
 });
 
 CompetitionBasicSettingsPanel.displayName = 'CompetitionBasicSettingsPanel';
+
+type CompetitionDangerSettingsPanelProps = {
+  competition: CompetitionRecord;
+  canArchive: boolean;
+  canDelete: boolean;
+  onSaved: (competition: CompetitionRecord) => void;
+};
+
+const CompetitionDangerSettingsPanel = ({
+  competition,
+  canArchive,
+  canDelete,
+  onSaved,
+}: CompetitionDangerSettingsPanelProps) => {
+  const [archiving, setArchiving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const archiveCompetition = useCallback(async () => {
+    setArchiving(true);
+    try {
+      const archived = await updateCompetition(competition.id, normalizePayload({
+        ...defaultCompetitionFormValues,
+        ...recordToFormValues(competition),
+        status: 'archived',
+      } as CompetitionFormValues, { preserveTimelineFrom: competition }), API_OPTS.SILENT);
+      onSaved(archived);
+      message.success('赛事已归档');
+    } catch (error) {
+      showErrorMessage(error, '赛事归档失败');
+    } finally {
+      setArchiving(false);
+    }
+  }, [competition, onSaved]);
+
+  const deleteCurrentCompetition = useCallback(async () => {
+    setDeleting(true);
+    try {
+      await deleteCompetition(competition.id);
+      message.success('赛事已删除');
+      history.replace('/competitions/management');
+    } catch (error) {
+      showErrorMessage(error, '赛事删除失败');
+    } finally {
+      setDeleting(false);
+    }
+  }, [competition.id]);
+
+  return (
+    <section className="competition-config-module competition-danger-settings">
+      <div className="competition-config-module__header">
+        <Typography.Title className="competition-config-module__title competition-danger-settings__title" level={4}>
+          危险操作
+        </Typography.Title>
+      </div>
+      <div className="competition-danger-actions">
+        {canArchive ? (
+          <div className="competition-danger-action">
+            <div className="competition-danger-action__copy">
+              <Typography.Text strong>归档赛事</Typography.Text>
+              <Typography.Text type="secondary">
+                {competition.status === 'archived'
+                  ? '赛事已归档，工作空间当前为只读状态。'
+                  : '归档后赛事将转为只读，不再接受报名、评审或设置修改。'}
+              </Typography.Text>
+            </div>
+            <Popconfirm
+              disabled={competition.status === 'archived'}
+              title="确认归档该赛事？"
+              description="归档后赛事工作空间将变为只读状态。"
+              okText="确认归档"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => archiveCompetition()}
+            >
+              <Button
+                danger
+                type="primary"
+                icon={<InboxOutlined />}
+                loading={archiving}
+                disabled={competition.status === 'archived'}
+              >
+                归档
+              </Button>
+            </Popconfirm>
+          </div>
+        ) : null}
+        {canDelete ? (
+          <div className="competition-danger-action">
+            <div className="competition-danger-action__copy">
+              <Typography.Text strong>删除赛事</Typography.Text>
+              <Typography.Text type="secondary">
+                删除后赛事将从列表移除，且无法通过页面恢复；已有报名记录的赛事无法删除。
+              </Typography.Text>
+            </div>
+            <Popconfirm
+              title="确认删除该赛事？"
+              description="此操作不可通过页面恢复，请确认后再删除。"
+              okText="确认删除"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => deleteCurrentCompetition()}
+            >
+              <Button danger type="primary" icon={<DeleteOutlined />} loading={deleting}>
+                删除
+              </Button>
+            </Popconfirm>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+};
 
 type CompetitionPaymentSettingsPanelProps = {
   competition: CompetitionRecord;
@@ -2440,11 +2648,24 @@ const CompetitionSettingsPage = () => {
   }, [activeKey, location.search, registrationDetail, stageDetail]);
 
   useEffect(() => {
-    const tabValue = new URLSearchParams(location.search).get('tab');
-    if (activeKey === 'registration' && ['students', 'team-members'].includes(tabValue || '')) {
-      updateNavigationUrl('registration', 'TEAM_FIELD', true);
+    const navigation = parseCompetitionSettingsNavigation(location.search);
+    if (!['registration', 'notice', 'experts'].includes(navigation.section)) {
+      return;
     }
-  }, [activeKey, location.search, updateNavigationUrl]);
+    const nextSearch = createCompetitionSettingsSearch(
+      location.search,
+      navigation.section,
+      navigation.section === 'registration' ? navigation.registrationTab : undefined,
+    );
+    if (nextSearch === location.search) {
+      return;
+    }
+    updateNavigationUrl(
+      navigation.section,
+      navigation.section === 'registration' ? navigation.registrationTab : undefined,
+      true,
+    );
+  }, [location.search, updateNavigationUrl]);
 
   useEffect(() => {
     let mounted = true;
@@ -2472,15 +2693,17 @@ const CompetitionSettingsPage = () => {
     };
   }, [competitionUuid]);
 
-  const activeConfigModuleKey: CompetitionSettingsConfigModuleKey | undefined = activeKey === 'registration'
-    ? registrationDetail === 'documents' ? 'documents' : 'fields'
-    : activeKey === 'stages'
-      ? 'files'
-      : activeKey === 'payments'
-        ? 'payments'
-        : activeKey === 'awards'
-          ? 'awards'
-        : undefined;
+  const activeConfigModuleKey: CompetitionSettingsConfigModuleKey | undefined = activeKey === 'registration' || activeKey === 'experts'
+    ? 'fields'
+    : activeKey === 'notice'
+      ? 'documents'
+      : activeKey === 'stages'
+        ? 'files'
+        : activeKey === 'payments'
+          ? 'payments'
+          : activeKey === 'awards'
+            ? 'awards'
+            : undefined;
   const activeModule = activeConfigModuleKey
     ? competitionSettingsModules.find((item) => item.key === activeConfigModuleKey)
     : undefined;
@@ -2508,8 +2731,8 @@ const CompetitionSettingsPage = () => {
     }
     setActiveKey(nextKey);
     if (nextKey === 'registration') {
-      setRegistrationDetail('TEAM_FIELD');
-      updateNavigationUrl(nextKey, 'TEAM_FIELD');
+      setRegistrationDetail('PROJECT_FIELD');
+      updateNavigationUrl(nextKey, 'PROJECT_FIELD');
       return;
     }
     if (nextKey === 'stages') {
@@ -2587,22 +2810,27 @@ const CompetitionSettingsPage = () => {
                   categoryOptions={categoryOptions as Array<{ label: string; value: string }>}
                   levelOptions={levelOptions as Array<{ label: string; value: string }>}
                   readOnly={settingsReadOnly}
-                  canArchive={canArchiveCompetition}
-                  canDelete={canDeleteCompetition}
                   onSaved={handleCompetitionSaved}
                 />
+              ) : activeKey === 'notice' && activeModule ? (
+                <CompetitionSettingsReadOnlyBoundary readOnly={settingsReadOnly}>
+                  <ConfigModulePanel
+                    key={`${activeModule.key}-notice`}
+                    ref={activePanelRef}
+                    competitionUuid={settings.competition.uuid || competitionUuid}
+                    module={activeModule}
+                    items={getModuleItems(settings, activeModule.key)}
+                    storageSpaceOptions={storageSpaceOptions}
+                    displayTitle="赛事须知"
+                    onSaved={setSettings}
+                  />
+                </CompetitionSettingsReadOnlyBoundary>
               ) : activeKey === 'registration' ? (
                 <>
                   <Tabs
                     className="competition-settings-detail-tabs competition-settings-detail-tabs--top"
                     activeKey={registrationDetail}
-                    items={[
-                      { key: 'TEAM_FIELD', label: '团队信息' },
-                      { key: 'PROJECT_FIELD', label: '项目信息' },
-                      { key: 'EXPERT_FIELD', label: '专家信息' },
-                      { key: 'INTELLECTUAL_PROPERTY', label: '知识产权信息' },
-                      { key: 'documents', label: '报名须知与文书' },
-                    ]}
+                    items={competitionSettingsRegistrationTabItems}
                     onChange={(key) => void handleRegistrationDetailChange(key)}
                   />
                   {activeModule ? (
@@ -2614,11 +2842,9 @@ const CompetitionSettingsPage = () => {
                         module={activeModule}
                         items={getModuleItems(settings, activeModule.key)}
                         storageSpaceOptions={storageSpaceOptions}
-                        fieldScope={registrationDetail === 'documents'
-                          ? undefined
-                          : registrationDetail === 'INTELLECTUAL_PROPERTY'
-                            ? 'PROJECT_FIELD'
-                            : registrationDetail}
+                        fieldScope={registrationDetail === 'INTELLECTUAL_PROPERTY'
+                          ? 'PROJECT_FIELD'
+                          : registrationDetail}
                         fieldGroupLabel={registrationDetail === 'INTELLECTUAL_PROPERTY'
                           ? INTELLECTUAL_PROPERTY_GROUP_LABEL
                           : registrationDetail === 'PROJECT_FIELD'
@@ -2629,6 +2855,20 @@ const CompetitionSettingsPage = () => {
                     </CompetitionSettingsReadOnlyBoundary>
                   ) : null}
                 </>
+              ) : activeKey === 'experts' && activeModule ? (
+                <CompetitionSettingsReadOnlyBoundary readOnly={settingsReadOnly}>
+                  <ConfigModulePanel
+                    key={`${activeModule.key}-experts`}
+                    ref={activePanelRef}
+                    competitionUuid={settings.competition.uuid || competitionUuid}
+                    module={activeModule}
+                    items={getModuleItems(settings, activeModule.key)}
+                    storageSpaceOptions={storageSpaceOptions}
+                    fieldScope="EXPERT_FIELD"
+                    displayTitle="专家设置"
+                    onSaved={setSettings}
+                  />
+                </CompetitionSettingsReadOnlyBoundary>
               ) : activeKey === 'stages' ? (
                 activeModule ? (
                   <>
@@ -2683,17 +2923,26 @@ const CompetitionSettingsPage = () => {
                     onSaved={setSettings}
                   />
                 </CompetitionSettingsReadOnlyBoundary>
+              ) : activeKey === 'danger' ? (
+                <CompetitionDangerSettingsPanel
+                  competition={settings.competition}
+                  canArchive={canArchiveCompetition}
+                  canDelete={canDeleteCompetition}
+                  onSaved={handleCompetitionSaved}
+                />
               ) : null}
-              <div className="competition-settings-content__footer">
-                <Button
-                  type="primary"
-                  loading={saving}
-                  disabled={settingsReadOnly || loading || saving || !settings}
-                  onClick={() => void handleSave()}
-                >
-                  保存
-                </Button>
-              </div>
+              {activeKey !== 'danger' ? (
+                <div className="competition-settings-content__footer">
+                  <Button
+                    type="primary"
+                    loading={saving}
+                    disabled={settingsReadOnly || loading || saving || !settings}
+                    onClick={() => void handleSave()}
+                  >
+                    保存
+                  </Button>
+                </div>
+              ) : null}
             </main>
           </div>
         ) : (

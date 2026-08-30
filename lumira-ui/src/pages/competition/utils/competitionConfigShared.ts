@@ -25,6 +25,8 @@ export type ConfigItemMetadata = {
   standardField?: boolean;
   validationRule?: string;
   options?: string;
+  optionSource?: 'CUSTOM' | 'DICTIONARY';
+  dictCode?: string;
   cropAspectRatio?: string;
   weight?: number;
   fileFormat?: string;

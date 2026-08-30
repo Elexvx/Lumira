@@ -9,6 +9,8 @@ public record LoginCapabilitiesDTO(
         boolean wechatLoginAvailable,
         boolean passkeyLoginAvailable,
         boolean passkeyPasswordlessAvailable,
+        boolean registrationSmsVerificationRequired,
+        boolean registrationEmailVerificationRequired,
         List<String> loginModeOrder
 ) {
 }

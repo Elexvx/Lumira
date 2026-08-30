@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_INDEPENDENT_MEMBER_ROLE_OPTIONS,
+  getNextScopedConfigItemSortOrder,
   isIndependentMemberRoleField,
   normalizeIndependentMemberRoleMetadata,
   prioritizeRequiredMemberNameField,
@@ -49,6 +50,31 @@ describe('competition field configuration', () => {
       { itemKey: 'memberName', required: true },
       { itemKey: 'mobile', required: true },
     ]);
+  });
+
+  it('appends after the largest sort order in the current field scope', () => {
+    const items = [
+      { key: 'custom-project-field', sortOrder: 40 },
+      { key: 'project-title', sortOrder: 210 },
+      { key: 'project-image', sortOrder: 220 },
+      { key: 'project-description', sortOrder: 230 },
+      { key: 'intellectual-property', sortOrder: 370 },
+    ];
+
+    expect(getNextScopedConfigItemSortOrder(items, [0, 1, 2, 3])).toBe(240);
+    expect(getNextScopedConfigItemSortOrder(items, [4])).toBe(380);
+  });
+
+  it('uses 10 when the current scope has no valid sort order without mutating items', () => {
+    const items = [
+      { key: 'missing', sortOrder: undefined },
+      { key: 'zero', sortOrder: 0 },
+      { key: 'negative', sortOrder: -10 },
+    ];
+    const originalItems = structuredClone(items);
+
+    expect(getNextScopedConfigItemSortOrder(items, [0, 1, 2])).toBe(10);
+    expect(items).toEqual(originalItems);
   });
 
   it('reorders only the selected scope and normalizes its sort order', () => {

@@ -25,7 +25,7 @@ test('fresh and upgraded databases install the same disabled durable alerting pl
       assert.match(sql, new RegExp('CREATE TABLE(?: IF NOT EXISTS)? `' + table + '`'));
     }
   }
-  assert.equal(baselineVersion, '202608250001');
+  assert.equal(baselineVersion, '202608310001');
 });
 
 test('the async alert worker reaches the active control-plane slot through the API proxy', () => {

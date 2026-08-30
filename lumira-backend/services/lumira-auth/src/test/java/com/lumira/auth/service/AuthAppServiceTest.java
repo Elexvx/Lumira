@@ -36,6 +36,7 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
 import com.lumira.common.security.SecurityContextFacade;
+import com.lumira.common.security.AuthorizationSnapshotVersionVerifier;
 import jakarta.servlet.http.HttpServletRequest;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -126,6 +127,7 @@ class AuthAppServiceTest {
         when(systemInternalApi.findUserProfileById(org.mockito.ArgumentMatchers.anyLong()))
                 .thenAnswer(invocation -> enabledUser(invocation.getArgument(0)));
         when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(1L);
+        when(systemInternalApi.isPermissionSnapshotVersionCurrent(anyString())).thenReturn(Boolean.TRUE);
         when(systemInternalApi.requiresInitialPasswordChange(org.mockito.ArgumentMatchers.anyLong(), anyString()))
                 .thenReturn(false);
         when(systemInternalApi.maintenanceLoginPolicy())
@@ -326,7 +328,7 @@ class AuthAppServiceTest {
     }
 
     @Test
-    void refreshTokenShouldAcceptStalePermissionsVersionAfterSessionSnapshotRefresh() {
+    void refreshTokenShouldRejectAStalePermissionsVersionAfterSessionSnapshotRefresh() {
         AuthSession session = cachedSession();
         session.setRefreshTokenId("current-refresh-id");
         session.setPermissionsVersion("v2");
@@ -345,15 +347,14 @@ class AuthAppServiceTest {
         when(jwtTokenService.generateAccessToken(session)).thenReturn("access-token-2");
         when(jwtTokenService.generateRefreshToken(eq(session), anyString())).thenReturn("refresh-token-2");
         when(jwtTokenService.getAccessTokenExpireSeconds()).thenReturn(1800L);
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.refreshToken(new RefreshTokenRequest("refresh-token"))
+        );
 
-        RefreshTokenResponseDTO response = authAppService.refreshToken(new RefreshTokenRequest("refresh-token"));
-
-        assertEquals("access-token-2", response.accessToken());
-        assertEquals("refresh-token-2", response.refreshToken());
-        assertEquals("v2", session.getPermissionsVersion());
-        assertEquals(session.getSessionVersion(), response.sessionVersion());
-        assertEquals("v2", response.permissionsVersion());
-        verify(authSessionStore).save(session, true);
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        verify(authSessionStore, never()).save(session, false);
+        verify(authSessionStore, never()).save(session, true);
     }
 
     @Test
@@ -402,6 +403,62 @@ class AuthAppServiceTest {
     }
 
     @Test
+    void refreshTokenShouldDiscardAStaleAuthorizationSessionInsteadOfRehydratingIt() {
+        AuthSession session = cachedSession();
+        session.setRefreshTokenId("current-refresh-id");
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        JwtTokenClaims claims = new JwtTokenClaims();
+        claims.setTokenType(JwtTokenType.REFRESH);
+        claims.setSessionId(session.getSessionId());
+        claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
+        claims.setSessionVersion(session.getSessionVersion());
+        claims.setPermissionsVersion(session.getPermissionsVersion());
+        claims.setTokenId(session.getRefreshTokenId());
+        when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
+        when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
+        when(systemInternalApi.isPermissionSnapshotVersionCurrent(session.getPermissionsVersion())).thenReturn(Boolean.FALSE);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.refreshToken(new RefreshTokenRequest("refresh-token"))
+        );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        verify(authSessionStore).removeIfUnchanged(session, true);
+        verify(authSessionStore, never()).save(session, false);
+        verify(authSessionStore, never()).save(session, true);
+    }
+
+    @Test
+    void refreshTokenShouldReturnDependencyUnavailableWithoutDeletingSessionWhenVersionCheckFails() {
+        AuthSession session = cachedSession();
+        session.setRefreshTokenId("current-refresh-id");
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        JwtTokenClaims claims = new JwtTokenClaims();
+        claims.setTokenType(JwtTokenType.REFRESH);
+        claims.setSessionId(session.getSessionId());
+        claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
+        claims.setSessionVersion(session.getSessionVersion());
+        claims.setPermissionsVersion(session.getPermissionsVersion());
+        claims.setTokenId(session.getRefreshTokenId());
+        when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
+        when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
+        when(systemInternalApi.isPermissionSnapshotVersionCurrent(session.getPermissionsVersion()))
+                .thenThrow(new IllegalStateException("version service unavailable"));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.refreshToken(new RefreshTokenRequest("refresh-token"))
+        );
+
+        assertEquals(ErrorCode.DEPENDENCY_UNAVAILABLE, exception.getErrorCode());
+        verify(authSessionStore, never()).removeIfUnchanged(session, true);
+        verify(authSessionStore, never()).save(any(), anyBoolean());
+    }
+
+    @Test
     void refreshTokenShouldRejectClaimsWithoutPermissionsVersion() {
         AuthSession session = cachedSession();
         session.setRefreshTokenId("current-refresh-id");
@@ -415,11 +472,13 @@ class AuthAppServiceTest {
         when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
         when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
 
-        assertThrows(
+        BizException exception = assertThrows(
                 BizException.class,
                 () -> authAppService.refreshToken(new RefreshTokenRequest("refresh-token"))
         );
 
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        verify(authSessionStore, never()).removeIfUnchanged(session, true);
         verify(authSessionStore, never()).save(any(), anyBoolean());
     }
 
@@ -776,7 +835,7 @@ class AuthAppServiceTest {
         when(systemInternalApi.verifyPasswordLogin("jane", "password"))
                 .thenReturn(verifiedPasswordLogin(user, true, false));
         when(systemInternalApi.loginCapabilities())
-                .thenReturn(new LoginCapabilitiesDTO(true, false, false, false, false, false, List.of("password")));
+                .thenReturn(new LoginCapabilitiesDTO(true, false, false, false, false, false, false, false, List.of("password")));
         when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(snapshot);
         when(systemInternalApi.listLoginSecondFactorOptions(42L, "user-uuid-42")).thenReturn(List.of(totpOption));
         when(loginEncryptionService.decryptPassword("ciphertext")).thenReturn("password");
@@ -1309,7 +1368,7 @@ class AuthAppServiceTest {
                 "zh-CN"
         );
         PermissionSnapshotDTO snapshot = new PermissionSnapshotDTO("v1", List.of("dashboard:view"), List.of(), null, List.of(), List.of(), List.of(), "/dashboard/home");
-        LoginCapabilitiesDTO capabilities = new LoginCapabilitiesDTO(true, false, false, false, false, false, List.of("password"));
+        LoginCapabilitiesDTO capabilities = new LoginCapabilitiesDTO(true, false, false, false, false, false, false, false, List.of("password"));
 
         when(systemInternalApi.verifyPasswordLogin("jane", "password"))
                 .thenReturn(verifiedPasswordLogin(user, true, false));
@@ -1354,7 +1413,7 @@ class AuthAppServiceTest {
                 "zh-CN"
         );
         PermissionSnapshotDTO snapshot = new PermissionSnapshotDTO("v1", List.of("dashboard:view"), List.of(1002L), null, List.of(), List.of(), List.of(), "/dashboard/home");
-        LoginCapabilitiesDTO capabilities = new LoginCapabilitiesDTO(true, false, false, false, false, false, List.of("password"));
+        LoginCapabilitiesDTO capabilities = new LoginCapabilitiesDTO(true, false, false, false, false, false, false, false, List.of("password"));
 
         when(systemInternalApi.verifyPasswordLogin("jane", "password"))
                 .thenReturn(verifiedPasswordLogin(user, true, false));
@@ -1710,9 +1769,73 @@ class AuthAppServiceTest {
     }
 
     @Test
+    void currentUserBySessionIdShouldDiscardAStaleAuthorizationSessionBeforeHydratingIt() {
+        AuthSession session = cachedSession();
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(systemInternalApi.isPermissionSnapshotVersionCurrent(session.getPermissionsVersion())).thenReturn(Boolean.FALSE);
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(2L);
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(
+                new PermissionSnapshotDTO(
+                        "v2:data-scope-cache-v4",
+                        List.of("dashboard:view"),
+                        List.of(3L),
+                        null,
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        "/dashboard/home"
+                )
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.currentUserBySessionId(
+                        "session-1",
+                        session.getUserId(),
+                        session.getUserUuid(),
+                        session.getSessionVersion(),
+                        session.getPermissionsVersion(),
+                        null
+                )
+        );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        verify(authSessionStore).removeIfUnchanged(session, true);
+        verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
+        verify(authSessionStore, never()).save(session, false);
+    }
+
+    @Test
+    void currentUserBySessionIdShouldReturnDependencyUnavailableWithoutDeletingSessionWhenVersionCheckFails() {
+        AuthSession session = cachedSession();
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(systemInternalApi.isPermissionSnapshotVersionCurrent(session.getPermissionsVersion()))
+                .thenThrow(new IllegalStateException("version service unavailable"));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.currentUserBySessionId(
+                        "session-1",
+                        session.getUserId(),
+                        session.getUserUuid(),
+                        session.getSessionVersion(),
+                        session.getPermissionsVersion(),
+                        null
+                )
+        );
+
+        assertEquals(ErrorCode.DEPENDENCY_UNAVAILABLE, exception.getErrorCode());
+        verify(authSessionStore, never()).removeIfUnchanged(session, true);
+        verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
+    }
+
+    @Test
     void currentUserBySessionIdHydratesSimulatedRoleSnapshotWhenSessionSnapshotMissing() {
         AuthSession session = cachedSession();
         session.setSimulatedRoleId(9L);
+        session.setPermissionsVersion("role-v1");
         session.setPermissions(null);
         session.setRoleIds(null);
         session.setDeptIds(null);
@@ -2391,6 +2514,7 @@ class AuthAppServiceTest {
                     WechatLoginService.class,
                     AuthSecurityProperties.class,
                     SecuritySettingsService.class,
+                    AuthorizationSnapshotVersionVerifier.class,
                     AuthPostLoginBootstrapProvider.class,
                     AuthReadModelVersionProvider.class,
                     MeterRegistry.class,
@@ -2409,6 +2533,7 @@ class AuthAppServiceTest {
                     mock(WechatLoginService.class),
                     authSecurityProperties,
                     securitySettingsService,
+                    new SystemAuthorizationSnapshotVersionVerifier(systemInternalApi),
                     authPostLoginBootstrapProvider,
                     authReadModelVersionProvider,
                     null,

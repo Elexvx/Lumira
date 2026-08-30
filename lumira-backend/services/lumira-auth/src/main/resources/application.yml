@@ -45,6 +45,9 @@ saas:
       - /api/v1/auth/login
       - /api/v1/auth/login/code/challenge
       - /api/v1/auth/login/code/complete
+      - /api/v1/auth/registration/contact/availability
+      - /api/v1/auth/registration/code/challenge
+      - /api/v1/auth/registration/complete
       - /api/v1/auth/password-reset/challenge
       - /api/v1/auth/password-reset/complete
       - /api/v1/auth/login-encryption-key

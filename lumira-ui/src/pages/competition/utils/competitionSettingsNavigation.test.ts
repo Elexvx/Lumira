@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  competitionSettingsMenuItems,
+  competitionSettingsRegistrationTabItems,
   createCompetitionSettingsSearch,
   getCompetitionSettingsStageTabFallback,
   parseCompetitionSettingsNavigation,
@@ -7,6 +9,40 @@ import {
 } from './competitionSettingsNavigation';
 
 describe('competition settings URL navigation', () => {
+  it('keeps the requested sidebar order and registration tab order', () => {
+    expect(competitionSettingsMenuItems.map((item) => item.key)).toEqual([
+      'basic',
+      'notice',
+      'registration',
+      'experts',
+      'stages',
+      'payments',
+      'awards',
+      'danger',
+    ]);
+    expect(competitionSettingsMenuItems.map((item) => item.label)).toEqual([
+      '基础信息',
+      '赛事须知',
+      '报名设置',
+      '专家设置',
+      '赛程与材料',
+      '费用设置',
+      '获奖设置',
+      '危险操作',
+    ]);
+    expect(competitionSettingsMenuItems.at(-1)).toMatchObject({
+      key: 'danger',
+      className: 'competition-settings-sidebar__danger-item',
+    });
+    expect(competitionSettingsRegistrationTabItems.map((item) => item.key)).toEqual([
+      'PROJECT_FIELD',
+      'TEAM_FIELD',
+      'MEMBER_FIELD',
+      'TEACHER_FIELD',
+      'INTELLECTUAL_PROPERTY',
+    ]);
+  });
+
   it('defaults to the basic section for a URL without settings parameters', () => {
     expect(parseCompetitionSettingsNavigation('')).toEqual({
       section: 'basic',
@@ -39,20 +75,40 @@ describe('competition settings URL navigation', () => {
     });
   });
 
-  it('uses the combined team settings as the registration section default', () => {
+  it('uses project settings as the registration section default', () => {
     expect(parseCompetitionSettingsNavigation('?section=registration')).toEqual({
       section: 'registration',
-      registrationTab: 'TEAM_FIELD',
+      registrationTab: 'PROJECT_FIELD',
       stageTab: 'timeline',
     });
   });
 
-  it('maps the removed student tab to combined team settings', () => {
+  it('maps the removed student tab to the independent student settings page', () => {
     expect(parseCompetitionSettingsNavigation('?section=registration&tab=students')).toEqual({
       section: 'registration',
-      registrationTab: 'TEAM_FIELD',
+      registrationTab: 'MEMBER_FIELD',
       stageTab: 'timeline',
     });
+  });
+
+  it('moves legacy expert and document tabs to their independent sections', () => {
+    expect(parseCompetitionSettingsNavigation('?section=registration&tab=experts')).toMatchObject({
+      section: 'experts',
+    });
+    expect(parseCompetitionSettingsNavigation('?section=registration&tab=expert-fields')).toMatchObject({
+      section: 'experts',
+    });
+    expect(parseCompetitionSettingsNavigation('?section=registration&tab=documents')).toMatchObject({
+      section: 'notice',
+    });
+  });
+
+  it('keeps legacy tab-only links on the matching settings page', () => {
+    expect(parseCompetitionSettingsNavigation('?tab=experts').section).toBe('experts');
+    expect(parseCompetitionSettingsNavigation('?tab=documents').section).toBe('notice');
+    expect(parseCompetitionSettingsNavigation('?tab=team').registrationTab).toBe('TEAM_FIELD');
+    expect(parseCompetitionSettingsNavigation('?tab=students').registrationTab).toBe('MEMBER_FIELD');
+    expect(parseCompetitionSettingsNavigation('?tab=teachers').registrationTab).toBe('TEACHER_FIELD');
   });
 
   it('restores the timeline tab from the URL', () => {
@@ -95,10 +151,15 @@ describe('competition settings URL navigation', () => {
     expect(createCompetitionSettingsSearch('?from=list&tab=timeline', 'payments')).toBe('?from=list&section=payments');
   });
 
-  it('writes stable query values for nested settings tabs', () => {
+  it('writes stable query values for registration tabs and independent sections', () => {
+    expect(createCompetitionSettingsSearch('', 'registration', 'PROJECT_FIELD')).toBe('?section=registration&tab=project');
     expect(createCompetitionSettingsSearch('', 'registration', 'TEAM_FIELD')).toBe('?section=registration&tab=team');
+    expect(createCompetitionSettingsSearch('', 'registration', 'MEMBER_FIELD')).toBe('?section=registration&tab=students');
+    expect(createCompetitionSettingsSearch('', 'registration', 'TEACHER_FIELD')).toBe('?section=registration&tab=teachers');
     expect(createCompetitionSettingsSearch('', 'registration', 'INTELLECTUAL_PROPERTY')).toBe('?section=registration&tab=intellectual-property');
-    expect(createCompetitionSettingsSearch('', 'registration', 'EXPERT_FIELD')).toBe('?section=registration&tab=experts');
+    expect(createCompetitionSettingsSearch('', 'experts')).toBe('?section=experts');
+    expect(createCompetitionSettingsSearch('', 'notice')).toBe('?section=notice');
+    expect(createCompetitionSettingsSearch('', 'danger')).toBe('?section=danger');
     expect(createCompetitionSettingsSearch('', 'stages', 'timeline')).toBe('?section=stages&tab=timeline');
     expect(createCompetitionSettingsSearch('', 'stages', 'preliminary')).toBe('?section=stages&tab=preliminary');
     expect(createCompetitionSettingsSearch('', 'stages', 'final')).toBe('?section=stages&tab=final');
@@ -106,11 +167,11 @@ describe('competition settings URL navigation', () => {
 
   it('round-trips every registration page while switching forward and backward', () => {
     const switchSequence: CompetitionSettingsRegistrationTab[] = [
-      'TEAM_FIELD',
       'PROJECT_FIELD',
-      'EXPERT_FIELD',
+      'TEAM_FIELD',
+      'MEMBER_FIELD',
+      'TEACHER_FIELD',
       'INTELLECTUAL_PROPERTY',
-      'documents',
       'INTELLECTUAL_PROPERTY',
       'PROJECT_FIELD',
       'TEAM_FIELD',

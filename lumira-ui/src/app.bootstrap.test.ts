@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
     enabled: false,
     mode: 'TEXT',
     textLines: ['宏翔商道', 'Admin system'],
+    personalizedTextLines: [],
     imageUrl: '',
     fontColor: 'rgba(0,0,0,0.15)',
     fontSize: 14,
@@ -415,6 +416,12 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
           brandingSettings: { websiteName: 'Lumira Fast' },
           securitySettings: { captchaEnabled: false },
           agreementSettings: { userAgreementMarkdown: 'u', privacyAgreementMarkdown: 'p' },
+          watermarkSettings: {
+            enabled: true,
+            mode: 'TEXT',
+            textLines: ['访客水印'],
+            personalizedTextLines: ['用户：{{username}}'],
+          },
           loginCapabilities: { passwordLoginAvailable: true, smsLoginAvailable: true, emailLoginAvailable: false },
         };
       }
@@ -442,6 +449,11 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
     expect(mocks.request).toHaveBeenCalledWith('/v2/platform/public/bootstrap', expect.objectContaining({ method: 'GET', skipAuth: true }));
     expect(initialState.currentUser).toBeUndefined();
     expect(initialState.brandingSettings.websiteName).toBe('Lumira Fast');
+    expect(initialState.watermarkSettings).toMatchObject({
+      enabled: true,
+      textLines: ['访客水印'],
+      personalizedTextLines: ['用户：{{username}}'],
+    });
     expect(initialState.loginCapabilities?.smsLoginAvailable).toBe(true);
     expect(mocks.persistSecuritySettings).toHaveBeenCalledWith(expect.objectContaining({ captchaEnabled: false }));
   });

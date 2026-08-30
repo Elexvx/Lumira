@@ -17,7 +17,7 @@ const domesticDigestCharacters = {
 const digest = (name) => `ghcr.io/elexvx/lumira/${name}@sha256:${(runtimeDigestCharacters[name] || 'f').repeat(64)}`;
 const domesticDigest = (name) => `swr.cn-east-3.myhuaweicloud.com/aiadc/${name}@sha256:${(domesticDigestCharacters[name] || '6').repeat(64)}`;
 
-test('updater v2 exposes capabilities, preflight, and persistent task state', { timeout: 20_000 }, async (context) => {
+test('updater v3 exposes capabilities, preflight, and persistent task state', { timeout: 20_000 }, async (context) => {
   const deployDir = mkdtempSync(path.join(os.tmpdir(), 'lumira-updater-test-'));
   mkdirSync(path.join(deployDir, '.generated', 'api-proxy'), { recursive: true });
   writeFileSync(path.join(deployDir, '.env'), 'LUMIRA_ACTIVE_SLOT=blue\n');
@@ -25,7 +25,7 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
   const token = 'integration-test-token';
   const child = spawn(process.execPath, [path.join(repoRoot, 'bin', 'lumira-updater.mjs'), '--dry-run'], {
     cwd: repoRoot,
-    env: { ...process.env, LUMIRA_DEPLOY_DIR: deployDir, LUMIRA_UPDATER_PORT: String(port), PLATFORM_UPDATE_AGENT_TOKEN: token },
+    env: { ...process.env, LUMIRA_DEPLOY_DIR: deployDir, LUMIRA_UPDATER_PORT: String(port), PLATFORM_UPDATE_AGENT_TOKEN: token, LUMIRA_UPDATER_ALLOW_INLINE_MANIFEST: 'true' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   context.after(() => {
@@ -48,7 +48,8 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   const capabilities = await call('/v1/capabilities');
-  assert.equal(capabilities.body.protocolVersion, 2);
+  assert.equal(capabilities.body.protocolVersion, 3);
+  assert.equal(capabilities.body.acceptsInlineManifest, true);
   assert.equal(capabilities.body.activeSlot, 'blue');
   assert.equal(capabilities.body.supportsPlatformTaskLookup, true);
 
@@ -144,4 +145,35 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
   assert.equal(task.log.some((line) => line.includes('$ docker rm -f lumira-async')), true);
   assert.equal(task.log.some((line) => line.includes('pull lumira-async')), false);
   assert.equal(task.log.some((line) => line.includes('up -d --no-deps --force-recreate lumira-async')), true);
+});
+
+test('updater production default rejects inline manifests with a clear 4xx response', { timeout: 10_000 }, async (context) => {
+  const deployDir = mkdtempSync(path.join(os.tmpdir(), 'lumira-updater-inline-'));
+  mkdirSync(path.join(deployDir, '.generated', 'api-proxy'), { recursive: true });
+  writeFileSync(path.join(deployDir, '.env'), 'LUMIRA_ACTIVE_SLOT=blue\n');
+  const port = 29_000 + Math.floor(Math.random() * 3_000);
+  const token = 'inline-default-test-token';
+  const child = spawn(process.execPath, [path.join(repoRoot, 'bin', 'lumira-updater.mjs'), '--dry-run'], {
+    cwd: repoRoot,
+    env: { ...process.env, LUMIRA_DEPLOY_DIR: deployDir, LUMIRA_UPDATER_PORT: String(port), PLATFORM_UPDATE_AGENT_TOKEN: token, LUMIRA_UPDATER_ALLOW_INLINE_MANIFEST: 'false' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  context.after(() => {
+    child.kill();
+    rmSync(deployDir, { recursive: true, force: true });
+  });
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/v1/health`, { headers: { 'x-lumira-updater-token': token } });
+      if (response.ok) break;
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  const response = await fetch(`http://127.0.0.1:${port}/v1/update/preflight`, {
+    method: 'POST',
+    headers: { 'x-lumira-updater-token': token, 'content-type': 'application/json' },
+    body: JSON.stringify({ manifest: { schemaVersion: 3 } }),
+  });
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).errorMessage, /Inline release manifests are disabled/);
 });

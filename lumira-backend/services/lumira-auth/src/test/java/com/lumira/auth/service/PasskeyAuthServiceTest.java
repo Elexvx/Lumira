@@ -182,7 +182,7 @@ class PasskeyAuthServiceTest {
                 1001L, "user-uuid-1001", "alice", "stored-hash", "ENABLED", null, null, null, null, null, null, null, null, null, null, null
         ));
         when(systemInternalApi.listVerificationProviders(1001L, "user-uuid-1001")).thenReturn(List.of());
-        when(systemInternalApi.loginCapabilities()).thenReturn(new com.lumira.api.system.LoginCapabilitiesDTO(true, false, false, false, true, true, List.of("password", "passkey")));
+        when(systemInternalApi.loginCapabilities()).thenReturn(new com.lumira.api.system.LoginCapabilitiesDTO(true, false, false, false, true, true, false, false, List.of("password", "passkey")));
 
         BizException exception = assertThrows(BizException.class,
                 () -> service.renameCredential(7L, new PasskeyCredentialRenameRequest("Laptop", null, null, null, null)));
@@ -242,7 +242,7 @@ class PasskeyAuthServiceTest {
                 1001L, "user-uuid-1001", "alice", "stored-hash", "ENABLED", null, null, null, null, null, null, null, null, null, null, null
         ));
         when(systemInternalApi.listVerificationProviders(1001L, "user-uuid-1001")).thenReturn(List.of());
-        when(systemInternalApi.loginCapabilities()).thenReturn(new com.lumira.api.system.LoginCapabilitiesDTO(true, false, false, false, true, true, List.of("password", "passkey")));
+        when(systemInternalApi.loginCapabilities()).thenReturn(new com.lumira.api.system.LoginCapabilitiesDTO(true, false, false, false, true, true, false, false, List.of("password", "passkey")));
 
         BizException exception = assertThrows(BizException.class, () -> service.registrationOptions(null));
 
@@ -289,7 +289,7 @@ class PasskeyAuthServiceTest {
                 1001L, "user-uuid-1001", "alice", "stored-hash", "ENABLED", null, null, null, null, null, null, null, null, null, null, null
         ));
         when(systemInternalApi.listVerificationProviders(1001L, "user-uuid-1001")).thenReturn(List.of());
-        when(systemInternalApi.loginCapabilities()).thenReturn(new com.lumira.api.system.LoginCapabilitiesDTO(true, false, false, false, true, true, List.of("password", "passkey")));
+        when(systemInternalApi.loginCapabilities()).thenReturn(new com.lumira.api.system.LoginCapabilitiesDTO(true, false, false, false, true, true, false, false, List.of("password", "passkey")));
 
         BizException exception = assertThrows(BizException.class, () -> service.deleteCredential(7L, null));
 

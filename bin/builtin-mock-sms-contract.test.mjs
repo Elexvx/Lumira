@@ -19,7 +19,7 @@ test('fresh SQL and forward migration register the same disabled built-in mock S
     assert.match(sql, /'1\.0\.0'/);
     assert.match(sql, /'DISABLED'/);
   }
-  assert.equal(baselineVersion, '202608250001');
+  assert.equal(baselineVersion, '202608310001');
   assert.match(migration, /verification\.sms\.provider/);
   assert.match(migration, /LOWER\(TRIM\(`config_value`\)\) IN \('debug', 'mock'\)/);
 });
@@ -92,7 +92,7 @@ test('login, registration, reset, second-factor, and binding mappings forward mo
     'lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java',
   );
 
-  assert.match(verificationService, /startPendingLoginCodeChallenge[\s\S]*?setMockSmsDelivery\(mockSmsDelivery\)/);
+  assert.match(verificationService, /startRegistrationCodeChallenge[\s\S]*?setMockSmsDelivery\(mockSmsDelivery\)/);
   assert.match(verificationService, /startContactBindChallenge[\s\S]*?buildChallengeResponse[\s\S]*?mockSmsDelivery/);
   assert.match(verificationService, /collectSecondFactorOptions[\s\S]*?getMockSmsDelivery\(\)/);
   assert.ok(

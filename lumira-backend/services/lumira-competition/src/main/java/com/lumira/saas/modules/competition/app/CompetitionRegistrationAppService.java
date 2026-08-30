@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.PaymentInternalApi;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.dictionary.DictionaryItemLookupPort;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.api.payment.PaymentCheckoutOptionDTO;
@@ -101,6 +102,7 @@ public class CompetitionRegistrationAppService {
     private final ObjectProvider<PaymentInternalApi> paymentInternalApiProvider;
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
     private ObjectProvider<ProjectSnapshotPort> projectSnapshotPortProvider;
+    private ObjectProvider<DictionaryItemLookupPort> dictionaryItemLookupPortProvider;
     private final TrustedCurrentUserResolver trustedCurrentUserResolver;
     private final RegistrationDatasetRepository registrationDatasetRepository;
     private final RegistrationQueryRepository registrationQueryRepository;
@@ -166,6 +168,11 @@ public class CompetitionRegistrationAppService {
     @Autowired
     void setProjectSnapshotPortProvider(ObjectProvider<ProjectSnapshotPort> projectSnapshotPortProvider) {
         this.projectSnapshotPortProvider = projectSnapshotPortProvider;
+    }
+
+    @Autowired
+    void setDictionaryItemLookupPortProvider(ObjectProvider<DictionaryItemLookupPort> dictionaryItemLookupPortProvider) {
+        this.dictionaryItemLookupPortProvider = dictionaryItemLookupPortProvider;
     }
 
     public PageResponse<CompetitionRegistrationVO.Registration> listRegistrations(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -1760,7 +1767,10 @@ public class CompetitionRegistrationAppService {
                             row.itemType(), row.itemKey(), fieldType, configuredValidationRule
                     ),
                     metadata.path("options").asText(""),
-                    metadata.path("groupLabel").asText("")
+                    metadata.path("groupLabel").asText(""),
+                    metadata.path("optionSource").asText("CASCADER".equals(fieldType) ? "DICTIONARY" : "CUSTOM")
+                            .trim().toUpperCase(Locale.ROOT),
+                    metadata.path("dictCode").asText("").trim()
             ));
         }
         ensureProtectedCollectedField(definitions, "TEAM_FIELD", "teamName", "团队名称", "DISPLAY_NAME");
@@ -1789,13 +1799,15 @@ public class CompetitionRegistrationAppService {
                         true,
                         validationRule,
                         field.options(),
-                        field.groupLabel()
+                        field.groupLabel(),
+                        field.optionSource(),
+                        field.dictCode()
                 ));
                 return;
             }
         }
         definitions.add(new CollectedFieldDefinition(
-                scope, standardKey, title, "TEXT", true, validationRule, "", ""
+                scope, standardKey, title, "TEXT", true, validationRule, "", "", "CUSTOM", ""
         ));
     }
 
@@ -1908,7 +1920,7 @@ public class CompetitionRegistrationAppService {
         if (!"MULTI_SELECT".equals(field.fieldType()) && value instanceof List<?>) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Registration field has an invalid value: " + field.title());
         }
-        if (Set.of("TEXT", "TEXTAREA", "DATE", "SELECT", "MOBILE", "EMAIL", "IMAGE", "ROLE").contains(field.fieldType())
+        if (Set.of("TEXT", "TEXTAREA", "DATE", "SELECT", "CASCADER", "MOBILE", "EMAIL", "IMAGE", "ROLE").contains(field.fieldType())
                 && !(value instanceof CharSequence)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Registration field must be text: " + field.title());
         }
@@ -1919,6 +1931,10 @@ public class CompetitionRegistrationAppService {
         if ("MULTI_SELECT".equals(field.fieldType()) && !options.isEmpty()
                 && ((List<?>) value).stream().map(String::valueOf).anyMatch(option -> !options.contains(option))) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Registration field contains an unavailable option: " + field.title());
+        }
+        if ("DICTIONARY".equals(field.optionSource())
+                && Set.of("SELECT", "MULTI_SELECT", "CASCADER").contains(field.fieldType())) {
+            validateDictionaryCollectedValue(field, value);
         }
         String rawText = String.valueOf(value);
         String text = rawText.trim();
@@ -1938,6 +1954,31 @@ public class CompetitionRegistrationAppService {
                 default -> "Registration field has an invalid value: ";
             };
             throw biz(ErrorCode.VALIDATION_ERROR, message + field.title());
+        }
+    }
+
+    private void validateDictionaryCollectedValue(CollectedFieldDefinition field, Object value) {
+        if (!StringUtils.hasText(field.dictCode())) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration field dictionary is not configured: " + field.title());
+        }
+        DictionaryItemLookupPort lookupPort = dictionaryItemLookupPortProvider == null
+                ? null : dictionaryItemLookupPortProvider.getIfAvailable();
+        if (lookupPort == null) {
+            throw biz(ErrorCode.DEPENDENCY_UNAVAILABLE, "System dictionary service is unavailable");
+        }
+        List<String> values = value instanceof List<?> list
+                ? list.stream().map(String::valueOf).map(String::trim).filter(StringUtils::hasText).distinct().toList()
+                : List.of(String.valueOf(value).trim());
+        List<DictionaryItemLookupPort.DictionaryItem> available = lookupPort.enabledItemsByValues(field.dictCode(), values);
+        Set<String> resolvedValues = available.stream()
+                .map(DictionaryItemLookupPort.DictionaryItem::value)
+                .collect(java.util.stream.Collectors.toSet());
+        if (values.stream().anyMatch(option -> !resolvedValues.contains(option))) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration field contains a disabled or unavailable dictionary option: " + field.title());
+        }
+        if ("CASCADER".equals(field.fieldType())
+                && (available.size() != 1 || !available.getFirst().leaf())) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration field must select a final administrative division: " + field.title());
         }
     }
 
@@ -2031,6 +2072,8 @@ public class CompetitionRegistrationAppService {
             item.put("validationRule", field.validationRule());
             item.put("options", field.options());
             item.put("groupLabel", field.groupLabel());
+            item.put("optionSource", field.optionSource());
+            item.put("dictCode", field.dictCode());
             return item;
         }).toList();
         return serialize(snapshot);
@@ -2729,7 +2772,9 @@ public class CompetitionRegistrationAppService {
             boolean required,
             String validationRule,
             String options,
-            String groupLabel
+            String groupLabel,
+            String optionSource,
+            String dictCode
     ) {
     }
 

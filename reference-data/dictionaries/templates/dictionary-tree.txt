@@ -1,0 +1,4 @@
+itemValue	itemLabel	parentItemValue	levelNo	sortNo	status	remark	leaf
+100000	示例省		1	10	ENABLED	根节点示例	false
+100100	示例市	100000	2	20	ENABLED	子节点示例	false
+100101	示例区	100100	3	30	ENABLED	末级节点示例	true

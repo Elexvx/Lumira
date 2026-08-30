@@ -4,6 +4,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.dict.repository.DictRuntimeRepository;
+import com.lumira.saas.common.vo.PageResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -27,6 +28,36 @@ public class DictRuntimeService {
             return List.of();
         }
         return repository.findEnabledItems(dictCode.trim());
+    }
+
+    public PageResponse<SystemVO.DictItemVO> searchEnabledItems(
+            String dictCode,
+            String keyword,
+            String parentItemValue,
+            boolean rootOnly,
+            List<String> values,
+            Long pageNo,
+            Long pageSize
+    ) {
+        if (!StringUtils.hasText(dictCode)) {
+            PageResponse<SystemVO.DictItemVO> empty = new PageResponse<>();
+            empty.setRecords(List.of());
+            empty.setTotal(0L);
+            empty.setPageNo(1L);
+            empty.setPageSize(pageSize == null ? 50L : pageSize);
+            return empty;
+        }
+        List<String> normalizedValues = values == null ? List.of() : values.stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .distinct()
+                .limit(100)
+                .toList();
+        return repository.searchEnabledItems(new DictRuntimeRepository.ItemSearch(
+                dictCode.trim(), keyword, parentItemValue, rootOnly, normalizedValues,
+                pageNo == null ? 1L : pageNo,
+                pageSize == null ? 50L : pageSize
+        ));
     }
 
     public List<String> enabledValues(String dictCode) {

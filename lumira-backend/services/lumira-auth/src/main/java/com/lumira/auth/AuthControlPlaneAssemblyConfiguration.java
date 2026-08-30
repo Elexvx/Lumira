@@ -18,6 +18,7 @@ import com.lumira.auth.service.LoginEncryptionService;
 import com.lumira.auth.service.LoginProtectionService;
 import com.lumira.auth.service.PasskeyAuthService;
 import com.lumira.auth.service.SecuritySettingsService;
+import com.lumira.auth.service.SystemAuthorizationSnapshotVersionVerifier;
 import com.lumira.auth.service.WechatLoginService;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Bean;
         LoginProtectionService.class,
         PasskeyAuthService.class,
         SecuritySettingsService.class,
+        SystemAuthorizationSnapshotVersionVerifier.class,
         WechatLoginService.class
 })
 public class AuthControlPlaneAssemblyConfiguration {

@@ -13,7 +13,9 @@ import org.springframework.context.annotation.Import;
         OutboxRelayCoordinator.class,
         RemoteCompetitionPaymentEventHandler.class,
         PaymentEventStreamConsumer.class,
-        AlertingWorkerLoop.class
+        AlertingWorkerLoop.class,
+        AsyncRuntimeDrainCoordinator.class,
+        AsyncRuntimeControlController.class
 })
 public class LumiraAsyncOwnerRelayAssemblyConfiguration {
 }

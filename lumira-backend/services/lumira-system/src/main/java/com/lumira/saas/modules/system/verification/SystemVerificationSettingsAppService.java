@@ -303,6 +303,8 @@ public class SystemVerificationSettingsAppService {
         SystemVO.PasskeySettingsVO passkey = toPasskeySettings(values);
         capabilities.setPasskeyLoginAvailable(Boolean.TRUE.equals(passkey.getEnabled()));
         capabilities.setPasskeyPasswordlessAvailable(Boolean.TRUE.equals(passkey.getEnabled()) && Boolean.TRUE.equals(passkey.getPasswordlessEnabled()));
+        capabilities.setRegistrationSmsVerificationRequired(isSmsLoginAvailable(values));
+        capabilities.setRegistrationEmailVerificationRequired(smtpMailService.isConfigured());
         capabilities.setLoginModeOrder(loginModeOrder(values));
         return capabilities;
     }

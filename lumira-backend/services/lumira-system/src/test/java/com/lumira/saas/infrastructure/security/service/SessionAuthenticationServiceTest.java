@@ -459,7 +459,7 @@ class SessionAuthenticationServiceTest {
         );
         assertEquals(2, jwtTokenService.parseCount);
         assertEquals(3, authSessionStore.findCount);
-        assertTrue(permissionSnapshotService.userSnapshotLoaded);
+        assertFalse(permissionSnapshotService.userSnapshotLoaded);
     }
 
     @Test
@@ -543,7 +543,7 @@ class SessionAuthenticationServiceTest {
                 com.lumira.common.exception.BizException.class,
                 () -> service.authenticateAccessToken("access-token")
         );
-        assertTrue(permissionSnapshotService.userSnapshotLoaded);
+        assertFalse(permissionSnapshotService.userSnapshotLoaded);
         assertEquals(0, authSessionStore.saveCount);
     }
 
@@ -805,6 +805,127 @@ class SessionAuthenticationServiceTest {
     }
 
     @Test
+    void shouldRejectSessionTicketWhenAuthorizationSnapshotVersionIsNoLongerCurrent() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        permissionSnapshotService.setCurrentVersion(2L);
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+        AuthSession session = buildSession(null);
+        authSessionStore.put(session);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.authenticateSessionTicket(
+                        "session-1",
+                        2001L,
+                        "user-uuid-2001",
+                        null,
+                        1,
+                        "v1:data-scope-cache-v4"
+                )
+        );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        assertEquals(1, authSessionStore.removeCount);
+        assertFalse(permissionSnapshotService.userSnapshotLoaded);
+    }
+
+    @Test
+    void shouldClassifyStaleAuthorizationVersionAndSuccessfulCasRevocationMetrics() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        permissionSnapshotService.setCurrentVersion(2L);
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                new StubJwtTokenService(),
+                authSessionStore,
+                permissionSnapshotService,
+                new StubSecuritySettingsService(),
+                new OwnerRuntimeMetrics(meterRegistry)
+        );
+        authSessionStore.put(buildSession(null));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.authenticateSessionTicket(
+                        "session-1", 2001L, "user-uuid-2001", null, 1, "v1:data-scope-cache-v4"
+                )
+        );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        assertEquals(1.0, metric(meterRegistry, OwnerRuntimeMetrics.AUTHZ_VERSION_STALE), 0.0);
+        assertEquals(1.0, metric(meterRegistry, OwnerRuntimeMetrics.AUTHZ_SESSION_REVOKED), 0.0);
+        assertEquals(0.0, metric(meterRegistry, OwnerRuntimeMetrics.AUTHZ_VERSION_UNAVAILABLE), 0.0);
+    }
+
+    @Test
+    void shouldClassifyVersionDependencyFailureWithoutDeletingPotentiallyValidSession() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        permissionSnapshotService.failAuthoritativeVersionRead = true;
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                new StubJwtTokenService(),
+                authSessionStore,
+                permissionSnapshotService,
+                new StubSecuritySettingsService(),
+                new OwnerRuntimeMetrics(meterRegistry)
+        );
+        authSessionStore.put(buildSession(null));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.authenticateSessionTicket(
+                        "session-1", 2001L, "user-uuid-2001", null, 1, "v1:data-scope-cache-v4"
+                )
+        );
+
+        assertEquals(ErrorCode.DEPENDENCY_UNAVAILABLE, exception.getErrorCode());
+        assertEquals(0, authSessionStore.removeCount);
+        assertTrue(authSessionStore.sessions.containsKey("session-1"));
+        assertEquals(1.0, metric(meterRegistry, OwnerRuntimeMetrics.AUTHZ_VERSION_UNAVAILABLE), 0.0);
+        assertEquals(0.0, metric(meterRegistry, OwnerRuntimeMetrics.AUTHZ_SESSION_REVOKED), 0.0);
+    }
+
+    @Test
+    void shouldFailClosedWhenAStaleSessionCannotBeRemoved() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        permissionSnapshotService.setCurrentVersion(2L);
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        authSessionStore.failRemoveIfUnchanged = true;
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+        authSessionStore.put(buildSession(null));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.authenticateSessionTicket(
+                        "session-1",
+                        2001L,
+                        "user-uuid-2001",
+                        null,
+                        1,
+                        "v1:data-scope-cache-v4"
+                )
+        );
+
+        assertEquals(ErrorCode.DEPENDENCY_UNAVAILABLE, exception.getErrorCode());
+    }
+
+    @Test
     void shouldRejectSessionTicketWhenUserUuidDoesNotMatchSession() {
         StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
         StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
@@ -818,10 +939,13 @@ class SessionAuthenticationServiceTest {
         );
         authSessionStore.put(buildSession(null));
 
-        assertThrows(
-                com.lumira.common.exception.BizException.class,
+        BizException exception = assertThrows(
+                BizException.class,
                 () -> service.authenticateSessionTicket("session-1", 2001L, "other-uuid", null, 1, "v1:data-scope-cache-v4")
         );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        assertEquals(0, authSessionStore.removeCount);
     }
 
     @Test
@@ -838,10 +962,13 @@ class SessionAuthenticationServiceTest {
         );
         authSessionStore.put(buildSession(null));
 
-        assertThrows(
-                com.lumira.common.exception.BizException.class,
+        BizException exception = assertThrows(
+                BizException.class,
                 () -> service.authenticateSessionTicket("session-1", 2001L, "user-uuid-2001", null, 1, "stale")
         );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        assertEquals(0, authSessionStore.removeCount);
     }
 
     @Test
@@ -887,7 +1014,7 @@ class SessionAuthenticationServiceTest {
         claims.setUsername(session.getUsername());
         claims.setSimulatedRoleId(session.getSimulatedRoleId());
         claims.setSessionVersion(session.getSessionVersion());
-        claims.setPermissionsVersion(session.getSimulatedRoleId() == null ? session.getPermissionsVersion() : "role-version");
+        claims.setPermissionsVersion(session.getPermissionsVersion());
         claims.setTokenType(TokenType.ACCESS);
         claims.setTokenId("token-1");
         return claims;
@@ -943,6 +1070,7 @@ class SessionAuthenticationServiceTest {
         private boolean roleSnapshotLoaded;
         private boolean trustedActiveUser = true;
         private boolean roleGranted = true;
+        private boolean failAuthoritativeVersionRead;
         private long currentVersion = 1L;
         private String loadedVersion = "v1:data-scope-cache-v4";
 
@@ -959,7 +1087,7 @@ class SessionAuthenticationServiceTest {
         @Override
         public PermissionSnapshot loadRoleSnapshot(Long roleId) {
             roleSnapshotLoaded = true;
-            return new PermissionSnapshot("role-version", Set.of("role:admin", "role:publish"));
+            return new PermissionSnapshot(loadedVersion, Set.of("role:admin", "role:publish"));
         }
 
         @Override
@@ -971,13 +1099,21 @@ class SessionAuthenticationServiceTest {
         @Override
         public PermissionSnapshot loadGrantedRoleSnapshot(Long userId, String userUuid, Long roleId) {
             roleSnapshotLoaded = true;
-            return new PermissionSnapshot("role-version", Set.of("role:admin", "role:publish"));
+            return new PermissionSnapshot(loadedVersion, Set.of("role:admin", "role:publish"));
         }
 
         @Override
         public boolean isSessionPermissionSnapshotCurrent(String sessionPermissionsVersion) {
             Long version = parseVersion(sessionPermissionsVersion);
             return version != null && version.equals(currentVersion);
+        }
+
+        @Override
+        public boolean isAuthoritativeSessionPermissionSnapshotCurrent(String sessionPermissionsVersion) {
+            if (failAuthoritativeVersionRead) {
+                throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "version dependency unavailable");
+            }
+            return isSessionPermissionSnapshotCurrent(sessionPermissionsVersion);
         }
 
         @Override
@@ -1008,6 +1144,7 @@ class SessionAuthenticationServiceTest {
         private int saveCount;
         private int findCount;
         private int removeCount;
+        private boolean failRemoveIfUnchanged;
 
         private StubAuthSessionStore() {
             super(null, null, null);
@@ -1046,6 +1183,9 @@ class SessionAuthenticationServiceTest {
 
         @Override
         public boolean removeIfUnchanged(AuthSession session, boolean publishChange) {
+            if (failRemoveIfUnchanged) {
+                throw new IllegalStateException("Redis session delete is unavailable");
+            }
             remove(session, publishChange);
             return true;
         }

@@ -18,6 +18,7 @@ import { confirmAction } from '@/utils/confirm';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS } from '@/floatingWindow/settings';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
+import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
 import { persistWatermarkSettings } from '@/watermark/settingsStorage';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { AgreementMarkdownEditor } from './personalization/components/AgreementMarkdownEditor';
@@ -207,11 +208,11 @@ const PersonalizationSettingsPage = () => {
   const watermarkFormProps = useStandardFormProps({
     form: watermarkForm,
     onValuesChange: (_, allValues) =>
-      setWatermarkPreview({
+      setWatermarkPreview(normalizeWatermarkSettings({
         ...DEFAULT_WATERMARK_SETTINGS,
         ...allValues,
         imageUrl: normalizeUploadUrl(allValues.imageUrl),
-      }),
+      })),
   });
   const floatingFormProps = useStandardFormProps({
     form: floatingForm,
@@ -221,11 +222,9 @@ const PersonalizationSettingsPage = () => {
   const [previewState, setPreviewState] = useState<BrandingSettings>(
     normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS),
   );
-  const [watermarkPreview, setWatermarkPreview] = useState<WatermarkSettings>(() => ({
-    ...DEFAULT_WATERMARK_SETTINGS,
-    ...(initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS),
-    imageUrl: normalizeUploadUrl(initialState?.watermarkSettings?.imageUrl),
-  }));
+  const [watermarkPreview, setWatermarkPreview] = useState<WatermarkSettings>(() =>
+    normalizeWatermarkSettings(initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS),
+  );
   const [floatingPreview, setFloatingPreview] = useState<FloatingWindowSettings>(DEFAULT_FLOATING_WINDOW_SETTINGS);
   const [uploadingTarget, setUploadingTarget] = useState<UploadTarget | null>(null);
   const [imageUploadSizeMb, setImageUploadSizeMb] = useState(DEFAULT_IMAGE_UPLOAD_SIZE_MB);
@@ -489,7 +488,7 @@ const PersonalizationSettingsPage = () => {
       if (resolvedMode !== watermarkValues.mode) {
         message.warning(t('ui.settings.personalization.whenNoWatermarkImageIsUploadedTheSystem'));
       }
-      const updatedWatermark = await request<WatermarkSettings>('/v1/system/watermark-settings', {
+      const updatedWatermark = normalizeWatermarkSettings(await request<WatermarkSettings>('/v1/system/watermark-settings', {
         method: 'PUT',
         data: {
           ...DEFAULT_WATERMARK_SETTINGS,
@@ -498,7 +497,7 @@ const PersonalizationSettingsPage = () => {
           imageUrl: normalizeUploadUrl(watermarkValues.imageUrl),
         },
         ...API_OPTS.NO_REDIRECT,
-      });
+      }));
       watermarkForm.setFieldsValue(updatedWatermark);
       setInitialState((prev: AppInitialState | undefined) => (prev ? { ...prev, watermarkSettings: updatedWatermark } : prev));
       setWatermarkPreview(updatedWatermark);
@@ -605,11 +604,7 @@ const PersonalizationSettingsPage = () => {
 
       const normalizedBranding = normalizeBrandingSettings(appearanceResult.brandingSettings || DEFAULT_BRANDING_SETTINGS);
       const watermarkResult = appearanceResult.watermarkSettings || DEFAULT_WATERMARK_SETTINGS;
-      const normalizedWatermark = {
-        ...DEFAULT_WATERMARK_SETTINGS,
-        ...watermarkResult,
-        imageUrl: normalizeUploadUrl(watermarkResult.imageUrl),
-      };
+      const normalizedWatermark = normalizeWatermarkSettings(watermarkResult);
       const normalizedFloating = normalizeFloatingWindowSettings(appearanceResult.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS);
       const normalizedAgreement = normalizeAgreementSettings(agreementResult);
 

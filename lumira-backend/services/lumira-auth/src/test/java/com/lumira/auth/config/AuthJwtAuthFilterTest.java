@@ -6,10 +6,13 @@ import com.lumira.auth.model.AuthSession;
 import com.lumira.auth.service.AuthSessionStore;
 import com.lumira.auth.service.JwtTokenService;
 import com.lumira.auth.service.SecuritySettingsService;
+import com.lumira.common.security.AuthorizationSnapshotVersionVerifier;
+import com.lumira.common.security.AuthorizationSnapshotMetricNames;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
 import jakarta.servlet.FilterChain;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,16 +39,21 @@ class AuthJwtAuthFilterTest {
     private final AuthSessionStore authSessionStore = mock(AuthSessionStore.class);
     private final SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
     private final SecuritySettingsService securitySettingsService = mock(SecuritySettingsService.class);
+    private final AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier = mock(AuthorizationSnapshotVersionVerifier.class);
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     private final AuthJwtAuthFilter filter = new AuthJwtAuthFilter(
             jwtTokenService,
             authSessionStore,
             systemInternalApi,
-            securitySettingsService
+            securitySettingsService,
+            authorizationSnapshotVersionVerifier,
+            meterRegistry
     );
 
     @BeforeEach
     void setUp() {
         when(securitySettingsService.getIdleTimeoutSeconds()).thenReturn(1800L);
+        when(authorizationSnapshotVersionVerifier.isCurrent(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
     }
 
     @AfterEach
@@ -351,6 +359,76 @@ class AuthJwtAuthFilterTest {
         assertThat(chainInvoked).isTrue();
         verify(authSessionStore).removeIfUnchanged(session, true);
         verify(systemInternalApi, never()).findUserById(42L);
+    }
+
+    @Test
+    void rejectsMatchingTokenAndSessionWhenAuthorizationSnapshotWasRevoked() {
+        JwtTokenClaims claims = accessClaims("session-1", 42L, "alice", 3);
+        AuthSession session = session("session-1", 42L, "alice", 3);
+        when(jwtTokenService.parseToken("token-1")).thenReturn(claims);
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(authorizationSnapshotVersionVerifier.isCurrent("permissions-3")).thenReturn(false);
+        when(authSessionStore.removeIfUnchanged(session, true)).thenReturn(true);
+
+        CurrentUser currentUser = filter.authenticateAccessToken("token-1");
+
+        assertThat(currentUser).isNull();
+        verify(authSessionStore).removeIfUnchanged(session, true);
+        verify(systemInternalApi, never()).findUserById(42L);
+        assertThat(metric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_STALE)).isEqualTo(1.0);
+        assertThat(metric(AuthorizationSnapshotMetricNames.AUTHZ_SESSION_REVOKED)).isEqualTo(1.0);
+        assertThat(metric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_UNAVAILABLE)).isZero();
+    }
+
+    @Test
+    void returnsDependencyUnavailableWhenAuthorizationSnapshotCannotBeVerified() throws Exception {
+        JwtTokenClaims claims = accessClaims("session-1", 42L, "alice", 3);
+        AuthSession session = session("session-1", 42L, "alice", 3);
+        when(jwtTokenService.parseToken("token-1")).thenReturn(claims);
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(authorizationSnapshotVersionVerifier.isCurrent("permissions-3"))
+                .thenThrow(new IllegalStateException("version service unavailable"));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/current-user");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer token-1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainInvoked = new AtomicBoolean(false);
+
+        filter.doFilterInternal(request, response, (servletRequest, servletResponse) -> chainInvoked.set(true));
+
+        assertThat(response.getStatus()).isEqualTo(503);
+        assertThat(response.getContentAsString()).contains("S0002");
+        assertThat(chainInvoked).isFalse();
+        verify(authSessionStore, never()).removeIfUnchanged(session, true);
+        assertThat(metric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_UNAVAILABLE)).isEqualTo(1.0);
+        assertThat(metric(AuthorizationSnapshotMetricNames.AUTHZ_SESSION_REVOKED)).isZero();
+    }
+
+    @Test
+    void returnsDependencyUnavailableWhenStaleSessionCannotBeInvalidated() throws Exception {
+        JwtTokenClaims claims = accessClaims("session-1", 42L, "alice", 3);
+        AuthSession session = session("session-1", 42L, "alice", 3);
+        when(jwtTokenService.parseToken("token-1")).thenReturn(claims);
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(authorizationSnapshotVersionVerifier.isCurrent("permissions-3")).thenReturn(false);
+        when(authSessionStore.removeIfUnchanged(session, true))
+                .thenThrow(new IllegalStateException("redis unavailable"));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/current-user");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer token-1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainInvoked = new AtomicBoolean(false);
+
+        filter.doFilterInternal(request, response, (servletRequest, servletResponse) -> chainInvoked.set(true));
+
+        assertThat(response.getStatus()).isEqualTo(503);
+        assertThat(response.getContentAsString()).contains("S0002");
+        assertThat(chainInvoked).isFalse();
+        assertThat(metric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_STALE)).isEqualTo(1.0);
+        assertThat(metric(AuthorizationSnapshotMetricNames.AUTHZ_SESSION_REVOKED)).isZero();
+    }
+
+    private double metric(String name) {
+        var counter = meterRegistry.find(name).counter();
+        return counter == null ? 0.0 : counter.count();
     }
 
     @Test

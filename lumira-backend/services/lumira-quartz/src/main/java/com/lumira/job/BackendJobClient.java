@@ -4,6 +4,8 @@ import com.lumira.common.api.ApiResponse;
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.common.security.InternalServiceTokenPolicy;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -30,9 +32,15 @@ public class BackendJobClient {
     private final RestClient paymentRestClient;
     private final RestClient pluginRestClient;
     private final JobExecutorProperties properties;
+    private final JobRuntimeDrainCoordinator drainCoordinator;
 
     public BackendJobClient(JobExecutorProperties properties) {
+        this(properties, new JobRuntimeDrainCoordinator());
+    }
+
+    public BackendJobClient(JobExecutorProperties properties, JobRuntimeDrainCoordinator drainCoordinator) {
         this.properties = properties;
+        this.drainCoordinator = drainCoordinator;
         String backendBaseUrl = requireTrustedBaseUrl(properties.getBackendBaseUrl(), "backendBaseUrl");
         String systemServiceBaseUrl = optionalTrustedBaseUrl(
                 properties.getSystemServiceBaseUrl(),
@@ -67,6 +75,11 @@ public class BackendJobClient {
                 .baseUrl(pluginBaseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
+    }
+
+    @Autowired
+    public BackendJobClient(JobExecutorProperties properties, ObjectProvider<JobRuntimeDrainCoordinator> drainCoordinatorProvider) {
+        this(properties, drainCoordinatorProvider.getIfAvailable(JobRuntimeDrainCoordinator::new));
     }
 
     public int relayOutbox() {
@@ -135,20 +148,34 @@ public class BackendJobClient {
     }
 
     private int postForInt(RestClient client, String path) {
-        ApiResponse<Integer> response = client.post()
-                .uri(path)
-                .header("X-Job-Token", internalTokenFor(path))
-                .retrieve()
-                .body(INTEGER_RESPONSE);
-        return response == null || response.getData() == null ? 0 : response.getData();
+        var lease = requireLease();
+        try (lease) {
+            ApiResponse<Integer> response = client.post()
+                    .uri(path)
+                    .header("X-Job-Token", internalTokenFor(path))
+                    .retrieve()
+                    .body(INTEGER_RESPONSE);
+            return response == null || response.getData() == null ? 0 : response.getData();
+        }
     }
 
     private void post(RestClient client, String path) {
-        client.post()
-                .uri(path)
-                .header("X-Job-Token", internalTokenFor(path))
-                .retrieve()
-                .toBodilessEntity();
+        var lease = requireLease();
+        try (lease) {
+            client.post()
+                    .uri(path)
+                    .header("X-Job-Token", internalTokenFor(path))
+                    .retrieve()
+                    .toBodilessEntity();
+        }
+    }
+
+    private com.lumira.common.runtime.RuntimeDrainGate.Lease requireLease() {
+        var lease = drainCoordinator.tryAcquire();
+        if (lease == null) {
+            throw new IllegalStateException("Job executor is quiescing and is not accepting new work");
+        }
+        return lease;
     }
 
     private String internalTokenFor(String path) {

@@ -43,6 +43,21 @@ class SecurityPermitPathsTest {
     }
 
     @Test
+    void registrationEndpointsShouldBePublicInMainAndTestConfig() throws IOException {
+        String mainConfig = readMainConfig();
+        String testConfig = readConfig("src/test/resources/application.yml");
+
+        for (String path : new String[]{
+                "/api/v1/auth/registration/contact/availability",
+                "/api/v1/auth/registration/code/challenge",
+                "/api/v1/auth/registration/complete"
+        }) {
+            Assertions.assertTrue(mainConfig.contains("- " + path), mainConfig);
+            Assertions.assertTrue(testConfig.contains("- " + path), testConfig);
+        }
+    }
+
+    @Test
     void wechatLoginEndpointsShouldBePublicInMainAndTestConfig() throws IOException {
         String mainConfig = readMainConfig();
         String testConfig = readConfig("src/test/resources/application.yml");

@@ -10,6 +10,8 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Component;
@@ -31,6 +33,7 @@ import java.util.regex.Pattern;
 @Component
 public class SessionAuthenticationService {
 
+    private static final Logger log = LoggerFactory.getLogger(SessionAuthenticationService.class);
     private static final long PROTECTED_ADMIN_ID = 1001L;
     private static final long LAST_ACTIVITY_WRITE_THROTTLE_SECONDS = 30L;
     private static final long AUTHENTICATED_ACCESS_CACHE_TTL_MILLIS = 60_000L;
@@ -111,6 +114,7 @@ public class SessionAuthenticationService {
 
             validateSession(claims, session, Instant.now());
             requireTrustedActiveSessionUser(session);
+            requireAuthoritativeSessionPermissionSnapshot(claims, session);
             PermissionSnapshotResolution snapshotResolution = resolvePermissionSnapshot(claims, session);
             validateAccessSnapshot(claims, snapshotResolution.snapshot());
             AuthenticatedAccess authenticatedAccess = new AuthenticatedAccess(
@@ -221,6 +225,7 @@ public class SessionAuthenticationService {
             claims.setTokenType(TokenType.ACCESS);
             validateSession(claims, session, Instant.now());
             requireTrustedActiveSessionUser(session);
+            requireAuthoritativeSessionPermissionSnapshot(claims, session);
             PermissionSnapshotResolution snapshotResolution = resolvePermissionSnapshot(claims, session);
             validateSessionTicketSnapshot(
                     session,
@@ -302,6 +307,45 @@ public class SessionAuthenticationService {
         }
     }
 
+    /**
+     * Session tickets are used by internal, asynchronous and extracted-module
+     * paths that do not traverse the public Auth JWT filter. Do not use the
+     * local IAM version cache here: another instance may have committed a
+     * revocation after this instance populated it.
+     */
+    private void requireAuthoritativeSessionPermissionSnapshot(TokenClaims claims, AuthSession session) {
+        String claimPermissionsVersion = normalizePermissionsVersion(claims == null ? null : claims.getPermissionsVersion());
+        String sessionPermissionsVersion = normalizePermissionsVersion(session == null ? null : session.getPermissionsVersion());
+        if (claimPermissionsVersion == null
+                || sessionPermissionsVersion == null) {
+            invalidateAuthorizationSession(session, "Session authorization snapshot is incomplete");
+        }
+        if (!claimPermissionsVersion.equals(sessionPermissionsVersion)) {
+            rejectStaleCredentials("token/session authorization snapshot mismatch");
+        }
+        boolean current = isAuthoritativePermissionSnapshotCurrent(sessionPermissionsVersion);
+        if (!current) {
+            invalidateAuthorizationSession(session, "Session authorization snapshot is stale");
+        }
+    }
+
+    private void requireResolvedPermissionSnapshotMatchesSession(
+            TokenClaims claims,
+            AuthSession session,
+            PermissionSnapshotService.PermissionSnapshot snapshot
+    ) {
+        String snapshotPermissionsVersion = normalizePermissionsVersion(snapshot == null ? null : snapshot.getVersion());
+        String claimPermissionsVersion = normalizePermissionsVersion(claims == null ? null : claims.getPermissionsVersion());
+        String sessionPermissionsVersion = normalizePermissionsVersion(session == null ? null : session.getPermissionsVersion());
+        if (snapshotPermissionsVersion == null
+                || claimPermissionsVersion == null
+                || sessionPermissionsVersion == null
+                || !snapshotPermissionsVersion.equals(claimPermissionsVersion)
+                || !snapshotPermissionsVersion.equals(sessionPermissionsVersion)) {
+            invalidateAuthorizationSession(session, "Resolved authorization snapshot does not match session");
+        }
+    }
+
     private void validateSessionTicketSnapshot(
             AuthSession session,
             PermissionSnapshotService.PermissionSnapshot snapshot,
@@ -378,8 +422,31 @@ public class SessionAuthenticationService {
     }
 
     private void invalidateSession(AuthSession session, String message) {
+        invalidateSession(session, message, false);
+    }
+
+    private void invalidateAuthorizationSession(AuthSession session, String message) {
+        recordAuthorizationVersionStale();
+        invalidateSession(session, message, true);
+    }
+
+    private void invalidateSession(AuthSession session, String message, boolean authorizationRevocation) {
         authenticatedAccessCache.invalidateAll();
-        authSessionStore.removeIfUnchanged(session, true);
+        try {
+            boolean removed = authSessionStore.removeIfUnchanged(session, true);
+            if (authorizationRevocation && removed && ownerRuntimeMetrics != null) {
+                ownerRuntimeMetrics.recordAuthorizationSessionRevoked();
+            }
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Rejected session because authorization state could not be removed reason={}",
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(
+                    ErrorCode.DEPENDENCY_UNAVAILABLE,
+                    "Session authorization state invalidation is unavailable"
+            );
+        }
         throw new BizException(
                 ErrorCode.SESSION_EXPIRED,
                 message,
@@ -389,7 +456,18 @@ public class SessionAuthenticationService {
 
     private void forceInvalidateSession(AuthSession session, String message) {
         authenticatedAccessCache.invalidateAll();
-        authSessionStore.remove(session, true);
+        try {
+            authSessionStore.remove(session, true);
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Rejected session because forced authorization state removal failed reason={}",
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(
+                    ErrorCode.DEPENDENCY_UNAVAILABLE,
+                    "Session authorization state invalidation is unavailable"
+            );
+        }
         throw new BizException(
                 ErrorCode.SESSION_EXPIRED,
                 message,
@@ -467,17 +545,17 @@ public class SessionAuthenticationService {
                     session.getUserUuid(),
                     session.getSimulatedRoleId()
             );
+            requireResolvedPermissionSnapshotMatchesSession(claims, session, snapshot);
             return new PermissionSnapshotResolution(snapshot, false);
         }
         if (hasPermissionSnapshot(session)) {
-            if (permissionSnapshotService.isSessionPermissionSnapshotCurrent(session.getPermissionsVersion())) {
-                if (ownerRuntimeMetrics != null) {
-                    ownerRuntimeMetrics.recordAuthPermissionSnapshotFromSession();
-                }
-                return new PermissionSnapshotResolution(fromSession(session), false);
+            if (ownerRuntimeMetrics != null) {
+                ownerRuntimeMetrics.recordAuthPermissionSnapshotFromSession();
             }
+            return new PermissionSnapshotResolution(fromSession(session), false);
         }
         PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(claims.getUserId(), claims.getUserUuid());
+        requireResolvedPermissionSnapshotMatchesSession(claims, session, snapshot);
         if (ownerRuntimeMetrics != null) {
             ownerRuntimeMetrics.recordAuthPermissionSnapshotFromUser();
         }
@@ -505,7 +583,7 @@ public class SessionAuthenticationService {
         if (trustedPermissionsVersion == null
                 || cachedPermissionsVersion == null
                 || !trustedPermissionsVersion.equals(cachedPermissionsVersion)
-                || !permissionSnapshotService.isSessionPermissionSnapshotCurrent(trustedPermissionsVersion)) {
+                || !isAuthoritativePermissionSnapshotCurrent(trustedPermissionsVersion)) {
             return null;
         }
         return new AuthenticatedAccess(
@@ -602,6 +680,35 @@ public class SessionAuthenticationService {
     private void recordAuthSessionAuthResult(long startedNanos, boolean success) {
         if (ownerRuntimeMetrics != null) {
             ownerRuntimeMetrics.recordAuthSessionAuth(Duration.ofNanos(System.nanoTime() - startedNanos), success);
+        }
+    }
+
+    private boolean isAuthoritativePermissionSnapshotCurrent(String permissionsVersion) {
+        try {
+            return permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(permissionsVersion);
+        } catch (BizException exception) {
+            if (exception.getErrorCode() == ErrorCode.DEPENDENCY_UNAVAILABLE) {
+                recordAuthorizationVersionUnavailable();
+            }
+            throw exception;
+        } catch (RuntimeException exception) {
+            recordAuthorizationVersionUnavailable();
+            throw new BizException(
+                    ErrorCode.DEPENDENCY_UNAVAILABLE,
+                    "IAM authorization version is unavailable"
+            );
+        }
+    }
+
+    private void recordAuthorizationVersionStale() {
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordAuthorizationVersionStale();
+        }
+    }
+
+    private void recordAuthorizationVersionUnavailable() {
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordAuthorizationVersionUnavailable();
         }
     }
 

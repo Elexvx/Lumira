@@ -115,6 +115,27 @@ class SystemInternalApiServiceTest {
     }
 
     @Test
+    void permissionSnapshotVersionVerificationShouldInvokeDelegateWithInternalServiceAuthenticationAndRestoreContext() {
+        InternalSystemController delegate = mock(InternalSystemController.class);
+        SystemInternalApiService service = new SystemInternalApiService(delegate);
+        Authentication previousAuthentication = userAuthentication();
+        SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
+        AtomicReference<Authentication> observedAuthentication = new AtomicReference<>();
+        when(delegate.isPermissionSnapshotVersionCurrent("v11:data-scope-cache-v4")).thenAnswer(invocation -> {
+            observedAuthentication.set(SecurityContextHolder.getContext().getAuthentication());
+            return Boolean.TRUE;
+        });
+
+        Boolean actual = service.isPermissionSnapshotVersionCurrent("v11:data-scope-cache-v4");
+
+        assertThat(actual).isTrue();
+        assertThat(observedAuthentication.get()).isNotNull();
+        assertThat(AuthenticationTrustSupport.isInternalServiceAuthentication(observedAuthentication.get())).isTrue();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isSameAs(previousAuthentication);
+        verify(delegate).isPermissionSnapshotVersionCurrent("v11:data-scope-cache-v4");
+    }
+
+    @Test
     void roleUserIdentitiesShouldInvokeDelegateWithInternalServiceAuthenticationAndRestoreContext() {
         InternalSystemController delegate = mock(InternalSystemController.class);
         SystemInternalApiService service = new SystemInternalApiService(delegate);

@@ -14,7 +14,7 @@ import { databaseMessage } from '@/i18n/databaseMessage';
 import { request } from '@/services/common/request';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
-import { persistWatermarkSettings } from '@/watermark/settingsStorage';
+import { getStoredWatermarkSettings, persistWatermarkSettings } from '@/watermark/settingsStorage';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import type { AppInitialState } from '@/app.types';
 import type { AgreementSettings, BrandingSettings, FloatingWindowSettings, LoginCapabilities, MenuNode, SecuritySettings, PluginAvailability, RuntimeAppearanceSettings, WatermarkSettings } from '@/types/api';
@@ -49,6 +49,7 @@ interface PublicBootstrapResponse {
   brandingSettings?: BrandingSettings;
   securitySettings?: SecuritySettings;
   agreementSettings?: AgreementSettings;
+  watermarkSettings?: WatermarkSettings;
   loginCapabilities?: LoginCapabilities;
 }
 
@@ -214,6 +215,8 @@ const loadPublicLoginCapabilities = async (): Promise<LoginCapabilities> =>
     wechatLoginAvailable: false,
     passkeyLoginAvailable: false,
     passkeyPasswordlessAvailable: false,
+    registrationSmsVerificationRequired: false,
+    registrationEmailVerificationRequired: false,
   }));
 
 const fallbackLoginCapabilities = (): LoginCapabilities => ({
@@ -223,12 +226,15 @@ const fallbackLoginCapabilities = (): LoginCapabilities => ({
   wechatLoginAvailable: false,
   passkeyLoginAvailable: false,
   passkeyPasswordlessAvailable: false,
+  registrationSmsVerificationRequired: false,
+  registrationEmailVerificationRequired: false,
 });
 
 const loadPublicBootstrap = async (): Promise<{
   brandingSettings: BrandingSettings;
   securitySettings: SecuritySettings;
   agreementSettings: AgreementSettings;
+  watermarkSettings: WatermarkSettings;
   loginCapabilities: LoginCapabilities;
 }> => {
   try {
@@ -241,13 +247,16 @@ const loadPublicBootstrap = async (): Promise<{
     });
     const brandingSettings = normalizeBrandingSettings(bootstrap.brandingSettings || DEFAULT_BRANDING_SETTINGS);
     const securitySettings = normalizeSecuritySettings(bootstrap.securitySettings || DEFAULT_SECURITY_SETTINGS);
+    const watermarkSettings = normalizeWatermarkSettings(bootstrap.watermarkSettings || getStoredWatermarkSettings() || DEFAULT_WATERMARK_SETTINGS);
     persistBrandingSettings(brandingSettings);
     applyFavicon(brandingSettings.websiteFaviconUrl);
     persistSecuritySettings(securitySettings);
+    persistWatermarkSettings(watermarkSettings);
     return {
       brandingSettings,
       securitySettings,
       agreementSettings: normalizeAgreementSettings(bootstrap.agreementSettings || DEFAULT_AGREEMENT_SETTINGS),
+      watermarkSettings,
       loginCapabilities: bootstrap.loginCapabilities || fallbackLoginCapabilities(),
     };
   } catch {
@@ -261,13 +270,16 @@ const loadPublicBootstrap = async (): Promise<{
       });
       const brandingSettings = normalizeBrandingSettings(bootstrap.brandingSettings || DEFAULT_BRANDING_SETTINGS);
       const securitySettings = normalizeSecuritySettings(bootstrap.securitySettings || DEFAULT_SECURITY_SETTINGS);
+      const watermarkSettings = normalizeWatermarkSettings(bootstrap.watermarkSettings || getStoredWatermarkSettings() || DEFAULT_WATERMARK_SETTINGS);
       persistBrandingSettings(brandingSettings);
       applyFavicon(brandingSettings.websiteFaviconUrl);
       persistSecuritySettings(securitySettings);
+      persistWatermarkSettings(watermarkSettings);
       return {
         brandingSettings,
         securitySettings,
         agreementSettings: normalizeAgreementSettings(bootstrap.agreementSettings || DEFAULT_AGREEMENT_SETTINGS),
+        watermarkSettings,
         loginCapabilities: bootstrap.loginCapabilities || fallbackLoginCapabilities(),
       };
     } catch {
@@ -277,7 +289,9 @@ const loadPublicBootstrap = async (): Promise<{
         loadPublicAgreementSettings(),
         loadPublicLoginCapabilities(),
       ]);
-      return { brandingSettings, securitySettings, agreementSettings, loginCapabilities };
+      const watermarkSettings = getStoredWatermarkSettings() || DEFAULT_WATERMARK_SETTINGS;
+      persistWatermarkSettings(watermarkSettings);
+      return { brandingSettings, securitySettings, agreementSettings, watermarkSettings, loginCapabilities };
     }
   }
 };
@@ -409,8 +423,7 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     loadPublicBootstrap(),
     loadRuntimeLocalizationBundle(getLocale()),
   ]);
-  const { brandingSettings, securitySettings, agreementSettings, loginCapabilities } = publicBootstrap;
-  persistWatermarkSettings(DEFAULT_WATERMARK_SETTINGS);
+  const { brandingSettings, securitySettings, agreementSettings, watermarkSettings, loginCapabilities } = publicBootstrap;
 
   setBootstrapSnapshot({
     phase: 'ready',
@@ -431,7 +444,7 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     availablePlugins: [],
     securitySettings,
     brandingSettings,
-    watermarkSettings: DEFAULT_WATERMARK_SETTINGS,
+    watermarkSettings,
     agreementSettings,
     loginCapabilities,
   };

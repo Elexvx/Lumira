@@ -53,6 +53,19 @@ class DictRuntimeServiceTest {
         assertEquals("Open", service.labelOf("team_join_mode", " open "));
     }
 
+    @Test
+    void rootSearchShouldAcceptNullAndLegacyBlankParents() {
+        FakeJdbcTemplate jdbcTemplate = new FakeJdbcTemplate(List.of(item("110000", "北京市", 10)));
+        DictRuntimeService service = new DictRuntimeService(new JdbcDictRuntimeRepository(jdbcTemplate));
+
+        var page = service.searchEnabledItems(
+                "sys_cn_administrative_division", null, null, true, null, 1L, 100L
+        );
+
+        assertEquals(1, page.getRecords().size());
+        assertTrue(jdbcTemplate.lastSql.contains("parent_item_value is null or i.parent_item_value = ''"));
+    }
+
     private static SystemVO.DictItemVO item(String value, String label, int sortNo) {
         SystemVO.DictItemVO item = new SystemVO.DictItemVO();
         item.setItemValue(value);

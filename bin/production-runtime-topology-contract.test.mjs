@@ -66,7 +66,7 @@ test('formal production topology contains only server, async, and job runtime ro
 });
 
 test('production proxy and template cannot select independently deployed owner services', () => {
-  const apiProxy = serviceBlock('api-proxy', 'lumira-ui');
+  const apiProxy = serviceBlock('api-proxy', 'lumira-ui-blue');
   for (const key of ownerUpstreamKeys) {
     assert.doesNotMatch(envExample, new RegExp(`^${key}=`, 'm'));
     assert.doesNotMatch(apiProxy, new RegExp(`${key}:`));

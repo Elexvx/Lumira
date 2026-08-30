@@ -58,4 +58,24 @@ public class UserDomainService {
                 .last("limit 1");
         return Optional.ofNullable(sysUserMapper.selectOne(wrapper));
     }
+
+    public boolean registrationContactExists(String identityType, String normalizedContact) {
+        if (!StringUtils.hasText(identityType) || !StringUtils.hasText(normalizedContact)) {
+            return false;
+        }
+        if (iamUserService != null && iamUserService.isIdentityReserved(identityType, normalizedContact)) {
+            return true;
+        }
+        LambdaQueryWrapper<SysUserEntity> wrapper = new LambdaQueryWrapper<SysUserEntity>()
+                .eq(SysUserEntity::getDeleted, 0)
+                .and(query -> {
+                    if (IamUserService.IDENTITY_MOBILE.equalsIgnoreCase(identityType)) {
+                        query.eq(SysUserEntity::getMobile, normalizedContact);
+                    } else {
+                        query.eq(SysUserEntity::getEmail, normalizedContact);
+                    }
+                })
+                .last("limit 1");
+        return sysUserMapper.selectCount(wrapper) > 0;
+    }
 }

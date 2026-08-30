@@ -24,14 +24,33 @@ public class SessionTrustedCurrentUserResolver implements TrustedCurrentUserReso
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             return currentUser;
         }
+        return resolveSessionTicket(
+                currentUser.getSessionId(),
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                currentUser.getSimulatedRoleId(),
+                currentUser.getSessionVersion(),
+                currentUser.getPermissionsVersion()
+        );
+    }
+
+    @Override
+    public CurrentUser resolveSessionTicket(
+            String sessionId,
+            Long userId,
+            String userUuid,
+            Long simulatedRoleId,
+            Integer sessionVersion,
+            String permissionsVersion
+    ) {
         SessionAuthenticationService.AuthenticatedAccess authenticatedAccess =
                 sessionAuthenticationService.authenticateSessionTicket(
-                        currentUser.getSessionId(),
-                        currentUser.getUserId(),
-                        currentUser.getUserUuid(),
-                        currentUser.getSimulatedRoleId(),
-                        currentUser.getSessionVersion(),
-                        currentUser.getPermissionsVersion()
+                        sessionId,
+                        userId,
+                        userUuid,
+                        simulatedRoleId,
+                        sessionVersion,
+                        permissionsVersion
                 );
         return authenticatedAccess == null ? null : authenticatedAccess.currentUser();
     }

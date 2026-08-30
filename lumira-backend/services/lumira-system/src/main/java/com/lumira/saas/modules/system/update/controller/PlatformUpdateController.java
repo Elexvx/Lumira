@@ -131,6 +131,13 @@ public class PlatformUpdateController {
         return ApiResponse.success(platformUpdateAppService.rollback(currentUser), TraceContext.getRequestId());
     }
 
+    @PostMapping("/rollback-preflight")
+    @RepeatSubmit
+    public ApiResponse<java.util.Map<String, Object>> rollbackPreflight() {
+        CurrentUser currentUser = require("system:update:rollback");
+        return ApiResponse.success(platformUpdateAppService.rollbackPreflight(currentUser), TraceContext.getRequestId());
+    }
+
     @GetMapping("/tasks")
     public ApiResponse<List<PlatformUpdateVO.TaskVO>> tasks() {
         CurrentUser currentUser = require("system:update:view");

@@ -21,6 +21,8 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
+import com.lumira.saas.modules.system.dict.app.DictionaryImportService;
+import com.lumira.saas.modules.system.dict.dto.DictionaryImportMetadataRequest;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
@@ -37,6 +39,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
@@ -59,6 +62,7 @@ public class SystemController {
     private final UserExportAppService userExportAppService;
     private final ExportTaskPort exportTaskService;
     private final DictRuntimeService dictRuntimeService;
+    private final DictionaryImportService dictionaryImportService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
@@ -81,6 +85,7 @@ public class SystemController {
                 userExportAppService,
                 exportTaskService,
                 dictRuntimeService,
+                null,
                 null,
                 null,
                 null,
@@ -109,6 +114,7 @@ public class SystemController {
                 permissionSnapshotService,
                 null,
                 null,
+                null,
                 false
         );
     }
@@ -135,11 +141,11 @@ public class SystemController {
                 permissionSnapshotService,
                 null,
                 sessionAuthenticationService,
+                null,
                 false
         );
     }
 
-    @Autowired
     public SystemController(
             SystemManagementAppService systemManagementAppService,
             SecurityContextFacade securityContextFacade,
@@ -163,6 +169,37 @@ public class SystemController {
                 permissionSnapshotService,
                 systemInternalApi,
                 sessionAuthenticationService,
+                null,
+                true
+        );
+    }
+
+    @Autowired
+    public SystemController(
+            SystemManagementAppService systemManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            FileInternalApi fileInternalApi,
+            UserExportAppService userExportAppService,
+            ExportTaskPort exportTaskService,
+            DictRuntimeService dictRuntimeService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            DictionaryImportService dictionaryImportService
+    ) {
+        this(
+                systemManagementAppService,
+                securityContextFacade,
+                permissionGuard,
+                fileInternalApi,
+                userExportAppService,
+                exportTaskService,
+                dictRuntimeService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                dictionaryImportService,
                 true
         );
     }
@@ -178,6 +215,7 @@ public class SystemController {
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
+            DictionaryImportService dictionaryImportService,
             boolean enforceTrustedUserResolution
     ) {
         this.systemManagementAppService = systemManagementAppService;
@@ -187,6 +225,7 @@ public class SystemController {
         this.userExportAppService = userExportAppService;
         this.exportTaskService = exportTaskService;
         this.dictRuntimeService = dictRuntimeService;
+        this.dictionaryImportService = dictionaryImportService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
@@ -436,6 +475,36 @@ public class SystemController {
         );
     }
 
+    @GetMapping("/dict-types/options")
+    public ApiResponse<List<SystemVO.DictTypeVO>> dictTypeOptions() {
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
+        return ApiResponse.success(
+                systemManagementAppService.listEnabledDictTypeOptions(currentUser),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/dictionaries/{dictCode}/items")
+    public ApiResponse<PageResponse<SystemVO.DictItemVO>> searchableDictionaryItems(
+            @PathVariable("dictCode") String dictCode,
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "parentItemValue", required = false) String parentItemValue,
+            @RequestParam(name = "rootOnly", defaultValue = "false") boolean rootOnly,
+            @RequestParam(name = "values", required = false) List<String> values,
+            @RequestParam(name = "pageNo", defaultValue = "1") Long pageNo,
+            @RequestParam(name = "pageSize", required = false) Long pageSize,
+            @RequestParam(name = "limit", required = false) Long legacyLimit
+    ) {
+        requireTrustedUser(securityContextFacade.getCurrentUser());
+        return ApiResponse.success(
+                dictRuntimeService.searchEnabledItems(
+                        dictCode, keyword, parentItemValue, rootOnly, values, pageNo,
+                        pageSize == null ? legacyLimit : pageSize
+                ),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/dict-types")
     public ApiResponse<PageResponse<SystemVO.DictTypeVO>> dictTypes(
             @RequestParam(name = "dictCode", required = false) String dictCode,
@@ -464,6 +533,33 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.createDictType(currentUser, request), TraceContext.getRequestId());
     }
 
+    @PostMapping(value = "/dict-types/import-preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<DictionaryImportService.ImportPreview> previewDictionaryImport(
+            @RequestParam(name = "structureType", defaultValue = "FLAT") String structureType,
+            @RequestPart("file") MultipartFile file
+    ) {
+        require("system:dict:create");
+        return ApiResponse.success(
+                dictionaryImportService.preview(file, structureType),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping(value = "/dict-types/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RepeatSubmit
+    public ApiResponse<DictionaryImportService.ImportResult> importDictionaryType(
+            @Valid @RequestPart("metadata") DictionaryImportMetadataRequest metadata,
+            @RequestPart("file") MultipartFile file
+    ) {
+        CurrentUser currentUser = require("system:dict:create");
+        return ApiResponse.success(
+                dictionaryImportService.importNewType(
+                        metadata, file, currentUser.getUserId(), currentUser.getUserUuid()
+                ),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PutMapping("/dict-types/{id}")
     @RepeatSubmit
     public ApiResponse<SystemVO.DictTypeVO> updateDictType(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.DictTypeUpsertRequest request) {
@@ -482,6 +578,21 @@ public class SystemController {
     public ApiResponse<List<SystemVO.DictItemVO>> dictItems(@PathVariable("id") Long id) {
         CurrentUser currentUser = require("system:dict:view");
         return ApiResponse.success(systemManagementAppService.listDictItems(currentUser, id), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/dict-types/{id}/items/page")
+    public ApiResponse<PageResponse<SystemVO.DictItemVO>> dictionaryItemsPage(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "parentItemValue", required = false) String parentItemValue,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "20") long pageSize
+    ) {
+        CurrentUser currentUser = require("system:dict:view");
+        return ApiResponse.success(
+                systemManagementAppService.pageDictItems(currentUser, id, keyword, parentItemValue, pageNo, pageSize),
+                TraceContext.getRequestId()
+        );
     }
 
     @PostMapping("/dict-types/{id}/items")

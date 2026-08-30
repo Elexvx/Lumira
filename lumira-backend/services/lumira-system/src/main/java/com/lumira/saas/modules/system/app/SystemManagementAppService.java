@@ -168,6 +168,7 @@ public class SystemManagementAppService {
     private static final String WATERMARK_ENABLED_KEY = "watermark.enabled";
     private static final String WATERMARK_MODE_KEY = "watermark.mode";
     private static final String WATERMARK_TEXT_LINES_KEY = "watermark.text-lines";
+    private static final String WATERMARK_PERSONALIZED_TEXT_LINES_KEY = "watermark.personalized-text-lines";
     private static final String WATERMARK_IMAGE_URL_KEY = "watermark.image-url";
     private static final String WATERMARK_FONT_COLOR_KEY = "watermark.font-color";
     private static final String WATERMARK_FONT_SIZE_KEY = "watermark.font-size";
@@ -180,7 +181,7 @@ public class SystemManagementAppService {
     private static final String WATERMARK_Z_INDEX_KEY = "watermark.z-index";
     private static final String WATERMARK_OPACITY_KEY = "watermark.opacity";
     private static final List<String> WATERMARK_CONFIG_KEYS = List.of(
-            WATERMARK_ENABLED_KEY, WATERMARK_MODE_KEY, WATERMARK_TEXT_LINES_KEY, WATERMARK_IMAGE_URL_KEY,
+            WATERMARK_ENABLED_KEY, WATERMARK_MODE_KEY, WATERMARK_TEXT_LINES_KEY, WATERMARK_PERSONALIZED_TEXT_LINES_KEY, WATERMARK_IMAGE_URL_KEY,
             WATERMARK_FONT_COLOR_KEY, WATERMARK_FONT_SIZE_KEY, WATERMARK_FONT_WEIGHT_KEY, WATERMARK_ROTATE_KEY,
             WATERMARK_GAP_X_KEY, WATERMARK_GAP_Y_KEY, WATERMARK_OFFSET_X_KEY, WATERMARK_OFFSET_Y_KEY,
             WATERMARK_Z_INDEX_KEY, WATERMARK_OPACITY_KEY
@@ -1452,6 +1453,11 @@ public class SystemManagementAppService {
         return loadDictType(id);
     }
 
+    public List<SystemVO.DictTypeVO> listEnabledDictTypeOptions(CurrentUser currentUser) {
+        requireAuthenticatedUser(currentUser);
+        return dictionaryRepository.findEnabledTypes();
+    }
+
     @Transactional
     public SystemVO.DictTypeVO createDictType(CurrentUser currentUser, SystemDTO.DictTypeUpsertRequest request) {
         requirePermission(currentUser, "system:dict:create");
@@ -1493,6 +1499,21 @@ public class SystemManagementAppService {
         requirePermission(currentUser, "system:dict:view");
         loadDictType(dictTypeId);
         return dictionaryRepository.findActiveItems(dictTypeId);
+    }
+
+    public PageResponse<SystemVO.DictItemVO> pageDictItems(
+            CurrentUser currentUser,
+            Long dictTypeId,
+            String keyword,
+            String parentItemValue,
+            long pageNo,
+            long pageSize
+    ) {
+        requirePermission(currentUser, "system:dict:view");
+        loadDictType(dictTypeId);
+        return dictionaryRepository.findItems(new SystemDictionaryManagementRepository.ItemSearch(
+                dictTypeId, keyword, parentItemValue, pageNo, pageSize
+        ));
     }
 
     public List<SystemVO.DictItemVO> listEnabledDictItemsByCode(CurrentUser currentUser, String dictCode) {
@@ -2786,6 +2807,7 @@ public class SystemManagementAppService {
                         request.getStatus(),
                         existingType == null ? 0 : existingType.getIsSystem(),
                         request.getRemark(),
+                        normalizeDictionaryStructureType(request.getStructureType()),
                         dictionaryActor(operatorId, operatorUuid),
                         LocalDateTime.now()
                 )
@@ -2811,6 +2833,9 @@ public class SystemManagementAppService {
                         request.getSortNo(),
                         request.getStatus(),
                         request.getRemark(),
+                        normalizeNullableText(request.getParentItemValue()),
+                        request.getLevelNo() == null ? 1 : Math.max(1, Math.min(9, request.getLevelNo())),
+                        request.getLeaf() == null || request.getLeaf(),
                         dictionaryActor(operatorId, operatorUuid),
                         LocalDateTime.now()
                 )
@@ -2824,6 +2849,16 @@ public class SystemManagementAppService {
 
     private boolean isSystemDictType(SystemVO.DictTypeVO type) {
         return type != null && type.getIsSystem() != null && type.getIsSystem() != 0;
+    }
+
+    private String normalizeDictionaryStructureType(String structureType) {
+        String normalized = StringUtils.hasText(structureType)
+                ? structureType.trim().toUpperCase(Locale.ROOT)
+                : "FLAT";
+        if (!Set.of("FLAT", "TREE").contains(normalized)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Invalid dictionary structure type");
+        }
+        return normalized;
     }
 
     private List<SystemVO.MenuVO> buildMenuTree(List<SystemVO.MenuVO> flatMenus) {

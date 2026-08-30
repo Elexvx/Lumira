@@ -16,4 +16,21 @@ public interface TrustedCurrentUserResolver {
      * established.
      */
     CurrentUser resolve(CurrentUser currentUser);
+
+    /**
+     * Resolves an internal session ticket when the caller has the session
+     * claims but does not carry a request {@link CurrentUser}. The default is
+     * deliberately fail-closed so extracted modules cannot treat a raw ticket
+     * as trusted unless its owning authentication runtime supports it.
+     */
+    default CurrentUser resolveSessionTicket(
+            String sessionId,
+            Long userId,
+            String userUuid,
+            Long simulatedRoleId,
+            Integer sessionVersion,
+            String permissionsVersion
+    ) {
+        return null;
+    }
 }

@@ -696,6 +696,16 @@
   border-inline-end: 0;
 }
 
+.competition-settings-sidebar .ant-menu-item.competition-settings-sidebar__danger-item,
+.competition-settings-sidebar .ant-menu-item.competition-settings-sidebar__danger-item:hover,
+.competition-settings-sidebar .ant-menu-item.competition-settings-sidebar__danger-item.ant-menu-item-selected {
+  color: var(--ant-color-error);
+}
+
+.competition-settings-sidebar .ant-menu-item.competition-settings-sidebar__danger-item.ant-menu-item-selected {
+  background: var(--ant-color-error-bg);
+}
+
 .competition-settings-content {
   display: flex;
   min-width: 0;
@@ -801,7 +811,7 @@
   margin: 0 0 16px !important;
 }
 
-.competition-basic-section--danger .competition-basic-section__title {
+.competition-danger-settings__title {
   color: var(--ant-color-error);
 }
 
@@ -1003,10 +1013,40 @@
 
 .competition-field-table {
   width: 100%;
-  overflow-x: auto;
+}
+
+.competition-field-table .ant-table {
+  overflow: hidden;
   border: 1px solid var(--ant-color-border-secondary);
   border-radius: var(--ant-border-radius-lg);
-  background: var(--ant-color-bg-container);
+}
+
+.competition-field-table .ant-table-cell {
+  vertical-align: middle;
+}
+
+.competition-field-table .ant-form-item {
+  margin-bottom: 0;
+}
+
+.competition-field-table .ant-input-number,
+.competition-field-table .ant-select,
+.competition-field-table__configuration .ant-form-item {
+  width: 100%;
+}
+
+.competition-field-table__configuration .ant-form-item:first-child {
+  flex: 0 0 110px;
+}
+
+.competition-field-table__drag-handle {
+  color: var(--ant-color-text-tertiary);
+  cursor: grab;
+  touch-action: none;
+}
+
+.competition-field-table__drag-handle:active {
+  cursor: grabbing;
 }
 
 .competition-registration-documents {
@@ -1078,21 +1118,6 @@
 
 .competition-field-table__row:last-child {
   border-bottom: 0;
-}
-
-.competition-field-table .ant-form-item {
-  margin-bottom: 0;
-}
-
-.competition-field-table .ant-input-number,
-.competition-field-table .ant-select {
-  width: 100%;
-}
-
-.competition-field-table__sort-cell,
-.competition-field-table__sort-actions {
-  display: inline-flex;
-  justify-content: center;
 }
 
 .competition-schedule-settings,

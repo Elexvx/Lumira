@@ -17,6 +17,8 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ReadModelVersionCache;
 import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.AuthorizationSnapshotVersionVerifier;
+import com.lumira.common.security.AuthorizationSnapshotMetricNames;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
@@ -37,6 +39,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -90,6 +93,7 @@ public class AuthAppService {
     private final WechatLoginService wechatLoginService;
     private final AuthSecurityProperties securityProperties;
     private final SecuritySettingsService securitySettingsService;
+    private final AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier;
     private final AuthPostLoginBootstrapProvider authPostLoginBootstrapProvider;
     private final AuthReadModelVersionProvider authReadModelVersionProvider;
     private final ReadModelVersionCache readModelVersionCache;
@@ -143,6 +147,7 @@ public class AuthAppService {
                 wechatLoginService,
                 securityProperties,
                 securitySettingsService,
+                new SystemAuthorizationSnapshotVersionVerifier(systemInternalApi),
                 (AuthPostLoginBootstrapProvider) null,
                 (AuthReadModelVersionProvider) null,
                 (MeterRegistry) null,
@@ -163,6 +168,7 @@ public class AuthAppService {
             WechatLoginService wechatLoginService,
             AuthSecurityProperties securityProperties,
             SecuritySettingsService securitySettingsService,
+            AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier,
             ObjectProvider<AuthPostLoginBootstrapProvider> authPostLoginBootstrapProvider,
             ObjectProvider<AuthReadModelVersionProvider> authReadModelVersionProvider,
             ObjectProvider<MeterRegistry> meterRegistry,
@@ -180,6 +186,7 @@ public class AuthAppService {
                 wechatLoginService,
                 securityProperties,
                 securitySettingsService,
+                authorizationSnapshotVersionVerifier,
                 authPostLoginBootstrapProvider.getIfAvailable(),
                 authReadModelVersionProvider.getIfAvailable(),
                 meterRegistry.getIfAvailable(),
@@ -214,6 +221,7 @@ public class AuthAppService {
                 wechatLoginService,
                 securityProperties,
                 securitySettingsService,
+                new SystemAuthorizationSnapshotVersionVerifier(systemInternalApi),
                 authPostLoginBootstrapProvider,
                 null,
                 meterRegistry,
@@ -233,6 +241,7 @@ public class AuthAppService {
             WechatLoginService wechatLoginService,
             AuthSecurityProperties securityProperties,
             SecuritySettingsService securitySettingsService,
+            AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier,
             AuthPostLoginBootstrapProvider authPostLoginBootstrapProvider,
             AuthReadModelVersionProvider authReadModelVersionProvider,
             MeterRegistry meterRegistry,
@@ -249,6 +258,7 @@ public class AuthAppService {
         this.wechatLoginService = wechatLoginService;
         this.securityProperties = securityProperties;
         this.securitySettingsService = securitySettingsService;
+        this.authorizationSnapshotVersionVerifier = authorizationSnapshotVersionVerifier;
         this.authPostLoginBootstrapProvider = authPostLoginBootstrapProvider;
         this.authReadModelVersionProvider = authReadModelVersionProvider;
         this.readModelVersionCache = readModelVersionCache;
@@ -446,6 +456,85 @@ public class AuthAppService {
         return completeLoginCodeLoginProtected(request, httpServletRequest);
     }
 
+    public RegistrationContactAvailabilityDTO registrationContactAvailability(
+            RegistrationContactAvailabilityRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String scope = registrationProtectionScope(request.contactType(), request.contact());
+        loginProtectionService.ensureCanAttempt(scope, loginIp);
+        loginProtectionService.recordAttempt(scope, loginIp);
+        return systemInternalApi.registrationContactAvailability(request);
+    }
+
+    public LoginCodeChallengeDTO registrationCodeChallenge(
+            RegistrationCodeChallengeRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String scope = registrationProtectionScope(request.contactType(), request.contact());
+        loginProtectionService.ensureCanAttempt(scope, loginIp);
+        loginProtectionService.recordAttempt(scope, loginIp);
+        try {
+            return systemInternalApi.registrationCodeChallenge(request);
+        } catch (RuntimeException exception) {
+            loginProtectionService.recordFailure(scope, loginIp);
+            throw exception;
+        }
+    }
+
+    public LoginResponseDTO completeRegistration(
+            RegistrationCompleteRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String scope = registrationProtectionScope("registration", request.mobile() + ":" + request.email());
+        loginProtectionService.ensureCanAttempt(scope, loginIp);
+        loginProtectionService.recordAttempt(scope, loginIp);
+        try {
+            String rawPassword = resolveRegistrationPassword(request, httpServletRequest);
+            var verification = systemInternalApi.completeRegistration(new RegistrationCompleteInternalRequest(
+                    request.mobile(),
+                    request.email(),
+                    rawPassword,
+                    request.captchaId(),
+                    request.captchaCode(),
+                    request.mobileChallengeId(),
+                    request.mobileVerificationCode(),
+                    request.emailChallengeId(),
+                    request.emailVerificationCode(),
+                    loginIp,
+                    httpServletRequest.getHeader("User-Agent")
+            ));
+            if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
+                throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "注册失败" : verification.message());
+            }
+            loginProtectionService.clearFailureState(scope, loginIp);
+            return loginVerifiedUser(verification.userId(), verification.userUuid(), httpServletRequest, "REGISTRATION");
+        } catch (RuntimeException exception) {
+            loginProtectionService.recordFailure(scope, loginIp);
+            throw exception;
+        }
+    }
+
+    private String resolveRegistrationPassword(
+            RegistrationCompleteRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        if (securityProperties.isAllowPlaintextLoginPassword()
+                && "true".equalsIgnoreCase(httpServletRequest.getHeader(PLAINTEXT_LOGIN_PASSWORD_HEADER))) {
+            return request.password();
+        }
+        return loginEncryptionService.decryptPassword(request.password());
+    }
+
+    private String registrationProtectionScope(String contactType, String contact) {
+        String normalized = (contactType == null ? "" : contactType.trim().toLowerCase(java.util.Locale.ROOT))
+                + ":"
+                + (contact == null ? "" : contact.trim().toLowerCase(java.util.Locale.ROOT));
+        return "registration:" + UUID.nameUUIDFromBytes(normalized.getBytes(StandardCharsets.UTF_8));
+    }
+
     private LoginResponseDTO completeLoginCodeLoginProtected(LoginCodeCompleteRequest request, HttpServletRequest httpServletRequest) {
         String loginIp = clientIpResolver.resolve(httpServletRequest);
         String challengeScope = request.challengeId();
@@ -564,6 +653,7 @@ public class AuthAppService {
             }
             AuthSession session = requireActiveSessionById(claims.getSessionId());
             validateRefreshTokenClaims(claims, session);
+            requireCurrentAuthorizationSnapshot(session, "refresh");
             if (!refreshPermissionSnapshotVersionIfNeeded(session)) {
                 throw new BizException(
                         ErrorCode.DEPENDENCY_UNAVAILABLE,
@@ -601,9 +691,55 @@ public class AuthAppService {
                 || !Objects.equals(claims.getTokenId(), session.getRefreshTokenId())
                 || !Objects.equals(claims.getUserId(), session.getUserId())
                 || !Objects.equals(claimUserUuid, sessionUserUuid)
+                || !Objects.equals(claimPermissionsVersion, sessionPermissionsVersion)
                 || !Objects.equals(claimSimulatedRoleId, sessionSimulatedRoleId)
                 || !Objects.equals(claims.getSessionVersion(), session.getSessionVersion())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "refresh token invalid");
+        }
+    }
+
+    private void requireCurrentAuthorizationSnapshot(AuthSession session, String operation) {
+        boolean current;
+        try {
+            current = authorizationSnapshotVersionVerifier.isCurrent(session.getPermissionsVersion());
+        } catch (RuntimeException exception) {
+            recordAuthorizationMetric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_UNAVAILABLE);
+            log.warn(
+                    "Authorization snapshot verification unavailable during {} reason={}",
+                    operation,
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Authorization version verifier is unavailable");
+        }
+        if (current) {
+            return;
+        }
+        recordAuthorizationMetric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_STALE);
+        try {
+            invalidateAuthBootstrapCache(session);
+            boolean removed = authSessionStore.removeIfUnchanged(session, true);
+            if (removed) {
+                recordAuthorizationMetric(AuthorizationSnapshotMetricNames.AUTHZ_SESSION_REVOKED);
+            }
+            log.warn(
+                    "Rejected {} for stale authorization session sessionInvalidated={}",
+                    operation,
+                    removed
+            );
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Failed to invalidate stale authorization session during {} reason={}",
+                    operation,
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Session store is unavailable");
+        }
+        throw new BizException(ErrorCode.SESSION_EXPIRED, "Authorization session has expired");
+    }
+
+    private void recordAuthorizationMetric(String name) {
+        if (meterRegistry != null) {
+            meterRegistry.counter(name).increment();
         }
     }
 
@@ -676,11 +812,11 @@ public class AuthAppService {
         if (!Objects.equals(normalizedExpectedSimulatedRoleId, normalizeSimulatedRoleId(session.getSimulatedRoleId()))) {
             throw new BizException(ErrorCode.SESSION_EXPIRED, "token/session simulated role mismatch");
         }
-        CurrentUserDTO currentUser = resolveCurrentUserFromSession(session);
-        if (!normalizedExpectedPermissionsVersion.equals(currentUser.permissionsVersion())) {
+        if (!normalizedExpectedPermissionsVersion.equals(session.getPermissionsVersion())) {
             throw new BizException(ErrorCode.SESSION_EXPIRED, "token/session permissions mismatch");
         }
-        return currentUser;
+        requireCurrentAuthorizationSnapshot(session, "internal session authentication");
+        return resolveCurrentUserFromSession(session);
     }
 
     public SimulatedRoleSwitchResponseDTO switchSimulatedRole(SimulatedRoleSwitchRequest request) {

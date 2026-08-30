@@ -5,6 +5,10 @@ import com.lumira.api.auth.LoginCodeCompleteRequest;
 import com.lumira.api.auth.LoginResponseDTO;
 import com.lumira.api.auth.PasswordResetChallengeRequest;
 import com.lumira.api.auth.PasswordResetCompleteRequest;
+import com.lumira.api.auth.RegistrationCodeChallengeRequest;
+import com.lumira.api.auth.RegistrationCompleteInternalRequest;
+import com.lumira.api.auth.RegistrationContactAvailabilityDTO;
+import com.lumira.api.auth.RegistrationContactAvailabilityRequest;
 import com.lumira.api.auth.SecondFactorCompleteRequest;
 import com.lumira.api.auth.VerificationBindRequest;
 import com.lumira.api.client.SystemInternalApi;
@@ -154,6 +158,11 @@ public class SystemInternalApiService implements SystemInternalApi {
     @Override
     public PermissionSnapshotDTO permissionSnapshot(Long userId, String userUuid) {
         return call(() -> delegate.permissionSnapshot(userId, userUuid));
+    }
+
+    @Override
+    public Boolean isPermissionSnapshotVersionCurrent(String version) {
+        return call(() -> delegate.isPermissionSnapshotVersionCurrent(version));
     }
 
     @Override
@@ -322,6 +331,23 @@ public class SystemInternalApiService implements SystemInternalApi {
     @Override
     public VerificationVerificationDTO completeLoginCodeLogin(LoginCodeCompleteRequest request) {
         return call(() -> delegate.completeLoginCodeLogin(request));
+    }
+
+    @Override
+    public RegistrationContactAvailabilityDTO registrationContactAvailability(RegistrationContactAvailabilityRequest request) {
+        return call(() -> delegate.registrationContactAvailability(request));
+    }
+
+    @Override
+    @Transactional
+    public LoginCodeChallengeDTO registrationCodeChallenge(RegistrationCodeChallengeRequest request) {
+        return call(() -> delegate.registrationCodeChallenge(request));
+    }
+
+    @Override
+    @Transactional
+    public VerificationVerificationDTO completeRegistration(RegistrationCompleteInternalRequest request) {
+        return call(() -> delegate.completeRegistration(request));
     }
 
     @Override

@@ -57,6 +57,9 @@ public class SessionTrustedUserSnapshotResolver implements TrustedUserSnapshotRe
         if (snapshot == null || !StringUtils.hasText(snapshot.getVersion())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Export user permission snapshot is unavailable");
         }
+        if (!permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(snapshot.getVersion())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Export user authorization snapshot is stale");
+        }
         Set<String> permissions = snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions());
         if (StringUtils.hasText(requiredPermission)
                 && !permissions.contains("*")

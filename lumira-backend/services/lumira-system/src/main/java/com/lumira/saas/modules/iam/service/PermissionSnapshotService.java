@@ -459,22 +459,75 @@ public class PermissionSnapshotService {
     public void invalidatePermissions() {
         long started = System.nanoTime();
         try {
-            if (readModelVersionService != null) {
-                readModelVersionService.bump(
-                        CONTEXT_IAM,
-                        SCOPE_PERMISSION_SNAPSHOT,
-                        ReadModelEventKey.unique("iam.permission.invalidate")
-                );
-            }
-            cacheTemplate.put(CacheKeyConstants.globalKey(VERSION_SUFFIX), String.valueOf(System.currentTimeMillis()), Duration.ofDays(30));
-            invalidateLocalCaches();
-            clearInFlight();
-        } catch (Throwable throwable) {
-            log.warn("Failed to invalidate permission snapshots", throwable);
+            advanceAuthoritativePermissionSnapshotVersion();
+            updateCompatibilityPermissionVersionBestEffort();
+            clearLocalPermissionSnapshotStateBestEffort();
         } finally {
             if (ownerRuntimeMetrics != null) {
                 ownerRuntimeMetrics.recordIamPermissionSnapshotInvalidation(Duration.ofNanos(System.nanoTime() - started));
             }
+        }
+    }
+
+    /**
+     * Security boundary: this write participates in the caller's IAM database
+     * transaction. Any failure must escape so the role, role-binding or data
+     * scope mutation is rolled back with the version update.
+     */
+    private void advanceAuthoritativePermissionSnapshotVersion() {
+        if (readModelVersionService == null) {
+            // Legacy isolated tests use the compatibility-only constructor. The
+            // production Spring constructor requires this dependency.
+            return;
+        }
+        try {
+            readModelVersionService.bump(
+                    CONTEXT_IAM,
+                    SCOPE_PERMISSION_SNAPSHOT,
+                    ReadModelEventKey.unique("iam.permission.invalidate")
+            );
+        } catch (RuntimeException exception) {
+            log.error(
+                    "Failed to advance IAM authorization snapshot version reason={}",
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(
+                    ErrorCode.DEPENDENCY_UNAVAILABLE,
+                    "IAM authorization version update is unavailable"
+            );
+        }
+    }
+
+    /**
+     * Compatibility-only Redis marker. Authentication reads the authoritative
+     * database version, so failure here must not undo a successfully committed
+     * security version or turn a safe mutation into an ambiguous retry.
+     */
+    private void updateCompatibilityPermissionVersionBestEffort() {
+        try {
+            cacheTemplate.put(
+                    CacheKeyConstants.globalKey(VERSION_SUFFIX),
+                    String.valueOf(System.currentTimeMillis()),
+                    Duration.ofDays(30)
+            );
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Failed to update IAM permission snapshot compatibility cache after authorization version advance reason={}",
+                    exception.getClass().getSimpleName()
+            );
+        }
+    }
+
+    /** Local caches are performance state only; the authoritative request check remains fail-closed. */
+    private void clearLocalPermissionSnapshotStateBestEffort() {
+        try {
+            invalidateLocalCaches();
+            clearInFlight();
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Failed to clear local IAM permission snapshot caches after authorization version advance reason={}",
+                    exception.getClass().getSimpleName()
+            );
         }
     }
 
@@ -490,6 +543,39 @@ public class PermissionSnapshotService {
         } catch (Throwable throwable) {
             log.debug("Failed to compare IAM permission snapshot versions", throwable);
             return false;
+        }
+    }
+
+    /**
+     * Performs an uncached comparison against the IAM read-model version. This
+     * is the request-time authorization boundary; it must not fall back to the
+     * Redis compatibility version or a local cache because either may lag a
+     * committed role, role-binding, or data-scope change.
+     */
+    public boolean isAuthoritativeSessionPermissionSnapshotCurrent(String sessionPermissionsVersion) {
+        if (!StringUtils.hasText(sessionPermissionsVersion)) {
+            return false;
+        }
+        if (readModelVersionService == null) {
+            log.warn("IAM authorization snapshot version service is not configured");
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "IAM authorization version is unavailable");
+        }
+        try {
+            Long currentVersion = readModelVersionService.currentVersion(CONTEXT_IAM, SCOPE_PERMISSION_SNAPSHOT);
+            if (currentVersion == null || currentVersion <= 0) {
+                log.warn("IAM authorization snapshot version is missing");
+                throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "IAM authorization version is unavailable");
+            }
+            String authoritativeVersion = "v" + currentVersion + ":" + SNAPSHOT_SCHEMA_VERSION;
+            return authoritativeVersion.equals(sessionPermissionsVersion.trim());
+        } catch (BizException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Failed to read IAM authorization snapshot version reason={}",
+                    exception.getClass().getSimpleName()
+            );
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "IAM authorization version is unavailable");
         }
     }
 

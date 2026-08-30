@@ -168,6 +168,33 @@ class SystemPlatformSettingsAppServiceTest {
     }
 
     @Test
+    void watermarkSettingsReadsLegacyLiteralNewlinesAndWritesRealNewlines() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of(
+                "watermark.text-lines", "访客 A\\n访客 B",
+                "watermark.personalized-text-lines", "用户={{username}}\\nID={{userId}}"
+        ));
+        SystemPlatformSettingsAppService service = newService(
+                queryOperations,
+                mock(ReadModelVersionService.class),
+                null,
+                mock(SmtpMailService.class)
+        );
+
+        SystemVO.WatermarkSettingsVO legacy = service.getPublicWatermarkSettings();
+
+        assertThat(legacy.getTextLines()).containsExactly("访客 A", "访客 B");
+        assertThat(legacy.getPersonalizedTextLines()).containsExactly("用户={{username}}", "ID={{userId}}");
+
+        SystemDTO.WatermarkSettingsRequest request = new SystemDTO.WatermarkSettingsRequest();
+        request.setTextLines(List.of("访客一", "访客二"));
+        request.setPersonalizedTextLines(List.of("用户={{username}}", "邮箱={{email}}"));
+        service.updateWatermarkSettings(currentUser(), request);
+
+        assertThat(queryOperations.configValues.get("watermark.text-lines")).isEqualTo("访客一\n访客二");
+        assertThat(queryOperations.configValues.get("watermark.personalized-text-lines")).isEqualTo("用户={{username}}\n邮箱={{email}}");
+    }
+
+    @Test
     void brandingSettingsReloadsWhenRuntimeVersionBumps() throws Exception {
         CurrentUser currentUser = currentUser();
         Map<String, String> configValues = Map.of(
@@ -833,7 +860,8 @@ class SystemPlatformSettingsAppServiceTest {
                     "notification.wechat-official.detail-url", "");
             case "WATERMARK" -> Map.ofEntries(
                     Map.entry("watermark.enabled", "false"), Map.entry("watermark.mode", "TEXT"),
-                    Map.entry("watermark.text-lines", ""), Map.entry("watermark.image-url", ""),
+                    Map.entry("watermark.text-lines", ""), Map.entry("watermark.personalized-text-lines", ""),
+                    Map.entry("watermark.image-url", ""),
                     Map.entry("watermark.font-color", "rgba(0,0,0,0.15)"), Map.entry("watermark.font-size", "14"),
                     Map.entry("watermark.font-weight", "normal"), Map.entry("watermark.rotate", "-22"),
                     Map.entry("watermark.gap-x", "100"), Map.entry("watermark.gap-y", "100"),

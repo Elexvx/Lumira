@@ -89,6 +89,14 @@ public class IamUserService {
                 .filter(account -> binding.userUuid().equals(account.getUserUuid()));
     }
 
+    public boolean isIdentityReserved(String identityType, String identifier) {
+        String normalizedType = normalizeIdentityType(identityType);
+        String normalizedIdentifier = normalizeIdentifier(normalizedType, identifier);
+        return StringUtils.hasText(normalizedType)
+                && StringUtils.hasText(normalizedIdentifier)
+                && queryIdentityBinding(normalizedType, normalizedIdentifier) != null;
+    }
+
     public Optional<SysUserEntity> findByLoginAccount(String account) {
         return findAccountByLoginAccount(account).map(IamUserAccount::getLegacyUser);
     }
@@ -287,6 +295,30 @@ public class IamUserService {
         upsertPasswordCredentialFromSysUser(user.getId(), userUuid, user.getPasswordHash(), status, deleted);
         upsertProfile(user);
         upsertSecuritySetting(user.getId(), userUuid, deleted);
+    }
+
+    @Transactional
+    public void createRegisteredUser(
+            SysUserEntity user,
+            boolean mobileVerified,
+            boolean emailVerified,
+            String source
+    ) {
+        if (user == null || user.getId() == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "注册用户不能为空");
+        }
+        String displayName = firstText(user.getNickname(), user.getRealName(), user.getUsername(), "用户" + user.getId());
+        String userUuid = requireUserUuid(user);
+        String status = syncStatus(user.getStatus(), 0);
+        requireIamUserWrite(iamUserRepository.upsertAccount(
+                user, userNo(user.getId()), displayName, status, defaultSource(source), 0
+        ));
+        syncIdentityFromSysUser(user.getId(), userUuid, IDENTITY_USERNAME, user.getUsername(), true, true, status, 0);
+        syncIdentityFromSysUser(user.getId(), userUuid, IDENTITY_MOBILE, user.getMobile(), mobileVerified, false, status, 0);
+        syncIdentityFromSysUser(user.getId(), userUuid, IDENTITY_EMAIL, user.getEmail(), emailVerified, false, status, 0);
+        upsertPasswordCredentialFromSysUser(user.getId(), userUuid, user.getPasswordHash(), status, 0);
+        upsertProfile(user);
+        upsertSecuritySetting(user.getId(), userUuid, 0);
     }
 
     private void bindLegacyIdentityIfAvailable(Long userId, String userUuid, String identityType, String identifier, String status, int deleted) {

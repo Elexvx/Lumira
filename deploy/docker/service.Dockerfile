@@ -101,6 +101,7 @@ ENTRYPOINT ["sh", "-c", "AGENT_OPTS=''; if [ \"$OTEL_JAVAAGENT_ENABLED\" = \"tru
 
 FROM runtime AS lumira-server-image
 COPY --from=builder /workspace/services/lumira-admin/target/lumira-server-*.jar /app/app.jar
+COPY --chown=app:app reference-data/dictionaries /app/reference-data/dictionaries
 
 FROM runtime AS lumira-async-image
 COPY --from=builder /workspace/services/lumira-async/target/lumira-async-*.jar /app/app.jar
