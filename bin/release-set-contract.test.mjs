@@ -11,6 +11,7 @@ import { createReleaseEnvelope, verifyReleaseEnvelope } from './lib/release-enve
 import { releaseEnvelopeUrl, validateResolvedManifest, validateSourceUrl } from './lib/release-manifest-resolver.mjs';
 import { assertOperationFence, buildPreflightReport, createInitialDeploymentState, migrateDeploymentState, normalizeReleaseManifest, reconcileReleaseState } from './lib/platform-update-contract.mjs';
 
+const ciWorkflow = readFileSync(path.join(import.meta.dirname, '..', '.github', 'workflows', 'ci.yml'), 'utf8');
 const image = (name, character) => `ghcr.io/elexvx/lumira/${name}@sha256:${character.repeat(64)}`;
 const manifest = (overrides = {}) => ({
   schemaVersion: 3,
@@ -67,6 +68,12 @@ test('release source rejects insecure, untrusted, cross-host, and path traversal
   const first = validateSourceUrl('https://releases.example/release', ['releases.example']);
   const redirected = new URL('https://evil.example/release', first);
   assert.notEqual(first.hostname, redirected.hostname);
+});
+
+test('CI publishes an updater-compatible immutable release id', () => {
+  assert.match(ciWorkflow, /LUMIRA_RELEASE_ID: vsha-\$\{\{ github\.sha \}\}/u);
+  assert.match(ciWorkflow, /RELEASE_ID: vsha-\$\{\{ github\.sha \}\}/u);
+  assert.doesNotMatch(ciWorkflow, /(?:LUMIRA_RELEASE_ID|RELEASE_ID): release-\$\{\{ github\.sha \}\}/u);
 });
 
 test('old deployment state migrates and durable writes survive interrupted replacement', () => {
