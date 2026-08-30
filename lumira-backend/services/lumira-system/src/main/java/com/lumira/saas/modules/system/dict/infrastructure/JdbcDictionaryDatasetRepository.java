@@ -91,9 +91,9 @@ public class JdbcDictionaryDatasetRepository implements DictionaryDatasetReposit
                     statement.setString(8, row.status());
                     statement.setString(9, row.remark());
                     statement.setLong(10, safeActorId);
-                    statement.setString(11, actorUuid);
+                    statement.setString(11, actorUuid); // nosemgrep: java.spring.security.audit.spring-sqli.spring-sqli -- SQL is static and this value is bound through PreparedStatement.
                     statement.setLong(12, safeActorId);
-                    statement.setString(13, actorUuid);
+                    statement.setString(13, actorUuid); // nosemgrep: java.spring.security.audit.spring-sqli.spring-sqli -- SQL is static and this value is bound through PreparedStatement.
                 }
         );
     }
