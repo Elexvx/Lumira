@@ -8,7 +8,7 @@ import test from 'node:test';
 
 import { DeploymentStateRepository } from './lib/deployment-state-repository.mjs';
 import { createReleaseEnvelope, verifyReleaseEnvelope } from './lib/release-envelope.mjs';
-import { createPinnedLookup, releaseEnvelopeUrl, resolveReleaseRedirect, validateResolvedManifest, validateSourceUrl } from './lib/release-manifest-resolver.mjs';
+import { createPinnedLookup, isPublicAddress, releaseEnvelopeUrl, resolveReleaseRedirect, validateResolvedManifest, validateSourceUrl } from './lib/release-manifest-resolver.mjs';
 import { assertOperationFence, buildPreflightReport, createInitialDeploymentState, migrateDeploymentState, normalizeReleaseManifest, reconcileReleaseState } from './lib/platform-update-contract.mjs';
 
 const ciWorkflow = readFileSync(path.join(import.meta.dirname, '..', '.github', 'workflows', 'ci.yml'), 'utf8');
@@ -89,10 +89,31 @@ test('release source DNS pin supports scalar and all-address Node lookup callbac
   assert.throws(() => createPinnedLookup({ address: '', family: 0 }), /invalid IP/);
 });
 
+test('release source accepts only public IPv4 and global-unicast IPv6 destinations', () => {
+  assert.equal(isPublicAddress('8.8.8.8'), true);
+  assert.equal(isPublicAddress('2606:4700:4700::1111'), true);
+  for (const address of ['127.0.0.1', '192.0.2.10', '198.51.100.10', '203.0.113.10', '::', '::1', '::ffff:127.0.0.1', 'ff02::1', '2001:db8::1', '2002::1', '3fff::1']) {
+    assert.equal(isPublicAddress(address), false, address);
+  }
+});
+
 test('CI publishes an updater-compatible immutable release id', () => {
   assert.match(ciWorkflow, /LUMIRA_RELEASE_ID: vsha-\$\{\{ github\.sha \}\}/u);
   assert.match(ciWorkflow, /RELEASE_ID: vsha-\$\{\{ github\.sha \}\}/u);
   assert.doesNotMatch(ciWorkflow, /(?:LUMIRA_RELEASE_ID|RELEASE_ID): release-\$\{\{ github\.sha \}\}/u);
+});
+
+test('CI release publishing is deterministic and safe to rerun', () => {
+  assert.match(ciWorkflow, /released_at="\$\(git show -s --format=%cI/u);
+  assert.match(ciWorkflow, /LUMIRA_RELEASED_AT: \$\{\{ steps\.release_metadata\.outputs\.released_at \}\}/u);
+  assert.match(ciWorkflow, /Verified and reused identical immutable release/u);
+  assert.match(ciWorkflow, /cmp --silent "tmp\/release\/\$\{asset\}" "\$\{existing_dir\}\/\$\{asset\}"/u);
+  assert.match(ciWorkflow, /Domestic registry mirror failed after 3 attempts/u);
+});
+
+test('updater waits for active-slot maintenance acknowledgement before migration', () => {
+  const updaterSource = readFileSync(path.join(import.meta.dirname, 'lumira-updater.mjs'), 'utf8');
+  assert.match(updaterSource, /setPhase\(task, 'MIGRATING'[\s\S]*await waitForMaintenanceAcknowledgement\(task, activeSlot, manifest\.databaseRequiredRuntimeMode\);[\s\S]*await migrate\(task, manifest\);/u);
 });
 
 test('old deployment state migrates and durable writes survive interrupted replacement', () => {
@@ -134,6 +155,28 @@ test('compatibility blockers prevent unsafe install and rollback', () => {
   const report = buildPreflightReport({ manifest: target, state, freeMemoryBytes: 2 ** 31, freeDiskBytes: 4 * 2 ** 30 });
   assert.equal(report.ready, false);
   assert.match(report.blockers.join(' '), /Event Schema/);
+});
+
+test('signed rollback policy is enforced before installation', () => {
+  const state = createInitialDeploymentState({ activeSlot: 'blue' });
+  const report = buildPreflightReport({
+    manifest: manifest({ rollback: { supported: false, applicationRollbackSupported: false, databaseRestoreRequired: false } }),
+    state,
+    freeMemoryBytes: 2 ** 31,
+    freeDiskBytes: 4 * 2 ** 30,
+  });
+  assert.equal(report.ready, false);
+  assert.match(report.blockers.join(' '), /does not support rollback/);
+  assert.match(report.blockers.join(' '), /does not support application rollback/);
+});
+
+test('updater binds preflight to deployment state and restores each touched worker', () => {
+  const updaterSource = readFileSync(path.join(import.meta.dirname, 'lumira-updater.mjs'), 'utf8');
+  assert.match(updaterSource, /deploymentFingerprint: preflightDeploymentFingerprint\(state\)/u);
+  assert.match(updaterSource, /Deployment state changed after preflight/u);
+  assert.match(updaterSource, /const workersTouched = \[\]/u);
+  assert.match(updaterSource, /for \(const worker of \[\.\.\.workersTouched\]\.reverse\(\)\)/u);
+  assert.match(updaterSource, /task\.recoveryIncomplete = true/u);
 });
 
 test('formal manifest generation fails closed when the signing key is absent', () => {

@@ -58,6 +58,13 @@ class SecurityPermitPathsTest {
     }
 
     @Test
+    void updaterMaintenanceAcknowledgementShouldBePublicInMainAndTestConfig() throws IOException {
+        String path = "/api/v2/platform/update-maintenance/ack";
+        Assertions.assertTrue(readMainConfig().contains("- " + path));
+        Assertions.assertTrue(readConfig("src/test/resources/application.yml").contains("- " + path));
+    }
+
+    @Test
     void wechatLoginEndpointsShouldBePublicInMainAndTestConfig() throws IOException {
         String mainConfig = readMainConfig();
         String testConfig = readConfig("src/test/resources/application.yml");

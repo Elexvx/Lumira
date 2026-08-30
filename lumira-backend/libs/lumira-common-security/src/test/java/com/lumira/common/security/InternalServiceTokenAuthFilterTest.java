@@ -33,6 +33,13 @@ class InternalServiceTokenAuthFilterTest {
     }
 
     @Test
+    void leavesRuntimeControlPathsToTheirDedicatedTokenFilter() {
+        assertThat(InternalServiceTokenAuthFilter.isInternalServicePath("/internal/runtime/drain")).isFalse();
+        assertThat(InternalServiceTokenAuthFilter.isInternalServicePath("/async/internal/runtime/drain")).isFalse();
+        assertThat(InternalServiceTokenAuthFilter.isInternalServicePath("/internal/system/runtime")).isTrue();
+    }
+
+    @Test
     void authorizesOnlyExactInternalToken() {
         String internalToken = "strong-internal-service-token-2026";
 

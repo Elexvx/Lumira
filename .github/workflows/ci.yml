@@ -280,11 +280,25 @@ jobs:
               platform_digest="${image_digests[$index]}"
             fi
 
-            docker buildx imagetools create \
-              --prefer-index=false \
-              --tag "${target_image}:main" \
-              --tag "${target_image}:sha-${short_sha}" \
-              "${source_prefix}/${image_name}@${platform_digest}"
+            mirrored=false
+            for attempt in 1 2 3; do
+              if docker buildx imagetools create \
+                --prefer-index=false \
+                --tag "${target_image}:main" \
+                --tag "${target_image}:sha-${short_sha}" \
+                "${source_prefix}/${image_name}@${platform_digest}"; then
+                mirrored=true
+                break
+              fi
+              if [[ "${attempt}" -lt 3 ]]; then
+                echo "Domestic registry mirror attempt ${attempt}/3 failed for ${image_name}; retrying." >&2
+                sleep "$((attempt * 5))"
+              fi
+            done
+            if [[ "${mirrored}" != true ]]; then
+              echo "Domestic registry mirror failed after 3 attempts for ${image_name}." >&2
+              exit 1
+            fi
             target_manifest="$(docker buildx imagetools inspect "${target_image}:sha-${short_sha}" --raw)"
             target_digest="sha256:$(printf '%s' "${target_manifest}" | sha256sum | cut -d' ' -f1)"
             echo "${output_names[$index]}=${target_digest}" >> "$GITHUB_OUTPUT"
@@ -394,6 +408,13 @@ jobs:
           echo "lumira_async_digest=${async_digest}" >> "$GITHUB_OUTPUT"
           echo "lumira_job_executor_digest=${job_executor_digest}" >> "$GITHUB_OUTPUT"
           echo "lumira_migrator_digest=${migrator_digest}" >> "$GITHUB_OUTPUT"
+      - name: Resolve deterministic release metadata
+        id: release_metadata
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          released_at="$(git show -s --format=%cI "$GITHUB_SHA")"
+          echo "released_at=${released_at}" >> "$GITHUB_OUTPUT"
       - name: Generate release manifest
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         env:
@@ -401,6 +422,7 @@ jobs:
           APP_VERSION: main
           LUMIRA_RELEASE_ID: vsha-${{ github.sha }}
           LUMIRA_RELEASE_CHANNEL: stable
+          LUMIRA_RELEASED_AT: ${{ steps.release_metadata.outputs.released_at }}
           LUMIRA_RELEASE_REQUIRE_SIGNATURE: 'true'
           LUMIRA_RELEASE_SIGNING_KEY_ID: ${{ vars.LUMIRA_RELEASE_SIGNING_KEY_ID }}
           LUMIRA_RELEASE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.LUMIRA_RELEASE_SIGNING_PRIVATE_KEY_B64 }}
@@ -422,16 +444,34 @@ jobs:
         shell: bash
         run: |
           if gh release view "$RELEASE_ID" >/dev/null 2>&1; then
-            echo "Immutable release already exists: $RELEASE_ID" >&2
-            exit 1
+            release_target="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_ID}" --jq '.target_commitish')"
+            if [[ "${release_target}" != "${GITHUB_SHA}" ]]; then
+              echo "Immutable release ${RELEASE_ID} targets ${release_target}, expected ${GITHUB_SHA}." >&2
+              exit 1
+            fi
+            existing_dir="tmp/existing-release"
+            mkdir -p "${existing_dir}"
+            gh release download "$RELEASE_ID" \
+              --dir "${existing_dir}" \
+              --pattern 'lumira-release-envelope.json' \
+              --pattern 'lumira-release-manifest.json' \
+              --pattern 'image-supply-chain-evidence.json'
+            for asset in lumira-release-envelope.json lumira-release-manifest.json image-supply-chain-evidence.json; do
+              if ! cmp --silent "tmp/release/${asset}" "${existing_dir}/${asset}"; then
+                echo "Immutable release ${RELEASE_ID} already exists with different ${asset}." >&2
+                exit 1
+              fi
+            done
+            echo "Verified and reused identical immutable release: ${RELEASE_ID}"
+          else
+            gh release create "$RELEASE_ID" \
+              --target "$GITHUB_SHA" \
+              --title "Lumira $RELEASE_ID" \
+              --notes-file tmp/release/lumira-release-manifest.json \
+              tmp/release/lumira-release-envelope.json \
+              tmp/release/lumira-release-manifest.json \
+              tmp/release/image-supply-chain-evidence.json
           fi
-          gh release create "$RELEASE_ID" \
-            --target "$GITHUB_SHA" \
-            --title "Lumira $RELEASE_ID" \
-            --notes-file tmp/release/lumira-release-manifest.json \
-            tmp/release/lumira-release-envelope.json \
-            tmp/release/lumira-release-manifest.json \
-            tmp/release/image-supply-chain-evidence.json
       - name: Publish continuous release manifest
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         env:

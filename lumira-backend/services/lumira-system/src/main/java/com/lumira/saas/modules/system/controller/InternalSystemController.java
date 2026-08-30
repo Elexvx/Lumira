@@ -903,10 +903,8 @@ public class InternalSystemController {
     ) {
         requireInternalServicePrincipal();
         String identityType = normalizeRegistrationIdentityType(request.contactType());
-        String normalizedContact = normalizeRegistrationContact(identityType, request.contact());
-        return new RegistrationContactAvailabilityDTO(
-                !userDomainService.registrationContactExists(identityType, normalizedContact)
-        );
+        normalizeRegistrationContact(identityType, request.contact());
+        return new RegistrationContactAvailabilityDTO(true);
     }
 
     @PostMapping("/registration/code/challenge")
@@ -917,7 +915,7 @@ public class InternalSystemController {
         String identityType = normalizeRegistrationIdentityType(request.contactType());
         String normalizedContact = normalizeRegistrationContact(identityType, request.contact());
         if (userDomainService.registrationContactExists(identityType, normalizedContact)) {
-            throw new BizException(ErrorCode.BIZ_ERROR, registrationContactInUseMessage(identityType));
+            return toChallenge(verificationAppService.registrationChallengeAcknowledgement(identityType, normalizedContact));
         }
         return toChallenge(verificationAppService.startRegistrationCodeChallenge(identityType, normalizedContact));
     }

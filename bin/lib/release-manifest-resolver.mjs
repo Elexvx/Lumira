@@ -131,12 +131,27 @@ function normalizeSet(value) {
   return new Set(String(value || '').split(',').map((item) => item.trim().toLowerCase()).filter(Boolean));
 }
 
-function isPublicAddress(address) {
+export function isPublicAddress(address) {
   if (!net.isIP(address)) return false;
   if (address.includes(':')) {
-    const normalized = address.toLowerCase();
-    return normalized !== '::1' && !normalized.startsWith('fc') && !normalized.startsWith('fd') && !normalized.startsWith('fe8') && !normalized.startsWith('fe9') && !normalized.startsWith('fea') && !normalized.startsWith('feb') && !normalized.startsWith('2001:db8:');
+    const normalized = address.toLowerCase().split('%', 1)[0];
+    const first = Number.parseInt(normalized.split(':', 1)[0] || '0', 16);
+    if (!Number.isInteger(first) || first < 0x2000 || first > 0x3fff) return false;
+    const groups = normalized.split(':');
+    const second = Number.parseInt(groups[1] || '0', 16);
+    if (first === 0x2001 && (second <= 0x01ff || second === 0x0db8)) return false;
+    if (first === 0x2002) return false;
+    if (first === 0x3fff && second <= 0x0fff) return false;
+    return true;
   }
   const [a, b] = address.split('.').map(Number);
-  return !(a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a >= 224 || (a === 100 && b >= 64 && b <= 127) || (a === 192 && b === 0) || (a === 198 && (b === 18 || b === 19)));
+  const [, , c] = address.split('.').map(Number);
+  return !(a === 10 || a === 127 || a === 0
+    || (a === 169 && b === 254)
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && (b === 0 || b === 168 || (b === 88 && c === 99) || (b === 0 && c === 2)))
+    || (a === 100 && b >= 64 && b <= 127)
+    || (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100)))
+    || (a === 203 && b === 0 && c === 113)
+    || a >= 224);
 }
