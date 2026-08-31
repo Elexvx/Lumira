@@ -6,7 +6,7 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:prod}
   main:
-    allow-bean-definition-overriding: true
+    allow-bean-definition-overriding: false
     keep-alive: ${SPRING_MAIN_KEEP_ALIVE:true}
   data:
     redis:
@@ -27,6 +27,12 @@ lumira:
     owner-relay:
       # Always use api-proxy so the worker follows the active blue/green server slot.
       control-plane-base-url: ${LUMIRA_ASYNC_CONTROL_PLANE_BASE_URL:http://api-proxy:80}
+  internal-http:
+    connect-timeout: ${LUMIRA_INTERNAL_HTTP_CONNECT_TIMEOUT:2s}
+    response-timeout: ${LUMIRA_INTERNAL_HTTP_RESPONSE_TIMEOUT:5s}
+    max-response-bytes: ${LUMIRA_INTERNAL_HTTP_MAX_RESPONSE_BYTES:1048576}
+    max-attempts: ${LUMIRA_INTERNAL_HTTP_MAX_ATTEMPTS:2}
+    retry-backoff: ${LUMIRA_INTERNAL_HTTP_RETRY_BACKOFF:100ms}
   alerting:
     worker:
       enabled: ${LUMIRA_ALERTING_WORKER_ENABLED:true}
@@ -37,6 +43,13 @@ lumira:
       enabled: ${LUMIRA_EVENT_RELAY_LOOP_ENABLED:true}
       initial-delay-ms: ${LUMIRA_EVENT_RELAY_INITIAL_DELAY_MS:3000}
       fixed-delay-ms: ${LUMIRA_EVENT_RELAY_FIXED_DELAY_MS:500}
+      queue-capacity: ${LUMIRA_EVENT_RELAY_QUEUE_CAPACITY:1}
+      max-concurrency: ${LUMIRA_EVENT_RELAY_MAX_CONCURRENCY:1}
+      retry-budget: ${LUMIRA_EVENT_RELAY_RETRY_BUDGET:1}
+      retry-backoff: ${LUMIRA_EVENT_RELAY_RETRY_BACKOFF:100ms}
+      circuit-failure-threshold: ${LUMIRA_EVENT_RELAY_CIRCUIT_FAILURE_THRESHOLD:3}
+      circuit-open-duration: ${LUMIRA_EVENT_RELAY_CIRCUIT_OPEN_DURATION:30s}
+      completion-timeout: ${LUMIRA_EVENT_RELAY_COMPLETION_TIMEOUT:8s}
     payment-consumer:
       enabled: ${LUMIRA_PAYMENT_EVENT_CONSUMER_ENABLED:true}
       stream-key: ${LUMIRA_PAYMENT_EVENT_CONSUMER_STREAM_KEY:lumira.events.payment.v1}
@@ -46,6 +59,10 @@ lumira:
       pending-recovery-minimum-idle: ${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_MINIMUM_IDLE:30s}
       pending-recovery-interval: ${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:30s}
       max-delivery-count: ${LUMIRA_PAYMENT_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}
+      # XADD MAXLEN is applied to both the source stream and DLQ. Values are
+      # intentionally independent because DLQ review normally spans longer.
+      stream-max-length: ${REDIS_RUNTIME_STREAM_MAXLEN:100000}
+      dead-letter-max-length: ${REDIS_RUNTIME_DLQ_MAXLEN:50000}
 
 management:
   endpoint:

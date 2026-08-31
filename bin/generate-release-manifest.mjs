@@ -68,6 +68,11 @@ const manifest = {
     session: versionSet('SESSION', 1),
     permissionSnapshot: versionSet('PERMISSION_SNAPSHOT', 1),
     pluginApi: versionSet('PLUGIN_API', 1),
+    redisTopology: {
+      identity: process.env.LUMIRA_REDIS_TOPOLOGY_IDENTITY || 'redis-split-cache-runtime-v1',
+      cachePolicy: 'allkeys-lru',
+      runtimePolicy: 'noeviction-aof-everysec',
+    },
   },
   frontend: { mode: process.env.LUMIRA_RELEASE_FRONTEND_MODE || 'local-blue-green' },
   minVersion: process.env.LUMIRA_RELEASE_MIN_VERSION || '',

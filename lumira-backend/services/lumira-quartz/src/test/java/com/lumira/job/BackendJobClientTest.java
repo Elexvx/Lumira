@@ -16,12 +16,14 @@ class BackendJobClientTest {
     }
 
     @Test
-    void relayOutboxRejectsSystemTokenWhenDedicatedJobTokenMissing() {
+    void recoveryRejectsRequestWhenDedicatedJobTokenMissing() {
         JobExecutorProperties properties = baseProperties();
         properties.getInternal().setJobToken(null);
         BackendJobClient client = new BackendJobClient(properties);
 
-        assertThatThrownBy(client::relayOutbox)
+        assertThatThrownBy(() -> client.recoverStaleOutbox(
+                "platform", 1L, "fence-token-with-at-least-24-chars"
+        ))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Scoped internal job token is not configured");
     }
@@ -63,6 +65,19 @@ class BackendJobClientTest {
         assertThatThrownBy(() -> new BackendJobClient(properties))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("messageServiceBaseUrl is not configured");
+    }
+
+    @Test
+    void recoveryRequiresSupportedOwnerAndFenceIdentity() {
+        BackendJobClient client = new BackendJobClient(baseProperties());
+
+        assertThatThrownBy(() -> client.recoverStaleOutbox(
+                "unknown", 1L, "fence-token-with-at-least-24-chars"
+        )).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported outbox owner");
+        assertThatThrownBy(() -> client.recoverStaleOutbox("file", 0L, "fence-token-with-at-least-24-chars"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("operationEpoch");
     }
 
     private JobExecutorProperties baseProperties() {

@@ -1,20 +1,12 @@
 package com.lumira.team;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.context.annotation.Configuration;
 
-@SpringBootApplication(scanBasePackages = {
-        "com.lumira.team",
-        "com.lumira.common"
-})
+@Configuration(proxyBeanMethods = false)
 @ConfigurationPropertiesScan(basePackages = {
         "com.lumira.team",
         "com.lumira.common"
 })
 public class TeamServiceApplication {
-
-    public static void main(String[] args) {
-        SpringApplication.run(TeamServiceApplication.class, args);
-    }
 }

@@ -19,7 +19,8 @@ class AsyncRuntimeReadinessV2ControllerTest {
         assertThat(readiness.apiContracts()).contains(
                 "/api/v2/async/readiness",
                 "/api/v1/async/version",
-                "/internal/jobs/outbox/relay"
+                "/internal/jobs/outbox/recovery/{mode}/{owner}",
+                "/internal/jobs/payment-events/dead-letter/{recordId}/replay"
         );
         assertThat(readiness.blockers()).anySatisfy(blocker -> assertThat(blocker).contains("no datasource"));
 

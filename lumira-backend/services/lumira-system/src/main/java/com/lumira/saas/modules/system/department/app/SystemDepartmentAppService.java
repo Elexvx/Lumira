@@ -168,7 +168,7 @@ public class SystemDepartmentAppService {
         }
         Long id = createResult.departmentId();
         rebuildClosureForSubtree(id);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateDataPolicies();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "create", "CREATE", "SUCCESS", "创建部门: " + request.getDeptName());
         return requireDepartment(id);
     }
@@ -201,7 +201,7 @@ public class SystemDepartmentAppService {
             throw visibleBizException(ErrorCode.NOT_FOUND, "Department does not exist");
         }
         rebuildClosureForSubtree(id);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateDataPolicies();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "update", "UPDATE", "SUCCESS", "更新部门: " + existing.getDeptName());
         return requireDepartment(id);
     }
@@ -228,7 +228,7 @@ public class SystemDepartmentAppService {
             throw visibleBizException(ErrorCode.BIZ_ERROR, "Department changed, please retry");
         }
         departmentRepository.retireClosureForDescendant(id);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateDataPolicies();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "delete", "DELETE", "SUCCESS", "删除部门: " + existing.getDeptName());
         return true;
     }

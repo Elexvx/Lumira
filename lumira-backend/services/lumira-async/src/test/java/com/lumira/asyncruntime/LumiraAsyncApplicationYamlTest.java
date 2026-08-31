@@ -60,6 +60,10 @@ class LumiraAsyncApplicationYamlTest {
                 .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:30s}");
         assertThat(properties.getProperty("lumira.event.payment-consumer.max-delivery-count"))
                 .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}");
+        assertThat(properties.getProperty("lumira.event.payment-consumer.stream-max-length"))
+                .isEqualTo("${REDIS_RUNTIME_STREAM_MAXLEN:100000}");
+        assertThat(properties.getProperty("lumira.event.payment-consumer.dead-letter-max-length"))
+                .isEqualTo("${REDIS_RUNTIME_DLQ_MAXLEN:50000}");
     }
 
     @Test
@@ -76,6 +80,19 @@ class LumiraAsyncApplicationYamlTest {
                 "PLUGIN_SERVICE_BASE_URL",
                 "COMPETITION_SERVICE_BASE_URL"
         );
+    }
+
+    @Test
+    void ownerRelayAndInternalHttpHaveBoundedDefaults() {
+        Properties properties = loadApplicationProperties();
+
+        assertThat(properties.getProperty("lumira.event.relay-loop.queue-capacity")).isNotBlank();
+        assertThat(properties.getProperty("lumira.event.relay-loop.max-concurrency")).isNotBlank();
+        assertThat(properties.getProperty("lumira.event.relay-loop.retry-budget")).isNotBlank();
+        assertThat(properties.getProperty("lumira.event.relay-loop.circuit-failure-threshold")).isNotBlank();
+        assertThat(properties.getProperty("lumira.internal-http.connect-timeout")).isNotBlank();
+        assertThat(properties.getProperty("lumira.internal-http.response-timeout")).isNotBlank();
+        assertThat(properties.getProperty("lumira.internal-http.max-response-bytes")).isNotBlank();
     }
 
     private Properties loadApplicationProperties() {

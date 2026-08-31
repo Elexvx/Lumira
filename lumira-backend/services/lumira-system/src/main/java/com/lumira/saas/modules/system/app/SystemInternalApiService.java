@@ -26,6 +26,7 @@ import com.lumira.api.system.PasskeyCredentialSaveRequestDTO;
 import com.lumira.api.system.PasskeyCredentialUsageRequestDTO;
 import com.lumira.api.system.PasskeySettingsDTO;
 import com.lumira.api.system.PasswordLoginVerificationDTO;
+import com.lumira.api.system.PasswordLoginVerificationRequest;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.api.system.SecuritySettingsDTO;
@@ -37,10 +38,11 @@ import com.lumira.api.system.VerificationBindingChallengeDTO;
 import com.lumira.api.system.VerificationChallengeDTO;
 import com.lumira.api.system.VerificationProviderDTO;
 import com.lumira.api.system.VerificationVerificationDTO;
+import com.lumira.api.system.VerificationCodeCheckRequest;
 import com.lumira.api.system.WechatLoginSettingsDTO;
 import com.lumira.api.system.WechatLoginUserRequestDTO;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.saas.modules.system.controller.InternalSystemController;
+import com.lumira.saas.modules.system.internal.app.SystemInternalApplicationPort;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -58,10 +60,15 @@ public class SystemInternalApiService implements SystemInternalApi {
 
     private static final Authentication INTERNAL_SERVICE_AUTHENTICATION = internalServiceAuthentication();
 
-    private final InternalSystemController delegate;
+    private final SystemInternalApplicationPort delegate;
 
-    public SystemInternalApiService(InternalSystemController delegate) {
+    public SystemInternalApiService(SystemInternalApplicationPort delegate) {
         this.delegate = delegate;
+    }
+
+    @Override
+    public PasswordLoginVerificationDTO verifyPasswordLogin(PasswordLoginVerificationRequest request) {
+        return call(() -> delegate.verifyPasswordLogin(request));
     }
 
     @Override
@@ -309,6 +316,16 @@ public class SystemInternalApiService implements SystemInternalApi {
     @Override
     public VerificationChallengeDTO verificationChallenge(Long userId, String userUuid, String factorCode) {
         return call(() -> delegate.verificationChallenge(userId, userUuid, factorCode));
+    }
+
+    @Override
+    public VerificationVerificationDTO verificationVerify(
+            Long userId,
+            String userUuid,
+            String factorCode,
+            VerificationCodeCheckRequest request
+    ) {
+        return call(() -> delegate.verificationVerify(userId, userUuid, factorCode, request));
     }
 
     @Override

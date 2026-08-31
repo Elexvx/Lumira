@@ -16,6 +16,7 @@ public class PluginProperties {
     private long maxGatewayBodyBytes = 1024 * 1024;
     private boolean requireHttpPermission = true;
     private boolean allowInProcessBackendPlugins = false;
+    private String releaseId = "local";
 
     public String getPlatformVersion() {
         return platformVersion;
@@ -88,4 +89,8 @@ public class PluginProperties {
     public void setAllowInProcessBackendPlugins(boolean allowInProcessBackendPlugins) {
         this.allowInProcessBackendPlugins = allowInProcessBackendPlugins;
     }
+
+    public String getReleaseId() { return releaseId; }
+
+    public void setReleaseId(String releaseId) { this.releaseId = releaseId; }
 }

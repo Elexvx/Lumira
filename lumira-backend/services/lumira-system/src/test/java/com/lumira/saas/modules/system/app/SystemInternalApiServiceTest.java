@@ -4,7 +4,7 @@ import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.saas.modules.system.controller.InternalSystemController;
+import com.lumira.saas.modules.system.internal.app.SystemInternalApplicationPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,7 +30,7 @@ class SystemInternalApiServiceTest {
 
     @Test
     void localServiceShouldInvokeDelegateWithInternalServiceAuthenticationAndRestoreContext() {
-        InternalSystemController delegate = mock(InternalSystemController.class);
+        SystemInternalApplicationPort delegate = mock(SystemInternalApplicationPort.class);
         SystemInternalApiService service = new SystemInternalApiService(delegate);
         Authentication previousAuthentication = userAuthentication();
         SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
@@ -52,7 +52,7 @@ class SystemInternalApiServiceTest {
 
     @Test
     void userHasEmailShouldInvokeDelegateWithInternalServiceAuthenticationAndRestoreContext() {
-        InternalSystemController delegate = mock(InternalSystemController.class);
+        SystemInternalApplicationPort delegate = mock(SystemInternalApplicationPort.class);
         SystemInternalApiService service = new SystemInternalApiService(delegate);
         Authentication previousAuthentication = userAuthentication();
         SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
@@ -73,7 +73,7 @@ class SystemInternalApiServiceTest {
 
     @Test
     void findTargetUserUuidByIdShouldInvokeDelegateWithInternalServiceAuthenticationAndRestoreContext() {
-        InternalSystemController delegate = mock(InternalSystemController.class);
+        SystemInternalApplicationPort delegate = mock(SystemInternalApplicationPort.class);
         SystemInternalApiService service = new SystemInternalApiService(delegate);
         Authentication previousAuthentication = userAuthentication();
         SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
@@ -94,7 +94,7 @@ class SystemInternalApiServiceTest {
 
     @Test
     void permissionRoleSnapshotShouldInvokeDelegateWithInternalServiceAuthenticationAndRestoreContext() {
-        InternalSystemController delegate = mock(InternalSystemController.class);
+        SystemInternalApplicationPort delegate = mock(SystemInternalApplicationPort.class);
         SystemInternalApiService service = new SystemInternalApiService(delegate);
         Authentication previousAuthentication = userAuthentication();
         SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
@@ -116,7 +116,7 @@ class SystemInternalApiServiceTest {
 
     @Test
     void permissionSnapshotVersionVerificationShouldInvokeDelegateWithInternalServiceAuthenticationAndRestoreContext() {
-        InternalSystemController delegate = mock(InternalSystemController.class);
+        SystemInternalApplicationPort delegate = mock(SystemInternalApplicationPort.class);
         SystemInternalApiService service = new SystemInternalApiService(delegate);
         Authentication previousAuthentication = userAuthentication();
         SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
@@ -137,7 +137,7 @@ class SystemInternalApiServiceTest {
 
     @Test
     void roleUserIdentitiesShouldInvokeDelegateWithInternalServiceAuthenticationAndRestoreContext() {
-        InternalSystemController delegate = mock(InternalSystemController.class);
+        SystemInternalApplicationPort delegate = mock(SystemInternalApplicationPort.class);
         SystemInternalApiService service = new SystemInternalApiService(delegate);
         Authentication previousAuthentication = userAuthentication();
         SecurityContextHolder.getContext().setAuthentication(previousAuthentication);

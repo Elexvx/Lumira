@@ -39,6 +39,7 @@ public class OwnerRuntimeMetrics {
     public static final String AUTH_SESSION_ACTIVITY_REFRESH = "auth.session_activity_refresh";
     public static final String AUTHZ_VERSION_STALE = AuthorizationSnapshotMetricNames.AUTHZ_VERSION_STALE;
     public static final String AUTHZ_VERSION_UNAVAILABLE = AuthorizationSnapshotMetricNames.AUTHZ_VERSION_UNAVAILABLE;
+    public static final String AUTHZ_VERSION_REHYDRATE = AuthorizationSnapshotMetricNames.AUTHZ_VERSION_REHYDRATE;
     public static final String AUTHZ_SESSION_REVOKED = AuthorizationSnapshotMetricNames.AUTHZ_SESSION_REVOKED;
 
     private final MeterRegistry meterRegistry;
@@ -123,6 +124,10 @@ public class OwnerRuntimeMetrics {
 
     public void recordAuthorizationVersionUnavailable() {
         counter(AUTHZ_VERSION_UNAVAILABLE).increment();
+    }
+
+    public void recordAuthorizationVersionRehydrate() {
+        counter(AUTHZ_VERSION_REHYDRATE).increment();
     }
 
     public void recordAuthorizationSessionRevoked() {

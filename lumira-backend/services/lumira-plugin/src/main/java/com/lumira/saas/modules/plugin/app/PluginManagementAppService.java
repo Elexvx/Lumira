@@ -25,6 +25,7 @@ import com.lumira.saas.modules.plugin.registry.PluginRegistry;
 import com.lumira.saas.modules.plugin.registry.PluginRuntimeDescriptor;
 import com.lumira.saas.modules.plugin.runtime.spi.PluginSecondFactorProvider;
 import com.lumira.saas.modules.plugin.service.PluginMigrationService;
+import com.lumira.saas.modules.plugin.service.PluginMigrationService.MigrationDisposition;
 import com.lumira.saas.modules.plugin.service.PluginPersistenceService;
 import com.lumira.saas.modules.plugin.service.PluginSemver;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
@@ -246,9 +247,24 @@ public class PluginManagementAppService {
         PluginDTO.PluginPackageMetadata metadata = parseMetadata(versionEntity);
         validateDependencies(metadata);
         Path versionHome = pluginArtifactLoader.installToVersionHome(pluginCode, version, Path.of(versionEntity.getStagedPath()));
-        log(pluginCode, version, "INSTALL", "INSTALLED", "SUCCESS", "Plugin files installed", null, operator);
-        pluginMigrationService.executeUpMigrations(pluginCode, version, versionHome, operator.userId(), operator.userUuid());
-        log(pluginCode, version, "INSTALL", "MIGRATED", "SUCCESS", "Plugin private migrations completed", null, operator);
+        pluginPersistenceService.recordInstalledArtifacts(pluginCode, version, versionHome,
+                versionHome.resolve("lumira-ui/manifest.json"), versionHome.resolve("lumira-backend/plugin.jar"),
+                operator.userId(), operator.userUuid());
+        log(pluginCode, version, "INSTALL", "VERIFIED", "SUCCESS", "Plugin files installed and verified", null, operator);
+        MigrationDisposition migration = pluginMigrationService.requestExpandMigration(
+                pluginCode, version, versionHome, versionEntity.getChecksum(), metadata,
+                operator.userId(), operator.userUuid());
+        if (migration == MigrationDisposition.MIGRATION_PENDING) {
+            log(pluginCode, version, "INSTALL", "MIGRATION_PENDING", "SUCCESS",
+                    "Plugin expand migration is awaiting central Migrator approval", null, operator);
+            return pluginPersistenceService.listVersions(pluginCode).stream()
+                    .filter(item -> version.equals(item.getVersion())).findFirst().orElseThrow();
+        }
+        if (migration == MigrationDisposition.NO_MIGRATION) {
+            pluginPersistenceService.updateVersionStatus(pluginCode, version, "VERIFIED", "UNLOADED", "UNKNOWN",
+                    "MIGRATED", "READY", operator.userId(), operator.userUuid());
+        }
+        log(pluginCode, version, "INSTALL", "MIGRATED", "SUCCESS", "Plugin schema is ready", null, operator);
         PluginRuntimeDescriptor descriptor = pluginRuntimeLoader.load(metadata, versionHome);
         pluginRegistry.register(descriptor);
         pluginPersistenceService.markInstalled(
@@ -269,7 +285,7 @@ public class PluginManagementAppService {
             pluginPersistenceService.activateVersion(pluginCode, version, operator.userId(), operator.userUuid());
             bumpBootstrapVersions(pluginCode, "plugin.version.auto-activated");
         }
-        log(pluginCode, version, "INSTALL", "LOADED", "SUCCESS", "Plugin runtime loaded", null, operator);
+        log(pluginCode, version, "INSTALL", "RUNTIME_VERIFIED", "SUCCESS", "Plugin runtime loaded and verified", null, operator);
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> version.equals(item.getVersion()))
                 .findFirst()
@@ -318,7 +334,6 @@ public class PluginManagementAppService {
             final String version = resolvedVersion;
             ensureLoaded(request.getPluginCode(), version, currentUser, PERMISSION_PLUGIN_MANAGEMENT_ENABLE);
             enforceEmailRequirementIfNeeded(request.getPluginCode(), version, currentUser);
-            pluginMigrationService.executeUpMigrations(request.getPluginCode(), version, resolveVersionHome(request.getPluginCode(), version), operator.userId(), operator.userUuid());
             transactionTemplate.executeWithoutResult(status -> {
                 PluginActivationAggregate pluginActivation = new PluginActivationAggregate(request.getPluginCode(), false);
                 pluginActivation.enable(version, operator.userId(), operator.userUuid());
@@ -331,7 +346,7 @@ public class PluginManagementAppService {
                 );
                 invokeBuiltinEnableHook(request.getPluginCode(), operator);
                 pluginPersistenceService.registerPluginPermissions(request.getPluginCode(), version);
-                pluginPersistenceService.updateVersionStatus(request.getPluginCode(), version, "LOADED", "LOADED", "HEALTHY", "ENABLED", "READY", operator.userId(), operator.userUuid());
+                pluginPersistenceService.updateVersionStatus(request.getPluginCode(), version, "LOADED", "LOADED", "HEALTHY", "ACTIVATED", "READY", operator.userId(), operator.userUuid());
                 pluginPersistenceService.bumpBootstrapVersion("plugin.enabled");
                 invalidatePluginBootstrapCaches();
                 logPluginActivationDomainEvents(pluginActivation.pullDomainEvents(), version, operator);
@@ -354,29 +369,24 @@ public class PluginManagementAppService {
                 && (pluginStatus == null || !Boolean.TRUE.equals(pluginStatus.getSupportsDataPurge()))) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Plugin does not support data purge on disable");
         }
+        if (Boolean.TRUE.equals(request.getPurgeData())) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR,
+                    "Automatic plugin data purge is forbidden; use an approved recovery release");
+        }
         PluginActivationAggregate pluginActivation = new PluginActivationAggregate(request.getPluginCode(), true);
         pluginActivation.disable(Boolean.TRUE.equals(request.getPurgeData()) ? "purge-data" : "disable", operator.userId(), operator.userUuid());
         pluginPersistenceService.disablePlugin(request.getPluginCode(), operator.userId(), operator.userUuid());
         invokeBuiltinDisableHook(request.getPluginCode(), operator);
         pluginPersistenceService.bumpBootstrapVersion("plugin.disabled");
         invalidatePluginBootstrapCaches();
-        boolean purgeData = Boolean.TRUE.equals(request.getPurgeData());
-        if (purgeData) {
-            pluginMigrationService.executeDownMigrations(
-                    request.getPluginCode(),
-                    enabledVersion.getVersion(),
-                    resolveVersionHome(request.getPluginCode(), enabledVersion.getVersion()),
-                    operator.userId(),
-                    operator.userUuid()
-            );
-        }
+        boolean purgeData = false;
         pluginPersistenceService.updateVersionStatus(
                 request.getPluginCode(),
                 enabledVersion.getVersion(),
                 "LOADED",
                 purgeData ? "UNLOADED" : "LOADED",
                 "HEALTHY",
-                "DISABLED",
+                "RUNTIME_VERIFIED",
                 purgeData ? "REMOVED" : "READY",
                 operator.userId(),
                 operator.userUuid()
@@ -469,17 +479,12 @@ public class PluginManagementAppService {
         if (isBuiltinCorePlugin(pluginCode)) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Built-in plugins cannot be uninstalled; disable the plugin instead");
         }
+        if (removeData) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR,
+                    "Automatic plugin data purge is forbidden; use an approved recovery release");
+        }
         List<PluginVersionEntity> versions = pluginPersistenceService.listInstalledVersions(pluginCode);
         for (PluginVersionEntity versionEntity : versions) {
-            if (removeData) {
-                pluginMigrationService.executeDownMigrations(
-                        pluginCode,
-                        versionEntity.getVersion(),
-                        resolveVersionHome(pluginCode, versionEntity.getVersion()),
-                        operator.userId(),
-                        operator.userUuid()
-                );
-            }
             removePluginVersionArtifacts(versionEntity);
             try {
                 pluginRegistry.unload(pluginCode, versionEntity.getVersion());
@@ -487,11 +492,7 @@ public class PluginManagementAppService {
                 throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin runtime unload failed: " + exception.getMessage());
             }
         }
-        if (removeData) {
-            pluginPersistenceService.purgePluginData(pluginCode, operator.userId(), operator.userUuid());
-        } else {
-            pluginPersistenceService.uninstallPlugin(pluginCode, operator.userId(), operator.userUuid());
-        }
+        pluginPersistenceService.uninstallPlugin(pluginCode, operator.userId(), operator.userUuid());
         systemInternalApi.invalidatePermissionSnapshot();
         pluginPersistenceService.bumpBootstrapVersion("plugin.uninstalled");
         invalidatePluginBootstrapCaches();
@@ -775,6 +776,10 @@ public class PluginManagementAppService {
                 throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin runtime files are missing; reinstall the plugin before use");
             }
             installWithPermission(pluginCode, version, currentUser, requiredPermission);
+            if (pluginRegistry.find(pluginCode, version).isEmpty()) {
+                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR,
+                        "Plugin migration is pending central Migrator approval");
+            }
             return;
         }
         PluginRuntimeDescriptor descriptor = pluginRuntimeLoader.load(parseMetadata(versionEntity), Path.of(versionEntity.getArtifactPath()));
@@ -787,9 +792,22 @@ public class PluginManagementAppService {
         PluginDTO.PluginPackageMetadata metadata = parseMetadata(versionEntity);
         validateDependencies(metadata);
         Path versionHome = pluginArtifactLoader.installToVersionHome(pluginCode, version, Path.of(versionEntity.getStagedPath()));
-        log(pluginCode, version, "INSTALL", "INSTALLED", "SUCCESS", "Plugin files installed", null, operator);
-        pluginMigrationService.executeUpMigrations(pluginCode, version, versionHome, operator.userId(), operator.userUuid());
-        log(pluginCode, version, "INSTALL", "MIGRATED", "SUCCESS", "Plugin private migrations completed", null, operator);
+        pluginPersistenceService.recordInstalledArtifacts(pluginCode, version, versionHome,
+                versionHome.resolve("lumira-ui/manifest.json"), versionHome.resolve("lumira-backend/plugin.jar"),
+                operator.userId(), operator.userUuid());
+        MigrationDisposition migration = pluginMigrationService.requestExpandMigration(
+                pluginCode, version, versionHome, versionEntity.getChecksum(), metadata,
+                operator.userId(), operator.userUuid());
+        if (migration == MigrationDisposition.MIGRATION_PENDING) {
+            log(pluginCode, version, "INSTALL", "MIGRATION_PENDING", "SUCCESS",
+                    "Plugin expand migration is awaiting central Migrator approval", null, operator);
+            return pluginPersistenceService.listVersions(pluginCode).stream()
+                    .filter(item -> version.equals(item.getVersion())).findFirst().orElseThrow();
+        }
+        if (migration == MigrationDisposition.NO_MIGRATION) {
+            pluginPersistenceService.updateVersionStatus(pluginCode, version, "VERIFIED", "UNLOADED", "UNKNOWN",
+                    "MIGRATED", "READY", operator.userId(), operator.userUuid());
+        }
         PluginRuntimeDescriptor descriptor = pluginRuntimeLoader.load(metadata, versionHome);
         pluginRegistry.register(descriptor);
         pluginPersistenceService.markInstalled(
@@ -810,7 +828,7 @@ public class PluginManagementAppService {
             pluginPersistenceService.activateVersion(pluginCode, version, operator.userId(), operator.userUuid());
             bumpBootstrapVersions(pluginCode, "plugin.version.auto-activated");
         }
-        log(pluginCode, version, "INSTALL", "LOADED", "SUCCESS", "Plugin runtime loaded", null, operator);
+        log(pluginCode, version, "INSTALL", "RUNTIME_VERIFIED", "SUCCESS", "Plugin runtime loaded and verified", null, operator);
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> version.equals(item.getVersion()))
                 .findFirst()
@@ -1283,20 +1301,6 @@ public class PluginManagementAppService {
             return copyMenus(menus);
         }
         return copyMenus(buildPluginMenus(plugin.getPluginCode(), plugin.getVersion()));
-    }
-
-    private Path resolveVersionHome(String pluginCode, String version) {
-        if (isBuiltinCorePlugin(pluginCode)) {
-            return null;
-        }
-        PluginVersionEntity versionEntity = pluginPersistenceService.findVersion(pluginCode, version).orElse(null);
-        if (versionEntity == null) {
-            return null;
-        }
-        if (!StringUtils.hasText(versionEntity.getArtifactPath())) {
-            return null;
-        }
-        return Path.of(versionEntity.getArtifactPath());
     }
 
     private List<String> resolveRuntimeContributions(String pluginCode) {

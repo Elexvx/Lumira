@@ -11,6 +11,7 @@ import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.exception.BizException;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.modules.plugin.dto.PluginDTO;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginMenuRelEntity;
@@ -170,7 +171,7 @@ class PluginManagementAppServiceTest {
         verify(pluginPersistenceService).enablePlugin("sms", "1.0.0", "{\"level\":\"basic\"}", 100L, "user-uuid-100");
         verify(pluginPersistenceService).registerPluginPermissions("sms", "1.0.0");
         verify(pluginPersistenceService).bumpBootstrapVersion("plugin.enabled");
-        verify(pluginMigrationService).executeUpMigrations("sms", "1.0.0", null, 100L, "user-uuid-100");
+        verifyNoInteractions(pluginMigrationService);
     }
 
     @Test
@@ -333,7 +334,7 @@ class PluginManagementAppServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", com.lumira.common.enums.ErrorCode.BIZ_ERROR);
 
         verify(pluginPersistenceService, never()).enablePlugin(any(), any(), any(), any(), any());
-        verify(pluginMigrationService, never()).executeUpMigrations(any(), any(), any(), any(), any());
+        verifyNoInteractions(pluginMigrationService);
     }
 
     @Test
@@ -385,7 +386,7 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
-    void disable_shouldPurgeSchemaWhenRequested() {
+    void disable_shouldRejectAutomaticSchemaPurge() {
         PluginVersionEntity enabledVersion = new PluginVersionEntity();
         enabledVersion.setPluginCode("sms");
         enabledVersion.setVersion("1.0.0");
@@ -399,13 +400,9 @@ class PluginManagementAppServiceTest {
         request.setPluginCode("sms");
         request.setPurgeData(true);
 
-        pluginManagementAppService.disable(request, currentUser());
-
-        verify(pluginPersistenceService).disablePlugin("sms", 100L, "user-uuid-100");
-        verify(pluginPersistenceService).bumpBootstrapVersion("plugin.disabled");
-        verify(pluginMigrationService).executeDownMigrations("sms", "1.0.0", null, 100L, "user-uuid-100");
-        verify(systemInternalApi).invalidatePermissionSnapshot();
-        verify(domainEventPublisher).publishAll(any());
+        assertThatThrownBy(() -> pluginManagementAppService.disable(request, currentUser()))
+                .isInstanceOf(BizException.class).hasMessageContaining("data purge is forbidden");
+        verifyNoInteractions(pluginMigrationService);
     }
 
     @Test
@@ -469,7 +466,7 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
-    void disable_shouldPurgeSensitiveWordsSchemaWhenCapabilityIsEnabled() {
+    void disable_shouldRejectAutomaticDataPurgeEvenWhenLegacyCapabilityIsEnabled() {
         PluginVersionEntity enabledVersion = new PluginVersionEntity();
         enabledVersion.setPluginCode("sensitive-words");
         enabledVersion.setVersion("1.0.0");
@@ -483,13 +480,9 @@ class PluginManagementAppServiceTest {
         request.setPluginCode("sensitive-words");
         request.setPurgeData(true);
 
-        pluginManagementAppService.disable(request, currentUser());
-
-        verify(pluginMigrationService).executeDownMigrations("sensitive-words", "1.0.0", null, 100L, "user-uuid-100");
-        verify(pluginPersistenceService).updateVersionStatus(
-                "sensitive-words", "1.0.0", "LOADED", "UNLOADED", "HEALTHY", "DISABLED", "REMOVED",
-                100L, "user-uuid-100"
-        );
+        assertThatThrownBy(() -> pluginManagementAppService.disable(request, currentUser()))
+                .isInstanceOf(BizException.class).hasMessageContaining("data purge is forbidden");
+        verifyNoInteractions(pluginMigrationService);
     }
 
     @Test

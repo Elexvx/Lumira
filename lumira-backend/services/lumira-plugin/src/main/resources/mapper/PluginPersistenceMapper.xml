@@ -37,7 +37,7 @@
             metadata_json, validation_report_json, staged_path, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
         ) values (
             #{entity.pluginCode}, #{entity.version}, #{entity.packagePath}, #{entity.checksum},
-            #{entity.signaturePath}, #{entity.minPlatformVersion}, 'VERIFIED', 'UNLOADED', 'UNKNOWN', 'INSTALLED', 'PENDING',
+            #{entity.signaturePath}, #{entity.minPlatformVersion}, 'VERIFIED', 'UNLOADED', 'UNKNOWN', 'VERIFIED', 'PENDING',
             0, 0, #{entity.metadataJson}, #{entity.validationReportJson}, #{entity.stagedPath},
             #{entity.createdBy}, #{entity.createdByUuid}, #{entity.updatedBy}, #{entity.updatedByUuid}, 0
         )
@@ -149,7 +149,7 @@
             install_status = #{installStatus},
             load_status = #{loadStatus},
             health_status = #{healthStatus},
-            lifecycle_status = 'INSTALLED',
+            lifecycle_status = 'RUNTIME_VERIFIED',
             schema_status = 'READY',
             rollbackable = #{rollbackable},
             updated_by = #{operatorId},
@@ -159,7 +159,16 @@
         where plugin_code = #{pluginCode}
           and version = #{version}
           and deleted = 0
-          and install_status in ('VERIFIED', 'INSTALLED', 'LOADED')
+          and lifecycle_status = 'MIGRATED'
+    </update>
+
+    <update id="recordInstalledArtifacts">
+        update sys_plugin_version
+        set artifact_path = #{artifactPath}, frontend_manifest_path = #{frontendManifestPath},
+            backend_jar_path = #{backendJarPath}, updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid}, updated_at = current_timestamp
+        where plugin_code = #{pluginCode} and version = #{version} and deleted = 0
+          and lifecycle_status in ('VERIFIED', 'MIGRATION_PENDING', 'MIGRATED')
     </update>
 
     <update id="updateVersionStatus">
@@ -175,13 +184,13 @@
         where plugin_code = #{pluginCode}
           and version = #{version}
           and deleted = 0
-          <if test="lifecycleStatus == 'ENABLED'">
+          <if test="lifecycleStatus == 'ACTIVATED'">
           and install_status in ('INSTALLED', 'LOADED')
           and load_status = 'LOADED'
           and schema_status = 'READY'
           </if>
-          <if test="lifecycleStatus == 'DISABLED'">
-          and lifecycle_status = 'ENABLED'
+          <if test="lifecycleStatus == 'RUNTIME_VERIFIED'">
+          and lifecycle_status = 'ACTIVATED'
           and is_active = 1
           </if>
           and exists (
@@ -196,6 +205,9 @@
         update sys_plugin_version
         set is_active = 0,
             rollbackable = case when version &lt;&gt; #{version} then 1 else rollbackable end,
+            lifecycle_status = case
+                when version &lt;&gt; #{version} and lifecycle_status = 'ACTIVATED' then 'RUNTIME_VERIFIED'
+                else lifecycle_status end,
             updated_by = #{operatorId},
             updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
@@ -207,6 +219,7 @@
         update sys_plugin_version
         set is_active = 1,
             rollbackable = 1,
+            lifecycle_status = 'ACTIVATED',
             updated_by = #{operatorId},
             updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
@@ -216,6 +229,7 @@
           and install_status in ('INSTALLED', 'LOADED')
           and load_status = 'LOADED'
           and schema_status = 'READY'
+          and lifecycle_status = 'RUNTIME_VERIFIED'
           and exists (
               select 1
               from sys_plugin_definition d
@@ -448,5 +462,43 @@
             #{entity.traceId}, #{entity.failureStack}, #{entity.createdBy}, #{entity.createdByUuid}, 0
         )
     </insert>
+
+    <select id="nextMigrationOperationEpoch" resultType="long">
+        select coalesce(max(operation_epoch), 0) + 1
+        from sys_plugin_migration_request
+        where plugin_code = #{pluginCode}
+    </select>
+
+    <insert id="insertMigrationRequest" useGeneratedKeys="true" keyProperty="entity.id">
+        insert into sys_plugin_migration_request (
+            plugin_code, plugin_version, schema_version, phase, rollback_mode, compatible_readers,
+            table_namespace, operation_epoch, package_digest, migration_digest, release_id,
+            request_status, lifecycle_status, script_payload, failure_reason, recovery_action,
+            created_by, created_by_uuid
+        ) values (
+            #{entity.pluginCode}, #{entity.pluginVersion}, #{entity.schemaVersion}, #{entity.phase},
+            #{entity.rollbackMode}, #{entity.compatibleReaders}, #{entity.tableNamespace},
+            #{entity.operationEpoch}, #{entity.packageDigest}, #{entity.migrationDigest}, #{entity.releaseId},
+            #{entity.requestStatus}, #{entity.lifecycleStatus}, #{entity.scriptPayload},
+            #{entity.failureReason}, #{entity.recoveryAction}, #{entity.createdBy}, #{entity.createdByUuid}
+        )
+    </insert>
+
+    <select id="findMigrationRequestByDigest" resultType="com.lumira.saas.modules.plugin.entity.PluginEntities$PluginMigrationRequestEntity">
+        select *
+        from sys_plugin_migration_request
+        where plugin_code = #{pluginCode}
+          and plugin_version = #{pluginVersion}
+          and migration_digest = #{migrationDigest}
+        order by operation_epoch desc
+        limit 1
+    </select>
+
+    <update id="updateMigrationLifecycle">
+        update sys_plugin_version
+        set lifecycle_status = #{toStatus}, schema_status = #{schemaStatus}, updated_at = current_timestamp
+        where plugin_code = #{pluginCode} and version = #{pluginVersion} and deleted = 0
+          and lifecycle_status = #{fromStatus}
+    </update>
 
 </mapper>

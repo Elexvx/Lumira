@@ -2,7 +2,6 @@ package com.lumira.saas.modules.system;
 
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.saas.infrastructure.adapter.SystemEventConsumptionPort;
-import com.lumira.saas.infrastructure.config.JacksonCompatibilityConfig;
 import com.lumira.saas.infrastructure.event.LoggingPlatformEventDispatcher;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxMapper;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxRelay;
@@ -43,7 +42,6 @@ import org.springframework.context.annotation.Import;
         annotationClass = Mapper.class
 )
 @Import({
-        JacksonCompatibilityConfig.class,
         LoggingPlatformEventDispatcher.class,
         MyBatisQueryOperations.class,
         MapperOperationAuditRepository.class,

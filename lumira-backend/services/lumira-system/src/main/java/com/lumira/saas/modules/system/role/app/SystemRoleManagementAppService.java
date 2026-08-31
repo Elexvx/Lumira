@@ -312,7 +312,7 @@ public class SystemRoleManagementAppService {
         Long roleId = upsertRole(null, request, currentUser.getUserId(), currentUser.getUserUuid());
         replaceRolePermissionsWithDomainEvent(roleId, null, Set.of(), request.getPermissionKeys(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceRoleDataScopes(roleId, null, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid(), true);
-        permissionSnapshotService.invalidatePermissions();
+        // A newly created role has no assigned subjects, so no existing session is stale.
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
         return queryRoleDetail(roleId);
     }
@@ -327,7 +327,7 @@ public class SystemRoleManagementAppService {
         upsertRole(roleId, existingRole, request, currentUser.getUserId(), currentUser.getUserUuid());
         replaceRolePermissionsWithDomainEvent(roleId, existingRole, existingPermissions, request.getPermissionKeys(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceRoleDataScopes(roleId, existingRole, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid(), false);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateRoleAuthorization(roleId);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
         return queryRoleDetail(roleId);
     }
@@ -340,7 +340,7 @@ public class SystemRoleManagementAppService {
         SystemVO.RoleDetailVO existingRole = queryRoleDetail(roleId);
         Set<String> existingPermissions = new LinkedHashSet<>(existingRole.getPermissionKeys());
         replaceRolePermissionsWithDomainEvent(roleId, existingRole, existingPermissions, permissionKeys, currentUser.getUserId(), currentUser.getUserUuid());
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidatePermissionsForRole(roleId);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "permissions", "UPDATE", "SUCCESS", "更新角色权限: " + roleId);
         return true;
     }
@@ -371,7 +371,7 @@ public class SystemRoleManagementAppService {
         );
         requireRoleWrite(deleted, "Role changed, please retry");
         roleRepository.retireDeletedRoleRelations(roleId, actor, LocalDateTime.now());
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateRoleAuthorization(roleId);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "delete", "DELETE", "SUCCESS", "删除角色: " + role.getRoleName());
         return true;
     }

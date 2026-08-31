@@ -16,7 +16,7 @@ const asyncReadiness = read('lumira-backend', 'services', 'lumira-async', 'src',
 const asyncVersion = read('lumira-backend', 'services', 'lumira-async', 'src', 'main', 'java', 'com', 'lumira', 'asyncruntime', 'AsyncVersionController.java');
 const jobReadiness = read('lumira-backend', 'services', 'lumira-quartz', 'src', 'main', 'java', 'com', 'lumira', 'job', 'JobReadinessV2Controller.java');
 const jobVersion = read('lumira-backend', 'services', 'lumira-quartz', 'src', 'main', 'java', 'com', 'lumira', 'job', 'VersionController.java');
-const jobHandler = read('lumira-backend', 'services', 'lumira-quartz', 'src', 'main', 'java', 'com', 'lumira', 'job', 'OutboxRelayJobHandler.java');
+const jobHandler = read('lumira-backend', 'services', 'lumira-quartz', 'src', 'main', 'java', 'com', 'lumira', 'job', 'OutboxRecoveryJobHandler.java');
 const serverVersion = read('lumira-backend', 'services', 'lumira-system', 'src', 'main', 'java', 'com', 'lumira', 'saas', 'modules', 'config', 'controller', 'VersionController.java');
 
 function read(...segments) {
@@ -143,5 +143,13 @@ test('three production runtimes publish distinct identity, health, readiness, ve
   assert.match(server, /LUMIRA_RUNTIME_ASYNC_ENABLED: \$\{LUMIRA_SERVER_RUNTIME_ASYNC_ENABLED:-false}/);
   assert.match(asyncRuntime, /@EnableScheduling/);
   assert.match(asyncRelay, /@Scheduled\(/);
-  assert.match(jobHandler, /@XxlJob/);
+  for (const recoveryJob of [
+    'outboxEventReplayJob',
+    'staleOutboxRecoveryJob',
+    'manualOutboxRecoveryJob',
+    'fencedOutboxTakeoverJob',
+  ]) {
+    assert.match(jobHandler, new RegExp(`@XxlJob\\("${recoveryJob}"\\)`));
+  }
+  assert.doesNotMatch(jobHandler, /@Scheduled/);
 });

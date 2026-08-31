@@ -124,6 +124,11 @@ export function normalizeReleaseManifest(rawManifest) {
     session: normalizeVersionSetCompatibility(compatibility.session, 1),
     permissionSnapshot: normalizeVersionSetCompatibility(compatibility.permissionSnapshot, 1),
     pluginApi: normalizeVersionSetCompatibility(compatibility.pluginApi, 1),
+    redisTopology: {
+      identity: String(compatibility.redisTopology?.identity || 'legacy-single-v0').trim(),
+      cachePolicy: String(compatibility.redisTopology?.cachePolicy || 'unknown').trim(),
+      runtimePolicy: String(compatibility.redisTopology?.runtimePolicy || 'unknown').trim(),
+    },
   };
   const frontend = raw.frontend && typeof raw.frontend === 'object' ? raw.frontend : {};
   const frontendMode = String(frontend.mode || (frontendImage ? 'local-blue-green' : 'external-managed'));
@@ -401,6 +406,15 @@ export function evaluateReleaseCompatibility({ currentRelease, targetRelease, pr
     if (Number.isInteger(currentWrite) && !target.compatibility[key].readVersions.includes(currentWrite)) installBlockers.push(`Target release cannot read the current ${label} format.`);
     const targetWrite = Number(target.compatibility[key].writeVersion);
     if (previous?.compatibility?.[key] && !previous.compatibility[key].readVersions?.includes(targetWrite)) rollbackBlockers.push(`Previous release cannot read the target ${label} format.`);
+  }
+  const currentRedisTopology = String(current.compatibility?.redisTopology?.identity || '').trim();
+  const targetRedisTopology = String(target.compatibility.redisTopology?.identity || '').trim();
+  const previousRedisTopology = String(previous?.compatibility?.redisTopology?.identity || '').trim();
+  if (currentRedisTopology && currentRedisTopology !== targetRedisTopology) {
+    installBlockers.push('Target Release Set Redis topology identity differs from the active release.');
+  }
+  if (previousRedisTopology && previousRedisTopology !== targetRedisTopology) {
+    rollbackBlockers.push('Previous Release Set Redis topology identity differs from the target release.');
   }
   const targetDatabase = target.compatibility.database;
   if (databaseVersion && !versionInRange(databaseVersion, targetDatabase.minReadableVersion, targetDatabase.maxReadableVersion)) installBlockers.push('Current database version is outside the target release readable range.');

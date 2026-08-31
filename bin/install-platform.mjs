@@ -14,6 +14,7 @@ import { parseEnvFile, setEnvValue, randomSecret, defaultCapacityProfiles } from
 import { run as execRun, output as execOutput, commandExists, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
 import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
 import { renderActiveUpstreams } from './lib/platform-update-contract.mjs';
+import { assertProductionDataPlaneEnvironment } from './lib/production-data-plane-policy.mjs';
 const log = createLogger('install');
 const repoRoot = resolveRepoRoot(import.meta.url);
 const envExamplePath = path.join(repoRoot, 'deploy', '.env.example');
@@ -80,7 +81,14 @@ function output(command, commandArgs, options = {}) {
 
 function generatedSecrets() {
   return {
+    MYSQL_ROOT_PASSWORD: randomSecret('mysql-root'),
     DB_PASSWORD: randomSecret('mysql'),
+    DB_MIGRATION_PASSWORD: randomSecret('mysql-migrator'),
+    MYSQL_BACKUP_PASSWORD: randomSecret('mysql-backup'),
+    MYSQL_RESTORE_PASSWORD: randomSecret('mysql-restore'),
+    XXL_JOB_DB_PASSWORD: randomSecret('xxl-database'),
+    REDIS_CACHE_PASSWORD: randomSecret('redis-cache'),
+    REDIS_RUNTIME_PASSWORD: randomSecret('redis-runtime'),
     JWT_SECRET: randomSecret('jwt'),
     FIELD_SECRET: randomSecret('field'),
     PLUGIN_SIGNATURE_SECRET: randomSecret('plugin-signature'),
@@ -213,7 +221,20 @@ async function buildEnvironmentReport({ expectedProfile = '', installMode = fals
   addEnvironmentCheck(checks, existsSync(envPath) ? 'pass' : 'warn', 'Env file', existsSync(envPath) ? envPath : 'deploy/.env is not created yet');
 
   const requiredEnvKeys = [
+    'MYSQL_ROOT_PASSWORD',
+    'DB_USERNAME',
     'DB_PASSWORD',
+    'DB_MIGRATION_USERNAME',
+    'DB_MIGRATION_PASSWORD',
+    'MYSQL_BACKUP_USERNAME',
+    'MYSQL_BACKUP_PASSWORD',
+    'MYSQL_RESTORE_USERNAME',
+    'MYSQL_RESTORE_PASSWORD',
+    'XXL_JOB_DB_URL',
+    'XXL_JOB_DB_USERNAME',
+    'XXL_JOB_DB_PASSWORD',
+    'REDIS_CACHE_PASSWORD',
+    'REDIS_RUNTIME_PASSWORD',
     'JWT_SECRET',
     'FIELD_SECRET',
     'PLUGIN_SIGNATURE_SECRET',
@@ -425,8 +446,10 @@ function ensureEnvFile(options, profile) {
     FRONTEND_BIND: existingEnv.FRONTEND_BIND || '127.0.0.1:8001',
     CORS_ALLOWED_ORIGIN_PATTERNS: corsOrigins.join(','),
     JAVA_OPTS: tunable('JAVA_OPTS', profile.javaOpts),
-    REDIS_MAXMEMORY: tunable('REDIS_MAXMEMORY', profile.redisMaxmemory),
-    REDIS_MEM_LIMIT: tunable('REDIS_MEM_LIMIT', '384m'),
+    REDIS_CACHE_MAXMEMORY: tunable('REDIS_CACHE_MAXMEMORY', '128mb'),
+    REDIS_CACHE_MEM_LIMIT: tunable('REDIS_CACHE_MEM_LIMIT', '192m'),
+    REDIS_RUNTIME_MAXMEMORY: tunable('REDIS_RUNTIME_MAXMEMORY', profile.redisMaxmemory),
+    REDIS_RUNTIME_MEM_LIMIT: tunable('REDIS_RUNTIME_MEM_LIMIT', '384m'),
     DOCKER_LOG_MAX_SIZE: tunable('DOCKER_LOG_MAX_SIZE', profile.dockerLogMaxSize),
     DOCKER_LOG_MAX_FILE: tunable('DOCKER_LOG_MAX_FILE', profile.dockerLogMaxFile),
     SERVER_TOMCAT_THREADS_MAX: tunable('SERVER_TOMCAT_THREADS_MAX', profile.tomcatThreadsMax),
@@ -729,8 +752,8 @@ function databaseNameFromEnvironment(environment) {
 }
 
 function runLocalMysqlRootSql(options, environment, sql) {
-  const rootPassword = String(environment.DB_PASSWORD || '');
-  if (!rootPassword) throw new Error('Local MySQL exporter provisioning requires DB_PASSWORD.');
+  const rootPassword = String(environment.MYSQL_ROOT_PASSWORD || '');
+  if (!rootPassword) throw new Error('Local MySQL exporter provisioning requires MYSQL_ROOT_PASSWORD.');
   return execRun(
     'docker',
     [
@@ -820,6 +843,7 @@ async function provisionLocalMysqlExporterAccount(options) {
 
 async function installContainers(options) {
   const deployEnv = parseEnvFile(envPath);
+  assertProductionDataPlaneEnvironment(deployEnv);
   prepareObservabilityFiles(options);
   const upstreamDirectory = path.join(repoRoot, 'deploy', '.generated', 'api-proxy');
   mkdirSync(upstreamDirectory, { recursive: true });
@@ -840,7 +864,8 @@ async function installContainers(options) {
 
   composeUp(options, 'infrastructure', [
     ...(options.useLocalMysql ? ['mysql'] : []),
-    'redis',
+    'redis-cache',
+    'redis-runtime',
   ]);
   await provisionLocalMysqlExporterAccount(options);
   composeUp(options, 'job admin', ['xxl-job-admin']);
@@ -851,7 +876,7 @@ async function installContainers(options) {
   composeUp(options, 'edge proxy', !options.useLocalMysql ? ['edge-proxy'] : []);
   composeUp(options, 'lumira-ui container', options.useFrontendContainer ? ['lumira-ui'] : []);
   composeUp(options, 'observability', options.useObservability
-    ? ['mysqld-exporter', 'backup-metrics-exporter', 'prometheus', 'loki', 'tempo', 'alloy', 'grafana']
+    ? ['mysqld-exporter', 'redis-exporter', 'redis-runtime-exporter', 'backup-metrics-exporter', 'prometheus', 'loki', 'tempo', 'alloy', 'grafana']
     : []);
 }
 
@@ -901,7 +926,8 @@ async function runVerification(options, profile) {
   await waitForComposeServicesRunning(
     options,
     [
-      'redis',
+      'redis-cache',
+      'redis-runtime',
       'xxl-job-admin',
       'lumira-server-blue',
       'lumira-async',
@@ -910,7 +936,7 @@ async function runVerification(options, profile) {
       ...(!options.useLocalMysql ? ['edge-proxy'] : []),
       ...(options.useLocalMysql ? ['mysql'] : []),
       ...(options.useObservability
-        ? ['mysqld-exporter', 'backup-metrics-exporter', 'prometheus', 'loki', 'tempo', 'alloy', 'grafana']
+        ? ['mysqld-exporter', 'redis-exporter', 'redis-runtime-exporter', 'backup-metrics-exporter', 'prometheus', 'loki', 'tempo', 'alloy', 'grafana']
         : []),
       ...(options.useFrontendContainer ? ['lumira-ui'] : []),
     ],

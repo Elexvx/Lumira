@@ -1,6 +1,7 @@
 package com.lumira.auth.service;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.AuthorizationVersionPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthorizationSnapshotVersionVerifier;
@@ -20,7 +21,7 @@ class SystemAuthorizationSnapshotVersionVerifierTest {
 
     @Test
     void splitRuntimeComparesAgainstTheSystemAuthorizationBoundary() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        AuthorizationVersionPort systemInternalApi = mock(AuthorizationVersionPort.class);
         SystemAuthorizationSnapshotVersionVerifier verifier = new SystemAuthorizationSnapshotVersionVerifier(systemInternalApi);
         when(systemInternalApi.isPermissionSnapshotVersionCurrent("v7:data-scope-cache-v4")).thenReturn(Boolean.TRUE);
 
@@ -31,7 +32,7 @@ class SystemAuthorizationSnapshotVersionVerifierTest {
 
     @Test
     void splitRuntimeFailsClosedWhenTheSystemAuthorizationBoundaryIsUnavailable() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        AuthorizationVersionPort systemInternalApi = mock(AuthorizationVersionPort.class);
         SystemAuthorizationSnapshotVersionVerifier verifier = new SystemAuthorizationSnapshotVersionVerifier(systemInternalApi);
         when(systemInternalApi.isPermissionSnapshotVersionCurrent("v7:data-scope-cache-v4")).thenReturn(null);
 

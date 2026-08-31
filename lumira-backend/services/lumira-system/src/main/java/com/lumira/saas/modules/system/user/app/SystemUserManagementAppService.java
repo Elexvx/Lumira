@@ -429,7 +429,7 @@ public class SystemUserManagementAppService {
         replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), false);
         updateExtraProfileValues(currentUser, userId, userUuid, request.getExtraProfileValues());
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateSubjectAuthorization(userUuid);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
         return buildUserDetail(currentUser, userId);
     }
@@ -461,7 +461,7 @@ public class SystemUserManagementAppService {
         // Session-index cleanup is best effort under a Redis race. Advancing
         // the authoritative authorization version on either status transition
         // ensures a missed stale payload cannot become valid after re-enable.
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidatePermissionsForSubject(userUuid);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + normalizedStatus);
         return true;
     }
@@ -494,7 +494,7 @@ public class SystemUserManagementAppService {
         iamUserService.softDeleteUser(userId, userUuid);
 
         onlineSessionManagementAppService.revokeUserSessions(userId, userUuid);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidatePermissionsForSubject(userUuid);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "删除用户: " + user.getUsername());
         return true;
     }

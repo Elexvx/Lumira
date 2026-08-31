@@ -1,31 +1,42 @@
-discovery.docker "containers" {
-  host = "unix:///var/run/docker.sock"
+local.file_match "docker_json_logs" {
+  path_targets = [{
+    __path__    = "/var/lib/docker/containers/*/*-json.log",
+    environment = sys.env("OBSERVABILITY_ENVIRONMENT"),
+    platform    = "lumira",
+    source      = "docker-json-file",
+  }]
 }
 
-discovery.relabel "containers" {
-  targets = discovery.docker.containers.targets
-
-  rule {
-    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
-    target_label  = "service_name"
-  }
-
-  rule {
-    source_labels = ["__meta_docker_container_name"]
-    regex         = "/(.*)"
-    target_label  = "container_name"
-  }
-
-  rule {
-    target_label = "environment"
-    replacement  = sys.env("OBSERVABILITY_ENVIRONMENT")
-  }
+loki.source.file "docker_json_logs" {
+  targets       = local.file_match.docker_json_logs.targets
+  tail_from_end = true
+  forward_to    = [loki.process.docker_json.receiver]
 }
 
-loki.source.docker "containers" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.relabel.containers.output
-  labels     = {"platform" = "lumira"}
+loki.process "docker_json" {
+  stage.json {
+    expressions = {
+      output = "log",
+      stream = "stream",
+      time   = "time",
+    }
+  }
+
+  stage.timestamp {
+    source = "time"
+    format = "RFC3339Nano"
+  }
+
+  stage.labels {
+    values = {
+      stream = "",
+    }
+  }
+
+  stage.output {
+    source = "output"
+  }
+
   forward_to = [loki.write.default.receiver]
 }
 

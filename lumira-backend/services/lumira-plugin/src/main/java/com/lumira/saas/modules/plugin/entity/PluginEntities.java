@@ -1080,4 +1080,82 @@ public final class PluginEntities {
             this.createdAt = createdAt;
         }
     }
+
+    @TableName("sys_plugin_migration_request")
+    public static class PluginMigrationRequestEntity {
+        @TableId(type = IdType.AUTO)
+        private Long id;
+        private String pluginCode;
+        private String pluginVersion;
+        private String schemaVersion;
+        private String phase;
+        private String rollbackMode;
+        private String compatibleReaders;
+        private String tableNamespace;
+        private Long operationEpoch;
+        private String packageDigest;
+        private String migrationDigest;
+        private String releaseId;
+        private String requestStatus;
+        private String lifecycleStatus;
+        private String scriptPayload;
+        private String failureReason;
+        private String recoveryAction;
+        private Long createdBy;
+        private String createdByUuid;
+        private LocalDateTime createdAt;
+        private LocalDateTime approvedAt;
+        private LocalDateTime startedAt;
+        private LocalDateTime finishedAt;
+        private LocalDateTime updatedAt;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public String getPluginCode() { return pluginCode; }
+        public void setPluginCode(String pluginCode) { this.pluginCode = pluginCode; }
+        public String getPluginVersion() { return pluginVersion; }
+        public void setPluginVersion(String pluginVersion) { this.pluginVersion = pluginVersion; }
+        public String getSchemaVersion() { return schemaVersion; }
+        public void setSchemaVersion(String schemaVersion) { this.schemaVersion = schemaVersion; }
+        public String getPhase() { return phase; }
+        public void setPhase(String phase) { this.phase = phase; }
+        public String getRollbackMode() { return rollbackMode; }
+        public void setRollbackMode(String rollbackMode) { this.rollbackMode = rollbackMode; }
+        public String getCompatibleReaders() { return compatibleReaders; }
+        public void setCompatibleReaders(String compatibleReaders) { this.compatibleReaders = compatibleReaders; }
+        public String getTableNamespace() { return tableNamespace; }
+        public void setTableNamespace(String tableNamespace) { this.tableNamespace = tableNamespace; }
+        public Long getOperationEpoch() { return operationEpoch; }
+        public void setOperationEpoch(Long operationEpoch) { this.operationEpoch = operationEpoch; }
+        public String getPackageDigest() { return packageDigest; }
+        public void setPackageDigest(String packageDigest) { this.packageDigest = packageDigest; }
+        public String getMigrationDigest() { return migrationDigest; }
+        public void setMigrationDigest(String migrationDigest) { this.migrationDigest = migrationDigest; }
+        public String getReleaseId() { return releaseId; }
+        public void setReleaseId(String releaseId) { this.releaseId = releaseId; }
+        public String getRequestStatus() { return requestStatus; }
+        public void setRequestStatus(String requestStatus) { this.requestStatus = requestStatus; }
+        public String getLifecycleStatus() { return lifecycleStatus; }
+        public void setLifecycleStatus(String lifecycleStatus) { this.lifecycleStatus = lifecycleStatus; }
+        public String getScriptPayload() { return scriptPayload; }
+        public void setScriptPayload(String scriptPayload) { this.scriptPayload = scriptPayload; }
+        public String getFailureReason() { return failureReason; }
+        public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+        public String getRecoveryAction() { return recoveryAction; }
+        public void setRecoveryAction(String recoveryAction) { this.recoveryAction = recoveryAction; }
+        public Long getCreatedBy() { return createdBy; }
+        public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+        public String getCreatedByUuid() { return createdByUuid; }
+        public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
+        public LocalDateTime getCreatedAt() { return createdAt; }
+        public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+        public LocalDateTime getApprovedAt() { return approvedAt; }
+        public void setApprovedAt(LocalDateTime approvedAt) { this.approvedAt = approvedAt; }
+        public LocalDateTime getStartedAt() { return startedAt; }
+        public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
+        public LocalDateTime getFinishedAt() { return finishedAt; }
+        public void setFinishedAt(LocalDateTime finishedAt) { this.finishedAt = finishedAt; }
+        public LocalDateTime getUpdatedAt() { return updatedAt; }
+        public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    }
 }

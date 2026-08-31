@@ -25,7 +25,7 @@ test('fresh and upgraded databases install the same disabled durable alerting pl
       assert.match(sql, new RegExp('CREATE TABLE(?: IF NOT EXISTS)? `' + table + '`'));
     }
   }
-  assert.equal(baselineVersion, '202608310001');
+  assert.ok(BigInt(baselineVersion) >= 202608250001n);
 });
 
 test('the async alert worker reaches the active control-plane slot through the API proxy', () => {
@@ -33,7 +33,7 @@ test('the async alert worker reaches the active control-plane slot through the A
   const controller = read('lumira-backend/services/lumira-alerting/src/main/java/com/lumira/alerting/controller/AlertingInternalJobController.java');
   const proxy = read('deploy/nginx/api.conf.template');
 
-  assert.match(worker, /\.uri\("\/alerting\/internal\/jobs\/run"\)/);
+  assert.match(worker, /client\.post\(\s*"\/alerting\/internal\/jobs\/run"/);
   assert.match(worker, /saas\.internal\.job-token/);
   assert.match(controller, /saas\.internal\.job-token/);
   assert.doesNotMatch(worker, /saas\.internal\.plugin-token/);

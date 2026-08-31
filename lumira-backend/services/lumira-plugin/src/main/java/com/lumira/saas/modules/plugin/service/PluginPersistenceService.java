@@ -142,6 +142,16 @@ public class PluginPersistenceService {
     }
 
     @Transactional
+    public void recordInstalledArtifacts(String pluginCode, String version, Path artifactPath,
+                                         Path frontendManifestPath, Path backendJarPath,
+                                         Long operatorId, String operatorUuid) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
+        ensureUpdated(pluginPersistenceMapper.recordInstalledArtifacts(pluginCode, version,
+                artifactPath.toString(), frontendManifestPath.toString(), backendJarPath.toString(),
+                operatorId, trustedOperatorUuid));
+    }
+
+    @Transactional
     public void updateVersionStatus(
             String pluginCode,
             String version,

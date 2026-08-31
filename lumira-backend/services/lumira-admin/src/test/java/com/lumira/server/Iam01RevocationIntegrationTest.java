@@ -230,10 +230,11 @@ class Iam01RevocationIntegrationTest {
     @Test
     void rolePermissionMutationMustRollBackWhenAuthoritativeVersionBumpFails() throws Exception {
         Fixture fixture = provisionFixture("permission-bump-failure", "ALL");
-        long versionBefore = currentAuthorizationVersion();
+        String roleScope = "authorization:role:" + fixture.roleId();
+        long versionBefore = currentAuthorizationVersion(roleScope);
         Assertions.assertEquals(1, activeRolePermissionCount(fixture.roleId(), ALERTING_SILENCE_PERMISSION));
 
-        injectAuthorizationVersionBumpFailure();
+        injectAuthorizationVersionBumpFailure(roleScope);
         ResponseEntity<String> mutationResponse;
         try {
             mutationResponse = putJson(
@@ -246,7 +247,8 @@ class Iam01RevocationIntegrationTest {
         }
 
         assertDependencyUnavailable(mutationResponse);
-        Assertions.assertEquals(versionBefore, currentAuthorizationVersion(), "failed mutation advanced the authoritative version");
+        Assertions.assertEquals(versionBefore, currentAuthorizationVersion(roleScope),
+                "failed mutation advanced the authoritative role version");
         Assertions.assertEquals(1, activeRolePermissionCount(fixture.roleId(), ALERTING_SILENCE_PERMISSION),
                 "role permission revocation committed although the authoritative version did not advance");
         assertProtectedSilenceAllowed(fixture.accessToken(), fixture.afterProbeName());
@@ -255,10 +257,16 @@ class Iam01RevocationIntegrationTest {
     @Test
     void userRoleMutationMustRollBackWhenAuthoritativeVersionBumpFails() throws Exception {
         Fixture fixture = provisionFixture("user-role-bump-failure", "ALL");
-        long versionBefore = currentAuthorizationVersion();
+        String userUuid = requiredUserUuid(fixture.userId());
+        String subjectScope = "authorization:subject:" + userUuid;
+        String bindingScope = "authorization:binding:" + userUuid;
+        long subjectVersionBefore = currentAuthorizationVersion(subjectScope);
+        long bindingVersionBefore = currentAuthorizationVersion(bindingScope);
         Assertions.assertEquals(1, activeUserRoleCount(fixture.userId(), fixture.roleId()));
 
-        injectAuthorizationVersionBumpFailure();
+        // Subject is bumped first. Failing the second, binding dimension proves that both
+        // database changes and the first dimension's eagerly published Redis value roll back.
+        injectAuthorizationVersionBumpFailure(bindingScope);
         ResponseEntity<String> mutationResponse;
         try {
             mutationResponse = putJson(
@@ -271,7 +279,10 @@ class Iam01RevocationIntegrationTest {
         }
 
         assertDependencyUnavailable(mutationResponse);
-        Assertions.assertEquals(versionBefore, currentAuthorizationVersion(), "failed mutation advanced the authoritative version");
+        Assertions.assertEquals(subjectVersionBefore, currentAuthorizationVersion(subjectScope),
+                "failed mutation advanced the authoritative subject version");
+        Assertions.assertEquals(bindingVersionBefore, currentAuthorizationVersion(bindingScope),
+                "failed mutation advanced the authoritative binding version");
         Assertions.assertEquals(1, activeUserRoleCount(fixture.userId(), fixture.roleId()),
                 "user-role removal committed although the authoritative version did not advance");
         assertProtectedSilenceAllowed(fixture.accessToken(), fixture.afterProbeName());
@@ -280,10 +291,15 @@ class Iam01RevocationIntegrationTest {
     @Test
     void dataScopeMutationMustRollBackWhenAuthoritativeVersionBumpFails() throws Exception {
         Fixture fixture = provisionFixture("data-scope-bump-failure", "ALL");
-        long versionBefore = currentAuthorizationVersion();
+        String roleScope = "authorization:role:" + fixture.roleId();
+        String dataPolicyScope = "authorization:data-policy:role:" + fixture.roleId();
+        long roleVersionBefore = currentAuthorizationVersion(roleScope);
+        long dataPolicyVersionBefore = currentAuthorizationVersion(dataPolicyScope);
         Assertions.assertEquals(1, activeDataScopeCount(fixture.roleId(), "ALL"));
 
-        injectAuthorizationVersionBumpFailure();
+        // Role is bumped first. Failing the second, data-policy dimension verifies that
+        // the entire multi-dimensional invalidation remains one transaction boundary.
+        injectAuthorizationVersionBumpFailure(dataPolicyScope);
         ResponseEntity<String> mutationResponse;
         try {
             mutationResponse = putJson(
@@ -296,7 +312,10 @@ class Iam01RevocationIntegrationTest {
         }
 
         assertDependencyUnavailable(mutationResponse);
-        Assertions.assertEquals(versionBefore, currentAuthorizationVersion(), "failed mutation advanced the authoritative version");
+        Assertions.assertEquals(roleVersionBefore, currentAuthorizationVersion(roleScope),
+                "failed mutation advanced the authoritative role version");
+        Assertions.assertEquals(dataPolicyVersionBefore, currentAuthorizationVersion(dataPolicyScope),
+                "failed mutation advanced the authoritative role data-policy version");
         Assertions.assertEquals(1, activeDataScopeCount(fixture.roleId(), "ALL"),
                 "ALL data scope was retired although the authoritative version did not advance");
         Assertions.assertEquals(0, activeDataScopeCount(fixture.roleId(), "SELF"),
@@ -305,9 +324,9 @@ class Iam01RevocationIntegrationTest {
     }
 
     @Test
-    void globalAuthorizationVersionIntentionallyExpiresAnUnrelatedUsersSession() throws Exception {
-        Fixture changedFixture = provisionFixture("global-version-changed", "ALL");
-        Fixture unrelatedFixture = provisionFixture("global-version-unrelated", "ALL");
+    void roleAuthorizationVersionExpiresOnlySessionsContainingThatRole() throws Exception {
+        Fixture changedFixture = provisionFixture("role-version-changed", "ALL");
+        Fixture unrelatedFixture = provisionFixture("role-version-unrelated", "ALL");
         Assertions.assertEquals(1, activeUserRoleCount(unrelatedFixture.userId(), unrelatedFixture.roleId()));
         Assertions.assertEquals(1, activeRolePermissionCount(unrelatedFixture.roleId(), ALERTING_SILENCE_PERMISSION));
         double staleEventsBefore = metric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_STALE);
@@ -320,7 +339,8 @@ class Iam01RevocationIntegrationTest {
         );
         assertApiSuccess(mutationResponse);
 
-        assertOriginalTokenRejectedWithoutWrite(unrelatedFixture.accessToken(), unrelatedFixture.afterProbeName());
+        assertOriginalTokenRejectedWithoutWrite(changedFixture.accessToken(), changedFixture.afterProbeName());
+        assertProtectedSilenceAllowed(unrelatedFixture.accessToken(), unrelatedFixture.afterProbeName());
         Assertions.assertEquals(staleEventsBefore + 1.0, metric(AuthorizationSnapshotMetricNames.AUTHZ_VERSION_STALE));
         Assertions.assertEquals(revokedEventsBefore + 1.0, metric(AuthorizationSnapshotMetricNames.AUTHZ_SESSION_REVOKED));
         Assertions.assertEquals(1, activeUserRoleCount(unrelatedFixture.userId(), unrelatedFixture.roleId()),
@@ -498,13 +518,13 @@ class Iam01RevocationIntegrationTest {
         return count == null ? 0 : count;
     }
 
-    private long currentAuthorizationVersion() {
-        Long version = jdbcTemplate.queryForObject(
-                "select version from ddd_read_model_version where context_name = 'IAM' and scope = 'permission-snapshot'",
-                Long.class
+    private long currentAuthorizationVersion(String scope) {
+        List<Long> versions = jdbcTemplate.query(
+                "select version from ddd_read_model_version where context_name = 'IAM' and scope = ?",
+                (resultSet, rowNumber) -> resultSet.getLong("version"),
+                scope
         );
-        Assertions.assertNotNull(version, "authoritative IAM permission-snapshot version is missing");
-        return version;
+        return versions.isEmpty() ? 0L : versions.getFirst();
     }
 
     private double metric(String name) {
@@ -512,10 +532,20 @@ class Iam01RevocationIntegrationTest {
         return counter == null ? 0.0 : counter.count();
     }
 
-    private void injectAuthorizationVersionBumpFailure() {
+    private String requiredUserUuid(long userId) {
+        String userUuid = jdbcTemplate.queryForObject(
+                "select uuid from sys_user where id = ? and deleted = 0",
+                String.class,
+                userId
+        );
+        Assertions.assertNotNull(userUuid, "fixture user uuid is missing");
+        return userUuid;
+    }
+
+    private void injectAuthorizationVersionBumpFailure(String scope) {
         doThrow(new IllegalStateException("IAM-01 injected authoritative version bump failure"))
                 .when(readModelVersionService)
-                .bump(eq("IAM"), eq("permission-snapshot"), anyString());
+                .bump(eq("IAM"), eq(scope), anyString());
     }
 
     private void restoreAuthorizationVersionBump() {

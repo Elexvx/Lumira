@@ -10,7 +10,7 @@ spring:
       max-file-size: ${UPLOAD_MAX_FILE_SIZE:50MB}
       max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:50MB}
   main:
-    allow-bean-definition-overriding: true
+    allow-bean-definition-overriding: false
     keep-alive: ${SPRING_MAIN_KEEP_ALIVE:true}
   cache:
     type: caffeine
@@ -175,6 +175,8 @@ saas:
     shared-deps-version: ${PLUGIN_SHARED_DEPS_VERSION:1}
     max-gateway-body-bytes: ${PLUGIN_MAX_GATEWAY_BODY_BYTES:1048576}
     require-http-permission: ${PLUGIN_REQUIRE_HTTP_PERMISSION:true}
+    allow-in-process-backend-plugins: ${PLUGIN_ALLOW_IN_PROCESS_BACKEND_PLUGINS:false}
+    release-id: ${LUMIRA_RELEASE_ID:local}
   upload:
     storage-root: ${UPLOAD_STORAGE_ROOT:storage/uploads}
     public-path: /api/uploads

@@ -94,7 +94,7 @@ public class PluginArtifactLoader {
                     packageRoot.resolve("plugin.json").toFile(),
                     PluginDTO.PluginPackageMetadata.class
             );
-            validateMetadata(metadata);
+            validateMetadata(metadata, packageRoot);
             PluginDTO.FrontendPluginManifest frontendManifest = objectMapper.readValue(
                     packageRoot.resolve("lumira-ui/manifest.json").toFile(),
                     PluginDTO.FrontendPluginManifest.class
@@ -195,7 +195,7 @@ public class PluginArtifactLoader {
         return target;
     }
 
-    private void validateMetadata(PluginDTO.PluginPackageMetadata metadata) {
+    private void validateMetadata(PluginDTO.PluginPackageMetadata metadata, Path packageRoot) {
         if (metadata == null) {
             throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin.json is missing or invalid");
         }
@@ -216,6 +216,23 @@ public class PluginArtifactLoader {
         if (metadata.getDependencyPlugins() != null) {
             for (PluginDTO.PluginDependencyDeclaration dependency : metadata.getDependencyPlugins()) {
                 pluginSemver.requireValid(dependency.getMinVersion(), "dependency plugin minimum version");
+            }
+        }
+        Path migrationDir = packageRoot.resolve("migrations/up");
+        if (Files.isDirectory(migrationDir)) {
+            try (var scripts = Files.list(migrationDir)) {
+                if (scripts.anyMatch(path -> path.getFileName().toString().endsWith(".sql"))) {
+                    if (!StringUtils.hasText(metadata.getMigrationSchemaVersion())
+                            || !"expand".equalsIgnoreCase(metadata.getMigrationPhase())
+                            || !StringUtils.hasText(metadata.getRollbackMode())
+                            || metadata.getCompatibleReaders() == null
+                            || metadata.getCompatibleReaders().stream().noneMatch(StringUtils::hasText)) {
+                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID,
+                                "plugin migrations require schemaVersion, EXPAND phase, rollbackMode and compatibleReaders metadata");
+                    }
+                }
+            } catch (IOException exception) {
+                throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin migration metadata could not be inspected");
             }
         }
     }

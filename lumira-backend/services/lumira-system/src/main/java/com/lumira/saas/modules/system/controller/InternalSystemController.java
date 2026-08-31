@@ -18,6 +18,7 @@ import com.lumira.api.system.LoginCapabilitiesDTO;
 import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.PasswordLoginVerificationDTO;
+import com.lumira.api.system.PasswordLoginVerificationRequest;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import com.lumira.api.system.PasskeyCredentialAssertionDTO;
 import com.lumira.api.system.PasskeyCredentialDescriptorDTO;
@@ -36,6 +37,7 @@ import com.lumira.api.system.VerificationBindingChallengeDTO;
 import com.lumira.api.system.VerificationChallengeDTO;
 import com.lumira.api.system.VerificationProviderDTO;
 import com.lumira.api.system.VerificationVerificationDTO;
+import com.lumira.api.system.VerificationCodeCheckRequest;
 import com.lumira.api.system.WechatLoginSettingsDTO;
 import com.lumira.api.system.WechatLoginUserRequestDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -55,6 +57,7 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
 import com.lumira.saas.modules.system.app.MaintenanceLoginPolicyService;
 import com.lumira.saas.modules.system.internal.app.InternalSystemApplicationService;
+import com.lumira.saas.modules.system.internal.app.SystemInternalApplicationPort;
 import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.user.domain.UserDomainService;
@@ -91,7 +94,7 @@ import java.util.LinkedHashSet;
 
 @RestController
 @RequestMapping("/internal/system")
-public class InternalSystemController {
+public class InternalSystemController implements SystemInternalApplicationPort {
 
     private static final Logger log = LoggerFactory.getLogger(InternalSystemController.class);
 
@@ -217,9 +220,17 @@ public class InternalSystemController {
     }
 
     @PostMapping("/users/login/verify")
+    @Override
+    public PasswordLoginVerificationDTO verifyPasswordLogin(@Valid @RequestBody PasswordLoginVerificationRequest request) {
+        if (request == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Login verification request is required");
+        }
+        return verifyPasswordLogin(request.account(), request.password());
+    }
+
     public PasswordLoginVerificationDTO verifyPasswordLogin(
-            @RequestParam("account") String account,
-            @RequestParam("password") String password
+            String account,
+            String password
     ) {
         requireInternalServicePrincipal();
         String normalizedAccount = requireText(account, "account");
@@ -843,12 +854,25 @@ public class InternalSystemController {
     }
 
     @PostMapping("/verification/providers/{factorCode}/verify")
+    @Override
     public VerificationVerificationDTO verificationVerify(
             @RequestParam("userId") Long userId,
             @RequestParam("userUuid") String userUuid,
             @PathVariable("factorCode") String factorCode,
-            @RequestParam("challengeId") String challengeId,
-            @RequestParam("verificationCode") String verificationCode
+            @Valid @RequestBody VerificationCodeCheckRequest request
+    ) {
+        if (request == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Verification request is required");
+        }
+        return verificationVerify(userId, userUuid, factorCode, request.challengeId(), request.verificationCode());
+    }
+
+    public VerificationVerificationDTO verificationVerify(
+            Long userId,
+            String userUuid,
+            String factorCode,
+            String challengeId,
+            String verificationCode
     ) {
         requireInternalServicePrincipal();
         return toVerification(

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.competition.CompetitionPaymentEventHandler;
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Range;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisStreamCommands;
+import org.springframework.data.redis.connection.Limit;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.PendingMessages;
@@ -35,6 +38,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Consumes paid-order events with at-least-once Redis Stream delivery.
@@ -54,6 +58,8 @@ public class PaymentEventStreamConsumer {
     static final int PENDING_RECOVERY_LIMIT = 1_000;
     static final int MAX_PAYLOAD_LENGTH = 64 * 1024;
     static final int DEFAULT_MAX_DELIVERY_COUNT = 8;
+    static final long DEFAULT_STREAM_MAX_LENGTH = 100_000L;
+    static final long DEFAULT_DEAD_LETTER_MAX_LENGTH = 50_000L;
     static final Duration DEFAULT_PENDING_RECOVERY_MINIMUM_IDLE = Duration.ofSeconds(30);
     static final Duration DEFAULT_PENDING_RECOVERY_INTERVAL = Duration.ofSeconds(30);
 
@@ -68,6 +74,8 @@ public class PaymentEventStreamConsumer {
     private final Duration pendingRecoveryMinimumIdle;
     private final Duration pendingRecoveryInterval;
     private final int maxDeliveryCount;
+    private final long streamMaxLength;
+    private final long deadLetterMaxLength;
     private final Counter consumedCounter;
     private final Counter duplicateCounter;
     private final Counter nonTargetCounter;
@@ -75,6 +83,10 @@ public class PaymentEventStreamConsumer {
     private final Counter reclaimedCounter;
     private final Counter deadLetterCounter;
     private final AsyncRuntimeDrainCoordinator drainCoordinator;
+    private final AtomicLong pendingCountGauge = new AtomicLong();
+    private final AtomicLong oldestPendingAgeSecondsGauge = new AtomicLong();
+    private final AtomicLong deadLetterCountGauge = new AtomicLong();
+    private final AtomicLong streamLengthGauge = new AtomicLong();
     private StreamMessageListenerContainer<String, MapRecord<String, String, String>> container;
     private ScheduledExecutorService recoveryExecutor;
 
@@ -99,7 +111,8 @@ public class PaymentEventStreamConsumer {
     ) {
         this(connectionFactory, redis, objectMapper, handler, meterRegistry, configuredStreamKey, configuredGroupName,
                 configuredConsumerName, configuredPendingRecoveryMinimumIdle, configuredPendingRecoveryInterval,
-                configuredMaxDeliveryCount, new AsyncRuntimeDrainCoordinator());
+                configuredMaxDeliveryCount, DEFAULT_STREAM_MAX_LENGTH, DEFAULT_DEAD_LETTER_MAX_LENGTH,
+                new AsyncRuntimeDrainCoordinator());
     }
 
     @Autowired
@@ -115,6 +128,8 @@ public class PaymentEventStreamConsumer {
             @Value("${lumira.event.payment-consumer.pending-recovery-minimum-idle:30s}") Duration configuredPendingRecoveryMinimumIdle,
             @Value("${lumira.event.payment-consumer.pending-recovery-interval:30s}") Duration configuredPendingRecoveryInterval,
             @Value("${lumira.event.payment-consumer.max-delivery-count:8}") int configuredMaxDeliveryCount,
+            @Value("${lumira.event.payment-consumer.stream-max-length:100000}") long configuredStreamMaxLength,
+            @Value("${lumira.event.payment-consumer.dead-letter-max-length:50000}") long configuredDeadLetterMaxLength,
             AsyncRuntimeDrainCoordinator drainCoordinator
     ) {
         this.connectionFactory = connectionFactory;
@@ -139,6 +154,8 @@ public class PaymentEventStreamConsumer {
                 configuredMaxDeliveryCount,
                 "max delivery count"
         );
+        this.streamMaxLength = minimumLong(configuredStreamMaxLength, 1_000L, "stream max length");
+        this.deadLetterMaxLength = minimumLong(configuredDeadLetterMaxLength, 100L, "dead letter max length");
         this.drainCoordinator = drainCoordinator;
         this.consumedCounter = Counter.builder("lumira.payment.consumer.events.consumed")
                 .description("Paid-order events whose side effect was applied")
@@ -157,6 +174,18 @@ public class PaymentEventStreamConsumer {
                 .register(meterRegistry);
         this.deadLetterCounter = Counter.builder("lumira.payment.consumer.events.dead-letter")
                 .description("Paid-order events copied to the dead-letter stream")
+                .register(meterRegistry);
+        Gauge.builder("lumira.payment.consumer.pending.count", pendingCountGauge, AtomicLong::get)
+                .description("Current pending payment Stream entries")
+                .register(meterRegistry);
+        Gauge.builder("lumira.payment.consumer.pending.oldest.age.seconds", oldestPendingAgeSecondsGauge, AtomicLong::get)
+                .description("Age of the oldest pending payment Stream entry")
+                .register(meterRegistry);
+        Gauge.builder("lumira.payment.consumer.dead-letter.count", deadLetterCountGauge, AtomicLong::get)
+                .description("Current payment dead-letter Stream size")
+                .register(meterRegistry);
+        Gauge.builder("lumira.payment.consumer.stream.length", streamLengthGauge, AtomicLong::get)
+                .description("Current payment source Stream size")
                 .register(meterRegistry);
     }
 
@@ -223,6 +252,80 @@ public class PaymentEventStreamConsumer {
             log.warn("Unable to inspect payment event pending count stream={} group={}: {}", streamKey, groupName, exception.getMessage());
             return -1L;
         }
+    }
+
+    StreamStats streamStats() {
+        refreshStreamMetrics();
+        return new StreamStats(
+                streamLengthGauge.get(),
+                pendingCountGauge.get(),
+                oldestPendingAgeSecondsGauge.get(),
+                deadLetterCountGauge.get(),
+                streamMaxLength,
+                deadLetterMaxLength
+        );
+    }
+
+    List<DeadLetterRecord> deadLetters(int limit) {
+        int boundedLimit = Math.max(1, Math.min(limit, 100));
+        List<MapRecord<String, String, String>> records = redis.<String, String>opsForStream().reverseRange(
+                deadLetterStreamKey,
+                Range.unbounded(),
+                Limit.limit().count(boundedLimit)
+        );
+        if (records == null) return List.of();
+        return records.stream()
+                .map(record -> new DeadLetterRecord(record.getId().getValue(), Map.copyOf(record.getValue())))
+                .toList();
+    }
+
+    ReplayResult replayDeadLetter(String recordId) {
+        String normalizedId = requiredStreamId(recordId);
+        var stream = redis.<String, String>opsForStream();
+        List<MapRecord<String, String, String>> records = stream.range(
+                deadLetterStreamKey,
+                Range.closed(normalizedId, normalizedId),
+                Limit.limit().count(1)
+        );
+        if (records == null || records.isEmpty()) {
+            return new ReplayResult(false, normalizedId, null, false, null, null, null, null);
+        }
+        Map<String, String> replay = new LinkedHashMap<>(records.getFirst().getValue());
+        String originalStreamId = replay.get("originalStreamId");
+        String consumerGroup = replay.get("consumerGroup");
+        String failedAt = replay.get("failedAt");
+        String failureReason = replay.get("failureReason");
+        replay.remove("originalStreamId");
+        replay.remove("consumerGroup");
+        replay.remove("failedAt");
+        replay.remove("failureReason");
+        RecordId replayedId = stream.add(
+                MapRecord.create(streamKey, replay),
+                RedisStreamCommands.XAddOptions.maxlen(streamMaxLength).approximateTrimming(true)
+        );
+        Long deleted = stream.delete(deadLetterStreamKey, records.getFirst().getId());
+        boolean dlqDeleted = deleted != null && deleted > 0L;
+        if (!dlqDeleted) {
+            log.warn("Payment dead-letter replay appended but source DLQ record was not deleted id={}", normalizedId);
+        }
+        ReplayResult result = new ReplayResult(
+                true,
+                normalizedId,
+                replayedId == null ? null : replayedId.getValue(),
+                dlqDeleted,
+                originalStreamId,
+                consumerGroup,
+                failedAt,
+                failureReason
+        );
+        log.info(
+                "Payment dead-letter replay result dlqRecordId={} replayedStreamId={} dlqDeleted={}",
+                result.dlqRecordId(),
+                result.replayedStreamId(),
+                result.dlqDeleted()
+        );
+        refreshStreamMetrics();
+        return result;
     }
 
     void onMessage(MapRecord<String, String, String> message) {
@@ -332,6 +435,7 @@ public class PaymentEventStreamConsumer {
         }
         try {
             recoverPendingMessages(pendingRecoveryMinimumIdle);
+            refreshStreamMetrics();
         } catch (RuntimeException exception) {
             failedCounter.increment();
             log.warn(
@@ -400,7 +504,10 @@ public class PaymentEventStreamConsumer {
             deadLetter.put("consumerGroup", groupName);
             deadLetter.put("failedAt", Instant.now().toString());
             deadLetter.put("failureReason", truncate(reason, 1_024));
-            redis.opsForStream().add(MapRecord.create(deadLetterStreamKey, deadLetter));
+            redis.opsForStream().add(
+                    MapRecord.create(deadLetterStreamKey, deadLetter),
+                    RedisStreamCommands.XAddOptions.maxlen(deadLetterMaxLength).approximateTrimming(true)
+            );
             acknowledge(message);
             deadLetterCounter.increment();
             log.error(
@@ -432,6 +539,52 @@ public class PaymentEventStreamConsumer {
             current = current.getCause();
         }
         return false;
+    }
+
+    private void refreshStreamMetrics() {
+        try {
+            var stream = redis.<String, String>opsForStream();
+            var pending = stream.pending(streamKey, groupName);
+            long pendingCount = pending == null ? 0L : pending.getTotalPendingMessages();
+            pendingCountGauge.set(pendingCount);
+            oldestPendingAgeSecondsGauge.set(pendingCount == 0L || pending.minMessageId() == null
+                    ? 0L
+                    : streamIdAgeSeconds(pending.minMessageId()));
+            deadLetterCountGauge.set(nullToZero(stream.size(deadLetterStreamKey)));
+            streamLengthGauge.set(nullToZero(stream.size(streamKey)));
+        } catch (RuntimeException exception) {
+            pendingCountGauge.set(-1L);
+            oldestPendingAgeSecondsGauge.set(-1L);
+            deadLetterCountGauge.set(-1L);
+            streamLengthGauge.set(-1L);
+            log.warn("Unable to refresh payment Stream metrics: {}", exception.getMessage());
+        }
+    }
+
+    private long streamIdAgeSeconds(String streamId) {
+        try {
+            long createdAtMillis = Long.parseLong(streamId.substring(0, streamId.indexOf('-')));
+            return Math.max(0L, (System.currentTimeMillis() - createdAtMillis) / 1_000L);
+        } catch (RuntimeException exception) {
+            return -1L;
+        }
+    }
+
+    private String requiredStreamId(String value) {
+        String normalized = requiredText(value, "dead-letter stream id", 64);
+        if (!normalized.matches("[0-9]+-[0-9]+")) {
+            throw new IllegalArgumentException("dead-letter stream id is invalid");
+        }
+        return normalized;
+    }
+
+    private long minimumLong(long value, long minimum, String field) {
+        if (value < minimum) throw new IllegalArgumentException(field + " must be at least " + minimum);
+        return value;
+    }
+
+    private long nullToZero(Long value) {
+        return value == null ? 0L : Math.max(0L, value);
     }
 
     private Long positiveLong(JsonNode node, String field) {
@@ -492,4 +645,26 @@ public class PaymentEventStreamConsumer {
             String userUuid
     ) {
     }
+
+    record StreamStats(
+            long streamLength,
+            long pendingCount,
+            long oldestPendingAgeSeconds,
+            long deadLetterCount,
+            long streamMaxLength,
+            long deadLetterMaxLength
+    ) { }
+
+    record DeadLetterRecord(String id, Map<String, String> values) { }
+
+    record ReplayResult(
+            boolean found,
+            String dlqRecordId,
+            String replayedStreamId,
+            boolean dlqDeleted,
+            String originalStreamId,
+            String consumerGroup,
+            String failedAt,
+            String failureReason
+    ) { }
 }

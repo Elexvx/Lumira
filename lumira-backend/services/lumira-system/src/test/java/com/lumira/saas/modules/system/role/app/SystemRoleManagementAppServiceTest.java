@@ -209,7 +209,7 @@ class SystemRoleManagementAppServiceTest {
         assertEquals(1, jdbcTemplate.lastInsertIdQueries);
         assertTrue(jdbcTemplate.deletedRolePermissions);
         assertTrue(jdbcTemplate.insertedPermissionKeys.isEmpty());
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService, never()).invalidatePermissions();
         assertEquals(2001L, role.getId());
     }
 
@@ -228,7 +228,7 @@ class SystemRoleManagementAppServiceTest {
                 .contains("on duplicate key update")
                 .contains("scope_type = values(scope_type)")
                 .contains("deleted = 0"));
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService, never()).invalidatePermissions();
     }
 
     @Test
@@ -334,7 +334,7 @@ class SystemRoleManagementAppServiceTest {
                 .contains("r.role_type = ?")
                 .contains("on duplicate key update")
                 .contains("deleted = 0"));
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidatePermissionsForRole(2001L);
     }
 
     @Test
@@ -350,7 +350,7 @@ class SystemRoleManagementAppServiceTest {
                 List.of("system:user:view", "system:role:view")
         ));
 
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidatePermissionsForRole(2001L);
     }
 
     @Test
@@ -364,7 +364,7 @@ class SystemRoleManagementAppServiceTest {
         assertTrue(updated);
         assertTrue(jdbcTemplate.deletedRolePermissions);
         assertEquals(List.of("system:user:view", "system:role:view"), jdbcTemplate.insertedPermissionKeys);
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidatePermissionsForRole(2001L);
     }
 
     @Test

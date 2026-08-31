@@ -107,7 +107,10 @@ public class AsyncRuntimeReadinessV2Controller {
                         "/api/v2/async/health",
                         "/api/v2/async/metrics",
                         "/api/v1/async/version",
-                        "/internal/jobs/outbox/relay"
+                        "/internal/jobs/outbox/recovery/{mode}/{owner}",
+                        "/internal/jobs/payment-events/dead-letter",
+                        "/internal/jobs/payment-events/dead-letter/stats",
+                        "/internal/jobs/payment-events/dead-letter/{recordId}/replay"
                 ),
                 List.of("Redis Stream payment consumer", "owner Outbox relay requests"),
                 List.of(
@@ -121,7 +124,11 @@ public class AsyncRuntimeReadinessV2Controller {
                         "lumira.event.relay.published",
                         "lumira.event.relay.failure",
                         "lumira.payment.consumer.events.consumed",
-                        "lumira.payment.consumer.events.failed"
+                        "lumira.payment.consumer.events.failed",
+                        "lumira.payment.consumer.stream.length",
+                        "lumira.payment.consumer.pending.count",
+                        "lumira.payment.consumer.pending.oldest.age.seconds",
+                        "lumira.payment.consumer.dead-letter.count"
                 ),
                 List.of("Redis", "active control-plane slot through api-proxy", "owner-scoped internal tokens"),
                 List.of(
@@ -180,7 +187,11 @@ public class AsyncRuntimeReadinessV2Controller {
                         metric("lumira.event.relay.published", "counter", "events", "Owner relay events published by the async worker."),
                         metric("lumira.event.relay.failure", "counter", "failures", "Owner relay call failures."),
                         metric("lumira.payment.consumer.events.consumed", "counter", "events", "Competition payment events consumed from Redis Streams."),
-                        metric("lumira.payment.consumer.events.failed", "counter", "failures", "Payment consumer failures retained for retry or dead-letter handling.")
+                        metric("lumira.payment.consumer.events.failed", "counter", "failures", "Payment consumer failures retained for retry or dead-letter handling."),
+                        metric("lumira.payment.consumer.stream.length", "gauge", "messages", "Current payment source Stream length."),
+                        metric("lumira.payment.consumer.pending.count", "gauge", "messages", "Current payment Stream pending count."),
+                        metric("lumira.payment.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending payment Stream entry."),
+                        metric("lumira.payment.consumer.dead-letter.count", "gauge", "messages", "Current payment DLQ count.")
                 )
         );
     }

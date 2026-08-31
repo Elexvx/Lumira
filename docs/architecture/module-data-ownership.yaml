@@ -1,0 +1,124 @@
+schemaVersion: 1
+defaultMigrationLocation: deploy/migrations
+metadata:
+  required:
+    - lumira:owner
+    - lumira:migration-phase
+    - lumira:rollback
+    - lumira:compatible-readers
+    - lumira:cleanup-after
+  allowedPhases: [expand]
+  normalRollback: application-only
+sharedTables:
+  platform_event_outbox:
+    owner: message
+    allowedProducers: [message, file]
+modules:
+  - module: auth
+    ownedTables: [sys_user_passkey_credential, sys_user_wechat_binding, sys_verification_binding, sys_verification_challenge]
+    readModels: []
+    outboxTable: null
+    allowedCrossModulePorts: [UserIdentityQueryPort, VerificationPort, PasskeyPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: iam
+    ownedTables: [iam_user*, iam_subject*, iam_permission, iam_delegation_grant, sys_user, sys_role, sys_role_permission, sys_menu, sys_permission, sys_user_role, sys_department, sys_department_closure, sys_user_department, sys_role_data_scope]
+    readModels: [ddd_read_model_version:IAM/*]
+    outboxTable: null
+    allowedCrossModulePorts: [UserIdentityQueryPort, PermissionSnapshotPort, AuthorizationVersionPort, MenuCatalogPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: platform
+    ownedTables: [sys_config, sys_config_metadata, sys_config_version_head, sys_config_version, sys_config_version_item, sys_dict_*, sys_platform_*, audit_*, security_audit_event, event_consumer_receipt, async_task, ddd_read_model_version, sys_user_draft, sys_sensitive_word, sys_work_order_feedback, sys_account_activation_token, platform_update_task]
+    readModels: [ddd_read_model_version:PLATFORM/*]
+    outboxTable: null
+    allowedCrossModulePorts: [RuntimeConfigurationPort, AuditWritePort, ReadModelVersionPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: activity
+    ownedTables: [aiadc_activity, aiadc_activity_registration]
+    readModels: [event_catalog_item]
+    outboxTable: platform_event_outbox
+    allowedCrossModulePorts: [EventCatalogPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: competition
+    ownedTables: [aiadc_competition, competition_*, registration_material_submission, registration_material_value, registration_material_value_revision, certificate_*]
+    readModels: [event_catalog_item]
+    outboxTable: platform_event_outbox
+    allowedCrossModulePorts: [RegistrationPort, ReviewPort, TeamPort, PaymentPort, FilePort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: event-catalog
+    ownedTables: [event_catalog_item]
+    readModels: [event_catalog_item]
+    outboxTable: null
+    allowedCrossModulePorts: []
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: project
+    ownedTables: [aiadc_project]
+    readModels: []
+    outboxTable: null
+    allowedCrossModulePorts: []
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: expert
+    ownedTables: [aiadc_expert]
+    readModels: []
+    outboxTable: null
+    allowedCrossModulePorts: [UserIdentityQueryPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: workflow
+    ownedTables: [workflow_*]
+    readModels: []
+    outboxTable: platform_event_outbox
+    allowedCrossModulePorts: [ReviewPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: export
+    ownedTables: [sys_export_task]
+    readModels: []
+    outboxTable: null
+    allowedCrossModulePorts: [FilePort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: message
+    ownedTables: [msg_*, platform_event_outbox]
+    readModels: []
+    outboxTable: platform_event_outbox
+    allowedCrossModulePorts: [UserIdentityQueryPort, RuntimeConfigurationPort, AuditWritePort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: file
+    ownedTables: [file_object, file_storage_space, file_processing_task, file_processing_artifact]
+    readModels: []
+    outboxTable: platform_event_outbox
+    allowedCrossModulePorts: [FilePort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: plugin
+    ownedTables: [sys_plugin_*, plugin_event_outbox, plugin_*_*]
+    readModels: [ddd_read_model_version:PLUGIN/*]
+    outboxTable: plugin_event_outbox
+    allowedCrossModulePorts: [PluginPermissionRegistrationPort, MenuCatalogPort, ReadModelVersionPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql, plugin-package:migrations/up]
+  - module: localization
+    ownedTables: [sys_localization_*]
+    readModels: []
+    outboxTable: null
+    allowedCrossModulePorts: []
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: payment
+    ownedTables: [payment_*]
+    readModels: []
+    outboxTable: platform_event_outbox
+    allowedCrossModulePorts: [UserIdentityQueryPort, ReadModelVersionPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: ai
+    ownedTables: [ai_*]
+    readModels: []
+    outboxTable: null
+    allowedCrossModulePorts: [PermissionSnapshotPort, MenuCatalogPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: team
+    ownedTables: [team, team_member, team_invite, team_join_request]
+    readModels: []
+    outboxTable: platform_event_outbox
+    allowedCrossModulePorts: [UserIdentityQueryPort, AuditWritePort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: job
+    ownedTables: []
+    readModels: []
+    outboxTable: null
+    allowedCrossModulePorts: [AsyncRecoveryPort, RuntimeControlPort]
+    migrationLocations: []

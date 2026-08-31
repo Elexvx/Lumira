@@ -17,8 +17,14 @@ services:
     mem_limit: ${MYSQL_MEM_LIMIT:-768m}
     cpus: ${MYSQL_CPUS:-1.0}
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-saas}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_MIGRATION_PASSWORD: ${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD is required}
+      MYSQL_BACKUP_PASSWORD: ${MYSQL_BACKUP_PASSWORD:?MYSQL_BACKUP_PASSWORD is required}
+      MYSQL_RESTORE_PASSWORD: ${MYSQL_RESTORE_PASSWORD:?MYSQL_RESTORE_PASSWORD is required}
+      XXL_JOB_DB_PASSWORD: ${XXL_JOB_DB_PASSWORD:?XXL_JOB_DB_PASSWORD is required}
+      MYSQLD_EXPORTER_PASSWORD: ${MYSQLD_EXPORTER_PASSWORD:?MYSQLD_EXPORTER_PASSWORD is required}
       MYSQL_INITDB_SKIP_TZINFO: '1'
       TZ: Asia/Shanghai
       DATABASE_VERSION: ${DATABASE_VERSION:-unknown}
@@ -38,9 +44,9 @@ services:
     - mysql_data:/var/lib/mysql
     - ../lumira-backend/sql/saas.sql:/docker-entrypoint-initdb.d/001-saas.sql:ro
     - ./.generated/database-version/002-database-version.sql:/docker-entrypoint-initdb.d/002-database-version.sql:ro
+    - ./database/init-database-roles.sh:/docker-entrypoint-initdb.d/003-database-roles.sh:ro
     networks:
-    - default
-    - 1panel-network
+    - data-network
     healthcheck:
       test:
       - CMD-SHELL
@@ -49,25 +55,72 @@ services:
       timeout: ${MYSQL_HEALTH_TIMEOUT:-5s}
       retries: ${MYSQL_HEALTH_RETRIES:-30}
       start_period: ${MYSQL_HEALTH_START_PERIOD:-30s}
-  redis:
+  redis-cache:
     image: ${REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7.4}
-    container_name: lumira-redis
+    container_name: lumira-redis-cache
     restart: unless-stopped
     logging: *id001
-    mem_limit: ${REDIS_MEM_LIMIT:-384m}
-    cpus: ${REDIS_CPUS:-0.5}
-    command: 'sh -c ''if [ -n "$$REDIS_PASSWORD" ]; then redis-server --appendonly
-      yes --maxmemory "$${REDIS_MAXMEMORY:-256mb}" --maxmemory-policy allkeys-lru
-      --requirepass "$$REDIS_PASSWORD"; else redis-server --appendonly yes --maxmemory
-      "$${REDIS_MAXMEMORY:-256mb}" --maxmemory-policy allkeys-lru; fi''
-
-      '
+    user: "999:999"
+    read_only: true
+    security_opt:
+    - no-new-privileges:true
+    cap_drop:
+    - ALL
+    mem_limit: ${REDIS_CACHE_MEM_LIMIT:-192m}
+    cpus: ${REDIS_CACHE_CPUS:-0.25}
+    command:
+    - sh
+    - -ec
+    - exec redis-server --appendonly no --save "" --maxmemory "$${REDIS_MAXMEMORY}" --maxmemory-policy allkeys-lru --requirepass "$${REDIS_PASSWORD}"
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-256mb}
+      REDIS_PASSWORD: ${REDIS_CACHE_PASSWORD:?REDIS_CACHE_PASSWORD is required}
+      REDIS_MAXMEMORY: ${REDIS_CACHE_MAXMEMORY:-128mb}
       TZ: Asia/Shanghai
     volumes:
-    - redis_data:/data
+    - redis_cache_data:/data
+    tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev
+    networks:
+    - data-network
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli -h 127.0.0.1 ping | grep -qx PONG']
+      interval: ${REDIS_CACHE_HEALTH_INTERVAL:-10s}
+      timeout: ${REDIS_CACHE_HEALTH_TIMEOUT:-5s}
+      retries: ${REDIS_CACHE_HEALTH_RETRIES:-12}
+      start_period: ${REDIS_CACHE_HEALTH_START_PERIOD:-5s}
+  redis-runtime:
+    image: ${REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7.4}
+    container_name: lumira-redis-runtime
+    restart: unless-stopped
+    logging: *id001
+    user: "999:999"
+    read_only: true
+    security_opt:
+    - no-new-privileges:true
+    cap_drop:
+    - ALL
+    mem_limit: ${REDIS_RUNTIME_MEM_LIMIT:-384m}
+    cpus: ${REDIS_RUNTIME_CPUS:-0.5}
+    command:
+    - sh
+    - -ec
+    - exec redis-server --appendonly yes --appendfsync everysec --maxmemory "$${REDIS_MAXMEMORY}" --maxmemory-policy noeviction --requirepass "$${REDIS_PASSWORD}"
+    environment:
+      REDIS_PASSWORD: ${REDIS_RUNTIME_PASSWORD:?REDIS_RUNTIME_PASSWORD is required}
+      REDIS_MAXMEMORY: ${REDIS_RUNTIME_MAXMEMORY:-256mb}
+      TZ: Asia/Shanghai
+    volumes:
+    - redis_runtime_data:/data
+    tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev
+    networks:
+    - data-network
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli -h 127.0.0.1 ping | grep -qx PONG']
+      interval: ${REDIS_RUNTIME_HEALTH_INTERVAL:-10s}
+      timeout: ${REDIS_RUNTIME_HEALTH_TIMEOUT:-5s}
+      retries: ${REDIS_RUNTIME_HEALTH_RETRIES:-12}
+      start_period: ${REDIS_RUNTIME_HEALTH_START_PERIOD:-5s}
   xxl-job-admin:
     build:
       context: ..
@@ -87,8 +140,8 @@ services:
     environment:
       JAVA_OPTS: ${XXL_JOB_ADMIN_JAVA_OPTS:--Xms64m -Xmx256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200
         -Djava.security.egd=file:/dev/./urandom}
-      PARAMS: --server.port=8080 --spring.datasource.url=jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-saas}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
-        --spring.datasource.username=root --spring.datasource.password=${DB_PASSWORD:?DB_PASSWORD
+      PARAMS: --server.port=8080 --spring.datasource.url=${XXL_JOB_DB_URL:?XXL_JOB_DB_URL is required}
+        --spring.datasource.username=${XXL_JOB_DB_USERNAME:?XXL_JOB_DB_USERNAME is required} --spring.datasource.password=${XXL_JOB_DB_PASSWORD:?XXL_JOB_DB_PASSWORD
         is required} --xxl.job.accessToken=${XXL_JOB_ADMIN_ACCESS_TOKEN:?XXL_JOB_ADMIN_ACCESS_TOKEN
         is required} --xxl.job.login.username=admin --xxl.job.login.password=${XXL_JOB_LOGIN_PASSWORD:?XXL_JOB_LOGIN_PASSWORD
         is required}
@@ -102,8 +155,8 @@ services:
       retries: ${XXL_JOB_ADMIN_HEALTH_RETRIES:-30}
       start_period: ${XXL_JOB_ADMIN_HEALTH_START_PERIOD:-30s}
     networks:
-    - default
-    - 1panel-network
+    - app-network
+    - data-network
   api-proxy:
     image: ${NGINX_IMAGE:-docker.m.daocloud.io/library/nginx:1.29-alpine}
     container_name: lumira-api-proxy
@@ -116,6 +169,10 @@ services:
     volumes:
     - ./nginx/api.conf.template:/etc/nginx/templates/api.conf.template:ro
     - ./.generated/api-proxy:/etc/nginx/lumira-upstreams:ro
+    networks:
+    - edge-network
+    - app-network
+    - 1panel-network
   lumira-ui-blue: &lumira-ui
     profiles:
     - local-lumira-ui
@@ -147,6 +204,8 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+    networks:
+    - edge-network
   lumira-ui-green:
     <<: *lumira-ui
     profiles:
@@ -174,6 +233,9 @@ services:
     - ./data/tls:/etc/nginx/certs:ro
     depends_on:
     - api-proxy
+    networks:
+    - edge-network
+    - 1panel-network
   prometheus:
     profiles:
     - observability
@@ -195,8 +257,12 @@ services:
         condition: service_started
       redis-exporter:
         condition: service_started
+      redis-runtime-exporter:
+        condition: service_started
       backup-metrics-exporter:
         condition: service_started
+    networks:
+    - observability-network
   mysqld-exporter:
     profiles:
     - observability
@@ -286,6 +352,9 @@ services:
       timeout: ${MYSQLD_EXPORTER_HEALTH_TIMEOUT:-5s}
       retries: ${MYSQLD_EXPORTER_HEALTH_RETRIES:-5}
       start_period: ${MYSQLD_EXPORTER_HEALTH_START_PERIOD:-10s}
+    networks:
+    - data-network
+    - observability-network
   redis-exporter:
     profiles:
     - observability
@@ -302,13 +371,42 @@ services:
     mem_limit: ${REDIS_EXPORTER_MEM_LIMIT:-64m}
     cpus: ${REDIS_EXPORTER_CPUS:-0.15}
     environment:
-      REDIS_ADDR: redis://redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDIS_ADDR: redis://${REDIS_CACHE_HOST:-redis-cache}:${REDIS_CACHE_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_CACHE_PASSWORD:?REDIS_CACHE_PASSWORD is required}
     expose:
     - '9121'
     depends_on:
-      redis:
-        condition: service_started
+      redis-cache:
+        condition: service_healthy
+    networks:
+    - data-network
+    - observability-network
+  redis-runtime-exporter:
+    profiles:
+    - observability
+    image: ${REDIS_EXPORTER_IMAGE:-docker.m.daocloud.io/oliver006/redis_exporter@sha256:120f7ec77293459ccfdad66bb1db75ab72e8bfeab99f58b1cc2564cadcd7a9e7}
+    container_name: lumira-redis-runtime-exporter
+    restart: unless-stopped
+    logging: *id001
+    user: "59000:59000"
+    read_only: true
+    security_opt:
+    - no-new-privileges:true
+    cap_drop:
+    - ALL
+    mem_limit: ${REDIS_RUNTIME_EXPORTER_MEM_LIMIT:-64m}
+    cpus: ${REDIS_RUNTIME_EXPORTER_CPUS:-0.15}
+    environment:
+      REDIS_ADDR: redis://${REDIS_RUNTIME_HOST:-redis-runtime}:${REDIS_RUNTIME_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_RUNTIME_PASSWORD:?REDIS_RUNTIME_PASSWORD is required}
+    expose:
+    - '9121'
+    depends_on:
+      redis-runtime:
+        condition: service_healthy
+    networks:
+    - data-network
+    - observability-network
   backup-metrics-exporter:
     profiles:
     - observability
@@ -332,6 +430,8 @@ services:
     - '9100'
     volumes:
     - ./.generated/backup-metrics:/var/lib/node-exporter/textfile:ro
+    networks:
+    - observability-network
   loki:
     profiles:
     - observability
@@ -346,6 +446,8 @@ services:
     volumes:
     - ./observability/loki-config.yml:/etc/loki/config.yml:ro
     - loki_data:/loki
+    networks:
+    - observability-network
   tempo:
     profiles:
     - observability
@@ -360,6 +462,8 @@ services:
     volumes:
     - ./observability/tempo.yml:/etc/tempo/tempo.yml:ro
     - tempo_data:/var/tempo
+    networks:
+    - observability-network
   alloy:
     profiles:
     - observability
@@ -377,10 +481,12 @@ services:
     - 127.0.0.1:12345:12345
     volumes:
     - ./observability/alloy.alloy:/etc/alloy/config.alloy:ro
-    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - ${DOCKER_LOG_ROOT_HOST_PATH:-/var/lib/docker/containers}:/var/lib/docker/containers:ro
     depends_on:
     - loki
     - tempo
+    networks:
+    - observability-network
   grafana:
     profiles:
     - observability
@@ -410,6 +516,8 @@ services:
     - prometheus
     - loki
     - tempo
+    networks:
+    - observability-network
   lumira-server-blue: &lumira-server
     profiles:
     - blue
@@ -440,14 +548,22 @@ services:
       TZ: Asia/Shanghai
       SPRING_APPLICATION_JSON: ${SPRING_APPLICATION_JSON:-{"saas":{"system":{"service-base-url":"http://localhost:8080"},"auth":{"service-base-url":"http://localhost:8080"},"file":{"service-base-url":"http://localhost:8080"},"payment":{"service-base-url":"http://localhost:8080"},"team":{"service-base-url":"http://localhost:8080"}}}}
       DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
-      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       LEGENDARY_MONOLITH: 'true'
       LUMIRA_MONOLITH: ${LUMIRA_MONOLITH:-true}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-      REDIS_DATABASE: 0
+      # The existing fail-closed Spring connection is pinned to runtime Redis.
+      # Cache-aware adapters use the explicit cache plane variables below.
+      REDIS_HOST: ${REDIS_RUNTIME_HOST:-redis-runtime}
+      REDIS_PORT: ${REDIS_RUNTIME_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_RUNTIME_PASSWORD:?REDIS_RUNTIME_PASSWORD is required}
+      REDIS_RUNTIME_URL: ${REDIS_RUNTIME_URL:-redis://redis-runtime:6379}
+      REDIS_CACHE_HOST: ${REDIS_CACHE_HOST:-redis-cache}
+      REDIS_CACHE_PORT: ${REDIS_CACHE_PORT:-6379}
+      REDIS_CACHE_PASSWORD: ${REDIS_CACHE_PASSWORD:?REDIS_CACHE_PASSWORD is required}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis-cache:6379}
+      REDIS_RUNTIME_STREAM_MAXLEN: ${REDIS_RUNTIME_STREAM_MAXLEN:-100000}
+      REDIS_RUNTIME_DLQ_MAXLEN: ${REDIS_RUNTIME_DLQ_MAXLEN:-50000}
       LUMIRA_EVENT_REVIEW_RESULT_CONSUMER_ENABLED: ${LUMIRA_EVENT_REVIEW_RESULT_CONSUMER_ENABLED:-true}
       LUMIRA_EVENT_REVIEW_RESULT_CONSUMER_STREAM_KEY: ${LUMIRA_EVENT_REVIEW_RESULT_CONSUMER_STREAM_KEY:-saas:platform-events}
       LUMIRA_EVENT_REVIEW_RESULT_CONSUMER_GROUP_NAME: ${LUMIRA_EVENT_REVIEW_RESULT_CONSUMER_GROUP_NAME:-message-review-result-v1}
@@ -580,13 +696,16 @@ services:
     - plugin_staging:/data/plugin-staging
     - certificate_data:/app/storage
     depends_on:
-      redis:
-        condition: service_started
+      redis-cache:
+        condition: service_healthy
+      redis-runtime:
+        condition: service_healthy
     extra_hosts:
     - host.docker.internal:host-gateway
     networks:
-    - default
-    - 1panel-network
+    - app-network
+    - data-network
+    - observability-network
   lumira-server-green:
     <<: *lumira-server
     profiles:
@@ -629,10 +748,12 @@ services:
       TZ: Asia/Shanghai
       SPRING_APPLICATION_NAME: lumira-async
       SPRING_PROFILES_ACTIVE: ${ASYNC_RUNTIME_PROFILES_ACTIVE:-prod}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-      REDIS_DATABASE: 0
+      REDIS_HOST: ${REDIS_RUNTIME_HOST:-redis-runtime}
+      REDIS_PORT: ${REDIS_RUNTIME_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_RUNTIME_PASSWORD:?REDIS_RUNTIME_PASSWORD is required}
+      REDIS_RUNTIME_URL: ${REDIS_RUNTIME_URL:-redis://redis-runtime:6379}
+      REDIS_RUNTIME_STREAM_MAXLEN: ${REDIS_RUNTIME_STREAM_MAXLEN:-100000}
+      REDIS_RUNTIME_DLQ_MAXLEN: ${REDIS_RUNTIME_DLQ_MAXLEN:-50000}
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=58 -XX:InitialRAMPercentage=18 -XX:MaxMetaspaceSize=192m
         -XX:ReservedCodeCacheSize=96m -Xss512k -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Djava.security.egd=file:/dev/./urandom}
       SERVER_SHUTDOWN: graceful
@@ -680,11 +801,12 @@ services:
       OTEL_SERVICE_NAME: lumira-async
       SERVER_PORT: 8080
     depends_on:
-      redis:
-        condition: service_started
+      redis-runtime:
+        condition: service_healthy
     networks:
-    - default
-    - 1panel-network
+    - app-network
+    - data-network
+    - observability-network
   lumira-job-executor:
     build:
       context: ..
@@ -760,11 +882,12 @@ services:
       xxl-job-admin:
         condition: service_healthy
     networks:
-    - default
-    - 1panel-network
+    - app-network
+    - observability-network
 volumes:
   mysql_data: null
-  redis_data: null
+  redis_cache_data: null
+  redis_runtime_data: null
   upload_data: null
   plugin_data: null
   plugin_staging: null
@@ -774,6 +897,12 @@ volumes:
   tempo_data: null
   grafana_data: null
 networks:
+  edge-network: {}
+  app-network: {}
+  data-network:
+    internal: true
+  observability-network:
+    internal: true
   1panel-network:
     external: true
 secrets:

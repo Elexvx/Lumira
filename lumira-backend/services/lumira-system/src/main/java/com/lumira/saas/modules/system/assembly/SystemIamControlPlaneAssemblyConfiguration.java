@@ -8,6 +8,7 @@ import com.lumira.saas.modules.iam.controller.IamReadinessV2Controller;
 import com.lumira.saas.modules.iam.controller.IamV2Controller;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.IamAuthorizationSnapshotVersionVerifier;
+import com.lumira.saas.modules.iam.service.AuthorizationVersionStore;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Import;
 @ConditionalOnLumiraControlPlaneEnabled
 @MapperScan(basePackages = "com.lumira.saas.modules.iam.mapper", annotationClass = Mapper.class)
 @Import({
+        AuthorizationVersionStore.class,
         DefaultDelegationGrantEvaluator.class,
         JdbcDelegationGrantRepository.class,
         JdbcIamUserRepository.class,

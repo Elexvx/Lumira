@@ -10,9 +10,11 @@ import org.springframework.context.annotation.Import;
 @Import({
         ControlPlaneOwnerRelayClientConfiguration.class,
         AsyncOutboxRelayController.class,
+        RecoveryFenceRegistry.class,
         OutboxRelayCoordinator.class,
         RemoteCompetitionPaymentEventHandler.class,
         PaymentEventStreamConsumer.class,
+        PaymentDeadLetterRecoveryController.class,
         AlertingWorkerLoop.class,
         AsyncRuntimeDrainCoordinator.class,
         AsyncRuntimeControlController.class

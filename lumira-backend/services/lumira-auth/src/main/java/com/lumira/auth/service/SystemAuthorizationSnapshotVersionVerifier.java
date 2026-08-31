@@ -1,6 +1,6 @@
 package com.lumira.auth.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.AuthorizationVersionPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthorizationSnapshotVersionVerifier;
@@ -21,10 +21,10 @@ public class SystemAuthorizationSnapshotVersionVerifier implements Authorization
 
     private static final Logger log = LoggerFactory.getLogger(SystemAuthorizationSnapshotVersionVerifier.class);
 
-    private final SystemInternalApi systemInternalApi;
+    private final AuthorizationVersionPort authorizationVersionPort;
 
-    public SystemAuthorizationSnapshotVersionVerifier(SystemInternalApi systemInternalApi) {
-        this.systemInternalApi = systemInternalApi;
+    public SystemAuthorizationSnapshotVersionVerifier(AuthorizationVersionPort authorizationVersionPort) {
+        this.authorizationVersionPort = authorizationVersionPort;
     }
 
     @Override
@@ -33,7 +33,7 @@ public class SystemAuthorizationSnapshotVersionVerifier implements Authorization
             return false;
         }
         try {
-            Boolean current = systemInternalApi.isPermissionSnapshotVersionCurrent(authorizationSnapshotVersion.trim());
+            Boolean current = authorizationVersionPort.isPermissionSnapshotVersionCurrent(authorizationSnapshotVersion.trim());
             if (current == null) {
                 throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "IAM authorization version is unavailable");
             }

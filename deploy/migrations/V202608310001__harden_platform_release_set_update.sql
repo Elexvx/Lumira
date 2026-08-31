@@ -1,3 +1,4 @@
+-- lumira:owner=platform
 -- lumira:migration-phase=expand
 -- lumira:rollback=application-only
 -- lumira:compatible-readers=202607140001..202608319999

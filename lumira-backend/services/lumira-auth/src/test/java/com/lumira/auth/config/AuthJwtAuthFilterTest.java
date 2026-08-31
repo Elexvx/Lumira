@@ -1,7 +1,7 @@
 package com.lumira.auth.config;
 
-import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.auth.model.AuthSession;
 import com.lumira.auth.service.AuthSessionStore;
 import com.lumira.auth.service.JwtTokenService;
@@ -37,7 +37,7 @@ class AuthJwtAuthFilterTest {
 
     private final JwtTokenService jwtTokenService = mock(JwtTokenService.class);
     private final AuthSessionStore authSessionStore = mock(AuthSessionStore.class);
-    private final SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private final UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
     private final SecuritySettingsService securitySettingsService = mock(SecuritySettingsService.class);
     private final AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier = mock(AuthorizationSnapshotVersionVerifier.class);
     private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();

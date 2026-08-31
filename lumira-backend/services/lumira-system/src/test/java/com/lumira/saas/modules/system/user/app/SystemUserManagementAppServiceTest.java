@@ -394,7 +394,7 @@ class SystemUserManagementAppServiceTest {
         assertTrue(jdbcTemplate.deletedUserRoles);
         assertEquals(0, jdbcTemplate.roleExistenceChecks);
         assertEquals(0, jdbcTemplate.insertedUserRoles);
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidateSubjectAuthorization("user-uuid-2001");
     }
 
     @Test
@@ -428,7 +428,7 @@ class SystemUserManagementAppServiceTest {
                 1,
                 "permissions-1"
         );
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidateSubjectAuthorization("user-uuid-2001");
     }
 
     @Test
@@ -643,7 +643,7 @@ class SystemUserManagementAppServiceTest {
 
         assertTrue(service.updateUserStatus(currentUser(), 2001L, "DISABLED"));
 
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidatePermissionsForSubject("user-uuid-2001");
     }
 
     @Test

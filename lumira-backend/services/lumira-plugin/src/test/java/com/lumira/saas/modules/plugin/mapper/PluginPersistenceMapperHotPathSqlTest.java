@@ -42,16 +42,17 @@ class PluginPersistenceMapperHotPathSqlTest {
     void pluginActivationWritesShouldRevalidateCurrentVersionState() throws Exception {
         String xml = mapperXml();
 
-        assertStatementContains(xml, "markInstalled", "and install_status in ('VERIFIED', 'INSTALLED', 'LOADED')");
+        assertStatementContains(xml, "markInstalled", "and lifecycle_status = 'MIGRATED'");
         assertStatementContains(xml, "activateVersion", "and install_status in ('INSTALLED', 'LOADED')");
         assertStatementContains(xml, "activateVersion", "and load_status = 'LOADED'");
         assertStatementContains(xml, "activateVersion", "and schema_status = 'READY'");
+        assertStatementContains(xml, "activateVersion", "and lifecycle_status = 'RUNTIME_VERIFIED'");
         assertStatementContains(xml, "activateVersion", "from sys_plugin_definition d");
         assertStatementContains(xml, "activateVersion", "and d.deleted = 0");
         assertStatementContains(xml, "updateVersionStatus", "and install_status in ('INSTALLED', 'LOADED')");
         assertStatementContains(xml, "updateVersionStatus", "and load_status = 'LOADED'");
         assertStatementContains(xml, "updateVersionStatus", "and schema_status = 'READY'");
-        assertStatementContains(xml, "updateVersionStatus", "and lifecycle_status = 'ENABLED'");
+        assertStatementContains(xml, "updateVersionStatus", "and lifecycle_status = 'ACTIVATED'");
         assertStatementContains(xml, "updateVersionStatus", "and is_active = 1");
         assertStatementContains(xml, "updateVersionStatus", "from sys_plugin_definition d");
         assertStatementContains(xml, "markDefinitionDeletedByPlugin", "and builtin_flag = 0");

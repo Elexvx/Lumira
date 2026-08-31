@@ -27,6 +27,7 @@ import { atomicWriteDurable, DeploymentStateRepository } from './lib/deployment-
 import { loadTrustedPublicKeys } from './lib/release-envelope.mjs';
 import { resolveSignedRelease } from './lib/release-manifest-resolver.mjs';
 import { RuntimeDrainClient } from './lib/runtime-drain-client.mjs';
+import { productionDataPlaneErrors } from './lib/production-data-plane-policy.mjs';
 import {
   TERMINAL_UPDATE_STATUSES,
   UPDATER_PROTOCOL_VERSION,
@@ -557,7 +558,7 @@ async function runtimeTopologyStatus(state) {
 async function migrationNetworkReachable(manifest, state) {
   if (dryRun || manifest.database.mode === 'none' || !manifest.images.migrator) return true;
   const env = parseEnvFile(envPath);
-  const network = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || 'deploy_default';
+  const network = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || 'deploy_data-network';
   const databaseHost = env.DB_URL?.match(/^jdbc:mysql:\/\/([^/:?]+)/i)?.[1];
   if (!databaseHost) return false;
   const task = { taskId: 'migration-network-probe', log: [], updatedAt: '' };
@@ -593,12 +594,10 @@ async function createPreflight(request) {
   }
   if (!backupDirectoryWritable()) report.blockers.push('The backup directory is not writable.');
   const deploymentEnv = parseEnvFile(envPath);
-  const databaseUsername = deploymentEnv.DB_USERNAME || 'root';
-  if (databaseUsername.toLowerCase() === 'root') {
-    report.warnings.push('The application database account is root; provision a least-privilege DB_USERNAME before the next credential rotation.');
-  }
-  if (!deploymentEnv.DB_MIGRATION_USERNAME || !deploymentEnv.DB_MIGRATION_PASSWORD) {
-    report.warnings.push('Dedicated DB_MIGRATION_USERNAME/DB_MIGRATION_PASSWORD are not configured; migrations will fall back to the application database account.');
+  report.blockers.push(...productionDataPlaneErrors(deploymentEnv));
+  const expectedRedisTopology = deploymentEnv.LUMIRA_REDIS_TOPOLOGY_IDENTITY || 'redis-split-cache-runtime-v1';
+  if (manifest.schemaVersion >= 3 && manifest.compatibility.redisTopology?.identity !== expectedRedisTopology) {
+    report.blockers.push(`Release Set Redis topology ${manifest.compatibility.redisTopology?.identity || 'missing'} does not match deployment topology ${expectedRedisTopology}.`);
   }
   const databaseUrl = String(deploymentEnv.DB_URL || '');
   const databaseHost = databaseUrl.match(/^jdbc:mysql:\/\/([^/:?]+)/iu)?.[1]?.toLowerCase();
@@ -826,7 +825,7 @@ function checkCancellation(task, { afterSwitch = false } = {}) {
 async function migrate(task, manifest) {
   if (manifest.database.mode === 'none' || !manifest.images.migrator) return;
   const env = parseEnvFile(envPath);
-  const network = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || 'deploy_default';
+  const network = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || 'deploy_data-network';
   const configuredSecretPath = String(env.LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE || '').trim();
   const secretArgs = [];
   if (configuredSecretPath) {
@@ -843,15 +842,20 @@ async function migrate(task, manifest) {
   await runCommand(task, 'docker', [
     'run', '--rm', '--network', network,
     '-e', 'DB_URL', '-e', 'DB_USERNAME', '-e', 'DB_PASSWORD',
+    '-e', 'PLUGIN_MIGRATION_RELEASE_ID', '-e', 'PLUGIN_MIGRATION_EXECUTOR_ID',
     ...secretArgs,
     '-e', `DATABASE_TARGET_VERSION=${manifest.database.targetVersion}`,
     manifest.images.migrator,
   ], {
     env: {
       DB_URL: env.DB_URL || '',
-      DB_USERNAME: env.DB_MIGRATION_USERNAME || env.DB_USERNAME || 'root',
-      DB_PASSWORD: env.DB_MIGRATION_PASSWORD || env.DB_PASSWORD || '',
-      WSLENV: wslForwardedEnvironment(['DB_URL', 'DB_USERNAME', 'DB_PASSWORD']),
+      DB_USERNAME: env.DB_MIGRATION_USERNAME,
+      DB_PASSWORD: env.DB_MIGRATION_PASSWORD,
+      PLUGIN_MIGRATION_RELEASE_ID: manifest.releaseId,
+      PLUGIN_MIGRATION_EXECUTOR_ID: `updater:${task.taskId}:${manifest.releaseId}`,
+      WSLENV: wslForwardedEnvironment([
+        'DB_URL', 'DB_USERNAME', 'DB_PASSWORD', 'PLUGIN_MIGRATION_RELEASE_ID', 'PLUGIN_MIGRATION_EXECUTOR_ID',
+      ]),
     },
   });
 }
@@ -862,9 +866,9 @@ async function verifyBackupMatchesMigrationTarget(task, evidence, environment) {
     throw new Error('Verified backup evidence does not contain a valid MySQL server UUID.');
   }
   const { host: databaseHost, port: databasePort } = configuredDatabaseEndpoint(environment);
-  const network = environment.DB_MIGRATION_NETWORK || environment.DB_BACKUP_NETWORK || 'deploy_default';
-  const username = environment.DB_MIGRATION_USERNAME || environment.DB_USERNAME || 'root';
-  const password = environment.DB_MIGRATION_PASSWORD || environment.DB_PASSWORD || '';
+  const network = environment.DB_MIGRATION_NETWORK || environment.DB_BACKUP_NETWORK || 'deploy_data-network';
+  const username = environment.DB_MIGRATION_USERNAME || '';
+  const password = environment.DB_MIGRATION_PASSWORD || '';
   const clientImage = environment.MYSQL_CLIENT_IMAGE || 'mysql:8.4';
   const sslMode = configuredMysqlSslMode(environment);
   const dockerArgs = ['run', '--rm', '--network', network, '-e', 'MYSQL_PWD'];
@@ -1040,6 +1044,10 @@ async function runInstall(task, request) {
       ...deploymentEnv,
       DB_HOST: backupEndpoint.host,
       DB_PORT: backupEndpoint.port,
+      REDIS_SERVICE: deploymentEnv.REDIS_SERVICE || 'redis-runtime',
+      REDIS_HOST: deploymentEnv.REDIS_RUNTIME_HOST || 'redis-runtime',
+      REDIS_PORT: deploymentEnv.REDIS_RUNTIME_PORT || '6379',
+      REDIS_PASSWORD: deploymentEnv.REDIS_RUNTIME_PASSWORD || '',
       ...(backupDatabaseName ? { MYSQL_DATABASE: backupDatabaseName, DB_NAME: backupDatabaseName } : {}),
     };
     const backupForwardedVariables = [

@@ -37,6 +37,9 @@ public class PluginSecurityPropertiesValidator implements ApplicationRunner {
         if (signatureSecret.trim().length() < 32) {
             throw new IllegalStateException("生产环境 PLUGIN_SIGNATURE_SECRET 长度不能少于 32 个字符");
         }
+        if (pluginProperties.isAllowInProcessBackendPlugins()) {
+            throw new IllegalStateException("生产环境必须设置 saas.plugin.allow-in-process-backend-plugins=false");
+        }
     }
 
     private boolean isProdProfileActive() {

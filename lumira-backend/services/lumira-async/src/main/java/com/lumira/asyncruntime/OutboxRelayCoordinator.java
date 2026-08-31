@@ -10,7 +10,15 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PreDestroy;
+import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Low-latency owner relay loop. XXL-JOB remains a recovery trigger, but normal
@@ -22,26 +30,35 @@ import java.util.List;
 public class OutboxRelayCoordinator {
     private static final Logger log = LoggerFactory.getLogger(OutboxRelayCoordinator.class);
 
-    private final List<OwnerOutboxRelayPort> ownerRelays;
+    private final Map<String, OwnerRelayLane> ownerLanes;
     private final MeterRegistry meterRegistry;
-    private final AsyncRuntimeDrainCoordinator drainCoordinator;
+    private final Duration completionTimeout;
 
     public OutboxRelayCoordinator(
             List<OwnerOutboxRelayPort> ownerRelays,
             MeterRegistry meterRegistry
     ) {
-        this(ownerRelays, meterRegistry, new AsyncRuntimeDrainCoordinator());
+        this(ownerRelays, meterRegistry, new AsyncRuntimeDrainCoordinator(), new OwnerRelayLaneProperties());
     }
 
     @Autowired
     public OutboxRelayCoordinator(
             List<OwnerOutboxRelayPort> ownerRelays,
             MeterRegistry meterRegistry,
-            AsyncRuntimeDrainCoordinator drainCoordinator
+            AsyncRuntimeDrainCoordinator drainCoordinator,
+            OwnerRelayLaneProperties properties
     ) {
-        this.ownerRelays = ownerRelays == null ? List.of() : List.copyOf(ownerRelays);
         this.meterRegistry = meterRegistry;
-        this.drainCoordinator = drainCoordinator;
+        this.completionTimeout = properties.completionTimeout();
+        Map<String, OwnerRelayLane> lanes = new LinkedHashMap<>();
+        for (OwnerOutboxRelayPort relay : ownerRelays == null ? List.<OwnerOutboxRelayPort>of() : ownerRelays) {
+            OwnerRelayLane lane = new OwnerRelayLane(relay, properties.settingsFor(relay.owner()), meterRegistry, drainCoordinator);
+            if (lanes.putIfAbsent(lane.owner(), lane) != null) {
+                lane.close();
+                throw new IllegalArgumentException("Duplicate owner relay: " + relay.owner());
+            }
+        }
+        this.ownerLanes = Map.copyOf(lanes);
     }
 
     @Scheduled(
@@ -54,33 +71,49 @@ public class OutboxRelayCoordinator {
 
     /** Invoked by the scheduled loop and the job-executor compatibility endpoint. */
     public int relayNow() {
-        var lease = drainCoordinator.tryAcquire();
-        if (lease == null) {
-            return 0;
+        Map<String, CompletableFuture<Integer>> pending = new LinkedHashMap<>();
+        ownerLanes.forEach((owner, lane) -> pending.put(owner, lane.dispatch()));
+        int total = 0;
+        for (Map.Entry<String, CompletableFuture<Integer>> entry : pending.entrySet()) {
+            total += await(entry.getKey(), entry.getValue());
         }
-        try (lease) {
-            int total = 0;
-            for (OwnerOutboxRelayPort relay : ownerRelays) {
-                total += run(relay);
-            }
-            return total;
-        }
+        return total;
     }
 
-    private int run(OwnerOutboxRelayPort relay) {
-        String owner = relay.owner();
+    public int recoverOwner(String owner) {
+        OwnerRelayLane lane = requireOwner(owner);
+        return await(owner, lane.dispatch());
+    }
+
+    public boolean replay(String owner, long eventId) {
+        if (eventId <= 0L) throw new IllegalArgumentException("eventId must be positive");
+        OwnerRelayLane lane = requireOwner(owner);
+        return await(owner, lane.replay(eventId)) > 0;
+    }
+
+    private OwnerRelayLane requireOwner(String owner) {
+        OwnerRelayLane lane = ownerLanes.get(owner);
+        if (lane == null) throw new IllegalArgumentException("Unknown outbox owner: " + owner);
+        return lane;
+    }
+
+    private int await(String owner, CompletableFuture<Integer> future) {
         try {
-            int published = Math.max(0, relay.dispatchPendingEvents());
-            if (published > 0) {
-                meterRegistry.counter("lumira.event.relay.published", "owner", owner).increment(published);
-            }
-            return published;
-        } catch (org.springframework.beans.factory.NoSuchBeanDefinitionException ignored) {
-            // An owner can be intentionally absent from a runtime assembly.
-        } catch (RuntimeException exception) {
-            meterRegistry.counter("lumira.event.relay.failure", "owner", owner).increment();
+            return Math.max(0, future.get(completionTimeout.toMillis(), TimeUnit.MILLISECONDS));
+        } catch (TimeoutException exception) {
+            meterRegistry.counter("lumira.event.relay.coordinator.timeout", "owner", owner).increment();
+            log.warn("outbox relay completion timed out owner={}", owner);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            meterRegistry.counter("lumira.event.relay.coordinator.interrupted", "owner", owner).increment();
+        } catch (ExecutionException exception) {
             log.warn("outbox relay failed owner={}: {}", owner, exception.getMessage());
         }
         return 0;
+    }
+
+    @PreDestroy
+    void closeLanes() {
+        ownerLanes.values().forEach(OwnerRelayLane::close);
     }
 }
