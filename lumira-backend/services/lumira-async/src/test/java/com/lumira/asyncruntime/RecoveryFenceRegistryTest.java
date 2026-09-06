@@ -32,4 +32,17 @@ class RecoveryFenceRegistryTest {
         assertThatCode(() -> registry.assertCurrent("file", 11L, TOKEN_TWO)).doesNotThrowAnyException();
         assertThat(registry.currentEpoch("file")).isEqualTo(11L);
     }
+
+    @Test
+    void bindsRelayTakeoverToTheValidatedRecoveryEpoch() {
+        RecoveryFenceRegistry registry = new RecoveryFenceRegistry();
+
+        registry.assertCurrent("plugin", 10L, TOKEN_ONE);
+        registry.assertCurrent("plugin", 11L, TOKEN_TWO);
+
+        assertThatThrownBy(() -> registry.takeover("plugin", "job-recovery", 10L, TOKEN_ONE))
+                .isInstanceOf(RecoveryFenceRegistry.StaleRecoveryFenceException.class);
+        assertThatCode(() -> registry.takeover("plugin", "job-recovery", 11L, TOKEN_TWO))
+                .doesNotThrowAnyException();
+    }
 }

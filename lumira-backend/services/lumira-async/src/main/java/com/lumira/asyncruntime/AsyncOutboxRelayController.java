@@ -49,9 +49,33 @@ public class AsyncOutboxRelayController {
                     if (eventId == null || eventId <= 0L) {
                         throw new IllegalArgumentException("eventId is required for specified replay");
                     }
-                    yield ApiResponse.success(coordinator.replay(owner, eventId) ? 1 : 0, null);
+                    yield ApiResponse.success(
+                            coordinator.replay(
+                                            owner,
+                                            eventId,
+                                            recoveryFences.takeover(
+                                                    owner,
+                                                    "job-recovery",
+                                                    operationEpoch == null ? 0L : operationEpoch,
+                                                    fenceToken
+                                            ).context()
+                                    )
+                                    ? 1 : 0,
+                            null
+                    );
                 }
-                case "stale", "manual", "takeover" -> ApiResponse.success(coordinator.recoverOwner(owner), null);
+                case "stale", "manual", "takeover" -> ApiResponse.success(
+                        coordinator.recoverOwner(
+                                owner,
+                                recoveryFences.takeover(
+                                        owner,
+                                        "job-recovery",
+                                        operationEpoch == null ? 0L : operationEpoch,
+                                        fenceToken
+                                ).context()
+                        ),
+                        null
+                );
                 default -> throw new IllegalArgumentException("Unsupported recovery mode: " + mode);
             };
         } catch (IllegalArgumentException exception) {

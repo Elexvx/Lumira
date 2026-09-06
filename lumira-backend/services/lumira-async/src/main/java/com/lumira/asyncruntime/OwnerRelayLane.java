@@ -1,6 +1,7 @@
 package com.lumira.asyncruntime;
 
 import com.lumira.api.event.OwnerOutboxRelayPort;
+import com.lumira.api.event.RelayExecutionContext;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -20,6 +21,7 @@ final class OwnerRelayLane implements AutoCloseable {
     private final OwnerRelayLaneProperties.LaneSettings settings;
     private final MeterRegistry meters;
     private final AsyncRuntimeDrainCoordinator drain;
+    private final RecoveryFenceRegistry recoveryFences;
     private final ThreadPoolExecutor executor;
     private final AtomicInteger consecutiveFailures = new AtomicInteger();
     private final AtomicLong circuitOpenUntilNanos = new AtomicLong();
@@ -30,11 +32,22 @@ final class OwnerRelayLane implements AutoCloseable {
             MeterRegistry meters,
             AsyncRuntimeDrainCoordinator drain
     ) {
+        this(relay, settings, meters, drain, null);
+    }
+
+    OwnerRelayLane(
+            OwnerOutboxRelayPort relay,
+            OwnerRelayLaneProperties.LaneSettings settings,
+            MeterRegistry meters,
+            AsyncRuntimeDrainCoordinator drain,
+            RecoveryFenceRegistry recoveryFences
+    ) {
         this.relay = relay;
         this.owner = relay.owner();
         this.settings = settings;
         this.meters = meters;
         this.drain = drain;
+        this.recoveryFences = recoveryFences;
         this.executor = new ThreadPoolExecutor(
                 settings.maxConcurrency(),
                 settings.maxConcurrency(),
@@ -61,11 +74,33 @@ final class OwnerRelayLane implements AutoCloseable {
     }
 
     CompletableFuture<Integer> dispatch() {
-        return submit("relay", relay::dispatchPendingEvents);
+        return dispatch(null);
+    }
+
+    CompletableFuture<Integer> dispatch(RelayExecutionContext context) {
+        return submit("relay", () -> {
+            assertPublishAuthority(context);
+            return context == null ? relay.dispatchPendingEvents() : relay.dispatchPendingEvents(context);
+        });
     }
 
     CompletableFuture<Integer> replay(long eventId) {
-        return submit("replay", () -> relay.replay(eventId) ? 1 : 0);
+        return replay(eventId, null);
+    }
+
+    CompletableFuture<Integer> replay(long eventId, RelayExecutionContext context) {
+        return submit("replay", () -> {
+            assertPublishAuthority(context);
+            return (context == null ? relay.replay(eventId) : relay.replay(eventId, context)) ? 1 : 0;
+        });
+    }
+
+    private void assertPublishAuthority(RelayExecutionContext context) {
+        if (context == null) return;
+        if (recoveryFences == null) {
+            throw new IllegalStateException("Fenced relay context requires a recovery fence registry");
+        }
+        recoveryFences.assertCurrentPublishAuthority(owner, context.generation(), context.fenceToken());
     }
 
     private CompletableFuture<Integer> submit(String operation, IntSupplier task) {
@@ -104,6 +139,11 @@ final class OwnerRelayLane implements AutoCloseable {
                     }
                     meters.counter("lumira.event.relay.success", "owner", owner, "operation", operation).increment();
                     result.complete(published);
+                    return;
+                } catch (RecoveryFenceRegistry.FenceLostException exception) {
+                    meters.counter("lumira.async.fence.reject.count", "owner", owner, "operation", operation)
+                            .increment();
+                    result.completeExceptionally(exception);
                     return;
                 } catch (RuntimeException exception) {
                     lastFailure = exception;

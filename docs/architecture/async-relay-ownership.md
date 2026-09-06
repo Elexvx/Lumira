@@ -63,6 +63,18 @@ Job recovery request JSON must include:
 
 The production fence is atomically advanced in `redis-runtime` at `lumira:runtime:recovery-fence:<owner>`. A higher epoch replaces the current token digest; the same epoch is accepted only with the same token; lower epochs and same-epoch token changes are rejected. Tokens are stored only as SHA-256 digests. The in-memory implementation is retained solely for narrow tests or assemblies without a Redis bean.
 
+Normal Async publication additionally acquires a per-owner relay generation with
+holder and short lease state in the same Redis hash. The normal holder is
+`lumira-async-<instance-id>`; a validated recovery request atomically advances
+the relay generation to `job-recovery` and binds that takeover to the exact
+recovery epoch/token. Each owner request carries
+`X-Lumira-Relay-Owner`, `X-Lumira-Relay-Generation` and
+`X-Lumira-Relay-Fence`. The Async lane checks the generation immediately
+before invoking the remote port, and every owner relay/replay endpoint checks
+the same Redis state immediately before entering its outbox claim path. A lost
+fence fails fast, is not retried, and increments
+`lumira.async.fence.reject.count`.
+
 ## Database boundary
 
 Both runtime POMs apply Maven Enforcer `bannedDependencies` with transitive search for Spring JDBC, JDBC starter, MyBatis/MyBatis-Plus, Flyway and MySQL drivers. `spring-jdbc` is excluded from their `common-web` dependency. Neither runtime receives a business database URL or DataSource.
@@ -85,7 +97,7 @@ The scoped payment token protects DLQ stats/list/replay endpoints. Replay additi
 ## Remaining integration risks
 
 - The fenced Async recovery APIs and Job handlers are implemented, but there is no operator-facing admin UI or durable audit table. Structured service logs are the current DLQ replay audit trail.
-- Owner server replay endpoints remain individually idempotent but do not themselves persist `operationEpoch`/`fenceToken`; the authoritative fence is applied at the Async ingress. Network policy must continue to prevent Job from bypassing Async and calling owner replay endpoints directly.
+- Owner server relay/replay endpoints now validate the relay generation at their final HTTP boundary. The five owner outbox tables still have divergent claim schemas and do not yet persist a shared `relay_generation` column in their SQL compare-and-set; that is a follow-up hardening step if a claim transaction must remain valid across a takeover between HTTP validation and the owner transaction. Network policy must continue to prevent Job from bypassing Async and calling owner replay endpoints directly.
 - Redis approximate `MAXLEN` trimming does not inspect consumer-group PEL entries. Under an extreme backlog it can evict a source record that remains pending; production limits and oldest-pending alerts must be sized so the cap is never reached during supported recovery windows. A live-Redis integration test for this pressure case is still required.
 - The protected DLQ replay surface currently covers the payment Stream consumed by `lumira-async`. Other pre-existing Stream consumers/producers require owner-specific metrics and replay surfaces before the requirement can be claimed platform-wide.
 - Recovery fence correctness depends on `redis-runtime` durability and no-eviction policy. The

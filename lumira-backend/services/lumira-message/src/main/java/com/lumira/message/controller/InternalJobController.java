@@ -5,11 +5,15 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.web.InternalJobTokenValidator;
+import com.lumira.common.web.internal.RelayFenceValidator;
 import com.lumira.message.app.PlatformEventOutboxService;
 import com.lumira.message.config.MessageProperties;
 import com.lumira.message.service.MessageEventDeliveryService;
 import com.lumira.message.service.MessageWebSocketRegistry;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -26,6 +30,7 @@ public class InternalJobController {
     private final MessageEventDeliveryService messageEventDeliveryService;
     private final MessageProperties messageProperties;
     private final String messageInternalToken;
+    private final StringRedisTemplate runtimeRedis;
 
     public InternalJobController(
             MessageWebSocketRegistry messageWebSocketRegistry,
@@ -34,11 +39,31 @@ public class InternalJobController {
             MessageProperties messageProperties,
             @Value("${saas.internal.message-token:${SAAS_INTERNAL_MESSAGE_TOKEN:}}") String messageInternalToken
     ) {
+        this(
+                messageWebSocketRegistry,
+                platformEventOutboxService,
+                messageEventDeliveryService,
+                messageProperties,
+                messageInternalToken,
+                null
+        );
+    }
+
+    @Autowired
+    public InternalJobController(
+            MessageWebSocketRegistry messageWebSocketRegistry,
+            PlatformEventOutboxService platformEventOutboxService,
+            MessageEventDeliveryService messageEventDeliveryService,
+            MessageProperties messageProperties,
+            @Value("${saas.internal.message-token:${SAAS_INTERNAL_MESSAGE_TOKEN:}}") String messageInternalToken,
+            ObjectProvider<StringRedisTemplate> redisProvider
+    ) {
         this.messageWebSocketRegistry = messageWebSocketRegistry;
         this.platformEventOutboxService = platformEventOutboxService;
         this.messageEventDeliveryService = messageEventDeliveryService;
         this.messageProperties = messageProperties;
         this.messageInternalToken = messageInternalToken;
+        this.runtimeRedis = redisProvider == null ? null : redisProvider.getIfAvailable();
     }
 
     @PostMapping("/message/heartbeat")
@@ -49,7 +74,20 @@ public class InternalJobController {
     }
 
     @PostMapping("/outbox/relay")
-    public ApiResponse<Integer> relayOutbox(@RequestHeader(name = "X-Job-Token", required = false) String token) {
+    public ApiResponse<Integer> relayOutbox(
+            @RequestHeader(name = "X-Job-Token", required = false) String token,
+            @RequestHeader(name = RelayFenceValidator.OWNER_HEADER, required = false) String relayOwner,
+            @RequestHeader(name = RelayFenceValidator.GENERATION_HEADER, required = false) Long relayGeneration,
+            @RequestHeader(name = RelayFenceValidator.FENCE_HEADER, required = false) String relayFence
+    ) {
+        ensureAuthorized(token);
+        ensureRelayFence("message", relayOwner, relayGeneration, relayFence);
+        int delivered = platformEventOutboxService.dispatchPending(messageEventDeliveryService, messageProperties.getOutboxRelayBatchSize());
+        return ApiResponse.success(delivered, null);
+    }
+
+    /** Source-compatible direct invocation used by narrow unit tests. */
+    public ApiResponse<Integer> relayOutbox(String token) {
         ensureAuthorized(token);
         int delivered = platformEventOutboxService.dispatchPending(messageEventDeliveryService, messageProperties.getOutboxRelayBatchSize());
         return ApiResponse.success(delivered, null);
@@ -58,8 +96,20 @@ public class InternalJobController {
     @PostMapping("/outbox/{id}/replay")
     public ApiResponse<Boolean> replayOutbox(
             @PathVariable("id") Long id,
-            @RequestHeader(name = "X-Job-Token", required = false) String token
+            @RequestHeader(name = "X-Job-Token", required = false) String token,
+            @RequestHeader(name = RelayFenceValidator.OWNER_HEADER, required = false) String relayOwner,
+            @RequestHeader(name = RelayFenceValidator.GENERATION_HEADER, required = false) Long relayGeneration,
+            @RequestHeader(name = RelayFenceValidator.FENCE_HEADER, required = false) String relayFence
     ) {
+        ensureAuthorized(token);
+        requirePositiveId(id);
+        ensureRelayFence("message", relayOwner, relayGeneration, relayFence);
+        boolean replayed = platformEventOutboxService.replayById(id, messageEventDeliveryService);
+        return ApiResponse.success(replayed, null);
+    }
+
+    /** Source-compatible direct invocation used by narrow unit tests. */
+    public ApiResponse<Boolean> replayOutbox(Long id, String token) {
         ensureAuthorized(token);
         requirePositiveId(id);
         boolean replayed = platformEventOutboxService.replayById(id, messageEventDeliveryService);
@@ -74,6 +124,10 @@ public class InternalJobController {
         if (!InternalJobTokenValidator.isAuthorized(token, requiredToken)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Unauthorized internal job access");
         }
+    }
+
+    private void ensureRelayFence(String owner, String relayOwner, Long generation, String fenceToken) {
+        RelayFenceValidator.assertCurrent(runtimeRedis, owner, relayOwner, generation, fenceToken);
     }
 
     private void requirePositiveId(Long id) {
