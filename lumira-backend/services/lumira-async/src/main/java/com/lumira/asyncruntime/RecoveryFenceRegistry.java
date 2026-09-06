@@ -40,6 +40,15 @@ public class RecoveryFenceRegistry {
         this.redis = redisProvider.getIfAvailable();
     }
 
+    /**
+     * Production recovery fencing must be backed by the durable runtime Redis.
+     * The no-argument constructor remains available only for narrow unit tests
+     * and assemblies that intentionally exercise the in-memory fallback.
+     */
+    boolean isDurable() {
+        return redis != null;
+    }
+
     public void assertCurrent(String owner, long operationEpoch, String fenceToken) {
         if (owner == null || owner.isBlank()) throw new IllegalArgumentException("owner is required");
         if (operationEpoch <= 0L) throw new IllegalArgumentException("operationEpoch must be positive");

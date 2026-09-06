@@ -88,4 +88,6 @@ The scoped payment token protects DLQ stats/list/replay endpoints. Replay additi
 - Owner server replay endpoints remain individually idempotent but do not themselves persist `operationEpoch`/`fenceToken`; the authoritative fence is applied at the Async ingress. Network policy must continue to prevent Job from bypassing Async and calling owner replay endpoints directly.
 - Redis approximate `MAXLEN` trimming does not inspect consumer-group PEL entries. Under an extreme backlog it can evict a source record that remains pending; production limits and oldest-pending alerts must be sized so the cap is never reached during supported recovery windows. A live-Redis integration test for this pressure case is still required.
 - The protected DLQ replay surface currently covers the payment Stream consumed by `lumira-async`. Other pre-existing Stream consumers/producers require owner-specific metrics and replay surfaces before the requirement can be claimed platform-wide.
-- Recovery fence correctness depends on `redis-runtime` durability and no-eviction policy. If the Redis bean is absent, Async starts with the documented in-memory fallback; production readiness should reject that state in a follow-up hardening change.
+- Recovery fence correctness depends on `redis-runtime` durability and no-eviction policy. The
+  in-memory fallback remains available only to narrow tests and non-production assemblies;
+  Async readiness reports `DEGRADED` when the durable fence store is absent.

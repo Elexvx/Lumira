@@ -29,6 +29,7 @@ public class AsyncRuntimeReadinessV2Controller {
     private final List<String> scopedTokens;
     private final BooleanSupplier redisAvailable;
     private final BooleanSupplier paymentConsumerRunning;
+    private final BooleanSupplier recoveryFenceDurable;
 
     public AsyncRuntimeReadinessV2Controller(
             @Value("${lumira.async.owner-relay.control-plane-base-url:${LUMIRA_ASYNC_CONTROL_PLANE_BASE_URL:http://api-proxy:80}}")
@@ -47,6 +48,7 @@ public class AsyncRuntimeReadinessV2Controller {
                 pluginToken,
                 jobToken,
                 () -> true,
+                () -> true,
                 () -> true
         );
     }
@@ -61,7 +63,8 @@ public class AsyncRuntimeReadinessV2Controller {
             @Value("${saas.internal.plugin-token:${SAAS_INTERNAL_PLUGIN_TOKEN:}}") String pluginToken,
             @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobToken,
             RedisConnectionFactory redisConnectionFactory,
-            ObjectProvider<PaymentEventStreamConsumer> paymentConsumerProvider
+            ObjectProvider<PaymentEventStreamConsumer> paymentConsumerProvider,
+            RecoveryFenceRegistry recoveryFenceRegistry
     ) {
         this(
                 controlPlaneBaseUrl,
@@ -74,7 +77,8 @@ public class AsyncRuntimeReadinessV2Controller {
                 () -> {
                     PaymentEventStreamConsumer consumer = paymentConsumerProvider.getIfAvailable();
                     return consumer != null && consumer.isRunning();
-                }
+                },
+                recoveryFenceRegistry::isDurable
         );
     }
 
@@ -88,10 +92,35 @@ public class AsyncRuntimeReadinessV2Controller {
             BooleanSupplier redisAvailable,
             BooleanSupplier paymentConsumerRunning
     ) {
+        this(
+                controlPlaneBaseUrl,
+                fileToken,
+                messageToken,
+                paymentToken,
+                pluginToken,
+                jobToken,
+                redisAvailable,
+                paymentConsumerRunning,
+                () -> true
+        );
+    }
+
+    AsyncRuntimeReadinessV2Controller(
+            String controlPlaneBaseUrl,
+            String fileToken,
+            String messageToken,
+            String paymentToken,
+            String pluginToken,
+            String jobToken,
+            BooleanSupplier redisAvailable,
+            BooleanSupplier paymentConsumerRunning,
+            BooleanSupplier recoveryFenceDurable
+    ) {
         this.controlPlaneBaseUrl = controlPlaneBaseUrl;
         this.scopedTokens = List.of(fileToken, messageToken, paymentToken, pluginToken, jobToken);
         this.redisAvailable = redisAvailable;
         this.paymentConsumerRunning = paymentConsumerRunning;
+        this.recoveryFenceDurable = recoveryFenceDurable;
     }
 
     @GetMapping("/readiness")
@@ -117,6 +146,7 @@ public class AsyncRuntimeReadinessV2Controller {
                         "async.control-plane-base-url.configured",
                         "async.scoped-internal-tokens.configured",
                         "async.redis.connected",
+                        "async.recovery-fence.durable",
                         "async.payment-consumer.running",
                         "async.no-datasource-or-owner-beans"
                 ),
@@ -173,6 +203,11 @@ public class AsyncRuntimeReadinessV2Controller {
                                 "Redis must accept commands before event relay and consumption are ready."
                         ),
                         healthCheck(
+                                "async.recovery-fence.durable",
+                                isRecoveryFenceDurable() ? "DURABLE" : "IN_MEMORY_FALLBACK",
+                                "Recovery fencing must use the durable runtime Redis in production."
+                        ),
+                        healthCheck(
                                 "async.payment-consumer.running",
                                 isPaymentConsumerRunning() ? "RUNNING" : "STOPPED",
                                 "The competition payment Redis Stream consumer must be actively polling."
@@ -200,6 +235,7 @@ public class AsyncRuntimeReadinessV2Controller {
         return StringUtils.hasText(controlPlaneBaseUrl)
                 && scopedTokensConfigured()
                 && isRedisAvailable()
+                && isRecoveryFenceDurable()
                 && isPaymentConsumerRunning();
     }
 
@@ -213,6 +249,10 @@ public class AsyncRuntimeReadinessV2Controller {
 
     private boolean isPaymentConsumerRunning() {
         return safeBoolean(paymentConsumerRunning);
+    }
+
+    private boolean isRecoveryFenceDurable() {
+        return safeBoolean(recoveryFenceDurable);
     }
 
     private boolean safeBoolean(BooleanSupplier supplier) {

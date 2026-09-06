@@ -29,8 +29,8 @@
    age, pending count and per-owner DLQ count before enabling automatic retention changes.
 4. Recovery fencing is enforced at the Async ingress. Owner replay endpoints should also
    persist the accepted fence before Job-to-Server network access can ever be allowed.
-5. Async currently has a test-only in-memory fence fallback. Production readiness should
-   explicitly fail when the runtime Redis fence store is unavailable.
+5. Async retains a test-only in-memory fence fallback, but its production readiness contract
+   now reports `DEGRADED` when the durable runtime Redis fence store is unavailable.
 6. Directory relocation to `runtimes/`, `modules/`, `contracts/` and `platform/` is deferred;
    current Maven and ArchUnit rules are the compatibility bridge, not the final layout.
 
