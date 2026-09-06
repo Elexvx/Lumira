@@ -81,8 +81,18 @@ public class PlatformEventPublisher {
         }
         payload.put("aggregateType", normalize(aggregateType, "aggregate"));
         payload.put("aggregateId", aggregateId);
-        payload.put("attributes", attributes == null ? Map.of() : new LinkedHashMap<>(attributes));
+        Map<String, Object> normalizedAttributes = attributes == null ? Map.of() : new LinkedHashMap<>(attributes);
+        putTextIfPresent(payload, "sourceModule", normalizedAttributes.get("sourceModule"));
+        putTextIfPresent(payload, "producer", normalizedAttributes.get("producer"));
+        putTextIfPresent(payload, "owner", normalizedAttributes.get("owner"));
+        payload.put("attributes", normalizedAttributes);
         return payload;
+    }
+
+    private void putTextIfPresent(Map<String, Object> payload, String key, Object value) {
+        if (value instanceof String text && StringUtils.hasText(text)) {
+            payload.put(key, text.trim());
+        }
     }
 
     private String resolveUserUuid(Map<String, Object> attributes) {

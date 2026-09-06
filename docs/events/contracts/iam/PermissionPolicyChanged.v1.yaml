@@ -2,7 +2,10 @@ eventType: PermissionPolicyChanged
 schemaVersion: 1
 sourceModule: iam
 producer: iam
-schemaDigest: sha256:257defae84770c271d08d5c2bed4c4d866fc9b9dfc088e96b7c7ae1fb4230fb9
+owner: lumira-system
+consumerCapabilities:
+  - async-authz-invalidation
+schemaDigest: sha256:74bf67e769b9c55aa91beba06f7258062f63c6acbf31c5094c51b09afe1c37d7
 compatibility:
   mode: backward
   requiredFields:
@@ -26,4 +29,8 @@ compatibility:
 delivery:
   transport: redis-stream
   guarantee: at-least-once
-  consumerStatus: contract-only
+  consumerStatus: implemented-by-lumira-async
+  consumer:
+    name: async-authz-invalidation
+    supportedSchemaVersions:
+      - 1

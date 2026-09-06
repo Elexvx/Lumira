@@ -50,6 +50,22 @@ class IamDomainModelsTest {
     }
 
     @Test
+    void roleAggregateEmitsRoleChangedWithOwnerActorMetadata() {
+        RoleAggregate role = new RoleAggregate(10L, Set.of());
+
+        role.recordRoleChanged("UPDATED", "analyst", 1001L, " user-uuid-1001 ");
+
+        assertThat(role.domainEvents()).hasSize(1);
+        DomainEvent event = role.domainEvents().getFirst();
+        assertThat(event.eventType()).isEqualTo("IAM_ROLE_CHANGED");
+        assertThat(event.attributes())
+                .containsEntry("changeType", "UPDATED")
+                .containsEntry("roleCode", "analyst")
+                .containsEntry("userId", 1001L)
+                .containsEntry("userUuid", "user-uuid-1001");
+    }
+
+    @Test
     void permissionSnapshotReadModelUsesGlobalVersionScopeCacheKey() {
         PermissionSnapshotReadModel snapshot = new PermissionSnapshotReadModel(
                 20L,

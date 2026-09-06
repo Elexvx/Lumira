@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Objects;
 
 final class PluginMigrationExecutor {
     static final int DEFAULT_LEASE_SECONDS = 900;
@@ -16,10 +17,17 @@ final class PluginMigrationExecutor {
 
     private final PluginMigrationRepository repository;
     private final PluginMigrationSafetyValidator validator;
+    private final PluginMigrationFaultInjector faultInjector;
 
     PluginMigrationExecutor(PluginMigrationRepository repository, PluginMigrationSafetyValidator validator) {
+        this(repository, validator, PluginMigrationFaultInjector.noOp());
+    }
+
+    PluginMigrationExecutor(PluginMigrationRepository repository, PluginMigrationSafetyValidator validator,
+                            PluginMigrationFaultInjector faultInjector) {
         this.repository = repository;
         this.validator = validator;
+        this.faultInjector = Objects.requireNonNull(faultInjector, "fault injector");
     }
 
     void approve(Connection connection, Approval approval) throws Exception {
@@ -62,6 +70,7 @@ final class PluginMigrationExecutor {
                         statement.setQueryTimeout(120);
                         statement.execute(sql);
                     }
+                    faultInjector.afterDdlBeforeVerify();
                 }
                 String actualSchemaDigest = repository.captureSchemaSnapshot(connection, running, migration.targetTables());
                 if (hasText(running.expectedSchemaDigest())

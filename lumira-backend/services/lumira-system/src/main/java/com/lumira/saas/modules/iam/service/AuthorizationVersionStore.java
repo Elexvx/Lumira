@@ -2,6 +2,7 @@ package com.lumira.saas.modules.iam.service;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.api.iam.AuthorizationRuntimeKeys;
 import com.lumira.saas.infrastructure.readmodel.ReadModelEventKey;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService.ReadModelScopeKey;
@@ -26,12 +27,6 @@ public class AuthorizationVersionStore {
 
     private static final Logger log = LoggerFactory.getLogger(AuthorizationVersionStore.class);
     private static final String CONTEXT = "IAM";
-    private static final String SUBJECT_PREFIX = "authorization:subject:";
-    private static final String BINDING_PREFIX = "authorization:binding:";
-    private static final String ROLE_PREFIX = "authorization:role:";
-    private static final String DATA_POLICY_ROLE_PREFIX = "authorization:data-policy:role:";
-    private static final String DATA_POLICY_GLOBAL = "authorization:data-policy:global";
-    private static final String REDIS_PREFIX = "lumira:runtime:authz-version:";
     private static final Duration REDIS_TTL = Duration.ofDays(30);
 
     private final ReadModelVersionService database;
@@ -55,12 +50,12 @@ public class AuthorizationVersionStore {
         Map<Long, Long> roles = new LinkedHashMap<>();
         if (roleIds != null) {
             roleIds.stream().filter(id -> id != null && id > 0).sorted()
-                    .forEach(id -> roles.put(id, current.get(new Dimension(ROLE_PREFIX + id))));
+                    .forEach(id -> roles.put(id, current.get(new Dimension(AuthorizationRuntimeKeys.ROLE_SCOPE + id))));
         }
         return new AuthorizationVersionVector(
                 normalizedSubject,
-                current.get(new Dimension(SUBJECT_PREFIX + normalizedSubject)),
-                current.get(new Dimension(BINDING_PREFIX + normalizedSubject)),
+                current.get(new Dimension(AuthorizationRuntimeKeys.SUBJECT_SCOPE + normalizedSubject)),
+                current.get(new Dimension(AuthorizationRuntimeKeys.BINDING_SCOPE + normalizedSubject)),
                 roles,
                 dataPolicyVersions(roleIds, current)
         ).encode();
@@ -74,19 +69,19 @@ public class AuthorizationVersionStore {
             return false;
         }
         Map<Dimension, Long> current = currentVersions(dimensions(expected.subject(), expected.roleVersions().keySet()));
-        if (!current.get(new Dimension(SUBJECT_PREFIX + expected.subject())).equals(expected.subjectVersion())
-                || !current.get(new Dimension(BINDING_PREFIX + expected.subject())).equals(expected.bindingVersion())
-                || !current.get(new Dimension(DATA_POLICY_GLOBAL)).equals(expected.dataPolicyVersions().getOrDefault(0L, -1L))) {
+        if (!current.get(new Dimension(AuthorizationRuntimeKeys.SUBJECT_SCOPE + expected.subject())).equals(expected.subjectVersion())
+                || !current.get(new Dimension(AuthorizationRuntimeKeys.BINDING_SCOPE + expected.subject())).equals(expected.bindingVersion())
+                || !current.get(new Dimension(AuthorizationRuntimeKeys.DATA_POLICY_GLOBAL_SCOPE)).equals(expected.dataPolicyVersions().getOrDefault(0L, -1L))) {
             return false;
         }
         for (Map.Entry<Long, Long> role : expected.roleVersions().entrySet()) {
-            if (!current.get(new Dimension(ROLE_PREFIX + role.getKey())).equals(role.getValue())) {
+            if (!current.get(new Dimension(AuthorizationRuntimeKeys.ROLE_SCOPE + role.getKey())).equals(role.getValue())) {
                 return false;
             }
         }
         for (Map.Entry<Long, Long> dataPolicy : expected.dataPolicyVersions().entrySet()) {
             if (dataPolicy.getKey() > 0
-                    && !current.get(new Dimension(DATA_POLICY_ROLE_PREFIX + dataPolicy.getKey())).equals(dataPolicy.getValue())) {
+                    && !current.get(new Dimension(AuthorizationRuntimeKeys.DATA_POLICY_ROLE_SCOPE + dataPolicy.getKey())).equals(dataPolicy.getValue())) {
                 return false;
             }
         }
@@ -94,29 +89,29 @@ public class AuthorizationVersionStore {
     }
 
     public void bumpSubject(String subject) {
-        bump(SUBJECT_PREFIX + requireSubject(subject), "iam.subject.changed");
+        bump("authorization:subject:" + requireSubject(subject), "iam.subject.changed");
     }
 
     public void bumpBinding(String subject) {
-        bump(BINDING_PREFIX + requireSubject(subject), "iam.binding.changed");
+        bump("authorization:binding:" + requireSubject(subject), "iam.binding.changed");
     }
 
     public void bumpRole(long roleId) {
         if (roleId <= 0) {
             throw new IllegalArgumentException("roleId must be positive");
         }
-        bump(ROLE_PREFIX + roleId, "iam.role.changed");
+        bump("authorization:role:" + roleId, "iam.role.changed");
     }
 
     public void bumpRoleDataPolicy(long roleId) {
         if (roleId <= 0) {
             throw new IllegalArgumentException("roleId must be positive");
         }
-        bump(DATA_POLICY_ROLE_PREFIX + roleId, "iam.role-data-policy.changed");
+        bump("authorization:data-policy:role:" + roleId, "iam.role-data-policy.changed");
     }
 
     public void bumpDataPolicy() {
-        bump(DATA_POLICY_GLOBAL, "iam.data-policy.changed");
+        bump("authorization:data-policy:global", "iam.data-policy.changed");
     }
 
     private void bump(String scope, String eventName) {
@@ -215,28 +210,28 @@ public class AuthorizationVersionStore {
 
     private List<Dimension> dimensions(String subject, Set<Long> roleIds) {
         List<Dimension> dimensions = new ArrayList<>();
-        dimensions.add(new Dimension(SUBJECT_PREFIX + subject));
-        dimensions.add(new Dimension(BINDING_PREFIX + subject));
+        dimensions.add(new Dimension(AuthorizationRuntimeKeys.SUBJECT_SCOPE + subject));
+        dimensions.add(new Dimension(AuthorizationRuntimeKeys.BINDING_SCOPE + subject));
         if (roleIds != null) {
             roleIds.stream().filter(id -> id != null && id > 0).sorted()
-                    .map(id -> new Dimension(ROLE_PREFIX + id)).forEach(dimensions::add);
+                    .map(id -> new Dimension(AuthorizationRuntimeKeys.ROLE_SCOPE + id)).forEach(dimensions::add);
             roleIds.stream().filter(id -> id != null && id > 0).sorted()
-                    .map(id -> new Dimension(DATA_POLICY_ROLE_PREFIX + id)).forEach(dimensions::add);
+                    .map(id -> new Dimension(AuthorizationRuntimeKeys.DATA_POLICY_ROLE_SCOPE + id)).forEach(dimensions::add);
         }
-        dimensions.add(new Dimension(DATA_POLICY_GLOBAL));
+        dimensions.add(new Dimension(AuthorizationRuntimeKeys.DATA_POLICY_GLOBAL_SCOPE));
         return List.copyOf(dimensions);
     }
 
     private String redisKey(String scope) {
-        return REDIS_PREFIX + scope;
+        return AuthorizationRuntimeKeys.PREFIX + scope;
     }
 
     private Map<Long, Long> dataPolicyVersions(Set<Long> roleIds, Map<Dimension, Long> current) {
         Map<Long, Long> versions = new LinkedHashMap<>();
-        versions.put(0L, current.get(new Dimension(DATA_POLICY_GLOBAL)));
+        versions.put(0L, current.get(new Dimension(AuthorizationRuntimeKeys.DATA_POLICY_GLOBAL_SCOPE)));
         if (roleIds != null) {
             roleIds.stream().filter(id -> id != null && id > 0).sorted()
-                    .forEach(id -> versions.put(id, current.get(new Dimension(DATA_POLICY_ROLE_PREFIX + id))));
+                    .forEach(id -> versions.put(id, current.get(new Dimension(AuthorizationRuntimeKeys.DATA_POLICY_ROLE_SCOPE + id))));
         }
         return Map.copyOf(versions);
     }

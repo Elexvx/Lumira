@@ -35,7 +35,8 @@ class AsyncRuntimeReadinessV2ControllerTest {
                         "async.redis.connected",
                         "async.recovery-fence.durable",
                         "async.payment-consumer.running",
-                        "async.notification-consumer.running"
+                        "async.notification-consumer.running",
+                        "async.iam-consumer.running"
                 );
     }
 

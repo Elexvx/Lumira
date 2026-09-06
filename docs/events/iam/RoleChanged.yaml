@@ -4,13 +4,15 @@ sourceModule: iam
 producer: iam
 schemaVersion: 1
 aggregate:
-  type: iam.user-role
-  id: user id or role assignment id
+  type: iam.role
+  id: role id
 payload:
-  userId: affected user identity
-  userUuid: affected user identity binding
-  roleIds: resulting role set or changed role set
-  permissionsVersion: monotonically increasing permission snapshot version
-futureConsumer:
-  purpose: invalidate authorization/read-model caches
+  roleId: changed role id
+  changeType: CREATED, UPDATED or DELETED
+  roleCode: changed role code
+  producer: iam
+  owner: lumira-system
+consumer:
+  runtime: lumira-async
+  purpose: delete role and role-data-policy authorization-version keys
   rule: must not be required by AuthJwtAuthFilter before fail-closed session validation

@@ -73,6 +73,16 @@ lumira:
       max-delivery-count: ${LUMIRA_NOTIFICATION_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}
       stream-max-length: ${REDIS_RUNTIME_STREAM_MAXLEN:100000}
       dead-letter-max-length: ${REDIS_RUNTIME_NOTIFICATION_DLQ_MAXLEN:50000}
+    iam-consumer:
+      enabled: ${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_ENABLED:true}
+      stream-key: ${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_STREAM_KEY:saas:platform-events}
+      group-name: ${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_GROUP_NAME:iam-authz-invalidation-v1}
+      consumer-name: ${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_NAME:}
+      pending-recovery-minimum-idle: ${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_PENDING_RECOVERY_MINIMUM_IDLE:30s}
+      pending-recovery-interval: ${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:30s}
+      max-delivery-count: ${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}
+      stream-max-length: ${REDIS_RUNTIME_STREAM_MAXLEN:100000}
+      dead-letter-max-length: ${REDIS_RUNTIME_IAM_AUTHZ_DLQ_MAXLEN:50000}
 
 management:
   endpoint:

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.Locale;
 import java.util.Map;
 
 public final class PluginMigrationCommand {
@@ -33,7 +34,8 @@ public final class PluginMigrationCommand {
         }
         String releaseId = require(environment, "PLUGIN_MIGRATION_RELEASE_ID");
         PluginMigrationExecutor executor = new PluginMigrationExecutor(
-                new PluginMigrationRepository(), new PluginMigrationSafetyValidator(new ObjectMapper()));
+                new PluginMigrationRepository(), new PluginMigrationSafetyValidator(new ObjectMapper()),
+                faultInjector(environment));
         Class.forName("com.mysql.cj.jdbc.Driver");
         try (Connection connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword)) {
             if ("approve".equals(mode)) {
@@ -72,14 +74,31 @@ public final class PluginMigrationCommand {
     }
 
     private static int boundedInt(String value, int fallback, int min, int max) {
+        return boundedInt(value, fallback, min, max, "PLUGIN_MIGRATION_BATCH_LIMIT");
+    }
+
+    private static int boundedInt(String value, int fallback, int min, int max, String key) {
         if (value == null || value.isBlank()) return fallback;
         try {
             int parsed = Integer.parseInt(value.trim());
-            if (parsed < min || parsed > max) throw new IllegalArgumentException("PLUGIN_MIGRATION_BATCH_LIMIT is outside allowed range");
+            if (parsed < min || parsed > max) throw new IllegalArgumentException(key + " is outside allowed range");
             return parsed;
         } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("PLUGIN_MIGRATION_BATCH_LIMIT must be an integer", exception);
+            throw new IllegalArgumentException(key + " must be an integer", exception);
         }
+    }
+
+    private static PluginMigrationFaultInjector faultInjector(Map<String, String> environment) {
+        String faultPoint = environment.getOrDefault("PLUGIN_MIGRATION_FAULT_INJECTION", "NONE")
+                .trim().toUpperCase(Locale.ROOT);
+        return switch (faultPoint) {
+            case "NONE" -> PluginMigrationFaultInjector.noOp();
+            case "AFTER_DDL_BEFORE_VERIFY" -> PluginMigrationFaultInjector.delayedAfterDdl(
+                    boundedInt(environment.get("PLUGIN_MIGRATION_FAULT_INJECTION_DELAY_MS"),
+                            30_000, 1, 120_000, "PLUGIN_MIGRATION_FAULT_INJECTION_DELAY_MS"));
+            default -> throw new IllegalArgumentException(
+                    "PLUGIN_MIGRATION_FAULT_INJECTION must be NONE or AFTER_DDL_BEFORE_VERIFY");
+        };
     }
 
     private static String requireDigest(Map<String, String> environment, String key) {

@@ -30,6 +30,7 @@ public class AsyncRuntimeReadinessV2Controller {
     private final BooleanSupplier redisAvailable;
     private final BooleanSupplier paymentConsumerRunning;
     private final BooleanSupplier notificationConsumerRunning;
+    private final BooleanSupplier iamConsumerRunning;
     private final BooleanSupplier recoveryFenceDurable;
 
     public AsyncRuntimeReadinessV2Controller(
@@ -51,6 +52,7 @@ public class AsyncRuntimeReadinessV2Controller {
                 () -> true,
                 () -> true,
                 () -> true,
+                () -> true,
                 () -> true
         );
     }
@@ -67,6 +69,7 @@ public class AsyncRuntimeReadinessV2Controller {
             RedisConnectionFactory redisConnectionFactory,
             ObjectProvider<PaymentEventStreamConsumer> paymentConsumerProvider,
             ObjectProvider<PaymentNotificationConsumer> notificationConsumerProvider,
+            ObjectProvider<IamAuthorizationInvalidationConsumer> iamConsumerProvider,
             RecoveryFenceRegistry recoveryFenceRegistry
     ) {
         this(
@@ -83,6 +86,10 @@ public class AsyncRuntimeReadinessV2Controller {
                 },
                 () -> {
                     PaymentNotificationConsumer consumer = notificationConsumerProvider.getIfAvailable();
+                    return consumer != null && consumer.isRunning();
+                },
+                () -> {
+                    IamAuthorizationInvalidationConsumer consumer = iamConsumerProvider.getIfAvailable();
                     return consumer != null && consumer.isRunning();
                 },
                 recoveryFenceRegistry::isDurable
@@ -109,6 +116,7 @@ public class AsyncRuntimeReadinessV2Controller {
                 redisAvailable,
                 paymentConsumerRunning,
                 () -> true,
+                () -> true,
                 () -> true
         );
     }
@@ -134,6 +142,7 @@ public class AsyncRuntimeReadinessV2Controller {
                 redisAvailable,
                 paymentConsumerRunning,
                 () -> true,
+                () -> true,
                 recoveryFenceDurable
         );
     }
@@ -148,6 +157,7 @@ public class AsyncRuntimeReadinessV2Controller {
             BooleanSupplier redisAvailable,
             BooleanSupplier paymentConsumerRunning,
             BooleanSupplier notificationConsumerRunning,
+            BooleanSupplier iamConsumerRunning,
             BooleanSupplier recoveryFenceDurable
     ) {
         this.controlPlaneBaseUrl = controlPlaneBaseUrl;
@@ -155,6 +165,7 @@ public class AsyncRuntimeReadinessV2Controller {
         this.redisAvailable = redisAvailable;
         this.paymentConsumerRunning = paymentConsumerRunning;
         this.notificationConsumerRunning = notificationConsumerRunning;
+        this.iamConsumerRunning = iamConsumerRunning;
         this.recoveryFenceDurable = recoveryFenceDurable;
     }
 
@@ -177,9 +188,10 @@ public class AsyncRuntimeReadinessV2Controller {
                         "/internal/jobs/payment-events/dead-letter/{recordId}/replay",
                         "/internal/jobs/payment-notifications/dead-letter",
                         "/internal/jobs/payment-notifications/dead-letter/stats",
-                        "/internal/jobs/payment-notifications/dead-letter/{recordId}/replay"
+                        "/internal/jobs/payment-notifications/dead-letter/{recordId}/replay",
+                        "/internal/jobs/iam-authz/dead-letter"
                 ),
-                List.of("Redis Stream payment consumer", "Redis Stream notification consumer", "owner Outbox relay requests"),
+                List.of("Redis Stream payment consumer", "Redis Stream notification consumer", "Redis Stream IAM authorization consumer", "owner Outbox relay requests"),
                 List.of(
                         "async.control-plane-base-url.configured",
                         "async.scoped-internal-tokens.configured",
@@ -187,6 +199,7 @@ public class AsyncRuntimeReadinessV2Controller {
                         "async.recovery-fence.durable",
                         "async.payment-consumer.running",
                         "async.notification-consumer.running",
+                        "async.iam-consumer.running",
                         "async.no-datasource-or-owner-beans"
                 ),
                 List.of(
@@ -204,7 +217,16 @@ public class AsyncRuntimeReadinessV2Controller {
                         "lumira.notification.consumer.pending.oldest.age.seconds",
                         "redis_runtime_notification_stream_pending",
                         "redis_runtime_notification_stream_oldest_pending_age",
-                        "lumira.notification.consumer.dead-letter.count"
+                        "lumira.notification.consumer.dead-letter.count",
+                        "lumira.iam.authz.consumer.events.consumed",
+                        "lumira.iam.authz.consumer.events.failed",
+                        "lumira.iam.authz.consumer.pending.count",
+                        "lumira.iam.authz.consumer.pending.oldest.age.seconds",
+                        "lumira.iam.authz.consumer.dead-letter.count",
+                        "iam_event_invalidation_success_total",
+                        "iam_event_duplicate_total",
+                        "iam_event_dlq_total",
+                        "iam_event_schema_reject_total"
                 ),
                 List.of("Redis", "active control-plane slot through api-proxy", "owner-scoped internal tokens"),
                 List.of(
@@ -264,6 +286,11 @@ public class AsyncRuntimeReadinessV2Controller {
                                 "The payment notification Redis Stream consumer must be actively polling."
                         ),
                         healthCheck(
+                                "async.iam-consumer.running",
+                                isIamConsumerRunning() ? "RUNNING" : "STOPPED",
+                                "The IAM authorization Redis Stream consumer must be actively polling."
+                        ),
+                        healthCheck(
                                 "async.no-datasource-or-owner-beans",
                                 "CONFIGURED",
                                 "The runtime is assembled from narrow remote ports and Redis only."
@@ -284,7 +311,16 @@ public class AsyncRuntimeReadinessV2Controller {
                         metric("lumira.notification.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending notification Stream entry."),
                         metric("redis_runtime_notification_stream_pending", "gauge", "messages", "Current pending entries in the runtime Redis notification group."),
                         metric("redis_runtime_notification_stream_oldest_pending_age", "gauge", "seconds", "Age of the oldest pending notification entry."),
-                        metric("lumira.notification.consumer.dead-letter.count", "gauge", "messages", "Current notification DLQ count.")
+                        metric("lumira.notification.consumer.dead-letter.count", "gauge", "messages", "Current notification DLQ count."),
+                        metric("lumira.iam.authz.consumer.events.consumed", "counter", "events", "IAM authorization invalidation events applied."),
+                        metric("lumira.iam.authz.consumer.events.failed", "counter", "failures", "IAM authorization consumer failures retained for retry or dead letter."),
+                        metric("lumira.iam.authz.consumer.pending.count", "gauge", "messages", "Current pending IAM authorization Stream entries."),
+                        metric("lumira.iam.authz.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending IAM authorization entry."),
+                        metric("lumira.iam.authz.consumer.dead-letter.count", "gauge", "messages", "Current IAM authorization DLQ count."),
+                        metric("iam_event_invalidation_success_total", "counter", "events", "IAM authorization invalidations successfully applied."),
+                        metric("iam_event_duplicate_total", "counter", "events", "IAM events skipped because an event receipt already exists."),
+                        metric("iam_event_dlq_total", "counter", "events", "IAM events copied to the consumer dead-letter stream."),
+                        metric("iam_event_schema_reject_total", "counter", "events", "IAM events rejected for unsupported or invalid schema.")
                 )
         );
     }
@@ -295,7 +331,8 @@ public class AsyncRuntimeReadinessV2Controller {
                 && isRedisAvailable()
                 && isRecoveryFenceDurable()
                 && isPaymentConsumerRunning()
-                && isNotificationConsumerRunning();
+                && isNotificationConsumerRunning()
+                && isIamConsumerRunning();
     }
 
     private boolean scopedTokensConfigured() {
@@ -312,6 +349,10 @@ public class AsyncRuntimeReadinessV2Controller {
 
     private boolean isNotificationConsumerRunning() {
         return safeBoolean(notificationConsumerRunning);
+    }
+
+    private boolean isIamConsumerRunning() {
+        return safeBoolean(iamConsumerRunning);
     }
 
     private boolean isRecoveryFenceDurable() {

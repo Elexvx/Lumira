@@ -28,6 +28,14 @@ keys:
     plane: runtime
     owner: system-and-lumira-async
     semantics: stream
+  - pattern: "lumira:runtime:authz-version:*"
+    plane: runtime
+    owner: system-iam
+    semantics: authorization-version
+  - pattern: "lumira:runtime:event-receipt:iam-authz-invalidation:*"
+    plane: runtime
+    owner: lumira-async
+    semantics: idempotency-receipt
   - pattern: "saas:session:*"
     plane: runtime
     owner: system-auth

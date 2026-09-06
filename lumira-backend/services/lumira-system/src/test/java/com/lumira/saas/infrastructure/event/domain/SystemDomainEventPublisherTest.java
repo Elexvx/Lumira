@@ -67,6 +67,37 @@ class SystemDomainEventPublisherTest {
         );
     }
 
+    @Test
+    void publishShouldMapIamDomainEventsToVersionedContractAndSystemOutbox() {
+        PlatformEventPublisher platformEventPublisher = mock(PlatformEventPublisher.class);
+        SystemDomainEventPublisher publisher = new SystemDomainEventPublisher(platformEventPublisher);
+        var event = StandardDomainEvent.of(
+                "IAM_ROLE_PERMISSIONS_CHANGED",
+                "iam.role",
+                "3001",
+                Map.of("permissionCount", 3, "userId", 2001L, "userUuid", "user-uuid-2001")
+        );
+        ArgumentCaptor<Map<String, Object>> attributesCaptor = mapCaptor();
+
+        publisher.publish(event);
+
+        verify(platformEventPublisher).record(
+                eq(PlatformEventTypes.SOURCE_SYSTEM),
+                eq(PlatformEventTypes.IAM_PERMISSION_POLICY_CHANGED),
+                eq(2001L),
+                eq("iam.role"),
+                eq(3001L),
+                attributesCaptor.capture()
+        );
+        assertThat(attributesCaptor.getValue())
+                .containsEntry("sourceModule", "iam")
+                .containsEntry("producer", PlatformEventTypes.IAM_PRODUCER)
+                .containsEntry("owner", PlatformEventTypes.IAM_OWNER)
+                .containsEntry("policyId", "3001")
+                .containsEntry("policyScope", "ROLE")
+                .containsEntry("changeType", "UPDATED");
+    }
+
     @SuppressWarnings("unchecked")
     private ArgumentCaptor<Map<String, Object>> mapCaptor() {
         return (ArgumentCaptor<Map<String, Object>>) (ArgumentCaptor<?>) forClass(Map.class);

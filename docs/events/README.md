@@ -17,9 +17,19 @@ Required evidence for a new consumer is:
 - bounded delivery attempts with a consumer-owned DLQ;
 - an authenticated replay path that validates a recovery fence.
 
-The IAM contracts are definitions only in this sprint. They must not become a
-runtime dependency of JWT authentication until a separate migration proves
-that the current fail-closed permission/version path remains intact.
+The IAM contracts are now consumed by `lumira-async` only for Runtime Redis
+authorization-version invalidation. The consumer never opens the IAM database,
+changes permission data, or invalidates sessions; a missing version key is
+rehydrated by the fail-closed control-plane authorization path.
+
+The IAM consumer exposes both the existing `lumira.iam.authz.consumer.*`
+meters and release-gate counters named `iam_event_invalidation_success_total`,
+`iam_event_duplicate_total`, `iam_event_dlq_total`, and
+`iam_event_schema_reject_total`. The Docker-backed plugin migration drill emits
+`PASS` evidence when Docker is available and classifies an unavailable local
+daemon as `SKIPPED_ENVIRONMENT`; a release candidate must run it with Docker
+available. Run it explicitly with `node bin/plugin-migration-recovery-docker.mjs`
+so an ordinary source-contract test run does not start Docker containers.
 
 ## Contract governance
 

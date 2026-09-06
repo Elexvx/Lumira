@@ -22,13 +22,14 @@ public class SystemDomainEventPublisher implements DomainEventPublisher {
         if (event == null) {
             return;
         }
+        String eventType = resolveEventType(event.eventType());
         platformEventPublisher.record(
                 resolveSourceType(event),
-                event.eventType(),
+                eventType,
                 resolveUserId(event.attributes()),
                 event.aggregateType(),
                 parseLong(event.aggregateId()),
-                attributes(event)
+                attributes(event, eventType)
         );
     }
 
@@ -47,7 +48,10 @@ public class SystemDomainEventPublisher implements DomainEventPublisher {
             return PlatformEventTypes.SOURCE_AI;
         }
         if (type != null && type.startsWith("IAM_")) {
-            return "IAM";
+            // PlatformEventOutboxService is the SYSTEM owner outbox. IAM is
+            // the producer identity carried in the payload, not a second
+            // outbox source plane.
+            return PlatformEventTypes.SOURCE_SYSTEM;
         }
         if (type != null && type.startsWith("PLATFORM_")) {
             return PlatformEventTypes.SOURCE_SYSTEM;
@@ -55,11 +59,34 @@ public class SystemDomainEventPublisher implements DomainEventPublisher {
         return PlatformEventTypes.SOURCE_SYSTEM;
     }
 
-    private Map<String, Object> attributes(DomainEvent event) {
+    private String resolveEventType(String domainEventType) {
+        if ("IAM_ROLE_CHANGED".equals(domainEventType)) {
+            return PlatformEventTypes.IAM_ROLE_CHANGED;
+        }
+        if ("IAM_ROLE_PERMISSIONS_CHANGED".equals(domainEventType)) {
+            return PlatformEventTypes.IAM_PERMISSION_POLICY_CHANGED;
+        }
+        return domainEventType;
+    }
+
+    private Map<String, Object> attributes(DomainEvent event, String eventType) {
         Map<String, Object> attributes = new LinkedHashMap<>(event.attributes() == null ? Map.of() : event.attributes());
         attributes.put("eventId", event.eventId().toString());
         attributes.put("eventKey", event.eventKey());
         attributes.put("schemaVersion", event.schemaVersion());
+        if (PlatformEventTypes.IAM_ROLE_CHANGED.equals(eventType)
+                || PlatformEventTypes.IAM_PERMISSION_POLICY_CHANGED.equals(eventType)) {
+            attributes.put("sourceModule", "iam");
+            attributes.put("producer", PlatformEventTypes.IAM_PRODUCER);
+            attributes.put("owner", PlatformEventTypes.IAM_OWNER);
+            if (PlatformEventTypes.IAM_ROLE_CHANGED.equals(eventType)) {
+                attributes.putIfAbsent("roleId", event.aggregateId());
+            } else {
+                attributes.putIfAbsent("policyScope", "ROLE");
+                attributes.putIfAbsent("policyId", event.aggregateId());
+                attributes.putIfAbsent("changeType", "UPDATED");
+            }
+        }
         return attributes;
     }
 

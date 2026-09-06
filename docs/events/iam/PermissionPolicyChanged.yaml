@@ -7,9 +7,13 @@ aggregate:
   type: iam.permission-policy
   id: policy id or tenant id
 payload:
-  policyVersion: resulting policy version
-  permissionsVersion: resulting authorization snapshot version
-  affectedScopes: bounded list of invalidation scopes
-futureConsumer:
-  purpose: invalidate authorization/read-model caches
+  policyId: changed policy or role id
+  policyScope: ROLE or GLOBAL
+  changeType: CREATED, UPDATED or DELETED
+  permissionCount: resulting role permission count when role-scoped
+  producer: iam
+  owner: lumira-system
+consumer:
+  runtime: lumira-async
+  purpose: delete role authorization-version keys and the global data-policy version
   rule: event loss must not grant access; consumers fail closed and rebuild from the owner snapshot

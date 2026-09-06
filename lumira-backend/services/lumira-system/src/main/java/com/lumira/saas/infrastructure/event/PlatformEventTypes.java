@@ -19,6 +19,12 @@ public final class PlatformEventTypes {
     public static final String MESSAGE_NOTICE_RETRACTED = "MESSAGE_NOTICE_RETRACTED";
     public static final String SYSTEM_CONFIG_VERSION_PUBLISHED = "SYSTEM_CONFIG_VERSION_PUBLISHED";
 
+    /** Canonical cross-module IAM event names from docs/events/contracts/iam. */
+    public static final String IAM_ROLE_CHANGED = "RoleChanged";
+    public static final String IAM_PERMISSION_POLICY_CHANGED = "PermissionPolicyChanged";
+    public static final String IAM_PRODUCER = "iam";
+    public static final String IAM_OWNER = "lumira-system";
+
     private PlatformEventTypes() {
     }
 }

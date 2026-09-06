@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.regex.Pattern;
+import java.util.Set;
 
 final class PlatformEventTrustValidator {
 
@@ -14,6 +15,10 @@ final class PlatformEventTrustValidator {
     static final int MAX_STREAM_KEY_LENGTH = 128;
 
     private static final Pattern EVENT_TYPE_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]{1,95}$");
+    private static final Set<String> VERSIONED_CONTRACT_EVENT_TYPES = Set.of(
+            PlatformEventTypes.IAM_ROLE_CHANGED,
+            PlatformEventTypes.IAM_PERMISSION_POLICY_CHANGED
+    );
     private static final Pattern EVENT_KEY_PATTERN = Pattern.compile("^[A-Za-z0-9._:@/-]{1,256}$");
     private static final Pattern REDIS_STREAM_KEY_PATTERN = Pattern.compile("^[A-Za-z0-9:_-]{1,128}$");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -85,7 +90,9 @@ final class PlatformEventTrustValidator {
             throw new IllegalArgumentException("platform eventType is required");
         }
         String normalized = eventType.trim();
-        if (normalized.length() > MAX_EVENT_TYPE_LENGTH || !EVENT_TYPE_PATTERN.matcher(normalized).matches()) {
+        if (normalized.length() > MAX_EVENT_TYPE_LENGTH
+                || (!EVENT_TYPE_PATTERN.matcher(normalized).matches()
+                && !VERSIONED_CONTRACT_EVENT_TYPES.contains(normalized))) {
             throw new IllegalArgumentException("platform eventType is invalid");
         }
         return normalized;
