@@ -75,6 +75,16 @@ the same Redis state immediately before entering its outbox claim path. A lost
 fence fails fast, is not retried, and increments
 `lumira.async.fence.reject.count`.
 
+## Minimal event envelope
+
+Cross-module producers may use `com.lumira.api.event.EventEnvelope` for the
+stable identity, source, aggregate, schema, timestamp, trace and payload
+metadata shared by integration events. It is intentionally only a DTO: it
+does not select a transport, replace the transactional outbox, or require a
+platform-wide event-bus rewrite. Existing owner outboxes and relay contracts
+remain the delivery authority while producers and consumers adopt the fields
+incrementally.
+
 ## Database boundary
 
 Both runtime POMs apply Maven Enforcer `bannedDependencies` with transitive search for Spring JDBC, JDBC starter, MyBatis/MyBatis-Plus, Flyway and MySQL drivers. `spring-jdbc` is excluded from their `common-web` dependency. Neither runtime receives a business database URL or DataSource.
