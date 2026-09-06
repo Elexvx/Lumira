@@ -5,7 +5,7 @@ import { contractDigest, readContractFiles, validateContractSources } from './ch
 
 test('event contract governance validates the checked-in envelope contracts', () => {
   const contracts = validateContractSources(readContractFiles());
-  assert.equal(contracts.length, 4);
+  assert.equal(contracts.length, 6);
   assert.ok(contracts.every((contract) => contract.schemaDigest === contractDigest(
     readContractFiles().find((entry) => entry.relativePath === contract.relativePath).source,
   )));

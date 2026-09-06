@@ -87,6 +87,26 @@ class LumiraAsyncApplicationYamlTest {
     }
 
     @Test
+    void fileLifecycleConsumerUsesTheFileStreamAndBoundedRecoveryDefaults() {
+        Properties properties = loadApplicationProperties();
+
+        assertThat(properties.getProperty("lumira.event.file-consumer.enabled"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_ENABLED:true}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.stream-key"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_STREAM_KEY:lumira.events.file.v1}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.group-name"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_GROUP_NAME:file-lifecycle-v1}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.pending-recovery-minimum-idle"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_PENDING_RECOVERY_MINIMUM_IDLE:30s}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.pending-recovery-interval"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:30s}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.max-delivery-count"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.dead-letter-max-length"))
+                .isEqualTo("${REDIS_RUNTIME_FILE_LIFECYCLE_DLQ_MAXLEN:50000}");
+    }
+
+    @Test
     void ownerRelayUsesTheActiveControlPlaneSlotInsteadOfOwnerServiceBaseUrls() {
         Properties properties = loadApplicationProperties();
 

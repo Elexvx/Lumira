@@ -10,7 +10,7 @@ EXPERT,lumira-expert,aiadc_expert,sql/saas.sql,,Expert applications approval sta
 WORKFLOW,lumira-workflow,workflow_*,sql/saas.sql,,Workflow definitions instances tasks and action logs are runtime-owned only by lumira-workflow.
 EXPORT,lumira-export,sys_export_task,sql/saas.sql,,Export task persistence is runtime-owned only by lumira-export.
 MESSAGE,lumira-message,msg_*|platform_event_outbox,sql/saas.sql,,Message tables are runtime-owned by lumira-message; platform_event_outbox uses a table-level shared producer rule.
-FILE,lumira-file,file_object|file_storage_space|file_processing_task|file_processing_artifact|platform_event_outbox,sql/saas.sql,,File tables are runtime-owned by lumira-file; platform_event_outbox uses a table-level shared producer rule.
+FILE,lumira-file,file_object|file_storage_space|file_processing_task|file_processing_artifact|file_event_receipt|file_event_projection|platform_event_outbox,sql/saas.sql,,File tables and the File domain event receipt/projection are runtime-owned by lumira-file; platform_event_outbox uses a table-level shared producer rule.
 PLUGIN,lumira-plugin,sys_plugin_*|plugin_event_outbox,sql/saas.sql,,Plugin lifecycle data is runtime-owned only by lumira-plugin.
 LOCALIZATION,lumira-localization,sys_localization_*,sql/saas.sql,,Localization tables are runtime-owned only by lumira-localization.
 PAYMENT,lumira-payment,payment_*,sql/saas.sql,,Payment tables are runtime-owned only by lumira-payment.

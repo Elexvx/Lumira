@@ -31,6 +31,8 @@ import java.util.UUID;
  */
 public final class InternalHttpClientFactory {
 
+    public static final String DEFAULT_TOKEN_HEADER = "X-Job-Token";
+    public static final String FILE_OWNER_TOKEN_HEADER = "X-File-Token";
     public static final String RELEASE_ID_HEADER = "X-Lumira-Release-Id";
     public static final String SCHEMA_VERSION_HEADER = "X-Lumira-Event-Schema-Version";
 
@@ -50,9 +52,13 @@ public final class InternalHttpClientFactory {
     }
 
     public InternalHttpClient create(String baseUrl, String token) {
+        return create(baseUrl, token, DEFAULT_TOKEN_HEADER);
+    }
+
+    public InternalHttpClient create(String baseUrl, String token, String tokenHeader) {
         URI baseUri = requireTrustedBaseUrl(baseUrl);
         String normalizedToken = requireText(token, "internal token");
-        return new InternalHttpClient(baseUri, normalizedToken);
+        return new InternalHttpClient(baseUri, normalizedToken, requireTokenHeader(tokenHeader));
     }
 
     public static URI requireTrustedBaseUrl(String value) {
@@ -84,10 +90,12 @@ public final class InternalHttpClientFactory {
     public final class InternalHttpClient {
         private final URI baseUri;
         private final String token;
+        private final String tokenHeader;
 
-        private InternalHttpClient(URI baseUri, String token) {
+        private InternalHttpClient(URI baseUri, String token, String tokenHeader) {
             this.baseUri = baseUri;
             this.token = token;
+            this.tokenHeader = tokenHeader;
         }
 
         public <T> T post(String path, Object body, TypeReference<T> responseType, RetryMode retryMode) {
@@ -131,7 +139,7 @@ public final class InternalHttpClientFactory {
                     .timeout(settings.responseTimeout())
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")
-                    .header("X-Job-Token", token)
+                    .header(tokenHeader, token)
                     .header(HeaderConstants.TRACE_ID, currentTraceId())
                     .header(RELEASE_ID_HEADER, identity.releaseId())
                     .header(SCHEMA_VERSION_HEADER, Integer.toString(identity.schemaVersion()))
@@ -281,6 +289,15 @@ public final class InternalHttpClientFactory {
             throw new IllegalArgumentException(name + " is required");
         }
         return value.trim();
+    }
+
+    private static String requireTokenHeader(String value) {
+        String normalized = requireText(value, "internal token header");
+        if (!DEFAULT_TOKEN_HEADER.equalsIgnoreCase(normalized)
+                && !FILE_OWNER_TOKEN_HEADER.equalsIgnoreCase(normalized)) {
+            throw new IllegalArgumentException("unsupported internal token header");
+        }
+        return normalized;
     }
 
     private static void requirePositive(Duration value, String name) {

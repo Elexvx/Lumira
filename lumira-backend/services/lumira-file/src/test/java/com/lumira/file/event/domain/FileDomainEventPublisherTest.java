@@ -25,7 +25,7 @@ class FileDomainEventPublisherTest {
                 "FILE_OBJECT_UPLOADED",
                 "file.object",
                 "3001",
-                Map.of("sizeBytes", 1024L, "userId", 2001L, "userUuid", "user-uuid-2001")
+                Map.of("aggregateVersion", 1L, "sizeBytes", 1024L, "userId", 2001L, "userUuid", "user-uuid-2001")
         );
         ArgumentCaptor<Object> payloadCaptor = forClass(Object.class);
 

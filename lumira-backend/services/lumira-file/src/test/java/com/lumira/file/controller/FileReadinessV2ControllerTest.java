@@ -23,9 +23,9 @@ class FileReadinessV2ControllerTest {
         assertThat(readiness.ownerModule()).isEqualTo("file-service");
         assertThat(readiness.status()).isEqualTo("READY_WITH_BLOCKERS");
         assertThat(readiness.ownerTablePatterns())
-                .contains("file_object", "file_storage_space", "file_processing_task", "file_processing_artifact", "platform_event_outbox");
+                .contains("file_object", "file_storage_space", "file_processing_task", "file_processing_artifact", "file_event_receipt", "file_event_projection", "platform_event_outbox");
         assertThat(readiness.apiContracts())
-                .contains("/api/v2/files/readiness", "FileInternalApi.getFileForUser", "FileInternalApi.readProcessingArtifactForUser");
+                .contains("/api/v2/files/readiness", "FileInternalApi.getFileForUser", "FileInternalApi.readProcessingArtifactForUser", "POST /file/internal/events/file-object-uploaded");
         assertThat(readiness.eventContracts())
                 .contains("FILE_OBJECT_UPLOADED", "FILE_OBJECT_DELETED", "FileProcessingTaskRequested");
         assertThat(readiness.healthChecks())
@@ -35,7 +35,7 @@ class FileReadinessV2ControllerTest {
         assertThat(readiness.blockers())
                 .anySatisfy(blocker -> assertThat(blocker).contains("AI owner indexing"));
         assertThat(readiness.dependencies())
-                .contains("ClamAV optional adapter", "Tesseract optional adapter");
+                .contains("file_event_receipt", "file_event_projection", "ClamAV optional adapter", "Tesseract optional adapter");
 
         var health = controller.health().getData();
         assertThat(health.status()).isEqualTo("UP");

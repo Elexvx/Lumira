@@ -7,6 +7,7 @@ import com.lumira.file.controller.FileController;
 import com.lumira.file.controller.FileReadinessV2Controller;
 import com.lumira.file.controller.FileUploadMetrics;
 import com.lumira.file.controller.FileV2Controller;
+import com.lumira.file.controller.FileInternalEventController;
 import com.lumira.file.controller.InternalFileController;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +22,7 @@ import org.springframework.context.annotation.Import;
         FileReadinessV2Controller.class,
         FileUploadMetrics.class,
         FileV2Controller.class,
+        FileInternalEventController.class,
         InternalFileController.class
 })
 public class LumiraFileControlPlaneAssemblyConfiguration {

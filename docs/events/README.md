@@ -31,6 +31,12 @@ daemon as `SKIPPED_ENVIRONMENT`; a release candidate must run it with Docker
 available. Run it explicitly with `node bin/plugin-migration-recovery-docker.mjs`
 so an ordinary source-contract test run does not start Docker containers.
 
+The File lifecycle projection follows the same owner-local pattern. The File
+owner stores `file_event_receipt` and `file_event_projection` in MySQL, while
+`lumira-async` owns Stream recovery and the File DLQ. See
+[`file-lifecycle-event-ownership.md`](../architecture/file-lifecycle-event-ownership.md)
+and the versioned File contracts under `docs/events/contracts/file/`.
+
 ## Contract governance
 
 Checked-in contracts live under `docs/events/contracts/<domain>/`. Each version

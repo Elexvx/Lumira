@@ -1,5 +1,6 @@
 package com.lumira.file;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.file.app.FileManagementAppService;
 import com.lumira.file.config.FileOcrProperties;
 import com.lumira.file.config.FileSecurityScanProperties;
@@ -7,6 +8,7 @@ import com.lumira.file.config.UploadProperties;
 import com.lumira.file.config.UploadResourceSecurityInterceptor;
 import com.lumira.file.event.FileOutboxMetricsService;
 import com.lumira.file.event.FileOutboxRelay;
+import com.lumira.file.event.FileEventApplicationService;
 import com.lumira.file.event.FilePlatformEventPublisher;
 import com.lumira.file.event.LoggingFileOutboxDispatcher;
 import com.lumira.file.event.PlatformEventOutboxService;
@@ -41,6 +43,7 @@ import com.lumira.file.upload.FileStorageMetrics;
 import com.lumira.file.upload.ImageUploadService;
 import com.lumira.file.upload.ZipSafetyValidator;
 import org.apache.ibatis.annotations.Mapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -63,6 +66,7 @@ import org.springframework.context.annotation.Import;
         UploadResourceSecurityInterceptor.class,
         FileOutboxMetricsService.class,
         FileOutboxRelay.class,
+        FileEventApplicationService.class,
         FilePlatformEventPublisher.class,
         LoggingFileOutboxDispatcher.class,
         RedisStreamFileOutboxDispatcher.class,
@@ -99,7 +103,11 @@ import org.springframework.context.annotation.Import;
 public class FileRuntimeAssemblyConfiguration {
 
     @Bean(name = "fileDomainEventPublisher")
-    FileDomainEventPublisher fileDomainEventPublisher(PlatformEventOutboxService platformEventOutboxService) {
-        return new FileDomainEventPublisher(platformEventOutboxService);
+    FileDomainEventPublisher fileDomainEventPublisher(
+            PlatformEventOutboxService platformEventOutboxService,
+            ObjectMapper objectMapper,
+            @Value("${lumira.release-id:${LUMIRA_RELEASE_ID:unknown}}") String releaseId
+    ) {
+        return new FileDomainEventPublisher(platformEventOutboxService, objectMapper, releaseId);
     }
 }
