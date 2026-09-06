@@ -158,6 +158,8 @@ public class AsyncRuntimeReadinessV2Controller {
                         "lumira.payment.consumer.stream.length",
                         "lumira.payment.consumer.pending.count",
                         "lumira.payment.consumer.pending.oldest.age.seconds",
+                        "redis_runtime_stream_pending",
+                        "redis_runtime_stream_oldest_pending_age",
                         "lumira.payment.consumer.dead-letter.count"
                 ),
                 List.of("Redis", "active control-plane slot through api-proxy", "owner-scoped internal tokens"),
@@ -226,6 +228,8 @@ public class AsyncRuntimeReadinessV2Controller {
                         metric("lumira.payment.consumer.stream.length", "gauge", "messages", "Current payment source Stream length."),
                         metric("lumira.payment.consumer.pending.count", "gauge", "messages", "Current payment Stream pending count."),
                         metric("lumira.payment.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending payment Stream entry."),
+                        metric("redis_runtime_stream_pending", "gauge", "messages", "Current pending entries in the runtime Redis payment Stream."),
+                        metric("redis_runtime_stream_oldest_pending_age", "gauge", "seconds", "Age of the oldest pending runtime Redis Stream entry."),
                         metric("lumira.payment.consumer.dead-letter.count", "gauge", "messages", "Current payment DLQ count.")
                 )
         );

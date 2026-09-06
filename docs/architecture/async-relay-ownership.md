@@ -75,15 +75,30 @@ the same Redis state immediately before entering its outbox claim path. A lost
 fence fails fast, is not retried, and increments
 `lumira.async.fence.reject.count`.
 
+The mapped HTTP endpoint is the only production entry into the owner claim
+path. The source-compatible direct Java overloads are intentionally not
+request mappings and remain available only to narrow unit tests and local
+assembly code. Both the Async lane and the owner boundary fail closed when
+the runtime fence store is unavailable.
+
 ## Minimal event envelope
 
 Cross-module producers may use `com.lumira.api.event.EventEnvelope` for the
-stable identity, source, aggregate, schema, timestamp, trace and payload
-metadata shared by integration events. It is intentionally only a DTO: it
-does not select a transport, replace the transactional outbox, or require a
-platform-wide event-bus rewrite. Existing owner outboxes and relay contracts
-remain the delivery authority while producers and consumers adopt the fields
-incrementally.
+stable identity, producer, aggregate/version, schema, timestamp, trace,
+release, payload digest and payload metadata shared by integration events.
+Aggregate version, release ID and payload digest remain optional in the
+compatibility constructor until an owner outbox exposes those facts. It is
+intentionally only a DTO: it does not select a transport, replace the
+transactional outbox, or require a platform-wide event-bus rewrite. Existing
+owner outboxes and relay contracts remain the delivery authority while
+producers and consumers adopt the fields incrementally.
+
+The initial adapter mapping is deliberately owner-local: outbox row `id` is
+the event identity, `event_type` is the event type, `source_type` or the owner
+name is the source/producer, `event_key` is the aggregate identity, and
+`payload_json` is the payload. Existing `trace_id`/request metadata fills
+trace fields where present. No new global offset or cross-database event
+sequence is introduced by this contract.
 
 ## Database boundary
 
@@ -107,7 +122,7 @@ The scoped payment token protects DLQ stats/list/replay endpoints. Replay additi
 ## Remaining integration risks
 
 - The fenced Async recovery APIs and Job handlers are implemented, but there is no operator-facing admin UI or durable audit table. Structured service logs are the current DLQ replay audit trail.
-- Owner server relay/replay endpoints now validate the relay generation at their final HTTP boundary. The five owner outbox tables still have divergent claim schemas and do not yet persist a shared `relay_generation` column in their SQL compare-and-set; that is a follow-up hardening step if a claim transaction must remain valid across a takeover between HTTP validation and the owner transaction. Network policy must continue to prevent Job from bypassing Async and calling owner replay endpoints directly.
+- Owner server relay/replay endpoints now validate the relay generation at their final HTTP boundary. The five owner outbox tables still have divergent claim schemas and do not yet persist a shared `relay_generation` column in their SQL compare-and-set. That database CAS is deliberately deferred while there is one normal Async owner lane and one mapped owner endpoint per owner; revisit it if multiple relay runtimes, a physically split owner service, or strict financial claim/publish atomicity makes the HTTP fence window insufficient. Network policy must continue to prevent Job from bypassing Async and calling owner replay endpoints directly.
 - Redis approximate `MAXLEN` trimming does not inspect consumer-group PEL entries. Under an extreme backlog it can evict a source record that remains pending; production limits and oldest-pending alerts must be sized so the cap is never reached during supported recovery windows. A live-Redis integration test for this pressure case is still required.
 - The protected DLQ replay surface currently covers the payment Stream consumed by `lumira-async`. Other pre-existing Stream consumers/producers require owner-specific metrics and replay surfaces before the requirement can be claimed platform-wide.
 - Recovery fence correctness depends on `redis-runtime` durability and no-eviction policy. The

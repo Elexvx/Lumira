@@ -19,6 +19,14 @@ const messageCacheTemplate = readFileSync(
   path.join(repoRoot, 'lumira-backend', 'services', 'lumira-message', 'src', 'main', 'java', 'com', 'lumira', 'message', 'infrastructure', 'redis', 'CacheTemplate.java'),
   'utf8',
 );
+const validationDoc = readFileSync(
+  path.join(repoRoot, 'docs', 'architecture', 'redis-runtime-validation.md'),
+  'utf8',
+);
+const validationScript = readFileSync(
+  path.join(repoRoot, 'bin', 'redis-runtime-chaos-test.mjs'),
+  'utf8',
+);
 
 test('Redis key ownership registry is valid and required runtime/cache keys are classified', () => {
   const registry = validateRedisKeyOwnership({ root: repoRoot });
@@ -33,7 +41,18 @@ test('application wiring uses a dedicated cache connection when production isola
   assert.match(indicator, /physicalIsolation/);
   assert.match(indicator, /lumira\.redis\.plane\.available/);
   assert.match(indicator, /lumira\.redis\.plane\.isolated/);
+  assert.match(indicator, /redis_runtime_evicted_keys/);
   assert.match(messageCacheTemplate, /@Qualifier\("cacheRedisTemplate"\)/);
+});
+
+test('runtime validation requires eviction, persistence and Stream evidence', () => {
+  assert.match(validationDoc, /XPENDING/);
+  assert.match(validationDoc, /MAXLEN/);
+  assert.match(validationDoc, /evicted_keys/);
+  assert.match(validationScript, /CONFIG.*maxmemory-policy/s);
+  assert.match(validationScript, /XPENDING/);
+  assert.match(validationScript, /XLEN/);
+  assert.doesNotMatch(validationScript, /FLUSHDB/);
 });
 
 test('production Compose enables the cache plane explicitly while keeping runtime settings separate', () => {

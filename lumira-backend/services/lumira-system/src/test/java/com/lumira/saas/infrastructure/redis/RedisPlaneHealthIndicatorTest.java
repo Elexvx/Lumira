@@ -6,7 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisServerCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
+
+import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -18,8 +21,8 @@ class RedisPlaneHealthIndicatorTest {
     void reportsDedicatedCachePlaneAndAvailabilityMetrics() {
         RedisConnection runtimeConnection = mock(RedisConnection.class);
         RedisConnection cacheConnection = mock(RedisConnection.class);
-        when(runtimeConnection.ping()).thenReturn("PONG");
-        when(cacheConnection.ping()).thenReturn("PONG");
+        stubHealthy(runtimeConnection, 0L);
+        stubHealthy(cacheConnection, 0L);
         RedisConnectionFactory runtimeFactory = mock(RedisConnectionFactory.class);
         RedisConnectionFactory cacheFactory = mock(RedisConnectionFactory.class);
         when(runtimeFactory.getConnection()).thenReturn(runtimeConnection);
@@ -39,7 +42,7 @@ class RedisPlaneHealthIndicatorTest {
     @Test
     void degradesWhenProductionRequiresIsolationButCacheFallsBackToRuntime() {
         RedisConnection connection = mock(RedisConnection.class);
-        when(connection.ping()).thenReturn("PONG");
+        stubHealthy(connection, 0L);
         RedisConnectionFactory factory = mock(RedisConnectionFactory.class);
         when(factory.getConnection()).thenReturn(connection);
         StringRedisTemplate runtime = template(factory);
@@ -56,10 +59,54 @@ class RedisPlaneHealthIndicatorTest {
         assertThat(health.getDetails()).containsEntry("physicalIsolation", "SHARED_RUNTIME_FALLBACK");
     }
 
+    @Test
+    void failsWhenRuntimeRedisHasEvictedKeys() {
+        RedisConnection runtimeConnection = mock(RedisConnection.class);
+        RedisConnection cacheConnection = mock(RedisConnection.class);
+        stubHealthy(runtimeConnection, 1L);
+        stubHealthy(cacheConnection, 0L);
+        RedisConnectionFactory runtimeFactory = mock(RedisConnectionFactory.class);
+        RedisConnectionFactory cacheFactory = mock(RedisConnectionFactory.class);
+        when(runtimeFactory.getConnection()).thenReturn(runtimeConnection);
+        when(cacheFactory.getConnection()).thenReturn(cacheConnection);
+
+        var health = new RedisPlaneHealthIndicator(
+                template(runtimeFactory),
+                template(cacheFactory),
+                true,
+                provider(new SimpleMeterRegistry())
+        ).health();
+
+        assertThat(health.getStatus().getCode()).isEqualTo("DOWN");
+        assertThat(health.getDetails()).containsEntry("runtimeEvictedKeys", 1L);
+    }
+
+    @Test
+    void failsClosedWhenRedisTemplatesAreUnavailable() {
+        var health = new RedisPlaneHealthIndicator(
+                null,
+                null,
+                true,
+                provider(new SimpleMeterRegistry())
+        ).health();
+
+        assertThat(health.getStatus().getCode()).isEqualTo("DOWN");
+        assertThat(health.getDetails()).containsEntry("physicalIsolation", "SHARED_RUNTIME_FALLBACK");
+    }
+
     private static StringRedisTemplate template(RedisConnectionFactory factory) {
         StringRedisTemplate template = mock(StringRedisTemplate.class);
         when(template.getConnectionFactory()).thenReturn(factory);
         return template;
+    }
+
+    private static void stubHealthy(RedisConnection connection, long evictedKeys) {
+        when(connection.ping()).thenReturn("PONG");
+        Properties info = new Properties();
+        info.setProperty("evicted_keys", Long.toString(evictedKeys));
+        RedisServerCommands serverCommands = mock(RedisServerCommands.class);
+        when(serverCommands.info()).thenReturn(info);
+        when(connection.serverCommands()).thenReturn(serverCommands);
     }
 
     @SuppressWarnings("unchecked")

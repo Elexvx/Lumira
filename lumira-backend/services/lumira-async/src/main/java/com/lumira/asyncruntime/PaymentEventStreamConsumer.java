@@ -181,6 +181,12 @@ public class PaymentEventStreamConsumer {
         Gauge.builder("lumira.payment.consumer.pending.oldest.age.seconds", oldestPendingAgeSecondsGauge, AtomicLong::get)
                 .description("Age of the oldest pending payment Stream entry")
                 .register(meterRegistry);
+        Gauge.builder("redis_runtime_stream_pending", pendingCountGauge, AtomicLong::get)
+                .description("Current pending entries in the runtime Redis payment Stream")
+                .register(meterRegistry);
+        Gauge.builder("redis_runtime_stream_oldest_pending_age", oldestPendingAgeSecondsGauge, AtomicLong::get)
+                .description("Age in seconds of the oldest pending runtime Redis Stream entry")
+                .register(meterRegistry);
         Gauge.builder("lumira.payment.consumer.dead-letter.count", deadLetterCountGauge, AtomicLong::get)
                 .description("Current payment dead-letter Stream size")
                 .register(meterRegistry);
