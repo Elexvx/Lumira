@@ -4,6 +4,7 @@ import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -16,7 +17,7 @@ public class CacheTemplate {
 
     private final StringRedisTemplate redisTemplate;
 
-    public CacheTemplate(StringRedisTemplate redisTemplate) {
+    public CacheTemplate(@Qualifier("cacheRedisTemplate") StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 

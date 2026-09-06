@@ -81,6 +81,8 @@ jobs:
         run: node --test bin/*.test.mjs
       - name: Validate blue-green Compose topology
         run: docker compose --env-file deploy/.env.example -f deploy/docker-compose.prod.yml --profile blue --profile green --profile local-lumira-ui config --quiet
+      - name: Validate Redis key ownership and physical-plane contract
+        run: node bin/check-redis-key-ownership.mjs
       - name: Rehearse zero-downtime update and rollback with real Docker traffic
         env:
           LUMIRA_DOCKER_E2E: 'true'

@@ -1,0 +1,94 @@
+version: 1
+defaultPlane: runtime
+unknownKeyPolicy: runtime
+
+planes:
+  runtime:
+    service: redis-runtime
+    evictionPolicy: noeviction
+    persistence: aof
+  cache:
+    service: redis-cache
+    evictionPolicy: allkeys-lru
+    persistence: none
+
+# A pattern ending in '*' is a prefix match. Keys not listed here remain on
+# runtime Redis until their owner proves that they are rebuildable and adds a
+# narrower cache-plane entry.
+keys:
+  - pattern: "lumira:runtime:recovery-fence:*"
+    plane: runtime
+    owner: lumira-async
+    semantics: coordination
+  - pattern: "lumira.events.*"
+    plane: runtime
+    owner: lumira-async
+    semantics: stream-and-dlq
+  - pattern: "saas:platform-events"
+    plane: runtime
+    owner: system-and-lumira-async
+    semantics: stream
+  - pattern: "saas:session:*"
+    plane: runtime
+    owner: system-auth
+    semantics: session
+  - pattern: "saas:session_user:*"
+    plane: runtime
+    owner: system-auth
+    semantics: session-index
+  - pattern: "saas:online_session*"
+    plane: runtime
+    owner: system-online-session
+    semantics: session-index-and-events
+  - pattern: "saas:login_*"
+    plane: runtime
+    owner: system-auth
+    semantics: anti-abuse
+  - pattern: "saas:wechat_login_state:*"
+    plane: runtime
+    owner: system-auth
+    semantics: login-state
+  - pattern: "saas:repeat_submit:*"
+    plane: runtime
+    owner: system-web
+    semantics: idempotency
+  - pattern: "permission-tree:*"
+    plane: runtime
+    owner: system-iam
+    semantics: authorization-read-model
+  - pattern: "permission-catalog:*"
+    plane: runtime
+    owner: system-iam
+    semantics: authorization-read-model
+  - pattern: "message:ws-ticket:*"
+    plane: cache
+    owner: message
+    semantics: rebuildable
+  - pattern: "notification:wechat-official:access-token:*"
+    plane: cache
+    owner: message
+    semantics: rebuildable
+  - pattern: "message:list:*"
+    plane: cache
+    owner: message
+    semantics: rebuildable
+  - pattern: "message:unread-count:*"
+    plane: cache
+    owner: message
+    semantics: rebuildable
+  - pattern: "message:archive-count:*"
+    plane: cache
+    owner: message
+    semantics: rebuildable
+  - pattern: "message:delivery-log-count:*"
+    plane: cache
+    owner: message
+    semantics: rebuildable
+  - pattern: "message:notice-target:user-name:*"
+    plane: cache
+    owner: message
+    semantics: rebuildable
+  - pattern: "message:notice-target:role-name:*"
+    plane: cache
+    owner: message
+    semantics: rebuildable

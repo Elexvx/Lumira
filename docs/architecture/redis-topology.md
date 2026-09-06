@@ -13,6 +13,8 @@ Each plane has an independent host, port, password, memory limit, volume, health
 
 `lumira-server` and `lumira-async` bind their existing Spring Redis connection to `REDIS_RUNTIME_*`. The server also receives `REDIS_CACHE_*` for cache-specific adapters. During the first safety cutover, any unclassified existing key stays on runtime Redis. A key may move to cache Redis only after its owner proves that it is rebuildable and has no session, authorization, lock, idempotency, Stream, DLQ or task-state semantics.
 
+The authoritative key registry is [`redis-key-ownership.yaml`](redis-key-ownership.yaml). In production, `REDIS_CACHE_ENABLED=true` makes `RedisConfig` create a separate cache `LettuceConnectionFactory`; message read-model counts, display-name caches, WebSocket tickets and WeChat access-token caches use that template. Runtime session, authorization, idempotency, fence and Stream paths remain on the primary runtime template. The `redisPlane` health contributor and `lumira.redis.plane.*` metrics expose both ping results and whether the two templates use different physical connection factories. If isolation is required but the application falls back to the runtime template, health is `DEGRADED`.
+
 ## Stream retention and monitoring
 
 `REDIS_RUNTIME_STREAM_MAXLEN` and `REDIS_RUNTIME_DLQ_MAXLEN` are the deployment contract for producer-side approximate trimming. Trimming must not delete entries that are still pending. Alert on:
