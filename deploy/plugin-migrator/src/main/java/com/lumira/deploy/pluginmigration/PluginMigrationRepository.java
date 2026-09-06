@@ -21,6 +21,11 @@ final class PluginMigrationRepository {
             table_namespace, operation_epoch, package_digest, migration_digest, release_id,
             request_status, lifecycle_status, script_payload
             """;
+    private static final String REQUEST_COLUMNS_ALIAS = """
+            r.id, r.plugin_code, r.plugin_version, r.schema_version, r.expected_schema_digest, r.phase, r.rollback_mode, r.compatible_readers,
+            r.table_namespace, r.operation_epoch, r.package_digest, r.migration_digest, r.release_id,
+            r.request_status, r.lifecycle_status, r.script_payload
+            """;
 
     List<PluginMigrationRequest> listApproved(Connection connection, String releaseId, int limit) throws SQLException {
         String sql = "select " + REQUEST_COLUMNS + " from sys_plugin_migration_request "
@@ -32,6 +37,31 @@ final class PluginMigrationRepository {
                 List<PluginMigrationRequest> requests = new ArrayList<>();
                 while (resultSet.next()) requests.add(read(resultSet));
                 return List.copyOf(requests);
+            }
+        }
+    }
+
+    List<RecoveryCandidate> listRecoverable(Connection connection, String releaseId, int staleSeconds, int limit) throws SQLException {
+        String sql = "select " + REQUEST_COLUMNS_ALIAS + ", e.id as execution_log_id "
+                + "from sys_plugin_migration_request r "
+                + "left join plugin_migration_execution_log e "
+                + "  on e.migration_request_id = r.id and e.status = 'STARTED' "
+                + "where r.request_status in ('RUNNING', 'RECOVERING') "
+                + "  and r.lifecycle_status = 'MIGRATION_PENDING' and r.release_id = ? "
+                + "  and ((e.id is not null and (e.lease_until is null or e.lease_until <= current_timestamp)) "
+                + "       or (e.id is null and r.started_at <= current_timestamp - interval ? second)) "
+                + "order by r.id asc limit ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, releaseId);
+            statement.setInt(2, staleSeconds);
+            statement.setInt(3, limit);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<RecoveryCandidate> candidates = new ArrayList<>();
+                while (resultSet.next()) {
+                    candidates.add(new RecoveryCandidate(read(resultSet),
+                            resultSet.getObject("execution_log_id", Long.class)));
+                }
+                return List.copyOf(candidates);
             }
         }
     }
@@ -86,28 +116,79 @@ final class PluginMigrationRepository {
     }
 
     long startExecutionLog(Connection connection, PluginMigrationRequest request, String executorId,
-                           String fenceToken) throws SQLException {
+                           String fenceToken, int leaseSeconds) throws SQLException {
+        return transactional(connection, () -> insertExecutionLog(
+                connection, request, executorId, fenceToken, leaseSeconds, "STARTED"));
+    }
+
+    RecoveryClaim claimRecovery(Connection connection, RecoveryCandidate candidate, String executorId,
+                                String fenceToken, int leaseSeconds) throws SQLException {
         return transactional(connection, () -> {
+            PluginMigrationRequest request = candidate.request();
+            int updated;
             try (PreparedStatement statement = connection.prepareStatement("""
-                    insert into plugin_migration_execution_log (
-                        migration_request_id, plugin_code, release_id, migration_digest, schema_version,
-                        executor_type, executor_id, fence_token, status
-                    ) values (?, ?, ?, ?, ?, 'CENTRAL_MIGRATOR', ?, ?, 'STARTED')
-                    """, PreparedStatement.RETURN_GENERATED_KEYS)) {
-                statement.setLong(1, request.id());
-                statement.setString(2, request.pluginCode());
-                statement.setString(3, request.releaseId());
-                statement.setString(4, request.migrationDigest());
-                statement.setString(5, request.schemaVersion());
-                statement.setString(6, bounded(executorId, 128));
-                statement.setString(7, bounded(fenceToken, 128));
-                statement.executeUpdate();
-                try (ResultSet keys = statement.getGeneratedKeys()) {
-                    if (!keys.next()) throw new SQLException("plugin migration execution log id was not generated");
-                    return keys.getLong(1);
+                    update sys_plugin_migration_request
+                    set request_status = 'RECOVERING', updated_at = current_timestamp
+                    where id = ? and operation_epoch = ? and package_digest = ? and migration_digest = ?
+                      and release_id = ? and request_status in ('RUNNING', 'RECOVERING')
+                      and lifecycle_status = 'MIGRATION_PENDING'
+                      and not exists (
+                          select 1 from plugin_migration_execution_log active
+                          where active.migration_request_id = sys_plugin_migration_request.id
+                            and active.status = 'STARTED'
+                            and active.lease_until is not null
+                            and active.lease_until > current_timestamp
+                      )
+                    """)) {
+                bindFence(statement, 1, request);
+                updated = statement.executeUpdate();
+            }
+            if (updated != 1) return null;
+            if (candidate.executionLogId() != null) {
+                try (PreparedStatement statement = connection.prepareStatement("""
+                        update plugin_migration_execution_log
+                        set status = 'ABANDONED', error_code = 'LEASE_EXPIRED',
+                            error_message = 'Previous central migrator lease expired before recovery',
+                            finished_at = current_timestamp, updated_at = current_timestamp
+                        where id = ? and migration_request_id = ? and status = 'STARTED'
+                          and (lease_until is null or lease_until <= current_timestamp)
+                        """)) {
+                    statement.setLong(1, candidate.executionLogId());
+                    statement.setLong(2, request.id());
+                    statement.executeUpdate();
                 }
             }
+            PluginMigrationRequest recovering = request.withRequestStatus("RECOVERING");
+            long executionLogId = insertExecutionLog(connection, recovering, executorId, fenceToken, leaseSeconds, "STARTED");
+            audit(connection, recovering, "RECOVERING", executorId,
+                    "Recovered an expired central migrator lease and will verify the schema before activation");
+            return new RecoveryClaim(recovering, executionLogId);
         });
+    }
+
+    private long insertExecutionLog(Connection connection, PluginMigrationRequest request, String executorId,
+                                    String fenceToken, int leaseSeconds, String status) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                insert into plugin_migration_execution_log (
+                    migration_request_id, plugin_code, release_id, migration_digest, schema_version,
+                    executor_type, executor_id, fence_token, status, lease_until
+                ) values (?, ?, ?, ?, ?, 'CENTRAL_MIGRATOR', ?, ?, ?, date_add(current_timestamp, interval ? second))
+                """, PreparedStatement.RETURN_GENERATED_KEYS)) {
+            statement.setLong(1, request.id());
+            statement.setString(2, request.pluginCode());
+            statement.setString(3, request.releaseId());
+            statement.setString(4, request.migrationDigest());
+            statement.setString(5, request.schemaVersion());
+            statement.setString(6, bounded(executorId, 128));
+            statement.setString(7, bounded(fenceToken, 128));
+            statement.setString(8, status);
+            statement.setInt(9, leaseSeconds);
+            statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (!keys.next()) throw new SQLException("plugin migration execution log id was not generated");
+                return keys.getLong(1);
+            }
+        }
     }
 
     String captureSchemaSnapshot(Connection connection, PluginMigrationRequest request,
@@ -195,6 +276,19 @@ final class PluginMigrationRepository {
 
     boolean complete(Connection connection, PluginMigrationRequest request, String executorId,
                      long executionLogId, String actualSchemaDigest) throws SQLException {
+        return complete(connection, request, executorId, executionLogId, actualSchemaDigest,
+                "RUNNING", "All approved expand statements completed");
+    }
+
+    boolean completeRecovered(Connection connection, PluginMigrationRequest request, String executorId,
+                              long executionLogId, String actualSchemaDigest) throws SQLException {
+        return complete(connection, request, executorId, executionLogId, actualSchemaDigest,
+                "RECOVERING", "Recovered an interrupted migration after schema verification");
+    }
+
+    private boolean complete(Connection connection, PluginMigrationRequest request, String executorId,
+                             long executionLogId, String actualSchemaDigest, String expectedRequestStatus,
+                             String auditDetail) throws SQLException {
         return transactional(connection, () -> {
             int requestUpdated;
             try (PreparedStatement statement = connection.prepareStatement("""
@@ -203,9 +297,10 @@ final class PluginMigrationRepository {
                         failure_reason = null, recovery_action = null,
                         finished_at = current_timestamp, updated_at = current_timestamp
                     where id = ? and operation_epoch = ? and package_digest = ? and migration_digest = ?
-                      and release_id = ? and request_status = 'RUNNING' and lifecycle_status = 'MIGRATION_PENDING'
+                      and release_id = ? and request_status = ? and lifecycle_status = 'MIGRATION_PENDING'
                     """)) {
                 bindFence(statement, 1, request);
+                statement.setString(6, expectedRequestStatus);
                 requestUpdated = statement.executeUpdate();
             }
             if (requestUpdated != 1) return false;
@@ -231,7 +326,53 @@ final class PluginMigrationRepository {
                 statement.setLong(3, request.id());
                 if (statement.executeUpdate() != 1) throw new SQLException("plugin migration execution log was not active");
             }
-            audit(connection, request, "SUCCEEDED", executorId, "All approved expand statements completed");
+            audit(connection, request, "SUCCEEDED", executorId, auditDetail);
+            return true;
+        });
+    }
+
+    boolean markManualReview(Connection connection, PluginMigrationRequest request, String executorId,
+                             long executionLogId, String actualSchemaDigest, String failureReason) throws SQLException {
+        return transactional(connection, () -> {
+            int requestUpdated;
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    update sys_plugin_migration_request
+                    set request_status = 'NEEDS_MANUAL_REVIEW', lifecycle_status = 'ROLLBACK_BLOCKED',
+                        failure_reason = ?, recovery_action = ?, finished_at = current_timestamp, updated_at = current_timestamp
+                    where id = ? and operation_epoch = ? and package_digest = ? and migration_digest = ?
+                      and release_id = ? and request_status = 'RECOVERING'
+                    """)) {
+                statement.setString(1, bounded(failureReason, 1024));
+                statement.setString(2, "Reconcile the schema against the migration evidence and create a new higher-epoch request");
+                bindFence(statement, 3, request);
+                requestUpdated = statement.executeUpdate();
+            }
+            if (requestUpdated != 1) return false;
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    update sys_plugin_version
+                    set lifecycle_status = 'ROLLBACK_BLOCKED', schema_status = 'FAILED', updated_at = current_timestamp
+                    where plugin_code = ? and version = ? and deleted = 0 and lifecycle_status = 'MIGRATION_PENDING'
+                    """)) {
+                statement.setString(1, request.pluginCode());
+                statement.setString(2, request.pluginVersion());
+                statement.executeUpdate();
+            }
+            if (executionLogId > 0L) {
+                try (PreparedStatement statement = connection.prepareStatement("""
+                        update plugin_migration_execution_log
+                        set status = 'NEEDS_MANUAL_REVIEW', actual_schema_digest = ?,
+                            error_code = 'SCHEMA_DRIFT', error_message = ?, finished_at = current_timestamp,
+                            updated_at = current_timestamp
+                        where id = ? and migration_request_id = ? and status = 'STARTED'
+                        """)) {
+                    statement.setString(1, actualSchemaDigest);
+                    statement.setString(2, bounded(failureReason, 1024));
+                    statement.setLong(3, executionLogId);
+                    statement.setLong(4, request.id());
+                    if (statement.executeUpdate() != 1) throw new SQLException("plugin migration recovery log was not active");
+                }
+            }
+            audit(connection, request, "ROLLBACK_BLOCKED", executorId, bounded(failureReason, 1024));
             return true;
         });
     }
@@ -362,6 +503,10 @@ final class PluginMigrationRepository {
             digest.update((byte) 0);
         }
     }
+
+    record RecoveryCandidate(PluginMigrationRequest request, Long executionLogId) { }
+
+    record RecoveryClaim(PluginMigrationRequest request, long executionLogId) { }
 
     private record SnapshotRow(String objectType, String objectName, String definitionHash) { }
 

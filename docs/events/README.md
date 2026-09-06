@@ -20,3 +20,18 @@ Required evidence for a new consumer is:
 The IAM contracts are definitions only in this sprint. They must not become a
 runtime dependency of JWT authentication until a separate migration proves
 that the current fail-closed permission/version path remains intact.
+
+## Contract governance
+
+Checked-in contracts live under `docs/events/contracts/<domain>/`. Each version
+declares the canonical `EventEnvelope` identity fields, the producer and source
+module, the delivery mode, and a `schemaDigest`. The digest is a SHA-256 of the
+normalized contract schema with the `schemaDigest` line removed; it is a schema
+checksum, not a checksum of an individual event payload.
+
+`bin/check-event-contracts.mjs` is the CI gate. It rejects duplicate event
+identities, missing envelope fields, digest drift, version gaps, and backward
+incompatibilities. A new version must retain the previous version's required
+fields and their declared types. This is intentionally repository-local
+governance for now; Kafka, a schema registry, and a new event service are not
+required to evolve these contracts safely.

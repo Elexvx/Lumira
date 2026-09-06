@@ -42,7 +42,7 @@ final class PluginMigrationSafetyValidator {
     PluginMigrationRequest.Validated validate(PluginMigrationRequest request, String requiredReleaseId) {
         require(request != null, "migration request is required");
         require("APPROVED".equals(request.requestStatus()) || "RUNNING".equals(request.requestStatus())
-                        || "PENDING_APPROVAL".equals(request.requestStatus()),
+                        || "RECOVERING".equals(request.requestStatus()) || "PENDING_APPROVAL".equals(request.requestStatus()),
                 "migration request status cannot be validated");
         require("MIGRATION_PENDING".equals(request.lifecycleStatus()), "plugin lifecycle is not MIGRATION_PENDING");
         require("EXPAND".equals(request.phase()), "only EXPAND plugin migrations are allowed");

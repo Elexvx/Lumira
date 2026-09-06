@@ -20,6 +20,14 @@ record PluginMigrationRequest(
         String lifecycleStatus,
         String scriptPayload
 ) {
+
+    PluginMigrationRequest withRequestStatus(String nextRequestStatus) {
+        return new PluginMigrationRequest(
+                id, pluginCode, pluginVersion, schemaVersion, expectedSchemaDigest, phase,
+                rollbackMode, compatibleReaders, tableNamespace, operationEpoch, packageDigest,
+                migrationDigest, releaseId, nextRequestStatus, lifecycleStatus, scriptPayload
+        );
+    }
     PluginMigrationRequest(long id, String pluginCode, String pluginVersion, String schemaVersion,
                            String phase, String rollbackMode, String compatibleReaders, String tableNamespace,
                            long operationEpoch, String packageDigest, String migrationDigest, String releaseId,

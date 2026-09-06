@@ -1,0 +1,29 @@
+eventType: RoleChanged
+schemaVersion: 1
+sourceModule: iam
+producer: iam
+schemaDigest: sha256:6f0bc088ccdb54e1b6f078ccdacd7dece15b4b271c336da02b29b3fa02761bd6
+compatibility:
+  mode: backward
+  requiredFields:
+    - eventId
+    - eventType
+    - sourceModule
+    - producer
+    - aggregateId
+    - schemaVersion
+    - occurredAt
+    - payload
+  payloadTypes:
+    eventId: string
+    eventType: string
+    sourceModule: string
+    producer: string
+    aggregateId: string
+    schemaVersion: integer
+    occurredAt: timestamp
+    payload: object
+delivery:
+  transport: redis-stream
+  guarantee: at-least-once
+  consumerStatus: contract-only

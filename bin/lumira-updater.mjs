@@ -843,6 +843,7 @@ async function migrate(task, manifest) {
     'run', '--rm', '--network', network,
     '-e', 'DB_URL', '-e', 'DB_USERNAME', '-e', 'DB_PASSWORD',
     '-e', 'PLUGIN_MIGRATION_RELEASE_ID', '-e', 'PLUGIN_MIGRATION_EXECUTOR_ID',
+    '-e', 'PLUGIN_MIGRATION_LEASE_SECONDS',
     ...secretArgs,
     '-e', `DATABASE_TARGET_VERSION=${manifest.database.targetVersion}`,
     manifest.images.migrator,
@@ -853,8 +854,10 @@ async function migrate(task, manifest) {
       DB_PASSWORD: env.DB_MIGRATION_PASSWORD,
       PLUGIN_MIGRATION_RELEASE_ID: manifest.releaseId,
       PLUGIN_MIGRATION_EXECUTOR_ID: `updater:${task.taskId}:${manifest.releaseId}`,
+      PLUGIN_MIGRATION_LEASE_SECONDS: env.PLUGIN_MIGRATION_LEASE_SECONDS || '900',
       WSLENV: wslForwardedEnvironment([
-        'DB_URL', 'DB_USERNAME', 'DB_PASSWORD', 'PLUGIN_MIGRATION_RELEASE_ID', 'PLUGIN_MIGRATION_EXECUTOR_ID',
+        'DB_URL', 'DB_USERNAME', 'DB_PASSWORD', 'PLUGIN_MIGRATION_RELEASE_ID',
+        'PLUGIN_MIGRATION_EXECUTOR_ID', 'PLUGIN_MIGRATION_LEASE_SECONDS',
       ]),
     },
   });

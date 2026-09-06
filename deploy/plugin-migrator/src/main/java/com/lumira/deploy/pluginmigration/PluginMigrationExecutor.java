@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 final class PluginMigrationExecutor {
+    static final int DEFAULT_LEASE_SECONDS = 900;
     private static final String VALIDATION_RECOVERY =
             "Correct the package and create a new higher-epoch expand request; never edit or retry this request";
     private static final String PARTIAL_DDL_RECOVERY =
@@ -32,6 +33,12 @@ final class PluginMigrationExecutor {
     }
 
     ExecutionSummary executeApproved(Connection connection, String releaseId, String executorId, int limit) throws Exception {
+        return executeApproved(connection, releaseId, executorId, limit, DEFAULT_LEASE_SECONDS);
+    }
+
+    ExecutionSummary executeApproved(Connection connection, String releaseId, String executorId, int limit,
+                                     int leaseSeconds) throws Exception {
+        recoverInterrupted(connection, releaseId, executorId, limit, leaseSeconds);
         List<PluginMigrationRequest> requests = repository.listApproved(connection, releaseId, limit);
         int claimed = 0;
         int succeeded = 0;
@@ -47,7 +54,7 @@ final class PluginMigrationExecutor {
             long executionLogId = 0L;
             try {
                 String fenceToken = UUID.randomUUID().toString();
-                executionLogId = repository.startExecutionLog(connection, running, executorId, fenceToken);
+                executionLogId = repository.startExecutionLog(connection, running, executorId, fenceToken, leaseSeconds);
                 PluginMigrationRequest.Validated migration = validator.validate(running, releaseId);
                 for (String sql : migration.statements()) {
                     ddlAttempted = true;
@@ -80,6 +87,47 @@ final class PluginMigrationExecutor {
         return new ExecutionSummary(requests.size(), claimed, succeeded);
     }
 
+    RecoverySummary recoverInterrupted(Connection connection, String releaseId, String executorId,
+                                       int limit, int leaseSeconds) throws Exception {
+        int recovered = 0;
+        int manualReview = 0;
+        for (PluginMigrationRepository.RecoveryCandidate candidate : repository.listRecoverable(
+                connection, releaseId, leaseSeconds, limit)) {
+            PluginMigrationRepository.RecoveryClaim claim = repository.claimRecovery(
+                    connection, candidate, executorId, UUID.randomUUID().toString(), leaseSeconds);
+            if (claim == null) continue;
+            PluginMigrationRequest request = claim.request();
+            PluginMigrationRequest.Validated migration;
+            try {
+                migration = validator.validate(request, releaseId);
+            } catch (IllegalArgumentException exception) {
+                repository.markManualReview(connection, request, executorId, claim.executionLogId(), null,
+                        "Interrupted migration payload is no longer valid: " + safeFailure(exception));
+                manualReview++;
+                continue;
+            }
+            if (!hasText(request.expectedSchemaDigest())) {
+                repository.markManualReview(connection, request, executorId, claim.executionLogId(), null,
+                        "Interrupted migration has no expected schema digest; manual schema reconciliation is required");
+                manualReview++;
+                continue;
+            }
+            String actualSchemaDigest = repository.captureSchemaSnapshot(connection, request, migration.targetTables());
+            if (!constantTimeDigestEquals(request.expectedSchemaDigest(), actualSchemaDigest)) {
+                repository.markManualReview(connection, request, executorId, claim.executionLogId(), actualSchemaDigest,
+                        "Interrupted migration schema digest mismatch expected="
+                                + normalizeDigest(request.expectedSchemaDigest()) + " actual=" + actualSchemaDigest);
+                manualReview++;
+                continue;
+            }
+            if (!repository.completeRecovered(connection, request, executorId, claim.executionLogId(), actualSchemaDigest)) {
+                throw new IllegalStateException("interrupted migration recovery fence changed");
+            }
+            recovered++;
+        }
+        return new RecoverySummary(recovered, manualReview);
+    }
+
     private void requireFence(PluginMigrationRequest request, Approval approval) {
         if (request.id() != approval.requestId()
                 || request.operationEpoch() != approval.operationEpoch()
@@ -109,10 +157,20 @@ final class PluginMigrationExecutor {
         return normalized.startsWith("sha256:") ? normalized.substring("sha256:".length()) : normalized;
     }
 
+    private boolean constantTimeDigestEquals(String expected, String actual) {
+        return MessageDigest.isEqual(
+                normalizeDigest(expected).getBytes(StandardCharsets.US_ASCII),
+                normalizeDigest(actual).getBytes(StandardCharsets.US_ASCII)
+        );
+    }
+
     record Approval(long requestId, long operationEpoch, String packageDigest, String migrationDigest,
                     String releaseId, String approver, String reason) {
     }
 
     record ExecutionSummary(int approved, int claimed, int succeeded) {
+    }
+
+    record RecoverySummary(int recovered, int manualReview) {
     }
 }

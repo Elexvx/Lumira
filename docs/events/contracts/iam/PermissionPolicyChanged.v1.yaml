@@ -1,0 +1,29 @@
+eventType: PermissionPolicyChanged
+schemaVersion: 1
+sourceModule: iam
+producer: iam
+schemaDigest: sha256:257defae84770c271d08d5c2bed4c4d866fc9b9dfc088e96b7c7ae1fb4230fb9
+compatibility:
+  mode: backward
+  requiredFields:
+    - eventId
+    - eventType
+    - sourceModule
+    - producer
+    - aggregateId
+    - schemaVersion
+    - occurredAt
+    - payload
+  payloadTypes:
+    eventId: string
+    eventType: string
+    sourceModule: string
+    producer: string
+    aggregateId: string
+    schemaVersion: integer
+    occurredAt: timestamp
+    payload: object
+delivery:
+  transport: redis-stream
+  guarantee: at-least-once
+  consumerStatus: contract-only

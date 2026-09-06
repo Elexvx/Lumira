@@ -12,7 +12,7 @@ The persisted lifecycle is monotonic and checked by `PluginLifecycleStateMachine
 
 `UPLOADED -> VERIFIED -> MIGRATION_PENDING -> MIGRATED -> RUNTIME_VERIFIED -> ACTIVATED`
 
-Any verification, migration, or runtime failure moves to `FAILED`. When application rollback cannot safely compensate an already expanded schema, the state is `ROLLBACK_BLOCKED`. Retrying a failed request creates a new fenced operation; an old process cannot complete the newer operation.
+Any verification, migration, or runtime failure moves to `FAILED`. When application rollback cannot safely compensate an already expanded schema, the state is `ROLLBACK_BLOCKED`. An interrupted central Migrator may temporarily move a request to `RECOVERING`; a schema mismatch or missing recovery evidence moves it to `NEEDS_MANUAL_REVIEW` and `ROLLBACK_BLOCKED`. Retrying a failed request creates a new fenced operation; an old process cannot complete the newer operation.
 
 Upload currently performs package verification in the same command, so the durable version row is first visible as `VERIFIED`; the upload audit log retains the preceding `UPLOADED` event.
 
@@ -38,10 +38,11 @@ and refuses to mark the request successful when the aggregate schema digest diff
 without that optional field remain executable but are explicitly evidence-only rather than digest-verified.
 
 `plugin_migration_execution_log` is the execution fact ledger. Its generated active-request key allows
-only one `STARTED` execution per request; later attempts are possible only after a terminal failure and
-must use a new fenced request for ordinary recovery. `CENTRAL_MIGRATOR` is the only executor type.
+only one `STARTED` execution per request. Every central execution also carries a short lease; a stale
+lease can be claimed only after a compare-and-set recovery fence, and the old execution is recorded as
+`ABANDONED`. `CENTRAL_MIGRATOR` is the only executor type.
 
-The application initially writes `PENDING_APPROVAL` and exposes no approve, claim, complete, or fail operation. Approval is a separate operator action. The Migrator can only claim `APPROVED` + `EXPAND` requests for its explicit release ID and every update is a compare-and-set on epoch, digest, release ID and current status. Migration success and the version transition to `MIGRATED` are one Migrator-side DML transaction. Failure remains recorded and cannot be mistaken for schema readiness. `sys_plugin_migration_audit` records `APPROVED`, `CLAIMED`, `SUCCEEDED`, `FAILED`, and `ROLLBACK_BLOCKED` events with the full fence and actor.
+The application initially writes `PENDING_APPROVAL` and exposes no approve, claim, complete, or fail operation. Approval is a separate operator action. The Migrator can only claim `APPROVED` + `EXPAND` requests for its explicit release ID and every update is a compare-and-set on epoch, digest, release ID and current status. Migration success and the version transition to `MIGRATED` are one Migrator-side DML transaction. Failure remains recorded and cannot be mistaken for schema readiness. `sys_plugin_migration_audit` records `APPROVED`, `CLAIMED`, `RECOVERING`, `SUCCEEDED`, `FAILED`, and `ROLLBACK_BLOCKED` events with the full fence and actor.
 
 ## Approval and execution workflow
 
@@ -94,4 +95,22 @@ Only these expand forms are accepted:
 
 ## Recovery
 
-MySQL DDL may commit statement-by-statement. Therefore a failed request must never be deleted or silently retried. The Migrator records the failing request and recovery action, operators reconcile the schema against the recorded ordered payload, and recovery uses a new higher operation epoch. Automatic down migration and database restore are not recovery mechanisms for ordinary plugin installation.
+MySQL DDL may commit statement-by-statement. Therefore a failed request must never be deleted or
+silently retried. The Migrator records the failing request and recovery action, operators reconcile the
+schema against the recorded ordered payload, and recovery uses a new higher operation epoch for a
+normal retry.
+
+An interrupted execution is handled by the next central Migrator run as follows:
+
+1. Find `RUNNING`/`RECOVERING` requests whose execution lease is absent or expired.
+2. Claim the request with the persisted request fence, set it to `RECOVERING`, abandon the expired
+   execution fact, and create a new leased `STARTED` fact.
+3. Re-capture the target schema and compare it with the request's expected schema digest.
+4. If the digest is exact, finalize the request as `SUCCEEDED`/`MIGRATED`; the migration is not run a
+   second time. If the digest is missing or differs, set `NEEDS_MANUAL_REVIEW` and
+   `ROLLBACK_BLOCKED`; activation is never allowed.
+
+The recovery lease is configurable with `PLUGIN_MIGRATION_LEASE_SECONDS` and defaults to 15 minutes.
+The integration test `expiredRunningMigrationRecoversAfterSchemaWasAppliedBeforeMigratorCrash` proves
+the crash-after-DDL-before-finalization path with an expired lease. It requires Docker/Testcontainers;
+the repository's unit checks remain runnable without Docker.

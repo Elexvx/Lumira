@@ -1,0 +1,29 @@
+eventType: NotificationRequested
+schemaVersion: 1
+sourceModule: notification
+producer: lumira-async
+schemaDigest: sha256:1ad934e6215ca949c34cea3248131794d7be37fbaee2589405735a8c308731c2
+compatibility:
+  mode: backward
+  requiredFields:
+    - eventId
+    - eventType
+    - sourceModule
+    - producer
+    - aggregateId
+    - schemaVersion
+    - occurredAt
+    - payload
+  payloadTypes:
+    eventId: string
+    eventType: string
+    sourceModule: string
+    producer: string
+    aggregateId: string
+    schemaVersion: integer
+    occurredAt: timestamp
+    payload: object
+delivery:
+  transport: authenticated-http-command
+  endpoint: /message/internal/notifications/commands
+  guarantee: idempotent-owner-commit

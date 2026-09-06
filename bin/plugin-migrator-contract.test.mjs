@@ -46,5 +46,16 @@ test('central adapter revalidates payload digest, expand phase, namespace and de
   assert.match(validator, /plugin_.*normalized/s);
   assert.match(repository, /request_status = 'APPROVED'/);
   assert.match(repository, /request_status = 'RUNNING'/);
+  assert.match(repository, /lease_until/);
+  assert.match(repository, /request_status = 'RECOVERING'/);
+  assert.match(repository, /NEEDS_MANUAL_REVIEW/);
   assert.match(repository, /sys_plugin_migration_audit/);
+});
+
+test('updater passes the central migration recovery lease into the one-shot container', () => {
+  const updater = read('bin/lumira-updater.mjs');
+  const envExample = read('deploy/.env.example');
+
+  assert.match(updater, /PLUGIN_MIGRATION_LEASE_SECONDS/);
+  assert.match(envExample, /^PLUGIN_MIGRATION_LEASE_SECONDS=900$/m);
 });

@@ -52,7 +52,10 @@ public final class PluginMigrationCommand {
             }
             String executorId = boundedRequired(environment, "PLUGIN_MIGRATION_EXECUTOR_ID", 128);
             int limit = boundedInt(environment.get("PLUGIN_MIGRATION_BATCH_LIMIT"), 25, 1, 100);
-            PluginMigrationExecutor.ExecutionSummary summary = executor.executeApproved(connection, releaseId, executorId, limit);
+            int leaseSeconds = boundedInt(environment.get("PLUGIN_MIGRATION_LEASE_SECONDS"),
+                    PluginMigrationExecutor.DEFAULT_LEASE_SECONDS, 30, 86_400);
+            PluginMigrationExecutor.ExecutionSummary summary = executor.executeApproved(
+                    connection, releaseId, executorId, limit, leaseSeconds);
             System.out.println("Central plugin migrator outcome: approved=" + summary.approved()
                     + " claimed=" + summary.claimed() + " succeeded=" + summary.succeeded());
         }

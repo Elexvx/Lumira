@@ -1,0 +1,29 @@
+eventType: PAYMENT_ORDER_PAID
+schemaVersion: 1
+sourceModule: payment
+producer: payment
+schemaDigest: sha256:cc5bdcaf2e807b193495126f840e950e5c9c5ed6225ef6e8e502f7373e39761a
+compatibility:
+  mode: backward
+  requiredFields:
+    - eventId
+    - eventType
+    - sourceModule
+    - producer
+    - aggregateId
+    - schemaVersion
+    - occurredAt
+    - payload
+  payloadTypes:
+    eventId: string
+    eventType: string
+    sourceModule: string
+    producer: string
+    aggregateId: string
+    schemaVersion: integer
+    occurredAt: timestamp
+    payload: object
+delivery:
+  transport: redis-stream
+  stream: lumira.events.payment.v1
+  guarantee: at-least-once

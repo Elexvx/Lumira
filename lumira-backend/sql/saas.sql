@@ -1522,6 +1522,7 @@ CREATE TABLE `plugin_migration_execution_log` (
   `executor_type` varchar(32) NOT NULL,
   `executor_id` varchar(128) NOT NULL,
   `fence_token` varchar(128) NOT NULL,
+  `lease_until` datetime DEFAULT NULL,
   `status` varchar(32) NOT NULL,
   `active_request_id` bigint GENERATED ALWAYS AS (
     CASE WHEN `status` = 'STARTED' THEN `migration_request_id` ELSE NULL END
@@ -1536,7 +1537,8 @@ CREATE TABLE `plugin_migration_execution_log` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_plugin_migration_execution_active` (`active_request_id`),
   KEY `idx_plugin_migration_execution_request` (`migration_request_id`,`id`),
-  KEY `idx_plugin_migration_execution_release` (`release_id`,`created_at`)
+  KEY `idx_plugin_migration_execution_release` (`release_id`,`created_at`),
+  KEY `idx_plugin_migration_execution_lease` (`status`,`lease_until`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Schema snapshots contain hashes rather than full DDL. The object-level rows

@@ -82,6 +82,7 @@ class PluginMigrationExecutorIntegrationTest {
                       release_id varchar(128) NOT NULL, migration_digest char(64) NOT NULL,
                       schema_version varchar(64) NOT NULL, executor_type varchar(32) NOT NULL,
                       executor_id varchar(128) NOT NULL, fence_token varchar(128) NOT NULL,
+                      lease_until datetime,
                       status varchar(32) NOT NULL,
                       active_request_id bigint GENERATED ALWAYS AS (CASE WHEN status = 'STARTED' THEN migration_request_id ELSE NULL END) STORED,
                       actual_schema_digest char(64), started_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -160,6 +161,95 @@ class PluginMigrationExecutorIntegrationTest {
             assertEquals(2L, count(connection, "select count(*) from sys_plugin_migration_audit where request_id = " + requestId));
             assertEquals("FAILED", scalar(connection,
                     "select status from plugin_migration_execution_log where migration_request_id = " + requestId));
+        }
+    }
+
+    @Test
+    void expiredRunningMigrationRecoversAfterSchemaWasAppliedBeforeMigratorCrash() throws Exception {
+        try (Connection connection = connection()) {
+            long requestId = insert(connection, "RUNNING",
+                    "CREATE TABLE plugin_sms_message (id bigint NOT NULL PRIMARY KEY)", null);
+            PluginMigrationRequest request = repository.find(connection, requestId);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("CREATE TABLE plugin_sms_message (id bigint NOT NULL PRIMARY KEY)");
+            }
+            String expectedSchemaDigest = repository.captureSchemaSnapshot(
+                    connection, request, List.of("plugin_sms_message"));
+            try (var update = connection.prepareStatement(
+                    "update sys_plugin_migration_request set expected_schema_digest = ? where id = ?")) {
+                update.setString(1, expectedSchemaDigest);
+                update.setLong(2, requestId);
+                update.executeUpdate();
+            }
+            try (var execution = connection.prepareStatement("""
+                    insert into plugin_migration_execution_log (
+                      migration_request_id, plugin_code, release_id, migration_digest, schema_version,
+                      executor_type, executor_id, fence_token, lease_until, status
+                    ) values (?, 'sms', ?, ?, '1', 'CENTRAL_MIGRATOR', 'crashed-migrator', 'stale-fence',
+                              date_sub(current_timestamp, interval 1 minute), 'STARTED')
+                    """)) {
+                execution.setLong(1, requestId);
+                execution.setString(2, RELEASE_ID);
+                execution.setString(3, request.migrationDigest());
+                execution.executeUpdate();
+            }
+
+            PluginMigrationExecutor.ExecutionSummary summary =
+                    executor.executeApproved(connection, RELEASE_ID, "recovery-migrator", 25, 30);
+
+            assertEquals(new PluginMigrationExecutor.ExecutionSummary(0, 0, 0), summary);
+            assertEquals("SUCCEEDED", scalar(connection,
+                    "select request_status from sys_plugin_migration_request where id = " + requestId));
+            assertEquals("MIGRATED", scalar(connection,
+                    "select lifecycle_status from sys_plugin_version where plugin_code = 'sms'"));
+            assertEquals(1L, count(connection,
+                    "select count(*) from plugin_migration_execution_log where migration_request_id = " + requestId
+                            + " and status = 'SUCCESS'"));
+            assertEquals(1L, count(connection,
+                    "select count(*) from plugin_migration_execution_log where migration_request_id = " + requestId
+                            + " and status = 'ABANDONED'"));
+            assertEquals(2L, count(connection,
+                    "select count(*) from sys_plugin_migration_audit where request_id = " + requestId));
+        }
+    }
+
+    @Test
+    void expiredRecoveryWithSchemaDriftBlocksActivationForManualReview() throws Exception {
+        try (Connection connection = connection()) {
+            long requestId = insert(connection, "RUNNING",
+                    "CREATE TABLE plugin_sms_message (id bigint NOT NULL PRIMARY KEY)", null, "f".repeat(64));
+            PluginMigrationRequest request = repository.find(connection, requestId);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("CREATE TABLE plugin_sms_message (id bigint NOT NULL PRIMARY KEY)");
+            }
+            try (var execution = connection.prepareStatement("""
+                    insert into plugin_migration_execution_log (
+                      migration_request_id, plugin_code, release_id, migration_digest, schema_version,
+                      executor_type, executor_id, fence_token, lease_until, status
+                    ) values (?, 'sms', ?, ?, '1', 'CENTRAL_MIGRATOR', 'crashed-migrator', 'stale-fence',
+                              date_sub(current_timestamp, interval 1 minute), 'STARTED')
+                    """)) {
+                execution.setLong(1, requestId);
+                execution.setString(2, RELEASE_ID);
+                execution.setString(3, request.migrationDigest());
+                execution.executeUpdate();
+            }
+
+            PluginMigrationExecutor.ExecutionSummary summary =
+                    executor.executeApproved(connection, RELEASE_ID, "recovery-migrator", 25, 30);
+
+            assertEquals(new PluginMigrationExecutor.ExecutionSummary(0, 0, 0), summary);
+            assertEquals("NEEDS_MANUAL_REVIEW", scalar(connection,
+                    "select request_status from sys_plugin_migration_request where id = " + requestId));
+            assertEquals("ROLLBACK_BLOCKED", scalar(connection,
+                    "select lifecycle_status from sys_plugin_migration_request where id = " + requestId));
+            assertEquals("ROLLBACK_BLOCKED", scalar(connection,
+                    "select lifecycle_status from sys_plugin_version where plugin_code = 'sms'"));
+            assertEquals("NEEDS_MANUAL_REVIEW", scalar(connection,
+                    "select status from plugin_migration_execution_log where migration_request_id = " + requestId
+                            + " and status = 'NEEDS_MANUAL_REVIEW'"));
+            assertEquals(2L, count(connection,
+                    "select count(*) from sys_plugin_migration_audit where request_id = " + requestId));
         }
     }
 

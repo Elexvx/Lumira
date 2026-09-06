@@ -76,7 +76,9 @@ public class PluginMigrationService {
             PluginMigrationRequestEntity existing = requestService.find(pluginCode, pluginVersion, migrationDigest).orElse(null);
             if (existing != null) {
                 if ("SUCCEEDED".equals(existing.getRequestStatus())) return MigrationDisposition.MIGRATED;
-                if ("FAILED".equals(existing.getRequestStatus())) {
+                if ("FAILED".equals(existing.getRequestStatus())
+                        || "NEEDS_MANUAL_REVIEW".equals(existing.getRequestStatus())
+                        || "ROLLBACK_BLOCKED".equals(existing.getLifecycleStatus())) {
                     String detail = StringUtils.hasText(existing.getFailureReason()) ? existing.getFailureReason() : "unknown failure";
                     throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR,
                             "Recorded plugin migration failed: " + detail + "; recovery: " + existing.getRecoveryAction());
