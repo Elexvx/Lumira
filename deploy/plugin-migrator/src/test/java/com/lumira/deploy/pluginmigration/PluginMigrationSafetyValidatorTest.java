@@ -25,6 +25,7 @@ class PluginMigrationSafetyValidatorTest {
 
         assertEquals(1, validated.statements().size());
         assertEquals(sql, validated.statements().getFirst());
+        assertEquals(List.of("plugin_sms_message"), validated.targetTables());
     }
 
     @Test

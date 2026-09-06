@@ -23,8 +23,11 @@ const digestPinnedImagePattern = /^[A-Za-z0-9][A-Za-z0-9._/:@-]+@sha256:[0-9a-f]
 const commitPattern = /^[0-9a-f]{7,64}$/i;
 const fullCommitPattern = /^[0-9a-f]{40}$/i;
 const releaseIdPattern = /^v[A-Za-z0-9][A-Za-z0-9._-]{0,126}$/u;
+const pluginCodePattern = /^[A-Za-z][A-Za-z0-9._-]{0,63}$/u;
+const pluginDigestPattern = /^(?:sha256:)?([0-9a-f]{64})$/iu;
 const maintenanceModes = new Set(['NORMAL', 'WRITE_DRAIN', 'READ_ONLY', 'FULL_MAINTENANCE']);
 const frontendModes = new Set(['local-blue-green', 'external-managed']);
+const pluginRollbackModes = new Set(['APPLICATION_ONLY', 'NOT_REQUIRED']);
 
 export function inactiveSlot(activeSlot) {
   return normalizeSlot(activeSlot) === 'blue' ? 'green' : 'blue';
@@ -140,6 +143,7 @@ export function normalizeReleaseManifest(rawManifest) {
     throw new Error('update.databaseRequiredRuntimeMode is invalid');
   }
   const rollback = raw.rollback && typeof raw.rollback === 'object' ? raw.rollback : {};
+  const plugins = normalizePluginMigrations(raw.plugins);
 
   return {
     schemaVersion,
@@ -165,6 +169,7 @@ export function normalizeReleaseManifest(rawManifest) {
       databaseRestoreRequired: rollback.databaseRestoreRequired === true,
     },
     rollbackSupported: rollback.supported ?? raw.rollbackSupported !== false,
+    plugins,
     images: {
       server: serverImage,
       frontend: frontendImage,
@@ -173,6 +178,43 @@ export function normalizeReleaseManifest(rawManifest) {
       migrator: migratorImage,
     },
   };
+}
+
+function normalizePluginMigrations(rawPlugins) {
+  if (rawPlugins === undefined || rawPlugins === null) return [];
+  if (!Array.isArray(rawPlugins)) throw new Error('release manifest plugins must be an array');
+  const seen = new Set();
+  return rawPlugins.map((rawPlugin, index) => {
+    const plugin = rawPlugin && typeof rawPlugin === 'object' ? rawPlugin : {};
+    const pluginCode = String(plugin.pluginCode || '').trim();
+    const pluginVersion = String(plugin.pluginVersion || '').trim();
+    const migrationVersion = String(plugin.migrationVersion || '').trim();
+    if (!pluginCodePattern.test(pluginCode)) throw new Error(`plugins[${index}].pluginCode is invalid`);
+    if (!pluginVersion) throw new Error(`plugins[${index}].pluginVersion is required`);
+    if (!migrationVersion) throw new Error(`plugins[${index}].migrationVersion is required`);
+    const identity = `${pluginCode}\u0000${migrationVersion}`;
+    if (seen.has(identity)) throw new Error(`plugins[${index}] duplicates pluginCode and migrationVersion`);
+    seen.add(identity);
+    const schemaDigest = normalizePluginDigest(plugin.schemaDigest, `plugins[${index}].schemaDigest`);
+    const migrationDigest = normalizePluginDigest(plugin.migrationDigest, `plugins[${index}].migrationDigest`);
+    const compatibleReaders = [...new Set((Array.isArray(plugin.compatibleReaders) ? plugin.compatibleReaders : [])
+      .map((reader) => String(reader || '').trim()).filter(Boolean))];
+    if (compatibleReaders.length === 0) throw new Error(`plugins[${index}].compatibleReaders is required`);
+    const phase = String(plugin.phase || '').trim().toLowerCase();
+    if (phase !== 'expand') throw new Error(`plugins[${index}].phase must be expand`);
+    const rollbackMode = String(plugin.rollbackMode || '').trim().toUpperCase();
+    if (!pluginRollbackModes.has(rollbackMode)) {
+      throw new Error(`plugins[${index}].rollbackMode must be APPLICATION_ONLY or NOT_REQUIRED`);
+    }
+    return { pluginCode, pluginVersion, migrationVersion, schemaDigest, migrationDigest,
+      compatibleReaders, phase, rollbackMode };
+  });
+}
+
+function normalizePluginDigest(value, fieldName) {
+  const match = pluginDigestPattern.exec(String(value || '').trim());
+  if (!match) throw new Error(`${fieldName} must be a sha256 digest`);
+  return `sha256:${match[1].toLowerCase()}`;
 }
 
 export function createInitialDeploymentState(values = {}) {

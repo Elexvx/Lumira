@@ -21,7 +21,7 @@ Upload currently performs package verification in the same command, so the durab
 `sys_plugin_migration_request` is the immutable hand-off record. It stores:
 
 - plugin code and package version;
-- declared schema version, `EXPAND` phase, rollback mode and compatible readers;
+- declared schema version, optional expected schema digest, `EXPAND` phase, rollback mode and compatible readers;
 - normalized `plugin_<plugin_code>_` table namespace;
 - monotonically increasing operation epoch;
 - SHA-256 package and migration digests;
@@ -30,6 +30,16 @@ Upload currently performs package verification in the same command, so the durab
 - the exact ordered SQL payload reviewed and executed;
 - bounded failure reason and recovery action;
 - approval identity/reason plus approval, start and completion timestamps.
+
+The release set may repeat the plugin's `migrationVersion`, `schemaDigest`, `migrationDigest` and
+compatible readers. When a package carries `migrationSchemaDigest`, the request stores it as
+`expected_schema_digest`; the central Migrator records object-level hashes in `plugin_schema_snapshot`
+and refuses to mark the request successful when the aggregate schema digest differs. Older requests
+without that optional field remain executable but are explicitly evidence-only rather than digest-verified.
+
+`plugin_migration_execution_log` is the execution fact ledger. Its generated active-request key allows
+only one `STARTED` execution per request; later attempts are possible only after a terminal failure and
+must use a new fenced request for ordinary recovery. `CENTRAL_MIGRATOR` is the only executor type.
 
 The application initially writes `PENDING_APPROVAL` and exposes no approve, claim, complete, or fail operation. Approval is a separate operator action. The Migrator can only claim `APPROVED` + `EXPAND` requests for its explicit release ID and every update is a compare-and-set on epoch, digest, release ID and current status. Migration success and the version transition to `MIGRATED` are one Migrator-side DML transaction. Failure remains recorded and cannot be mistaken for schema readiness. `sys_plugin_migration_audit` records `APPROVED`, `CLAIMED`, `SUCCEEDED`, `FAILED`, and `ROLLBACK_BLOCKED` events with the full fence and actor.
 
@@ -59,6 +69,7 @@ Packages containing `migrations/up/*.sql` must declare these `plugin.json` field
 ```json
 {
   "migrationSchemaVersion": "1",
+  "migrationSchemaDigest": "sha256:<64 lowercase hex characters>",
   "migrationPhase": "expand",
   "rollbackMode": "application_only",
   "compatibleReaders": ["1.x", "2.x"]

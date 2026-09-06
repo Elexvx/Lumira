@@ -1088,6 +1088,7 @@ public final class PluginEntities {
         private String pluginCode;
         private String pluginVersion;
         private String schemaVersion;
+        private String expectedSchemaDigest;
         private String phase;
         private String rollbackMode;
         private String compatibleReaders;
@@ -1117,6 +1118,8 @@ public final class PluginEntities {
         public void setPluginVersion(String pluginVersion) { this.pluginVersion = pluginVersion; }
         public String getSchemaVersion() { return schemaVersion; }
         public void setSchemaVersion(String schemaVersion) { this.schemaVersion = schemaVersion; }
+        public String getExpectedSchemaDigest() { return expectedSchemaDigest; }
+        public void setExpectedSchemaDigest(String expectedSchemaDigest) { this.expectedSchemaDigest = expectedSchemaDigest; }
         public String getPhase() { return phase; }
         public void setPhase(String phase) { this.phase = phase; }
         public String getRollbackMode() { return rollbackMode; }

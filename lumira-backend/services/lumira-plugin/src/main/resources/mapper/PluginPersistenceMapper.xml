@@ -471,12 +471,12 @@
 
     <insert id="insertMigrationRequest" useGeneratedKeys="true" keyProperty="entity.id">
         insert into sys_plugin_migration_request (
-            plugin_code, plugin_version, schema_version, phase, rollback_mode, compatible_readers,
+            plugin_code, plugin_version, schema_version, expected_schema_digest, phase, rollback_mode, compatible_readers,
             table_namespace, operation_epoch, package_digest, migration_digest, release_id,
             request_status, lifecycle_status, script_payload, failure_reason, recovery_action,
             created_by, created_by_uuid
         ) values (
-            #{entity.pluginCode}, #{entity.pluginVersion}, #{entity.schemaVersion}, #{entity.phase},
+            #{entity.pluginCode}, #{entity.pluginVersion}, #{entity.schemaVersion}, #{entity.expectedSchemaDigest}, #{entity.phase},
             #{entity.rollbackMode}, #{entity.compatibleReaders}, #{entity.tableNamespace},
             #{entity.operationEpoch}, #{entity.packageDigest}, #{entity.migrationDigest}, #{entity.releaseId},
             #{entity.requestStatus}, #{entity.lifecycleStatus}, #{entity.scriptPayload},

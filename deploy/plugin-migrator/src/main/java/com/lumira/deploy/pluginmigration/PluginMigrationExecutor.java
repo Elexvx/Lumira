@@ -3,6 +3,9 @@ package com.lumira.deploy.pluginmigration;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.List;
+import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 final class PluginMigrationExecutor {
     private static final String VALIDATION_RECOVERY =
@@ -36,12 +39,15 @@ final class PluginMigrationExecutor {
             if (!repository.claim(connection, approved, executorId)) continue;
             claimed++;
             PluginMigrationRequest running = new PluginMigrationRequest(
-                    approved.id(), approved.pluginCode(), approved.pluginVersion(), approved.schemaVersion(), approved.phase(),
+                    approved.id(), approved.pluginCode(), approved.pluginVersion(), approved.schemaVersion(), approved.expectedSchemaDigest(), approved.phase(),
                     approved.rollbackMode(), approved.compatibleReaders(), approved.tableNamespace(), approved.operationEpoch(),
                     approved.packageDigest(), approved.migrationDigest(), approved.releaseId(), "RUNNING",
                     approved.lifecycleStatus(), approved.scriptPayload());
             boolean ddlAttempted = false;
+            long executionLogId = 0L;
             try {
+                String fenceToken = UUID.randomUUID().toString();
+                executionLogId = repository.startExecutionLog(connection, running, executorId, fenceToken);
                 PluginMigrationRequest.Validated migration = validator.validate(running, releaseId);
                 for (String sql : migration.statements()) {
                     ddlAttempted = true;
@@ -50,13 +56,20 @@ final class PluginMigrationExecutor {
                         statement.execute(sql);
                     }
                 }
-                if (!repository.complete(connection, running, executorId)) {
+                String actualSchemaDigest = repository.captureSchemaSnapshot(connection, running, migration.targetTables());
+                if (hasText(running.expectedSchemaDigest())
+                        && !MessageDigest.isEqual(normalizeDigest(running.expectedSchemaDigest())
+                        .getBytes(StandardCharsets.US_ASCII), actualSchemaDigest.getBytes(StandardCharsets.US_ASCII))) {
+                    throw new IllegalStateException("schema digest mismatch expected="
+                            + normalizeDigest(running.expectedSchemaDigest()) + " actual=" + actualSchemaDigest);
+                }
+                if (!repository.complete(connection, running, executorId, executionLogId, actualSchemaDigest)) {
                     throw new IllegalStateException("migration completion fence changed");
                 }
                 succeeded++;
             } catch (Exception exception) {
                 String failure = safeFailure(exception);
-                boolean persisted = repository.fail(connection, running, executorId, failure,
+                boolean persisted = repository.fail(connection, running, executorId, executionLogId, failure,
                         ddlAttempted ? PARTIAL_DDL_RECOVERY : VALIDATION_RECOVERY, ddlAttempted);
                 if (!persisted) {
                     throw new IllegalStateException("migration failed and its failure fence could not be persisted", exception);
@@ -85,6 +98,15 @@ final class PluginMigrationExecutor {
         String value = cursor.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
         value = value.replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", " ").trim();
         return value.length() <= 1024 ? value : value.substring(0, 1024);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String normalizeDigest(String value) {
+        String normalized = value.trim().toLowerCase();
+        return normalized.startsWith("sha256:") ? normalized.substring("sha256:".length()) : normalized;
     }
 
     record Approval(long requestId, long operationEpoch, String packageDigest, String migrationDigest,

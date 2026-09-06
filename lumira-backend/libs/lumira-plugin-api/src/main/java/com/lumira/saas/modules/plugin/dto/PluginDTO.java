@@ -144,6 +144,7 @@ public final class PluginDTO {
         private String configSchema;
         private String migrationStrategy;
         private String migrationSchemaVersion;
+        private String migrationSchemaDigest;
         private String migrationPhase;
         private String rollbackMode;
         private List<String> compatibleReaders;
@@ -276,6 +277,8 @@ public final class PluginDTO {
 
         public String getMigrationSchemaVersion() { return migrationSchemaVersion; }
         public void setMigrationSchemaVersion(String migrationSchemaVersion) { this.migrationSchemaVersion = migrationSchemaVersion; }
+        public String getMigrationSchemaDigest() { return migrationSchemaDigest; }
+        public void setMigrationSchemaDigest(String migrationSchemaDigest) { this.migrationSchemaDigest = migrationSchemaDigest; }
         public String getMigrationPhase() { return migrationPhase; }
         public void setMigrationPhase(String migrationPhase) { this.migrationPhase = migrationPhase; }
         public String getRollbackMode() { return rollbackMode; }

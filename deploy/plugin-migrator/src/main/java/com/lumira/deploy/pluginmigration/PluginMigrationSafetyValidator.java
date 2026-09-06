@@ -54,11 +54,15 @@ final class PluginMigrationSafetyValidator {
         require(request.operationEpoch() > 0, "operation epoch must be positive");
         require(DIGEST.matcher(normalized(request.packageDigest())).matches(), "package digest is invalid");
         require(DIGEST.matcher(normalized(request.migrationDigest())).matches(), "migration digest is invalid");
+        if (hasText(request.expectedSchemaDigest())) {
+            require(DIGEST.matcher(normalized(request.expectedSchemaDigest())).matches(), "expected schema digest is invalid");
+        }
 
         String expectedNamespace = namespace(request.pluginCode());
         require(expectedNamespace.equals(request.tableNamespace()), "plugin table namespace does not match plugin code");
         List<PluginMigrationRequest.Script> scripts = parseScripts(request.scriptPayload());
         List<String> statements = new ArrayList<>();
+        Set<String> targetTables = new HashSet<>();
         String previousStep = null;
         Set<String> uniqueSteps = new HashSet<>();
         for (PluginMigrationRequest.Script script : scripts) {
@@ -68,11 +72,14 @@ final class PluginMigrationSafetyValidator {
                     "migration steps are not in deterministic order");
             previousStep = script.stepName();
             require(script.sql() != null && script.sql().length() <= MAX_SCRIPT_CHARS, "migration script is too large");
-            statements.addAll(validateSql(script.sql(), expectedNamespace));
+            SqlValidation validatedSql = validateSql(script.sql(), expectedNamespace);
+            statements.addAll(validatedSql.statements());
+            targetTables.addAll(validatedSql.targetTables());
         }
         require(!statements.isEmpty(), "migration payload contains no executable statements");
         require(constantTimeEquals(request.migrationDigest(), digest(request, scripts)), "migration digest does not match payload");
-        return new PluginMigrationRequest.Validated(List.copyOf(scripts), List.copyOf(statements));
+        return new PluginMigrationRequest.Validated(List.copyOf(scripts), List.copyOf(statements),
+                targetTables.stream().sorted().toList());
     }
 
     private List<PluginMigrationRequest.Script> parseScripts(String payload) {
@@ -96,21 +103,23 @@ final class PluginMigrationSafetyValidator {
         }
     }
 
-    private List<String> validateSql(String sql, String namespace) {
+    private SqlValidation validateSql(String sql, String namespace) {
         String source = stripComments(sql);
         require(!FORBIDDEN.matcher(source).find(), "migration contains destructive or non-DDL SQL");
         List<String> statements = splitStatements(source);
+        Set<String> targetTables = new HashSet<>();
         for (String statement : statements) {
             String table = tableForAllowedStatement(statement);
             require(table != null, "only CREATE TABLE, CREATE INDEX and ALTER TABLE ADD are allowed");
             require(table.toLowerCase(Locale.ROOT).startsWith(namespace), "migration target is outside plugin namespace");
+            targetTables.add(table.toLowerCase(Locale.ROOT));
             Matcher reference = TABLE_REFERENCE.matcher(statement);
             while (reference.find()) {
                 require(reference.group(1).toLowerCase(Locale.ROOT).startsWith(namespace),
                         "migration references a table outside plugin namespace");
             }
         }
-        return statements;
+        return new SqlValidation(List.copyOf(statements), Set.copyOf(targetTables));
     }
 
     private String stripComments(String sql) {
@@ -213,4 +222,6 @@ final class PluginMigrationSafetyValidator {
     private static void require(boolean condition, String message) {
         if (!condition) throw new IllegalArgumentException(message);
     }
+
+    private record SqlValidation(List<String> statements, Set<String> targetTables) { }
 }

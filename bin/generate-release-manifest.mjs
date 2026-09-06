@@ -19,6 +19,7 @@ const frontendImage = first(process.env.LUMIRA_FRONTEND_IMAGE, `ghcr.io/${owner}
 const asyncImage = first(process.env.LUMIRA_ASYNC_IMAGE, `ghcr.io/${owner}/lumira/lumira-async:sha-${commit}`);
 const jobExecutorImage = first(process.env.LUMIRA_JOB_EXECUTOR_IMAGE, `ghcr.io/${owner}/lumira/lumira-job-executor:sha-${commit}`);
 const migratorImage = first(process.env.LUMIRA_MIGRATOR_IMAGE, `ghcr.io/${owner}/lumira/lumira-migrator:sha-${commit}`);
+const plugins = parsePlugins(process.env.LUMIRA_RELEASE_PLUGINS_JSON);
 
 assertDigestPinned(serverImage, 'LUMIRA_SERVER_IMAGE');
 assertDigestPinned(frontendImage, 'LUMIRA_FRONTEND_IMAGE');
@@ -49,6 +50,7 @@ const manifest = {
     jobExecutor: jobExecutorImage,
     migrator: migratorImage,
   },
+  plugins,
   update: {
     strategy: 'single-host-release-set-blue-green',
     minUpdaterProtocol: 3,
@@ -140,4 +142,16 @@ function versionSet(name, fallback) {
   const configured = String(process.env[`LUMIRA_RELEASE_${name}_READ_VERSIONS`] || writeVersion)
     .split(',').map(Number).filter((item) => Number.isInteger(item) && item > 0);
   return { readVersions: [...new Set(configured)], writeVersion };
+}
+
+function parsePlugins(raw) {
+  if (!String(raw || '').trim()) return [];
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`LUMIRA_RELEASE_PLUGINS_JSON must be valid JSON: ${error.message}`);
+  }
+  if (!Array.isArray(parsed)) throw new Error('LUMIRA_RELEASE_PLUGINS_JSON must contain an array');
+  return parsed;
 }

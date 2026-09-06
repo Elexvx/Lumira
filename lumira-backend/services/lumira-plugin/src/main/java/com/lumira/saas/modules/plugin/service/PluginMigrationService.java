@@ -87,6 +87,7 @@ public class PluginMigrationService {
             request.setPluginCode(pluginCode);
             request.setPluginVersion(pluginVersion);
             request.setSchemaVersion(migration.schemaVersion());
+            request.setExpectedSchemaDigest(migration.schemaDigest());
             request.setPhase("EXPAND");
             request.setRollbackMode(migration.rollbackMode());
             request.setCompatibleReaders(String.join(",", migration.compatibleReaders()));
@@ -149,6 +150,7 @@ public class PluginMigrationService {
     private MigrationMetadata requireMetadata(PluginDTO.PluginPackageMetadata metadata) {
         if (metadata == null) throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "Plugin migration metadata is required");
         String schemaVersion = requireText(metadata.getMigrationSchemaVersion(), "migration.schemaVersion");
+        String schemaDigest = optionalDigest(metadata.getMigrationSchemaDigest(), "migration.schemaDigest");
         String phase = requireText(metadata.getMigrationPhase(), "migration.phase").toUpperCase(Locale.ROOT);
         if (!"EXPAND".equals(phase)) throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "Only EXPAND plugin migrations are allowed");
         String rollbackMode = requireText(metadata.getRollbackMode(), "migration.rollbackMode").toUpperCase(Locale.ROOT);
@@ -158,7 +160,7 @@ public class PluginMigrationService {
         List<String> readers = metadata.getCompatibleReaders() == null ? List.of() : metadata.getCompatibleReaders().stream()
                 .filter(StringUtils::hasText).map(String::trim).distinct().toList();
         if (readers.isEmpty()) throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "migration.compatibleReaders is required");
-        return new MigrationMetadata(schemaVersion, phase, rollbackMode, readers);
+        return new MigrationMetadata(schemaVersion, schemaDigest, phase, rollbackMode, readers);
     }
 
     private List<ResourceScript> resolveScripts(Path versionHome) throws IOException {
@@ -204,6 +206,11 @@ public class PluginMigrationService {
         return digest;
     }
 
+    private static String optionalDigest(String value, String name) {
+        if (!StringUtils.hasText(value)) return null;
+        return requireDigest(value, name);
+    }
+
     private static String requireText(String value, String name) {
         if (!StringUtils.hasText(value)) throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, name + " is required");
         return value.trim();
@@ -216,6 +223,7 @@ public class PluginMigrationService {
     }
 
     public enum MigrationDisposition { NO_MIGRATION, MIGRATION_PENDING, MIGRATED }
-    private record MigrationMetadata(String schemaVersion, String phase, String rollbackMode, List<String> compatibleReaders) { }
+    private record MigrationMetadata(String schemaVersion, String schemaDigest, String phase, String rollbackMode,
+                                     List<String> compatibleReaders) { }
     private record ResourceScript(String stepName, String scriptPath, Resource resource) { }
 }
