@@ -35,6 +35,24 @@ message, observe `XPENDING`, run the real consumer recovery path, and retain
 the before/after evidence. That drill must be performed only against an
 isolated deployment or maintenance window.
 
+## Controlled PEL recovery drill
+
+Run the write/claim/ACK drill only against a disposable Redis that is not the
+runtime or cache URL. The script generates a unique `test:lumira:pel:` stream,
+consumer group and message, then removes them after the run:
+
+```bash
+REDIS_RUNTIME_PEL_TEST_URL='redis://:***@redis-runtime-drill:6379/0' \
+REDIS_RUNTIME_PEL_TEST_STREAM_PREFIX='test:lumira:pel:release-20260907:' \
+REDIS_RUNTIME_PEL_TEST_CONFIRM='I_UNDERSTAND_ISOLATED_REDIS' \
+node bin/redis-runtime-pel-recovery-test.mjs
+```
+
+The acceptance output must show `consumer-A` owning one pending message before
+recovery, `consumer-B` claiming it with `XAUTOCLAIM`, and `pending=0` after
+`XACK`. The drill is intentionally separate from the business payment stream;
+it proves Redis consumer-group semantics without mutating production events.
+
 ## Readiness and metrics
 
 `RedisPlaneHealthIndicator` fails runtime readiness when runtime stats cannot

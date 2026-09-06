@@ -27,6 +27,10 @@ const validationScript = readFileSync(
   path.join(repoRoot, 'bin', 'redis-runtime-chaos-test.mjs'),
   'utf8',
 );
+const pelRecoveryScript = readFileSync(
+  path.join(repoRoot, 'bin', 'redis-runtime-pel-recovery-test.mjs'),
+  'utf8',
+);
 
 test('Redis key ownership registry is valid and required runtime/cache keys are classified', () => {
   const registry = validateRedisKeyOwnership({ root: repoRoot });
@@ -53,6 +57,17 @@ test('runtime validation requires eviction, persistence and Stream evidence', ()
   assert.match(validationScript, /XPENDING/);
   assert.match(validationScript, /XLEN/);
   assert.doesNotMatch(validationScript, /FLUSHDB/);
+});
+
+test('PEL recovery drill is isolated, bounded and cleans up its generated stream', () => {
+  assert.match(pelRecoveryScript, /REDIS_RUNTIME_PEL_TEST_URL/);
+  assert.match(pelRecoveryScript, /test:lumira:pel:/);
+  assert.match(pelRecoveryScript, /XREADGROUP/);
+  assert.match(pelRecoveryScript, /XPENDING/);
+  assert.match(pelRecoveryScript, /XAUTOCLAIM/);
+  assert.match(pelRecoveryScript, /XACK/);
+  assert.match(pelRecoveryScript, /XGROUP.*DESTROY/s);
+  assert.match(pelRecoveryScript, /REDIS_RUNTIME_URL.*REDIS_CACHE_URL/s);
 });
 
 test('production Compose enables the cache plane explicitly while keeping runtime settings separate', () => {

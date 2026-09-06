@@ -20,7 +20,8 @@ class AsyncRuntimeReadinessV2ControllerTest {
                 "/api/v2/async/readiness",
                 "/api/v1/async/version",
                 "/internal/jobs/outbox/recovery/{mode}/{owner}",
-                "/internal/jobs/payment-events/dead-letter/{recordId}/replay"
+                "/internal/jobs/payment-events/dead-letter/{recordId}/replay",
+                "/internal/jobs/payment-notifications/dead-letter/{recordId}/replay"
         );
         assertThat(readiness.blockers()).anySatisfy(blocker -> assertThat(blocker).contains("no datasource"));
 
@@ -33,7 +34,8 @@ class AsyncRuntimeReadinessV2ControllerTest {
                         "async.scoped-internal-tokens.configured",
                         "async.redis.connected",
                         "async.recovery-fence.durable",
-                        "async.payment-consumer.running"
+                        "async.payment-consumer.running",
+                        "async.notification-consumer.running"
                 );
     }
 

@@ -6,6 +6,7 @@ import com.lumira.message.app.OperationAuditService;
 import com.lumira.message.config.MessageProperties;
 import com.lumira.message.config.MessageWebSocketConfig;
 import com.lumira.message.controller.MessageController;
+import com.lumira.message.controller.InternalNotificationController;
 import com.lumira.message.controller.MessageReadinessV2Controller;
 import com.lumira.message.controller.MessageV2Controller;
 import com.lumira.message.event.ReviewResultEventStreamConsumer;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Import;
 @Import({
         MessageWebSocketConfig.class,
         MessageController.class,
+        InternalNotificationController.class,
         MessageReadinessV2Controller.class,
         MessageV2Controller.class,
         MessageAppService.class,

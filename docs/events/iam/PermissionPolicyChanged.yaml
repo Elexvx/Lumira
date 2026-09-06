@@ -1,0 +1,15 @@
+name: PermissionPolicyChanged
+eventType: PermissionPolicyChanged
+sourceModule: iam
+producer: iam
+schemaVersion: 1
+aggregate:
+  type: iam.permission-policy
+  id: policy id or tenant id
+payload:
+  policyVersion: resulting policy version
+  permissionsVersion: resulting authorization snapshot version
+  affectedScopes: bounded list of invalidation scopes
+futureConsumer:
+  purpose: invalidate authorization/read-model caches
+  rule: event loss must not grant access; consumers fail closed and rebuild from the owner snapshot

@@ -1,0 +1,16 @@
+name: RoleChanged
+eventType: RoleChanged
+sourceModule: iam
+producer: iam
+schemaVersion: 1
+aggregate:
+  type: iam.user-role
+  id: user id or role assignment id
+payload:
+  userId: affected user identity
+  userUuid: affected user identity binding
+  roleIds: resulting role set or changed role set
+  permissionsVersion: monotonically increasing permission snapshot version
+futureConsumer:
+  purpose: invalidate authorization/read-model caches
+  rule: must not be required by AuthJwtAuthFilter before fail-closed session validation

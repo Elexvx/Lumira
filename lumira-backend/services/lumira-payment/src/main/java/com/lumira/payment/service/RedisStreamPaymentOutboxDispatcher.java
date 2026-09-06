@@ -46,6 +46,8 @@ public class RedisStreamPaymentOutboxDispatcher implements PaymentOutboxDispatch
         record.put("eventId", String.valueOf(row.getId()));
         record.put("eventType", row.getEventType().trim());
         record.put("sourceModule", "payment");
+        record.put("producer", "payment");
+        record.put("schemaVersion", "1");
         record.put("aggregateId", row.getEventKey().trim());
         record.put("payload", StringUtils.hasText(row.getPayloadJson()) ? row.getPayloadJson() : "{}");
         if (row.getUserId() != null && row.getUserId() > 0 && StringUtils.hasText(row.getUserUuid())) {

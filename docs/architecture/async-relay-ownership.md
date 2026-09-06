@@ -100,6 +100,30 @@ name is the source/producer, `event_key` is the aggregate identity, and
 trace fields where present. No new global offset or cross-database event
 sequence is introduced by this contract.
 
+## First real event consumer: payment notification
+
+The first production-shaped consumer is intentionally narrow: the payment
+owner writes `PAYMENT_ORDER_PAID` to its transactional outbox, Async relays it
+to `lumira.events.payment.v1`, and the notification consumer sends an
+authenticated command to the message owner. Async does not open the message
+database and the message owner remains the only writer of notification tables.
+
+The message owner applies `message-payment-notification-v1` as a durable
+consumer receipt keyed by the canonical event ID. A successful receipt creates
+the system notification and delivery-log side effects; a duplicate receipt
+returns success without repeating those writes. A transient owner/provider
+failure leaves the source entry pending, while malformed or exhausted entries
+move to the notification DLQ. The protected replay endpoint appends the
+sanitized record back to the source stream before deleting the DLQ entry and
+requires the recovery fence.
+
+The notification consumer exposes pending count, oldest pending age, source
+length, DLQ count, consumed/duplicate/failure/reclaim counters, and a bounded
+DLQ inspection/replay surface. This closes one complete event-driven path
+without introducing a central event service, Kafka, or a physical service
+split. IAM event contracts remain documentation-only until their
+fail-closed authorization consumer is designed and tested.
+
 ## Database boundary
 
 Both runtime POMs apply Maven Enforcer `bannedDependencies` with transitive search for Spring JDBC, JDBC starter, MyBatis/MyBatis-Plus, Flyway and MySQL drivers. `spring-jdbc` is excluded from their `common-web` dependency. Neither runtime receives a business database URL or DataSource.

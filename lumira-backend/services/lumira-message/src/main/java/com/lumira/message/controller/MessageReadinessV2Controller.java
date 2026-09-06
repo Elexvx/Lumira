@@ -50,14 +50,16 @@ public class MessageReadinessV2Controller {
                         "/api/v2/message/unread-count",
                         "/api/v2/message/read-all",
                         "/message/internal/jobs/outbox/relay",
-                        "/message/internal/jobs/outbox/{id}/replay"
+                        "/message/internal/jobs/outbox/{id}/replay",
+                        "/message/internal/notifications/commands"
                 ),
                 List.of(
                         "MESSAGE_NOTICE_CREATED",
                         "MESSAGE_NOTICE_READ",
                         "MESSAGE_NOTICE_ARCHIVED",
                         "MESSAGE_NOTICE_RETRACTED",
-                        "MESSAGE_SYNC_STATE"
+                        "MESSAGE_SYNC_STATE",
+                        "NOTIFICATION_COMMAND_APPLIED"
                 ),
                 List.of(
                         "message.db.owner-tables",

@@ -1,0 +1,22 @@
+name: NotificationRequested
+eventType: NotificationRequested
+sourceModule: notification
+producer: lumira-async
+schemaVersion: 1
+aggregate:
+  type: notification.request
+  id: source event aggregateId
+command:
+  targetUserId: required positive owner identity
+  targetUserUuid: required owner identity bound to targetUserId
+  title: bounded inbox title
+  content: bounded inbox content
+delivery:
+  transport: authenticated message-owner internal command endpoint
+  endpoint: /message/internal/notifications/commands
+  idempotency: message-payment-notification-v1 + source eventId
+  sideEffect: msg_notice + msg_delivery_log + WebSocket push
+failure:
+  retry: leave payment Stream record pending
+  deadLetter: lumira.events.payment.v1:notification-dead-letter
+  replay: /internal/jobs/payment-notifications/dead-letter/{recordId}/replay

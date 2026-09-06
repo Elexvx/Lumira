@@ -38,6 +38,8 @@ class RedisStreamPaymentOutboxDispatcherTest {
                 .containsEntry("eventId", "42")
                 .containsEntry("eventType", "PAYMENT_ORDER_PAID")
                 .containsEntry("sourceModule", "payment")
+                .containsEntry("producer", "payment")
+                .containsEntry("schemaVersion", "1")
                 .containsEntry("aggregateId", "payment.order:ORD-42")
                 .containsEntry("userId", "1001")
                 .containsEntry("userUuid", "user-uuid-1001");

@@ -29,6 +29,7 @@ public class AsyncRuntimeReadinessV2Controller {
     private final List<String> scopedTokens;
     private final BooleanSupplier redisAvailable;
     private final BooleanSupplier paymentConsumerRunning;
+    private final BooleanSupplier notificationConsumerRunning;
     private final BooleanSupplier recoveryFenceDurable;
 
     public AsyncRuntimeReadinessV2Controller(
@@ -49,6 +50,7 @@ public class AsyncRuntimeReadinessV2Controller {
                 jobToken,
                 () -> true,
                 () -> true,
+                () -> true,
                 () -> true
         );
     }
@@ -64,6 +66,7 @@ public class AsyncRuntimeReadinessV2Controller {
             @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobToken,
             RedisConnectionFactory redisConnectionFactory,
             ObjectProvider<PaymentEventStreamConsumer> paymentConsumerProvider,
+            ObjectProvider<PaymentNotificationConsumer> notificationConsumerProvider,
             RecoveryFenceRegistry recoveryFenceRegistry
     ) {
         this(
@@ -76,6 +79,10 @@ public class AsyncRuntimeReadinessV2Controller {
                 () -> redisPing(redisConnectionFactory),
                 () -> {
                     PaymentEventStreamConsumer consumer = paymentConsumerProvider.getIfAvailable();
+                    return consumer != null && consumer.isRunning();
+                },
+                () -> {
+                    PaymentNotificationConsumer consumer = notificationConsumerProvider.getIfAvailable();
                     return consumer != null && consumer.isRunning();
                 },
                 recoveryFenceRegistry::isDurable
@@ -101,6 +108,7 @@ public class AsyncRuntimeReadinessV2Controller {
                 jobToken,
                 redisAvailable,
                 paymentConsumerRunning,
+                () -> true,
                 () -> true
         );
     }
@@ -116,10 +124,37 @@ public class AsyncRuntimeReadinessV2Controller {
             BooleanSupplier paymentConsumerRunning,
             BooleanSupplier recoveryFenceDurable
     ) {
+        this(
+                controlPlaneBaseUrl,
+                fileToken,
+                messageToken,
+                paymentToken,
+                pluginToken,
+                jobToken,
+                redisAvailable,
+                paymentConsumerRunning,
+                () -> true,
+                recoveryFenceDurable
+        );
+    }
+
+    AsyncRuntimeReadinessV2Controller(
+            String controlPlaneBaseUrl,
+            String fileToken,
+            String messageToken,
+            String paymentToken,
+            String pluginToken,
+            String jobToken,
+            BooleanSupplier redisAvailable,
+            BooleanSupplier paymentConsumerRunning,
+            BooleanSupplier notificationConsumerRunning,
+            BooleanSupplier recoveryFenceDurable
+    ) {
         this.controlPlaneBaseUrl = controlPlaneBaseUrl;
         this.scopedTokens = List.of(fileToken, messageToken, paymentToken, pluginToken, jobToken);
         this.redisAvailable = redisAvailable;
         this.paymentConsumerRunning = paymentConsumerRunning;
+        this.notificationConsumerRunning = notificationConsumerRunning;
         this.recoveryFenceDurable = recoveryFenceDurable;
     }
 
@@ -139,15 +174,19 @@ public class AsyncRuntimeReadinessV2Controller {
                         "/internal/jobs/outbox/recovery/{mode}/{owner}",
                         "/internal/jobs/payment-events/dead-letter",
                         "/internal/jobs/payment-events/dead-letter/stats",
-                        "/internal/jobs/payment-events/dead-letter/{recordId}/replay"
+                        "/internal/jobs/payment-events/dead-letter/{recordId}/replay",
+                        "/internal/jobs/payment-notifications/dead-letter",
+                        "/internal/jobs/payment-notifications/dead-letter/stats",
+                        "/internal/jobs/payment-notifications/dead-letter/{recordId}/replay"
                 ),
-                List.of("Redis Stream payment consumer", "owner Outbox relay requests"),
+                List.of("Redis Stream payment consumer", "Redis Stream notification consumer", "owner Outbox relay requests"),
                 List.of(
                         "async.control-plane-base-url.configured",
                         "async.scoped-internal-tokens.configured",
                         "async.redis.connected",
                         "async.recovery-fence.durable",
                         "async.payment-consumer.running",
+                        "async.notification-consumer.running",
                         "async.no-datasource-or-owner-beans"
                 ),
                 List.of(
@@ -160,7 +199,12 @@ public class AsyncRuntimeReadinessV2Controller {
                         "lumira.payment.consumer.pending.oldest.age.seconds",
                         "redis_runtime_stream_pending",
                         "redis_runtime_stream_oldest_pending_age",
-                        "lumira.payment.consumer.dead-letter.count"
+                        "lumira.payment.consumer.dead-letter.count",
+                        "lumira.notification.consumer.pending.count",
+                        "lumira.notification.consumer.pending.oldest.age.seconds",
+                        "redis_runtime_notification_stream_pending",
+                        "redis_runtime_notification_stream_oldest_pending_age",
+                        "lumira.notification.consumer.dead-letter.count"
                 ),
                 List.of("Redis", "active control-plane slot through api-proxy", "owner-scoped internal tokens"),
                 List.of(
@@ -215,6 +259,11 @@ public class AsyncRuntimeReadinessV2Controller {
                                 "The competition payment Redis Stream consumer must be actively polling."
                         ),
                         healthCheck(
+                                "async.notification-consumer.running",
+                                isNotificationConsumerRunning() ? "RUNNING" : "STOPPED",
+                                "The payment notification Redis Stream consumer must be actively polling."
+                        ),
+                        healthCheck(
                                 "async.no-datasource-or-owner-beans",
                                 "CONFIGURED",
                                 "The runtime is assembled from narrow remote ports and Redis only."
@@ -230,7 +279,12 @@ public class AsyncRuntimeReadinessV2Controller {
                         metric("lumira.payment.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending payment Stream entry."),
                         metric("redis_runtime_stream_pending", "gauge", "messages", "Current pending entries in the runtime Redis payment Stream."),
                         metric("redis_runtime_stream_oldest_pending_age", "gauge", "seconds", "Age of the oldest pending runtime Redis Stream entry."),
-                        metric("lumira.payment.consumer.dead-letter.count", "gauge", "messages", "Current payment DLQ count.")
+                        metric("lumira.payment.consumer.dead-letter.count", "gauge", "messages", "Current payment DLQ count."),
+                        metric("lumira.notification.consumer.pending.count", "gauge", "messages", "Current pending notification Stream entries."),
+                        metric("lumira.notification.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending notification Stream entry."),
+                        metric("redis_runtime_notification_stream_pending", "gauge", "messages", "Current pending entries in the runtime Redis notification group."),
+                        metric("redis_runtime_notification_stream_oldest_pending_age", "gauge", "seconds", "Age of the oldest pending notification entry."),
+                        metric("lumira.notification.consumer.dead-letter.count", "gauge", "messages", "Current notification DLQ count.")
                 )
         );
     }
@@ -240,7 +294,8 @@ public class AsyncRuntimeReadinessV2Controller {
                 && scopedTokensConfigured()
                 && isRedisAvailable()
                 && isRecoveryFenceDurable()
-                && isPaymentConsumerRunning();
+                && isPaymentConsumerRunning()
+                && isNotificationConsumerRunning();
     }
 
     private boolean scopedTokensConfigured() {
@@ -253,6 +308,10 @@ public class AsyncRuntimeReadinessV2Controller {
 
     private boolean isPaymentConsumerRunning() {
         return safeBoolean(paymentConsumerRunning);
+    }
+
+    private boolean isNotificationConsumerRunning() {
+        return safeBoolean(notificationConsumerRunning);
     }
 
     private boolean isRecoveryFenceDurable() {
