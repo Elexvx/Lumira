@@ -36,6 +36,18 @@ public class JdbcIamUserRepository implements IamUserRepository {
     }
 
     @Override
+    public int activateAccount(Long userId, String userUuid, String passwordHash, LocalDateTime now) {
+        return database.update(
+                """
+                        update sys_user
+                        set password_hash = ?, status = 'ENABLED', updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and uuid = ? and deleted = 0
+                        """,
+                passwordHash, userId, userUuid, now, userId, userUuid
+        );
+    }
+
+    @Override
     public IamUserAccount findActiveAccountById(Long userId) {
         List<IamUserAccount> accounts = database.query(
                 """

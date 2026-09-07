@@ -1,7 +1,7 @@
 package com.lumira.common.web.security.audit;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.audit.SecurityAuditRecord;
+import com.lumira.api.audit.port.SecurityAuditWritePort;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.ClientIpResolver;
 import com.lumira.common.web.security.SensitiveErrorMessageSanitizer;
@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -23,19 +22,16 @@ public class SecurityAuditEventService {
     private static final int MAX_MESSAGE_LENGTH = 1000;
     private static final int MAX_USER_AGENT_LENGTH = 512;
 
-    private final ObjectProvider<JdbcTemplate> jdbcTemplateProvider;
-    private final ObjectMapper objectMapper;
+    private final ObjectProvider<SecurityAuditWritePort> auditWritePortProvider;
     private final SensitiveErrorMessageSanitizer sanitizer;
     private final ObjectProvider<ClientIpResolver> clientIpResolverProvider;
 
     public SecurityAuditEventService(
-            ObjectProvider<JdbcTemplate> jdbcTemplateProvider,
-            ObjectProvider<ObjectMapper> objectMapperProvider,
+            ObjectProvider<SecurityAuditWritePort> auditWritePortProvider,
             SensitiveErrorMessageSanitizer sanitizer,
             ObjectProvider<ClientIpResolver> clientIpResolverProvider
     ) {
-        this.jdbcTemplateProvider = jdbcTemplateProvider;
-        this.objectMapper = objectMapperProvider.getIfAvailable(ObjectMapper::new);
+        this.auditWritePortProvider = auditWritePortProvider;
         this.sanitizer = sanitizer;
         this.clientIpResolverProvider = clientIpResolverProvider;
     }
@@ -45,20 +41,14 @@ public class SecurityAuditEventService {
             return;
         }
         SecurityAuditEvent sanitized = sanitize(event);
-        JdbcTemplate operations = jdbcTemplateProvider.getIfAvailable();
-        if (operations == null) {
+        SecurityAuditWritePort auditWritePort = auditWritePortProvider.getIfAvailable();
+        if (auditWritePort == null) {
             log.warn("Security audit event without jdbc eventType={} severity={} reason={} requestId={}",
                     sanitized.eventType(), sanitized.severity(), sanitized.reasonCode(), sanitized.requestId());
             return;
         }
         try {
-            operations.update("""
-                    INSERT INTO security_audit_event (
-                        user_id, employee_id, event_type, severity, source_ip, user_agent,
-                        request_id, trace_id, resource_code, action_code, target_id, result, reason_code,
-                        message, metadata_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
+            auditWritePort.write(new SecurityAuditRecord(
                     sanitized.userId(),
                     sanitized.employeeId(),
                     sanitized.eventType(),
@@ -73,7 +63,7 @@ public class SecurityAuditEventService {
                     defaultString(sanitized.result(), "DENIED"),
                     sanitized.reasonCode(),
                     limit(sanitized.message(), MAX_MESSAGE_LENGTH),
-                    toJson(sanitized.metadata()));
+                    sanitized.metadata()));
         } catch (RuntimeException ex) {
             log.warn("Security audit insert failed eventType={} requestId={} reason={}",
                     sanitized.eventType(), sanitized.requestId(), sanitizer.sanitize(ex.getMessage()));
@@ -124,17 +114,6 @@ public class SecurityAuditEventService {
             return value;
         }
         return sanitizer.sanitize(String.valueOf(value));
-    }
-
-    private String toJson(Map<String, ?> metadata) {
-        if (metadata == null || metadata.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(metadata);
-        } catch (JsonProcessingException ex) {
-            return "{\"serialization\":\"failed\"}";
-        }
     }
 
     private String limit(String value, int maxLength) {

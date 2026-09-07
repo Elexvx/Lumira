@@ -21,7 +21,8 @@ runtimes
 └── lumira-job-executor (scheduler, recovery and explicit replay only)
 
 identity
-├── auth                (credentials, passkeys, bindings, challenges)
+├── auth                (authentication orchestration and authentication contracts)
+├── system auth storage (credential, binding and challenge persistence adapters)
 ├── system/account      (account activation token lifecycle)
 └── system/iam         (users, roles, permissions and data scope)
 
@@ -55,6 +56,19 @@ separate. A future Maven split is allowed only after the package dependency
 guard is green and the split has an independent release and database owner.
 
 ## Ownership decisions
+
+### Authentication versus persistence
+
+`lumira-auth` remains the Authentication bounded context: it owns login
+orchestration, authentication policy and the stable authentication contracts.
+The canonical MySQL write owner for `sys_user_passkey_credential`,
+`sys_user_wechat_binding`, `sys_verification_binding` and
+`sys_verification_challenge` is `lumira-system`. The current writers are the
+System `user`, `verification` and `internal` adapters; `lumira-auth` calls the
+focused `SystemInternalApi` ports and does not issue SQL for these tables.
+This is an ownership correction, not a move of the tables or a merge of Auth
+and IAM. IAM remains responsible for authorization users, roles, permissions
+and data scope.
 
 ### Account activation
 
@@ -99,6 +113,14 @@ Alerting must not call an external channel provider directly. Review
 notification and review-result contracts may be consumed by Message because
 they are stable contract-only APIs; Message must not depend on Review
 repositories, entities or application services.
+
+Alerting's `alert_*` tables and rule/instance/delivery state belong to
+`lumira-alerting`. The local user directory is obtained through
+`UserDirectoryQueryPort`; Alerting does not read IAM's `sys_user` table
+directly. Its business signals are supplied by owner adapters through
+`AlertBusinessSignalQueryPort`, and plugin state is read through
+`PluginFeatureStateApi`. Message remains the only owner of notification delivery records and
+external channel adapters.
 
 ## Dependency direction
 
@@ -146,15 +168,20 @@ registration/review contract; they must not grow unrelated business models.
 
 ## Implementation order
 
-The first three boundary commits are intentionally behavior-preserving:
+The first boundary commits are intentionally behavior-preserving:
 
-1. Make the Account owner manifest explicit and keep Expert behind its common
-   port.
+1. Make Account and authentication storage ownership explicit and keep Expert
+   behind its common port.
 2. Keep the existing outbox implementations where their owner transaction
    requires them, but enforce that other modules use common event ports and
    never import System event infrastructure.
 3. Keep registration/review artifacts but shrink their API surface to stable
    Competition contracts and add contract-only guards.
+
+The File lifecycle tables use `sql/saas.sql` for fresh databases and
+`deploy/migrations/V202609070003__add_file_event_projection.sql` for existing
+databases. The old `lumira-backend/sql/upgrade-file-event-projection-v1.sql`
+is retained as a legacy reference only and is not an execution path.
 
 Renaming `lumira-admin` to `lumira-server-runtime` and `lumira-quartz` to
 `lumira-job-runtime` is a later naming cleanup. It is not a runtime or schema

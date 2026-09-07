@@ -2,10 +2,13 @@ package com.lumira.alerting.infrastructure;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.alerting.AlertBusinessSignalQueryPort;
+import com.lumira.api.plugin.PluginFeatureStateApi;
 import com.lumira.alerting.model.AlertingModels;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -28,19 +31,24 @@ public class AlertingRepository {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<PluginFeatureStateApi> pluginFeatureStateApiProvider;
+    private final ObjectProvider<AlertBusinessSignalQueryPort> businessSignalQueryPortProvider;
 
-    public AlertingRepository(JdbcTemplate jdbc, ObjectMapper objectMapper) {
+    public AlertingRepository(
+            JdbcTemplate jdbc,
+            ObjectMapper objectMapper,
+            ObjectProvider<PluginFeatureStateApi> pluginFeatureStateApiProvider,
+            ObjectProvider<AlertBusinessSignalQueryPort> businessSignalQueryPortProvider
+    ) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
+        this.pluginFeatureStateApiProvider = pluginFeatureStateApiProvider;
+        this.businessSignalQueryPortProvider = businessSignalQueryPortProvider;
     }
 
     public boolean pluginEnabled() {
-        Integer count = jdbc.queryForObject(
-                "select count(*) from sys_plugin_definition where plugin_code = ? and status = 'ENABLED' and deleted = 0",
-                Integer.class,
-                PLUGIN_CODE
-        );
-        return count != null && count > 0;
+        PluginFeatureStateApi api = pluginFeatureStateApiProvider.getIfAvailable();
+        return api != null && api.isPluginEnabled(PLUGIN_CODE);
     }
 
     public List<ChannelRecord> listChannels() {
@@ -356,16 +364,6 @@ public class AlertingRepository {
                 """, Long.class, request.channelId(), request.userUuid());
     }
 
-    public List<LocalDirectoryUser> localDirectoryUsers() {
-        return jdbc.query("""
-                select id, uuid, coalesce(real_name, nickname, username) display_name, email, mobile
-                  from sys_user where deleted = 0 and status = 'ENABLED' order by id
-                """, (rs, row) -> new LocalDirectoryUser(
-                rs.getLong("id"), rs.getString("uuid"), rs.getString("display_name"),
-                rs.getString("email"), rs.getString("mobile")
-        ));
-    }
-
     @Transactional
     public void replaceAutomaticDirectoryMappings(long channelId, List<AutomaticMapping> mappings, long operatorId) {
         for (AutomaticMapping mapping : mappings) {
@@ -444,30 +442,12 @@ public class AlertingRepository {
     }
 
     public BigDecimal businessSignalValue(String signalKey, int windowSeconds) {
-        String sql = switch (signalKey) {
-            case "business.payment.paid" -> """
-                    select count(*) from payment_event_outbox
-                     where deleted = 0 and event_type = 'PAYMENT_ORDER_PAID'
-                       and created_at >= date_sub(current_timestamp, interval ? second)
-                    """;
-            case "business.registration.submitted" -> """
-                    select count(*) from competition_registration
-                     where deleted = 0 and created_at >= date_sub(current_timestamp, interval ? second)
-                    """;
-            case "business.review.completed" -> """
-                    select count(*) from competition_review_publication
-                     where deleted = 0 and status = 'PUBLISHED'
-                       and published_at >= date_sub(current_timestamp, interval ? second)
-                    """;
-            case "business.file.scan.failed" -> """
-                    select count(*) from file_processing_task
-                     where deleted = 0 and task_type = 'SECURITY_SCAN' and status = 'FAILED'
-                       and updated_at >= date_sub(current_timestamp, interval ? second)
-                    """;
-            default -> throw new BizException(ErrorCode.BAD_REQUEST, "Unsupported business signal");
-        };
-        Long value = jdbc.queryForObject(sql, Long.class, windowSeconds);
-        return BigDecimal.valueOf(value == null ? 0 : value);
+        for (AlertBusinessSignalQueryPort port : businessSignalQueryPortProvider) {
+            if (port.supports(signalKey)) {
+                return port.value(signalKey, windowSeconds);
+            }
+        }
+        throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Business signal provider is unavailable");
     }
 
     public Optional<InstanceRecord> activeInstance(long ruleId) {
@@ -736,8 +716,6 @@ public class AlertingRepository {
                               int attempts, String eventType, String payloadJson) { }
 
     public record RepeatCandidate(long instanceId, BigDecimal lastValue, AlertingModels.RuleView rule) { }
-
-    public record LocalDirectoryUser(long userId, String userUuid, String displayName, String email, String mobile) { }
 
     public record AutomaticMapping(long userId, String userUuid, String providerUserId,
                                    String providerDisplayName, String matchSource, String status) { }

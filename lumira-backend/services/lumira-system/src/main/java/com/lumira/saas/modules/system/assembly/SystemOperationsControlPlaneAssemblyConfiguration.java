@@ -9,6 +9,7 @@ import com.lumira.saas.infrastructure.adapter.SystemExpertAccountProvisioningPor
 import com.lumira.saas.modules.system.app.MaintenanceLoginPolicyService;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.app.SystemInternalApiService;
+import com.lumira.saas.modules.system.app.SystemInternalApplicationService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.app.SystemPlatformSettingsAppService;
 import com.lumira.saas.modules.system.app.SystemProfileSettingsAppService;
@@ -112,6 +113,7 @@ import org.springframework.context.annotation.Import;
         JdbcDictionaryDatasetRepository.class,
         JdbcInternalSystemRepository.class,
         InternalSystemApplicationService.class,
+        SystemInternalApplicationService.class,
         InternalSystemController.class,
         MaintenanceLoginPolicyService.class,
         OnlineSessionController.class,

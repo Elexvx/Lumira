@@ -5,6 +5,7 @@ import com.lumira.saas.modules.audit.app.LoginAuditService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.audit.controller.AuditController;
 import com.lumira.saas.modules.audit.infrastructure.MapperOperationAuditRepository;
+import com.lumira.saas.modules.audit.infrastructure.JdbcSecurityAuditWriteAdapter;
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Import;
         AuditController.class,
         LoginAuditService.class,
         MapperOperationAuditRepository.class,
+        JdbcSecurityAuditWriteAdapter.class,
         OperationAuditService.class
 })
 public class SystemAuditControlPlaneAssemblyConfiguration {

@@ -12,6 +12,8 @@ import com.lumira.alerting.infrastructure.AlertDeliveryGateway;
 import com.lumira.alerting.infrastructure.AlertingRepository;
 import com.lumira.alerting.infrastructure.AlertingSecretCrypto;
 import com.lumira.alerting.model.AlertingModels;
+import com.lumira.api.system.SystemUserDirectoryEntryDTO;
+import com.lumira.api.system.port.UserDirectoryQueryPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -27,9 +29,10 @@ class AlertingAppServiceTest {
     @Test
     void rejectsRulesOutsideControlledSignalCatalog() {
         AlertingRepository repository = mock(AlertingRepository.class);
+        UserDirectoryQueryPort userDirectoryQueryPort = mock(UserDirectoryQueryPort.class);
         when(repository.pluginEnabled()).thenReturn(true);
         AlertingAppService service = new AlertingAppService(
-                repository, mock(AlertingSecretCrypto.class), mock(AlertDeliveryGateway.class));
+                repository, mock(AlertingSecretCrypto.class), mock(AlertDeliveryGateway.class), userDirectoryQueryPort);
         AlertingModels.RuleRequest request = new AlertingModels.RuleRequest(
                 "任意脚本", "PROMETHEUS", "evil.custom.query", "GT", BigDecimal.ONE,
                 300, 60, "CRITICAL", 1L, true, Map.of(), null
@@ -46,7 +49,8 @@ class AlertingAppServiceTest {
         AlertingRepository repository = mock(AlertingRepository.class);
         AlertingSecretCrypto crypto = mock(AlertingSecretCrypto.class);
         AlertDeliveryGateway gateway = mock(AlertDeliveryGateway.class);
-        AlertingAppService service = new AlertingAppService(repository, crypto, gateway);
+        UserDirectoryQueryPort userDirectoryQueryPort = mock(UserDirectoryQueryPort.class);
+        AlertingAppService service = new AlertingAppService(repository, crypto, gateway, userDirectoryQueryPort);
         AlertingRepository.ChannelRecord channel = new AlertingRepository.ChannelRecord(
                 5, "飞书应用", "FEISHU_APP", true, "encrypted", "fp", null, null, null, 1, LocalDateTime.now());
         when(repository.pluginEnabled()).thenReturn(true);
@@ -58,9 +62,9 @@ class AlertingAppServiceTest {
                         new AlertDeliveryGateway.ExternalDirectoryUser("u-phone-a", "手机歧义 A", null, "+86 13900000000"),
                         new AlertDeliveryGateway.ExternalDirectoryUser("u-phone-b", "手机歧义 B", null, "13900000000")
                 ));
-        when(repository.localDirectoryUsers()).thenReturn(List.of(
-                new AlertingRepository.LocalDirectoryUser(1, "uuid-1", "用户一", "one@example.com", "13900000000"),
-                new AlertingRepository.LocalDirectoryUser(2, "uuid-2", "用户二", null, "13900000000")
+        when(userDirectoryQueryPort.enabledUserDirectory()).thenReturn(List.of(
+                new SystemUserDirectoryEntryDTO(1L, "uuid-1", "用户一", "one@example.com", "13900000000"),
+                new SystemUserDirectoryEntryDTO(2L, "uuid-2", "用户二", null, "13900000000")
         ));
         CurrentUser operator = new CurrentUser(1001L, "admin", "s", 1, true, Set.of());
 
@@ -73,9 +77,10 @@ class AlertingAppServiceTest {
     @Test
     void disabledPluginRejectsConfigurationAccess() {
         AlertingRepository repository = mock(AlertingRepository.class);
+        UserDirectoryQueryPort userDirectoryQueryPort = mock(UserDirectoryQueryPort.class);
         when(repository.pluginEnabled()).thenReturn(false);
         AlertingAppService service = new AlertingAppService(
-                repository, mock(AlertingSecretCrypto.class), mock(AlertDeliveryGateway.class));
+                repository, mock(AlertingSecretCrypto.class), mock(AlertDeliveryGateway.class), userDirectoryQueryPort);
 
         assertThatThrownBy(service::catalog)
                 .isInstanceOf(BizException.class)

@@ -89,16 +89,14 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
-    void controllersMustNotDependOnEntitiesExceptDocumentedLegacySystemInternalController() {
+    void controllersMustNotDependOnEntities() {
         noClasses()
                 .that()
                 .resideInAnyPackage("..controller..")
-                .and()
-                .doNotHaveSimpleName("InternalSystemController")
                 .should()
                 .dependOnClassesThat()
                 .resideInAnyPackage("..entity..")
-                .because("controllers use DTO/VO contracts; InternalSystemController -> SysUserEntity is historical debt")
+                .because("controllers use DTO/VO contracts and must not own application or persistence logic")
                 .check(CLASSES);
     }
 
@@ -157,13 +155,12 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
-    void controllersMustNotDeclareTransactionalBoundariesExceptDocumentedLegacySystemInternalController() throws IOException {
+    void controllersMustNotDeclareTransactionalBoundaries() throws IOException {
         Path controllerRoot = repositoryRoot().resolve("services");
         List<String> violations = new ArrayList<>();
         try (var paths = Files.walk(controllerRoot)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith("Controller.java"))
-                    .filter(path -> !path.getFileName().toString().equals("InternalSystemController.java"))
                     .forEach(path -> {
                         try {
                             String source = Files.readString(path);
@@ -177,7 +174,7 @@ class ArchitectureBoundaryTest {
         }
 
         assertThat(violations)
-                .as("transactions belong in app services; InternalSystemController has legacy transactional endpoints")
+                .as("transactions belong in application services, not HTTP controllers")
                 .isEmpty();
     }
 

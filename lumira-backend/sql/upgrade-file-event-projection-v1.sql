@@ -1,4 +1,5 @@
--- Apply once before enabling the File lifecycle consumer.
+-- Legacy reference only. Existing databases must use
+-- deploy/migrations/V202609070003__add_file_event_projection.sql.
 CREATE TABLE IF NOT EXISTS `file_event_receipt` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `event_id` varchar(128) NOT NULL,

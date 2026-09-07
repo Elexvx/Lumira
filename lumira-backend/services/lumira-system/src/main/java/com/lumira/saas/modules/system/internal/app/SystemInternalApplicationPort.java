@@ -9,6 +9,7 @@ import com.lumira.api.system.port.PluginPermissionRegistrationPort;
 import com.lumira.api.system.port.ReadModelVersionPort;
 import com.lumira.api.system.port.RuntimeConfigurationPort;
 import com.lumira.api.system.port.UserIdentityQueryPort;
+import com.lumira.api.system.port.UserDirectoryQueryPort;
 import com.lumira.api.system.port.VerificationPort;
 
 /** In-process application boundary shared by the HTTP and local adapters. */
@@ -20,6 +21,7 @@ public interface SystemInternalApplicationPort extends
         PasskeyPort,
         AuditWritePort,
         RuntimeConfigurationPort,
+        UserDirectoryQueryPort,
         MenuCatalogPort,
         PluginPermissionRegistrationPort,
         ReadModelVersionPort {

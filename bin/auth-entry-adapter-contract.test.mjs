@@ -28,7 +28,7 @@ test('registration uses dedicated APIs and SMS login no longer auto-registers un
   const registration = read('lumira-ui/src/pages/user/login/components/RegistrationPanel.tsx');
   const runtime = read('lumira-ui/src/pages/user/login/hooks/useLoginFlowRuntime.ts');
   const authController = read('lumira-backend/services/lumira-auth/src/main/java/com/lumira/auth/controller/AuthController.java');
-  const controller = read('lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java');
+  const controller = read('lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/app/SystemInternalApplicationService.java');
 
   assert.match(registration, /\/v1\/auth\/registration\/contact\/availability/);
   assert.match(registration, /\/v1\/auth\/registration\/code\/challenge/);

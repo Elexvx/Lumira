@@ -89,7 +89,7 @@ test('login, registration, reset, second-factor, and binding mappings forward mo
     'lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationAppService.java',
   );
   const controller = read(
-    'lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java',
+    'lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/app/SystemInternalApplicationService.java',
   );
 
   assert.match(verificationService, /startRegistrationCodeChallenge[\s\S]*?setMockSmsDelivery\(mockSmsDelivery\)/);

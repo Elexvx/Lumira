@@ -42,6 +42,7 @@ import com.lumira.file.upload.DocumentUploadService;
 import com.lumira.file.upload.FileStorageMetrics;
 import com.lumira.file.upload.ImageUploadService;
 import com.lumira.file.upload.ZipSafetyValidator;
+import com.lumira.file.integration.alerting.FileAlertBusinessSignalAdapter;
 import org.apache.ibatis.annotations.Mapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.mybatis.spring.annotation.MapperScan;
@@ -98,7 +99,8 @@ import org.springframework.context.annotation.Import;
         DocumentUploadService.class,
         FileStorageMetrics.class,
         ImageUploadService.class,
-        ZipSafetyValidator.class
+        ZipSafetyValidator.class,
+        FileAlertBusinessSignalAdapter.class
 })
 public class FileRuntimeAssemblyConfiguration {
 

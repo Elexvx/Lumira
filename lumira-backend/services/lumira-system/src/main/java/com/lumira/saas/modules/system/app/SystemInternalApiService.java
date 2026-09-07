@@ -32,6 +32,7 @@ import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.api.system.SecuritySettingsDTO;
 import com.lumira.api.system.SystemRoleSnapshotDTO;
 import com.lumira.api.system.SystemUserEmailRecipientDTO;
+import com.lumira.api.system.SystemUserDirectoryEntryDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.system.SystemUserWechatRecipientDTO;
 import com.lumira.api.system.VerificationBindingChallengeDTO;
@@ -43,6 +44,7 @@ import com.lumira.api.system.WechatLoginSettingsDTO;
 import com.lumira.api.system.WechatLoginUserRequestDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.system.internal.app.SystemInternalApplicationPort;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -62,7 +64,9 @@ public class SystemInternalApiService implements SystemInternalApi {
 
     private final SystemInternalApplicationPort delegate;
 
-    public SystemInternalApiService(SystemInternalApplicationPort delegate) {
+    public SystemInternalApiService(
+            @Qualifier("systemInternalApplicationPort") SystemInternalApplicationPort delegate
+    ) {
         this.delegate = delegate;
     }
 
@@ -109,6 +113,11 @@ public class SystemInternalApiService implements SystemInternalApi {
     @Override
     public List<SystemUserSnapshotDTO> userIdentitiesByIds(List<Long> userIds) {
         return call(() -> delegate.userIdentitiesByIds(userIds));
+    }
+
+    @Override
+    public List<SystemUserDirectoryEntryDTO> enabledUserDirectory() {
+        return call(delegate::enabledUserDirectory);
     }
 
     @Override

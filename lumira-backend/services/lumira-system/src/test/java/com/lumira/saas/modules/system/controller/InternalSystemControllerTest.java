@@ -104,10 +104,10 @@ class InternalSystemControllerTest {
 
     @Test
     void wechatAndDefaultRoleUpsertsShouldNotRewriteUserIdentity() throws Exception {
-        String controllerSource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java"));
+        String applicationSource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemInternalApplicationService.java"));
         String repositorySource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/internal/infrastructure/JdbcInternalSystemRepository.java"));
 
-        assertThat(controllerSource)
+        assertThat(applicationSource)
                 .doesNotContain("MyBatisQueryOperations")
                 .doesNotContain("SqlRow")
                 .doesNotContain("BeanPropertyRowMapper")

@@ -4,6 +4,7 @@ import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.api.system.SystemRoleSnapshotDTO;
 import com.lumira.api.system.SystemUserEmailRecipientDTO;
+import com.lumira.api.system.SystemUserDirectoryEntryDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.system.SystemUserWechatRecipientDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -35,6 +36,10 @@ public class InternalSystemApplicationService {
 
     public List<SystemUserSnapshotDTO> findEnabledUserIdentities(List<Long> userIds) {
         return repository.findEnabledUserIdentities(userIds);
+    }
+
+    public List<SystemUserDirectoryEntryDTO> findEnabledUserDirectory() {
+        return repository.findEnabledUserDirectory();
     }
 
     public List<SystemRoleSnapshotDTO> findRoleNames(List<Long> roleIds) {

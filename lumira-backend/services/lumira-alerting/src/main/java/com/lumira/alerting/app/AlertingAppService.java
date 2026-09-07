@@ -4,6 +4,8 @@ import com.lumira.alerting.infrastructure.AlertDeliveryGateway;
 import com.lumira.alerting.infrastructure.AlertingRepository;
 import com.lumira.alerting.infrastructure.AlertingSecretCrypto;
 import com.lumira.alerting.model.AlertingModels;
+import com.lumira.api.system.SystemUserDirectoryEntryDTO;
+import com.lumira.api.system.port.UserDirectoryQueryPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -50,11 +52,18 @@ public class AlertingAppService {
     private final AlertingRepository repository;
     private final AlertingSecretCrypto crypto;
     private final AlertDeliveryGateway gateway;
+    private final UserDirectoryQueryPort userDirectoryQueryPort;
 
-    public AlertingAppService(AlertingRepository repository, AlertingSecretCrypto crypto, AlertDeliveryGateway gateway) {
+    public AlertingAppService(
+            AlertingRepository repository,
+            AlertingSecretCrypto crypto,
+            AlertDeliveryGateway gateway,
+            UserDirectoryQueryPort userDirectoryQueryPort
+    ) {
         this.repository = repository;
         this.crypto = crypto;
         this.gateway = gateway;
+        this.userDirectoryQueryPort = userDirectoryQueryPort;
     }
 
     public List<AlertingModels.CatalogSignal> catalog() {
@@ -255,7 +264,7 @@ public class AlertingAppService {
         int matched = 0;
         int ambiguous = 0;
         int unmatched = 0;
-        for (AlertingRepository.LocalDirectoryUser local : repository.localDirectoryUsers()) {
+        for (SystemUserDirectoryEntryDTO local : userDirectoryQueryPort.enabledUserDirectory()) {
             Match match = match(local, byEmail, byPhone);
             mappings.add(new AlertingRepository.AutomaticMapping(
                     local.userId(), local.userUuid(), match.user() == null ? "" : match.user().providerUserId(),
@@ -366,7 +375,7 @@ public class AlertingAppService {
     }
 
     private static Match match(
-            AlertingRepository.LocalDirectoryUser local,
+            SystemUserDirectoryEntryDTO local,
             Map<String, List<AlertDeliveryGateway.ExternalDirectoryUser>> byEmail,
             Map<String, List<AlertDeliveryGateway.ExternalDirectoryUser>> byPhone
     ) {

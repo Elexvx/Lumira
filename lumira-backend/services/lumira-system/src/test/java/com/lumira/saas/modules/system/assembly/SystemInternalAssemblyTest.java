@@ -17,6 +17,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.SystemInternalApiService;
+import com.lumira.saas.modules.system.app.SystemInternalApplicationService;
 import com.lumira.saas.modules.system.SystemAsyncAssemblyConfiguration;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
@@ -50,6 +51,8 @@ class SystemInternalAssemblyTest {
         contextRunner.withPropertyValues("lumira.monolith=true").run(context -> {
             assertThat(context.getBeansOfType(SystemInternalApi.class)).hasSize(1);
             assertThat(context.getBeansOfType(SystemInternalApiService.class)).hasSize(1);
+            assertThat(context.getBeansOfType(SystemInternalApplicationService.class))
+                    .containsKey("systemInternalApplicationPort");
             assertThat(context.getBeansOfType(InternalSystemController.class)).hasSize(1);
         });
     }
@@ -59,6 +62,8 @@ class SystemInternalAssemblyTest {
         contextRunner.withPropertyValues("lumira.monolith=false").run(context -> {
             assertThat(context.getBeansOfType(SystemInternalApi.class)).hasSize(1);
             assertThat(context.getBeansOfType(SystemInternalApiService.class)).hasSize(1);
+            assertThat(context.getBeansOfType(SystemInternalApplicationService.class))
+                    .containsKey("systemInternalApplicationPort");
             assertThat(context.getBeansOfType(InternalSystemController.class)).hasSize(1);
         });
     }
@@ -97,6 +102,7 @@ class SystemInternalAssemblyTest {
             SystemInternalApiService.class,
             JdbcInternalSystemRepository.class,
             InternalSystemApplicationService.class,
+            SystemInternalApplicationService.class,
             InternalSystemController.class
     })
     static class TestConfiguration {

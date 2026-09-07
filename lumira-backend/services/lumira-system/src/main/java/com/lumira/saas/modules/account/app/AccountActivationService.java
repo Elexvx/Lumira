@@ -4,10 +4,11 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.api.expert.ExpertAccountActivationPort;
+import com.lumira.saas.modules.account.app.port.AccountActivationConfigurationPort;
+import com.lumira.saas.modules.account.app.port.AccountIdentityActivationPort;
 import com.lumira.saas.modules.account.repository.AccountActivationRepository;
 import com.lumira.saas.modules.account.repository.AccountActivationRepository.TokenRecord;
 import com.lumira.saas.modules.account.vo.AccountActivationVO;
-import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,7 +37,8 @@ public class AccountActivationService {
     private final AccountActivationRepository repository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
-    private final IamUserService iamUserService;
+    private final AccountIdentityActivationPort identityActivationPort;
+    private final AccountActivationConfigurationPort configurationPort;
     private final SmtpMailService smtpMailService;
     private final ExpertAccountActivationPort expertAccountActivationPort;
 
@@ -45,14 +47,16 @@ public class AccountActivationService {
             AccountActivationRepository repository,
             PasswordEncoder passwordEncoder,
             PasswordPolicyService passwordPolicyService,
-            IamUserService iamUserService,
+            AccountIdentityActivationPort identityActivationPort,
+            AccountActivationConfigurationPort configurationPort,
             SmtpMailService smtpMailService,
             ExpertAccountActivationPort expertAccountActivationPort
     ) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
-        this.iamUserService = iamUserService;
+        this.identityActivationPort = identityActivationPort;
+        this.configurationPort = configurationPort;
         this.smtpMailService = smtpMailService;
         this.expertAccountActivationPort = expertAccountActivationPort;
     }
@@ -62,10 +66,22 @@ public class AccountActivationService {
             AccountActivationRepository repository,
             PasswordEncoder passwordEncoder,
             PasswordPolicyService passwordPolicyService,
-            IamUserService iamUserService,
+            AccountIdentityActivationPort identityActivationPort,
+            AccountActivationConfigurationPort configurationPort,
             SmtpMailService smtpMailService
     ) {
-        this(repository, passwordEncoder, passwordPolicyService, iamUserService, smtpMailService, null);
+        this(repository, passwordEncoder, passwordPolicyService, identityActivationPort,
+                configurationPort, smtpMailService, null);
+    }
+
+    /** Compatibility constructor for System-only tests without the Expert module. */
+    public AccountActivationService(
+            AccountActivationRepository repository,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyService passwordPolicyService,
+            SmtpMailService smtpMailService
+    ) {
+        this(repository, passwordEncoder, passwordPolicyService, null, null, smtpMailService, null);
     }
 
     @Transactional
@@ -119,9 +135,17 @@ public class AccountActivationService {
             info.setReason(INVALID_TOKEN_MESSAGE);
             return info;
         }
+        AccountIdentityActivationPort.Identity identity = identityActivationPort == null
+                ? null
+                : identityActivationPort.findIdentity(row.userId()).orElse(null);
+        if (identity == null || !row.userUuid().equals(identity.userUuid())) {
+            info.setValid(false);
+            info.setReason(INVALID_TOKEN_MESSAGE);
+            return info;
+        }
         info.setValid(true);
-        info.setUsername(row.username());
-        info.setEmail(row.email());
+        info.setUsername(identity.username());
+        info.setEmail(identity.email());
         return info;
     }
 
@@ -142,11 +166,13 @@ public class AccountActivationService {
         if (consumed == 0) {
             throw biz(ErrorCode.VALIDATION_ERROR, INVALID_TOKEN_MESSAGE);
         }
-        int userUpdated = repository.activateUser(row, passwordHash, now);
+        if (identityActivationPort == null) {
+            throw biz(ErrorCode.DEPENDENCY_UNAVAILABLE, "IAM account activation handler is unavailable");
+        }
+        int userUpdated = identityActivationPort.activateIdentity(row.userId(), row.userUuid(), passwordHash, now);
         if (userUpdated <= 0) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Activation user changed, please retry");
         }
-        iamUserService.upsertPasswordCredential(row.userId(), row.userUuid(), passwordHash);
         if (row.expertId() != null) {
             if (expertAccountActivationPort == null) {
                 throw biz(ErrorCode.DEPENDENCY_UNAVAILABLE, "Expert account activation handler is unavailable");
@@ -168,7 +194,9 @@ public class AccountActivationService {
     }
 
     private String resolveActivationUserUuid(Long userId) {
-        String userUuid = repository.findUser(userId).map(AccountActivationRepository.UserIdentity::uuid).orElse(null);
+        String userUuid = identityActivationPort == null
+                ? null
+                : identityActivationPort.findIdentity(userId).map(AccountIdentityActivationPort.Identity::userUuid).orElse(null);
         if (!StringUtils.hasText(userUuid)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "activation user is invalid");
         }
@@ -177,7 +205,7 @@ public class AccountActivationService {
 
     private String activationBaseUrl() {
         try {
-            String configured = repository.findPlatformConfig("account.activation.url").orElse(null);
+            String configured = configurationPort == null ? null : configurationPort.activationBaseUrl().orElse(null);
             if (StringUtils.hasText(configured)) {
                 return configured.trim();
             }
@@ -206,8 +234,10 @@ public class AccountActivationService {
     private Long requireTrustedOperator(Long operatorUserId, String operatorUserUuid) {
         requireTrustedOperatorArguments(operatorUserId, operatorUserUuid);
         String normalizedOperatorUserUuid = operatorUserUuid.trim();
-        AccountActivationRepository.UserIdentity identity = repository.findUser(operatorUserId).orElse(null);
-        String resolvedUuid = identity == null ? null : identity.uuid();
+        AccountIdentityActivationPort.Identity identity = identityActivationPort == null
+                ? null
+                : identityActivationPort.findIdentity(operatorUserId).orElse(null);
+        String resolvedUuid = identity == null ? null : identity.userUuid();
         if (!StringUtils.hasText(resolvedUuid) || !resolvedUuid.trim().equals(normalizedOperatorUserUuid)) {
             throw new IllegalArgumentException("trusted account activation operator identity mismatch");
         }

@@ -65,44 +65,6 @@ public class JdbcExpertRepository implements ExpertRepository {
     }
 
     @Override
-    public boolean isPublishedCompetition(String competitionUuid) {
-        Long count = database.queryForObject(
-                "select count(1) from aiadc_competition where uuid = ? and status = 'published' and deleted = 0",
-                Long.class,
-                competitionUuid
-        );
-        return count != null && count > 0;
-    }
-
-    @Override
-    public List<ExpertApplicationField> findPublishedCompetitionExpertFields(String competitionUuid) {
-        return database.query(
-                """
-                        select item.item_key as itemKey, item.title, item.content_json as contentJson,
-                               item.required_flag as requiredFlag, item.enabled
-                        from competition_config_item item
-                        join competition_config_set config_set
-                          on config_set.id = item.config_set_id
-                         and config_set.competition_uuid = item.competition_uuid
-                         and config_set.status = 'PUBLISHED'
-                         and config_set.deleted = 0
-                        where item.competition_uuid = ?
-                          and item.item_type = 'EXPERT_FIELD'
-                          and item.deleted = 0
-                        order by item.sort_order asc, item.id asc
-                        """,
-                (row, rowNumber) -> new ExpertApplicationField(
-                        row.getString("itemKey"),
-                        row.getString("title"),
-                        row.getString("contentJson"),
-                        row.getInt("requiredFlag") != 0,
-                        row.getInt("enabled") != 0
-                ),
-                competitionUuid
-        );
-    }
-
-    @Override
     public Optional<ExpertVO.Expert> findById(Long id) {
         return database.query(
                 SELECT + " from aiadc_expert where id = ? and deleted = 0 limit 1",

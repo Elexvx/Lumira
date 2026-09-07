@@ -45,8 +45,10 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class ReviewResultEventStreamConsumer {
     public static final String EVENT_TYPE = ReviewIntegrationEvents.RESULT_PUBLISHED;
-    static final String DEFAULT_STREAM = ReviewIntegrationEvents.RESULT_STREAM;
-    static final String DEFAULT_GROUP = ReviewIntegrationEvents.RESULT_MESSAGE_CONSUMER_GROUP;
+    // Redis stream topology belongs to Message; the review API exposes only
+    // stable event names so a physical Review service cannot depend on it.
+    static final String DEFAULT_STREAM = "saas:platform-events";
+    static final String DEFAULT_GROUP = "message-review-result-v1";
     private static final Logger log = LoggerFactory.getLogger(ReviewResultEventStreamConsumer.class);
     private static final int MAX_PAYLOAD_LENGTH = 64 * 1024;
     private static final int PENDING_RECOVERY_LIMIT = 1_000;

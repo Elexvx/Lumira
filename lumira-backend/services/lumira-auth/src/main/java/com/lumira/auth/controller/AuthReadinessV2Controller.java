@@ -32,10 +32,10 @@ public class AuthReadinessV2Controller {
                 "READY_WITH_BLOCKERS",
                 "contract-and-observability",
                 List.of(
-                        "sys_user_passkey_credential",
-                        "sys_user_wechat_binding",
-                        "sys_verification_binding",
-                        "sys_verification_challenge",
+                        "sys_user_passkey_credential (storage owner: lumira-system)",
+                        "sys_user_wechat_binding (storage owner: lumira-system)",
+                        "sys_verification_binding (storage owner: lumira-system)",
+                        "sys_verification_challenge (storage owner: lumira-system)",
                         "Redis session keys"
                 ),
                 List.of(
@@ -102,7 +102,7 @@ public class AuthReadinessV2Controller {
                         "fall back current-user to IAM snapshot when session snapshot is incomplete"
                 ),
                 List.of(
-                        "Auth v2 adapter and owner observability contract are available; passkey/verification owner table migration still needs a final split drill",
+                        "authentication orchestration is owned by lumira-auth; credential/challenge persistence is written by lumira-system",
                         "cross-service timeout/degradation rules for IAM snapshot calls must be exercised before physical split"
                 )
         ), TraceContext.getRequestId());
@@ -119,7 +119,7 @@ public class AuthReadinessV2Controller {
                         healthCheck("auth.redis.session-store", "CONFIGURED", "AuthSessionStore owns Redis-backed session payloads and online session indexes."),
                         healthCheck("auth.jwt.signing", "CONFIGURED", "JWT access and refresh token signing is configured by Auth."),
                         healthCheck("auth.login-encryption-key", "CONFIGURED", "Login encryption key endpoint is available before password login."),
-                        healthCheck("auth.iam-user-snapshot", "CONFIGURED", "Auth reads user identity through the IAM/SystemInternalApi snapshot contract."),
+                        healthCheck("auth.iam-user-snapshot", "CONFIGURED", "Auth reads user identity through the IAM/SystemInternalApi snapshot contract; user and credential storage remains System-owned."),
                         healthCheck("auth.iam-permission-snapshot", "CONFIGURED", "Auth embeds IAM permission snapshots into session bootstrap payloads.")
                 ),
                 authMetrics()

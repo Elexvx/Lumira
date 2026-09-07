@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.internal.infrastructure;
 import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.SystemRoleSnapshotDTO;
 import com.lumira.api.system.SystemUserEmailRecipientDTO;
+import com.lumira.api.system.SystemUserDirectoryEntryDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.system.SystemUserWechatRecipientDTO;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
@@ -49,6 +50,30 @@ public class JdbcInternalSystemRepository implements InternalSystemRepository {
                         """,
                 (row, rowNum) -> userIdentity(row),
                 userIds.toArray()
+        );
+    }
+
+    @Override
+    public List<SystemUserDirectoryEntryDTO> findEnabledUserDirectory() {
+        return database.query(
+                """
+                        select id,
+                               uuid,
+                               coalesce(real_name, nickname, username) as display_name,
+                               email,
+                               mobile
+                        from sys_user
+                        where deleted = 0
+                          and status = 'ENABLED'
+                        order by id asc
+                        """,
+                (row, rowNum) -> new SystemUserDirectoryEntryDTO(
+                        row.getLong("id"),
+                        row.getString("uuid"),
+                        row.getString("display_name"),
+                        row.getString("email"),
+                        row.getString("mobile")
+                )
         );
     }
 

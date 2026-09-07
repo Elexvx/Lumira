@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.internal.repository;
 import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.SystemRoleSnapshotDTO;
 import com.lumira.api.system.SystemUserEmailRecipientDTO;
+import com.lumira.api.system.SystemUserDirectoryEntryDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.system.SystemUserWechatRecipientDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
@@ -18,6 +19,8 @@ import java.util.List;
 public interface InternalSystemRepository {
 
     List<SystemUserSnapshotDTO> findEnabledUserIdentities(List<Long> userIds);
+
+    List<SystemUserDirectoryEntryDTO> findEnabledUserDirectory();
 
     List<SystemRoleSnapshotDTO> findRoleNames(List<Long> roleIds);
 

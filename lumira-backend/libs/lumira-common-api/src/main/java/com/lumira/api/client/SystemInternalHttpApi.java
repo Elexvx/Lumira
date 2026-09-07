@@ -31,6 +31,7 @@ import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.api.system.SecuritySettingsDTO;
 import com.lumira.api.system.SystemRoleSnapshotDTO;
 import com.lumira.api.system.SystemUserEmailRecipientDTO;
+import com.lumira.api.system.SystemUserDirectoryEntryDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.system.SystemUserWechatRecipientDTO;
 import com.lumira.api.system.VerificationBindingChallengeDTO;
@@ -49,6 +50,7 @@ import com.lumira.api.system.port.PluginPermissionRegistrationPort;
 import com.lumira.api.system.port.ReadModelVersionPort;
 import com.lumira.api.system.port.RuntimeConfigurationPort;
 import com.lumira.api.system.port.UserIdentityQueryPort;
+import com.lumira.api.system.port.UserDirectoryQueryPort;
 import com.lumira.api.system.port.VerificationPort;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +71,7 @@ public interface SystemInternalHttpApi extends
         PasskeyPort,
         AuditWritePort,
         RuntimeConfigurationPort,
+        UserDirectoryQueryPort,
         MenuCatalogPort,
         PluginPermissionRegistrationPort,
         ReadModelVersionPort {
@@ -102,6 +105,9 @@ public interface SystemInternalHttpApi extends
 
     @GetExchange("/internal/system/users/identities-by-ids")
     List<SystemUserSnapshotDTO> userIdentitiesByIds(@RequestParam("ids") List<Long> userIds);
+
+    @GetExchange("/internal/system/users/enabled-directory")
+    List<SystemUserDirectoryEntryDTO> enabledUserDirectory();
 
     @GetExchange("/internal/system/users/{id}/role-options")
     List<CurrentUserRoleOptionDTO> userRoleOptions(
