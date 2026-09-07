@@ -36,12 +36,21 @@ scrape_configs:
         labels:
           service_name: mysql-backup
 
-  - job_name: redis
+  - job_name: redis-cache
     static_configs:
       - targets:
           - redis-exporter:9121
         labels:
-          service_name: redis
+          service_name: redis-cache
+          redis_plane: cache
+
+  - job_name: redis-runtime
+    static_configs:
+      - targets:
+          - redis-runtime-exporter:9121
+        labels:
+          service_name: redis-runtime
+          redis_plane: runtime
 
   - job_name: lumira-job-executor
     metrics_path: /actuator/prometheus

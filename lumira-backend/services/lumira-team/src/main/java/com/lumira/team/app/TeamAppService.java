@@ -1,6 +1,6 @@
 package com.lumira.team.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -60,7 +60,7 @@ public class TeamAppService {
     private final TeamJoinRequestRepository teamJoinRequestRepository;
     private final TeamPermissionService permissionService;
     private final TeamAuditPort auditPort;
-    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider;
 
     public TeamAppService(
             TeamRepository teamRepository,
@@ -89,7 +89,7 @@ public class TeamAppService {
             TeamJoinRequestRepository teamJoinRequestRepository,
             TeamPermissionService permissionService,
             TeamAuditPort auditPort,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider
     ) {
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
@@ -388,7 +388,7 @@ public class TeamAppService {
         if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        SystemInternalApi systemInternalApi = systemInternalApiProvider.getIfAvailable();
+        SystemUserAuthorizationPort systemInternalApi = systemInternalApiProvider.getIfAvailable();
         if (systemInternalApi == null) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
         }

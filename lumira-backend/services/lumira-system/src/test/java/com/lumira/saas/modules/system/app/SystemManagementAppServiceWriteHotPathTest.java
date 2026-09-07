@@ -23,7 +23,7 @@ import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -707,7 +707,7 @@ class SystemManagementAppServiceWriteHotPathTest {
         private final PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         private final SystemManagementAppService service = new SystemManagementAppService(
                 jdbcTemplate,
-                mock(UserDomainService.class),
+                mock(UserAccountQueryService.class),
                 permissionSnapshotService,
                 mock(SystemPluginViewService.class),
                 mock(OnlineSessionManagementAppService.class),

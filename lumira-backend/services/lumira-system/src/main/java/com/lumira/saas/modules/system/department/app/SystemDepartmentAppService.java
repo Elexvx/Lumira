@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.department.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -34,7 +34,7 @@ public class SystemDepartmentAppService {
     private final SystemDepartmentRepository departmentRepository;
     private final PermissionSnapshotService permissionSnapshotService;
     private final OperationAuditService operationAuditService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -58,7 +58,7 @@ public class SystemDepartmentAppService {
             SystemDepartmentRepository departmentRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
@@ -75,7 +75,7 @@ public class SystemDepartmentAppService {
             SystemDepartmentRepository departmentRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
@@ -112,7 +112,7 @@ public class SystemDepartmentAppService {
             Object persistence,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(SystemDepartmentPersistenceAdapters.from(persistence), permissionSnapshotService, operationAuditService,
@@ -168,7 +168,7 @@ public class SystemDepartmentAppService {
         }
         Long id = createResult.departmentId();
         rebuildClosureForSubtree(id);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateDataPolicies();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "create", "CREATE", "SUCCESS", "创建部门: " + request.getDeptName());
         return requireDepartment(id);
     }
@@ -201,7 +201,7 @@ public class SystemDepartmentAppService {
             throw visibleBizException(ErrorCode.NOT_FOUND, "Department does not exist");
         }
         rebuildClosureForSubtree(id);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateDataPolicies();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "update", "UPDATE", "SUCCESS", "更新部门: " + existing.getDeptName());
         return requireDepartment(id);
     }
@@ -228,7 +228,7 @@ public class SystemDepartmentAppService {
             throw visibleBizException(ErrorCode.BIZ_ERROR, "Department changed, please retry");
         }
         departmentRepository.retireClosureForDescendant(id);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateDataPolicies();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "delete", "DELETE", "SUCCESS", "删除部门: " + existing.getDeptName());
         return true;
     }

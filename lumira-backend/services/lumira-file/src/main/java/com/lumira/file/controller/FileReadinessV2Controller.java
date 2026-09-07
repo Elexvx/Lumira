@@ -35,6 +35,8 @@ public class FileReadinessV2Controller {
                         "file_storage_space",
                         "file_processing_task",
                         "file_processing_artifact",
+                        "file_event_receipt",
+                        "file_event_projection",
                         "platform_event_outbox"
                 ),
                 List.of(
@@ -45,7 +47,8 @@ public class FileReadinessV2Controller {
                         "FileInternalApi.getFileForUser",
                         "FileInternalApi.readFileContentForUser",
                         "FileInternalApi.readProcessingArtifactForUser",
-                        "FileInternalApi.searchFilesForUser"
+                        "FileInternalApi.searchFilesForUser",
+                        "POST /file/internal/events/file-object-uploaded"
                 ),
                 List.of(
                         "FILE_OBJECT_UPLOADED",
@@ -79,6 +82,8 @@ public class FileReadinessV2Controller {
                         "platform_event_outbox",
                         "file_processing_task",
                         "file_processing_artifact",
+                        "file_event_receipt",
+                        "file_event_projection",
                         "ClamAV optional adapter",
                         "Tesseract optional adapter",
                         "FileInternalApi consumers",
@@ -92,6 +97,7 @@ public class FileReadinessV2Controller {
                 ),
                 List.of(
                         "file v2 adapter is available; storage and upload paths still share the v1 application service during compatibility window",
+                        "File lifecycle receipt/projection transaction is owner-local; Async owns Stream recovery and DLQ",
                         "ClamAV/Tesseract deployment drills, provider-native remote thumbnail drill and AI owner indexing drill must be completed before physical split"
                 )
         ), TraceContext.getRequestId());

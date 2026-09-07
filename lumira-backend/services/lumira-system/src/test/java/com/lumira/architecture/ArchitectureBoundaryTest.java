@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class ArchitectureBoundaryTest {
@@ -88,27 +89,78 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
-    void controllersMustNotDependOnEntitiesExceptDocumentedLegacySystemInternalController() {
+    void controllersMustNotDependOnEntities() {
         noClasses()
                 .that()
                 .resideInAnyPackage("..controller..")
-                .and()
-                .doNotHaveSimpleName("InternalSystemController")
                 .should()
                 .dependOnClassesThat()
                 .resideInAnyPackage("..entity..")
-                .because("controllers use DTO/VO contracts; InternalSystemController -> SysUserEntity is historical debt")
+                .because("controllers use DTO/VO contracts and must not own application or persistence logic")
                 .check(CLASSES);
     }
 
     @Test
-    void controllersMustNotDeclareTransactionalBoundariesExceptDocumentedLegacySystemInternalController() throws IOException {
+    void servicesMustNotDependOnControllerAdapters() {
+        noClasses()
+                .that()
+                .haveSimpleNameEndingWith("Service")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("..controller..", "..interfaces.rest..")
+                .because("application services depend on ports, never HTTP adapters")
+                .check(CLASSES);
+    }
+
+    @Test
+    void legacySystemInternalApiMustRemainAnEmptyCompatibilityAlias() {
+        assertThat(com.lumira.api.client.SystemInternalApi.class.getDeclaredMethods())
+                .as("new operations belong in focused system ports")
+                .isEmpty();
+    }
+
+    @Test
+    void focusedSystemPortsMustStayFreeOfSpringHttpAnnotations() throws IOException {
+        Path ports = repositoryRoot().resolve("libs/lumira-common-api/src/main/java/com/lumira/api/system/port");
+        assertThat(ports).isDirectory();
+        try (var files = Files.list(ports)) {
+            for (Path file : files.filter(path -> path.toString().endsWith("Port.java")).toList()) {
+                assertThat(Files.readString(file))
+                        .as("%s is a contract port, not an HTTP client adapter", repositoryRoot().relativize(file))
+                        .doesNotContain("org.springframework.web")
+                        .doesNotContain("@HttpExchange")
+                        .doesNotContain("@GetExchange")
+                        .doesNotContain("@PostExchange");
+            }
+        }
+    }
+
+    @Test
+    void onlyThreeRuntimeEntrypointsMayUseSpringBootApplication() throws IOException {
+        Set<String> allowed = Set.of(
+                "services/lumira-admin/src/main/java/com/lumira/server/LumiraServerApplication.java",
+                "services/lumira-async/src/main/java/com/lumira/asyncruntime/LumiraAsyncApplication.java",
+                "services/lumira-quartz/src/main/java/com/lumira/job/JobExecutorApplication.java"
+        );
+        List<String> annotated = new ArrayList<>();
+        try (var files = Files.walk(repositoryRoot().resolve("services"))) {
+            for (Path file : files.filter(path -> path.toString().endsWith(".java")).toList()) {
+                if (file.toString().contains("/src/main/java/")
+                        && Files.readString(file).contains("@SpringBootApplication")) {
+                    annotated.add(repositoryRoot().relativize(file).toString());
+                }
+            }
+        }
+        assertThat(annotated).containsExactlyInAnyOrderElementsOf(allowed);
+    }
+
+    @Test
+    void controllersMustNotDeclareTransactionalBoundaries() throws IOException {
         Path controllerRoot = repositoryRoot().resolve("services");
         List<String> violations = new ArrayList<>();
         try (var paths = Files.walk(controllerRoot)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith("Controller.java"))
-                    .filter(path -> !path.getFileName().toString().equals("InternalSystemController.java"))
                     .forEach(path -> {
                         try {
                             String source = Files.readString(path);
@@ -122,7 +174,7 @@ class ArchitectureBoundaryTest {
         }
 
         assertThat(violations)
-                .as("transactions belong in app services; InternalSystemController has legacy transactional endpoints")
+                .as("transactions belong in application services, not HTTP controllers")
                 .isEmpty();
     }
 

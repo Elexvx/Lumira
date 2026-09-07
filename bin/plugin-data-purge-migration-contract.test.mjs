@@ -18,10 +18,13 @@ test('sensitive words purge capability is enabled for bootstrap and existing dat
   assert.match(migration, /migration:V202608050003:sensitive-words-data-purge/);
 });
 
-test('sensitive words keeps matching up and down schema migrations', () => {
-  const up = read('lumira-backend/services/lumira-plugin/src/main/resources/builtin-plugins/sensitive-words/migrations/up/V1__sys_sensitive_word.sql');
-  const down = read('lumira-backend/services/lumira-plugin/src/main/resources/builtin-plugins/sensitive-words/migrations/down/V1__sys_sensitive_word.sql');
+test('sensitive words cannot ship in-process up or destructive down migrations', () => {
+  const bootstrap = read('lumira-backend/sql/saas.sql');
+  const pluginMigrationService = read('lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/service/PluginMigrationService.java');
 
-  assert.match(up, /CREATE TABLE IF NOT EXISTS `sys_sensitive_word`/i);
-  assert.match(down, /DROP TABLE IF EXISTS `sys_sensitive_word`/i);
+  assert.match(bootstrap, /CREATE TABLE(?: IF NOT EXISTS)? `sys_sensitive_word`/i);
+  assert.match(pluginMigrationService, /Only EXPAND plugin migrations are allowed/);
+  for (const destructiveKeyword of ['DROP', 'TRUNCATE', 'RENAME', 'CHANGE', 'MODIFY']) {
+    assert.match(pluginMigrationService, new RegExp(destructiveKeyword));
+  }
 });

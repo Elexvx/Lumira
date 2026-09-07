@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.integration.workflow;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.workflow.WorkflowUserAccessPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -18,11 +18,11 @@ import org.springframework.util.StringUtils;
  */
 public class SystemWorkflowUserAccessAdapter implements WorkflowUserAccessPort {
     private final SessionAuthenticationService sessionAuthenticationService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
 
     public SystemWorkflowUserAccessAdapter(
             SessionAuthenticationService sessionAuthenticationService,
-            SystemInternalApi systemInternalApi
+            UserIdentityQueryPort systemInternalApi
     ) {
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.systemInternalApi = systemInternalApi;

@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.lumira.ai.compat.AiV2CompatibilityFacade;
 import com.lumira.ai.vo.AiEmployeeVO;
 import com.lumira.ai.vo.PageResponse;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -114,7 +114,7 @@ class AiV2ControllerTest {
     void employeesShouldRejectWhenLiveUsernameIsBlank() {
         AiV2CompatibilityFacade facade = mock(AiV2CompatibilityFacade.class);
         SecurityContextFacade securityContextFacade = trustedSecurityContext(Set.of("ai:view"));
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(7L))
                 .thenReturn(userSnapshot(7L, "user-uuid-7", " ", "ENABLED"));
         AiV2Controller controller = new AiV2Controller(

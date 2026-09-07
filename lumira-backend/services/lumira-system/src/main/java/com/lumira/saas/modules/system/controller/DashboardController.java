@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
@@ -30,7 +30,7 @@ public class DashboardController {
     private final SystemManagementAppService systemManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -60,7 +60,7 @@ public class DashboardController {
             SystemManagementAppService systemManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(systemManagementAppService, securityContextFacade, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
@@ -70,7 +70,7 @@ public class DashboardController {
             SystemManagementAppService systemManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

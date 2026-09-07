@@ -14,6 +14,7 @@ import { run as execRun, output as execOutput, optionalOutput as execOptionalOut
 import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
 import { validateBackupEvidence } from './lib/platform-backup-contract.mjs';
 import { normalizeSlot, renderActiveUpstreams } from './lib/platform-update-contract.mjs';
+import { assertProductionDataPlaneEnvironment } from './lib/production-data-plane-policy.mjs';
 const log = createLogger('deploy');
 const repoRoot = resolveRepoRoot(import.meta.url);
 const envExamplePath = path.join(repoRoot, 'deploy', '.env.example');
@@ -64,7 +65,8 @@ const allowedServices = new Set([
   'lumira-async',
   'lumira-job-executor',
   'mysql',
-  'redis',
+  'redis-cache',
+  'redis-runtime',
   'xxl-job-admin',
   'api-proxy',
   'edge-proxy',
@@ -76,6 +78,8 @@ const allowedServices = new Set([
   'alloy',
   'grafana',
   'mysqld-exporter',
+  'redis-exporter',
+  'redis-runtime-exporter',
   'backup-metrics-exporter',
 ]);
 const appWritableDockerVolumes = [
@@ -516,8 +520,19 @@ function maybePruneDockerBuildCache(stage) {
 
 function generatedEnvDefaults() {
   return {
+    MYSQL_ROOT_PASSWORD: randomSecret('mysql-root'),
+    DB_USERNAME: 'lumira_app',
     DB_PASSWORD: randomSecret('mysql'),
-    REDIS_PASSWORD: randomSecret('redis'),
+    DB_MIGRATION_USERNAME: 'lumira_migrator',
+    DB_MIGRATION_PASSWORD: randomSecret('mysql-migrator'),
+    MYSQL_BACKUP_USERNAME: 'lumira_backup',
+    MYSQL_BACKUP_PASSWORD: randomSecret('mysql-backup'),
+    MYSQL_RESTORE_USERNAME: 'lumira_restore',
+    MYSQL_RESTORE_PASSWORD: randomSecret('mysql-restore'),
+    XXL_JOB_DB_USERNAME: 'xxl_job',
+    XXL_JOB_DB_PASSWORD: randomSecret('xxl-database'),
+    REDIS_CACHE_PASSWORD: randomSecret('redis-cache'),
+    REDIS_RUNTIME_PASSWORD: randomSecret('redis-runtime'),
     JWT_SECRET: randomSecret('jwt'),
     FIELD_SECRET: randomSecret('field'),
     PLUGIN_SIGNATURE_SECRET: randomSecret('plugin-signature'),
@@ -540,6 +555,7 @@ function generatedEnvDefaults() {
     XXL_JOB_ADMIN_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_LOGIN_PASSWORD: randomSecret('xxl-password'),
+    XXL_JOB_DB_URL: 'jdbc:mysql://mysql:3306/xxl_job?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false',
     OBSERVABILITY_ENVIRONMENT: 'prod',
     OTEL_JAVAAGENT_ENABLED: 'false',
     OTEL_EXPORTER_OTLP_ENDPOINT: 'http://alloy:4318',
@@ -573,8 +589,10 @@ function generatedEnvDefaults() {
     LUMIRA_MIGRATOR_IMAGE: 'ghcr.io/elexvx/lumira/lumira-migrator:main',
     LUMIRA_FRONTEND_IMAGE: 'ghcr.io/elexvx/lumira/lumira-ui:main',
     CORS_ALLOWED_ORIGIN_PATTERNS: 'https://bm.aiadc.org.cn',
-    REDIS_MAXMEMORY: '256mb',
-    REDIS_MEM_LIMIT: '384m',
+    REDIS_CACHE_MAXMEMORY: '128mb',
+    REDIS_CACHE_MEM_LIMIT: '192m',
+    REDIS_RUNTIME_MAXMEMORY: '256mb',
+    REDIS_RUNTIME_MEM_LIMIT: '384m',
     JAVA_OPTS: '-XX:MaxRAMPercentage=58 -XX:InitialRAMPercentage=18 -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -Xss512k -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Djava.security.egd=file:/dev/./urandom',
     SERVER_TOMCAT_THREADS_MAX: '80',
     SERVER_TOMCAT_THREADS_MIN_SPARE: '8',
@@ -629,6 +647,10 @@ function ensureEnvFile() {
   if (existsSync(envPath)) {
     protectEnvFile();
     let content = readFileSync(envPath, 'utf8');
+    const existingEnvironment = parseEnvFile(envPath);
+    if (!existingEnvironment.MYSQL_ROOT_PASSWORD && existingEnvironment.DB_PASSWORD) {
+      generatedValues.MYSQL_ROOT_PASSWORD = existingEnvironment.DB_PASSWORD;
+    }
     const missingEntries = Object.entries(generatedValues)
       .filter(([key]) => !new RegExp(`^${key}=`, 'm').test(content));
 
@@ -1063,9 +1085,9 @@ function verifyBackupMatchesMigrationTarget(evidence, environment) {
   const { host, port } = databaseEndpointFromEnvironment(environment);
   const network = environment.DB_MIGRATION_NETWORK
     || environment.DB_BACKUP_NETWORK
-    || `${resolveComposeProjectName()}_default`;
-  const username = String(environment.DB_MIGRATION_USERNAME || environment.DB_USERNAME || 'root');
-  const password = String(environment.DB_MIGRATION_PASSWORD || environment.DB_PASSWORD || '');
+    || `${resolveComposeProjectName()}_data-network`;
+  const username = String(environment.DB_MIGRATION_USERNAME || '');
+  const password = String(environment.DB_MIGRATION_PASSWORD || '');
   const clientImage = String(environment.MYSQL_CLIENT_IMAGE || 'mysql:8.4');
   const sslMode = mysqlSslModeFromEnvironment(environment);
   const dockerArgs = ['run', '--rm', '--network', network, '-e', 'MYSQL_PWD'];
@@ -1179,6 +1201,10 @@ function createVerifiedDatabaseBackup({ allowFreshLocalDatabase = false } = {}) 
     ...environment,
     DB_HOST: backupEndpoint.host,
     DB_PORT: backupEndpoint.port,
+    REDIS_SERVICE: environment.REDIS_SERVICE || 'redis-runtime',
+    REDIS_HOST: environment.REDIS_RUNTIME_HOST || 'redis-runtime',
+    REDIS_PORT: environment.REDIS_RUNTIME_PORT || '6379',
+    REDIS_PASSWORD: environment.REDIS_RUNTIME_PASSWORD || '',
     ...(backupDatabaseName ? { MYSQL_DATABASE: backupDatabaseName, DB_NAME: backupDatabaseName } : {}),
   };
   log(`Creating a verified database backup before migrations${allowFreshLocalDatabase ? ' (fresh local database)' : ''}.`);
@@ -1224,9 +1250,9 @@ function createVerifiedDatabaseBackup({ allowFreshLocalDatabase = false } = {}) 
 }
 
 function runLocalMysqlRootSql(environment, sql) {
-  const rootPassword = String(environment.DB_PASSWORD || '');
+  const rootPassword = String(environment.MYSQL_ROOT_PASSWORD || '');
   if (!rootPassword) {
-    throw new Error('Local MySQL exporter provisioning requires DB_PASSWORD.');
+    throw new Error('Local MySQL exporter provisioning requires MYSQL_ROOT_PASSWORD.');
   }
   const invocation = resolveDockerDirectInvocation([
     ...composeArgs('exec', '-T', '-e', 'MYSQL_PWD', 'mysql'),
@@ -1455,7 +1481,7 @@ async function runDatabaseMigrations() {
   }
 
   const env = mergedEnv();
-  const dependencyServices = localMysql ? ['mysql', 'redis'] : ['redis'];
+  const dependencyServices = localMysql ? ['mysql', 'redis-cache', 'redis-runtime'] : ['redis-cache', 'redis-runtime'];
   log(`Preparing database migration network with: ${dependencyServices.join(', ')}.`);
   runWithRetry('docker', composeArgs('up', '-d', ...dependencyServices), 1);
   const backupEvidence = createVerifiedDatabaseBackup({
@@ -1488,22 +1514,28 @@ async function runDatabaseMigrations() {
     }
   }
 
-  const migrationNetwork = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || `${resolveComposeProjectName()}_default`;
+  const migrationNetwork = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || `${resolveComposeProjectName()}_data-network`;
+  const pluginMigrationReleaseId = String(env.LUMIRA_RELEASE_ID || 'local').trim();
   log(`Running expand-only database migrations on network=${migrationNetwork}.`);
   run('docker', [
     'run', '--rm', '--network', migrationNetwork,
     '-e', 'DB_URL', '-e', 'DB_USERNAME', '-e', 'DB_PASSWORD',
+    '-e', 'PLUGIN_MIGRATION_RELEASE_ID', '-e', 'PLUGIN_MIGRATION_EXECUTOR_ID',
     ...migrationAdminSecretArgs(env),
     migratorImage,
   ], {
     env: {
       ...process.env,
       DB_URL: env.DB_URL || '',
-      DB_USERNAME: env.DB_MIGRATION_USERNAME || env.DB_USERNAME || 'root',
-      DB_PASSWORD: env.DB_MIGRATION_PASSWORD || env.DB_PASSWORD || '',
+      DB_USERNAME: env.DB_MIGRATION_USERNAME,
+      DB_PASSWORD: env.DB_MIGRATION_PASSWORD,
+      PLUGIN_MIGRATION_RELEASE_ID: pluginMigrationReleaseId,
+      PLUGIN_MIGRATION_EXECUTOR_ID: `deploy-container:${pluginMigrationReleaseId}`,
       // docker.cmd delegates to WSL on Windows. WSLENV forwards these values
       // without exposing database credentials in the process argument list.
-      WSLENV: wslForwardedEnvironment(['DB_URL', 'DB_USERNAME', 'DB_PASSWORD']),
+      WSLENV: wslForwardedEnvironment([
+        'DB_URL', 'DB_USERNAME', 'DB_PASSWORD', 'PLUGIN_MIGRATION_RELEASE_ID', 'PLUGIN_MIGRATION_EXECUTOR_ID',
+      ]),
     },
   });
   log('Database migrations completed before application startup.');
@@ -1514,7 +1546,8 @@ async function runDatabaseMigrations() {
 async function checkDeployment() {
   const baseUrl = resolvePublicBaseUrl();
   const runtimeServices = [
-    'redis',
+    'redis-cache',
+    'redis-runtime',
     'xxl-job-admin',
     `lumira-server-${configuredActiveSlot}`,
     'lumira-async',
@@ -1522,7 +1555,7 @@ async function checkDeployment() {
     'api-proxy',
     ...(!localMysql ? ['edge-proxy'] : []),
     ...(localMysql ? ['mysql'] : []),
-    ...(observability ? ['prometheus', 'mysqld-exporter', 'backup-metrics-exporter', 'loki', 'tempo', 'alloy', 'grafana'] : []),
+    ...(observability ? ['prometheus', 'mysqld-exporter', 'redis-exporter', 'redis-runtime-exporter', 'backup-metrics-exporter', 'loki', 'tempo', 'alloy', 'grafana'] : []),
   ];
 
   log('Running deployment health checks...');
@@ -1746,6 +1779,7 @@ if (logs) {
   process.exit(0);
 }
 
+assertProductionDataPlaneEnvironment(mergedEnv());
 run('docker', composeArgs('config'), { stdio: 'ignore' });
 maybePruneDockerBuildCache('before-build');
 ensureDockerVolumeOwnership();

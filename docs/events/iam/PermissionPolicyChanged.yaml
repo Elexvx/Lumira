@@ -1,0 +1,19 @@
+name: PermissionPolicyChanged
+eventType: PermissionPolicyChanged
+sourceModule: iam
+producer: iam
+schemaVersion: 1
+aggregate:
+  type: iam.permission-policy
+  id: policy id or tenant id
+payload:
+  policyId: changed policy or role id
+  policyScope: ROLE or GLOBAL
+  changeType: CREATED, UPDATED or DELETED
+  permissionCount: resulting role permission count when role-scoped
+  producer: iam
+  owner: lumira-system
+consumer:
+  runtime: lumira-async
+  purpose: delete role authorization-version keys and the global data-policy version
+  rule: event loss must not grant access; consumers fail closed and rebuild from the owner snapshot

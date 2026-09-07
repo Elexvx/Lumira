@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.expert.app;
 
 import com.lumira.api.dictionary.DictionaryValueNormalizer;
+import com.lumira.api.competition.CompetitionExpertApplicationQueryPort;
 import com.lumira.api.workflow.WorkflowStartPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -34,16 +35,18 @@ class ExpertManagementAppServiceTest {
         ExpertRepository repository = mock(ExpertRepository.class);
         WorkflowStartPort workflowStartPort = mock(WorkflowStartPort.class);
         ExpertVO.Expert stored = expert(72L, "pending", "PENDING");
-        when(repository.isPublishedCompetition("competition-uuid")).thenReturn(true);
-        when(repository.findPublishedCompetitionExpertFields("competition-uuid")).thenReturn(List.of(
-                new ExpertRepository.ExpertApplicationField("portfolio", "代表作品", "{}", true, true)
+        CompetitionExpertApplicationQueryPort competitionPort = mock(CompetitionExpertApplicationQueryPort.class);
+        when(competitionPort.findPublishedApplication("competition-uuid")).thenReturn(Optional.of(
+                new CompetitionExpertApplicationQueryPort.PublishedApplication(List.of(
+                        new CompetitionExpertApplicationQueryPort.Field("portfolio", "代表作品", "{}", true, true)
+                ))
         ));
         when(repository.create(any(), anyString(), anyString(), anyLong(), anyString())).thenReturn(72L);
         when(workflowStartPort.startWorkflow(any(), anyString(), anyLong(), anyString(), anyString(), anyMap())).thenReturn(902L);
         when(repository.attachWorkflow(anyLong(), anyString(), anyString(), anyString(), anyLong(), anyLong(), anyString()))
                 .thenReturn(1);
         when(repository.findById(72L)).thenReturn(Optional.of(stored));
-        ExpertManagementAppService service = new ExpertManagementAppService(repository, workflowStartPort, dictionary());
+        ExpertManagementAppService service = new ExpertManagementAppService(repository, workflowStartPort, dictionary(), competitionPort);
 
         ExpertDTO.ExpertUpsertRequest request = request();
         request.setCompetitionUuid("competition-uuid");
@@ -63,11 +66,13 @@ class ExpertManagementAppServiceTest {
     @Test
     void competitionApplicationRejectsMissingConfiguredRequiredField() {
         ExpertRepository repository = mock(ExpertRepository.class);
-        when(repository.isPublishedCompetition("competition-uuid")).thenReturn(true);
-        when(repository.findPublishedCompetitionExpertFields("competition-uuid")).thenReturn(List.of(
-                new ExpertRepository.ExpertApplicationField("portfolio", "代表作品", "{}", true, true)
+        CompetitionExpertApplicationQueryPort competitionPort = mock(CompetitionExpertApplicationQueryPort.class);
+        when(competitionPort.findPublishedApplication("competition-uuid")).thenReturn(Optional.of(
+                new CompetitionExpertApplicationQueryPort.PublishedApplication(List.of(
+                        new CompetitionExpertApplicationQueryPort.Field("portfolio", "代表作品", "{}", true, true)
+                ))
         ));
-        ExpertManagementAppService service = new ExpertManagementAppService(repository, mock(WorkflowStartPort.class), dictionary());
+        ExpertManagementAppService service = new ExpertManagementAppService(repository, mock(WorkflowStartPort.class), dictionary(), competitionPort);
         ExpertDTO.ExpertUpsertRequest request = request();
         request.setCompetitionUuid("competition-uuid");
         request.setExpertise("人工智能与机器人");

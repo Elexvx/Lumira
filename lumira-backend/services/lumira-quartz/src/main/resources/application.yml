@@ -7,6 +7,7 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:prod}
   main:
     keep-alive: ${SPRING_MAIN_KEEP_ALIVE:true}
+    allow-bean-definition-overriding: false
 
 server:
   port: ${SERVER_PORT:8080}
@@ -46,19 +47,14 @@ saas:
       payment-token: ${SAAS_INTERNAL_PAYMENT_TOKEN:}
       plugin-token: ${SAAS_INTERNAL_PLUGIN_TOKEN:}
       job-token: ${SAAS_INTERNAL_JOB_TOKEN:}
-    adaptive-relay:
-      enabled: ${SAAS_JOB_ADAPTIVE_RELAY_ENABLED:true}
-      initial-delay-ms: ${SAAS_JOB_ADAPTIVE_RELAY_INITIAL_DELAY_MS:5000}
-      min-delay-ms: ${SAAS_JOB_ADAPTIVE_RELAY_MIN_DELAY_MS:1000}
-      max-delay-ms: ${SAAS_JOB_ADAPTIVE_RELAY_MAX_DELAY_MS:30000}
-      failure-delay-ms: ${SAAS_JOB_ADAPTIVE_RELAY_FAILURE_DELAY_MS:10000}
-      platform-enabled: ${SAAS_JOB_ADAPTIVE_RELAY_PLATFORM_ENABLED:true}
-      # The async aggregate relay already dispatches all owner outboxes. These
-      # switches are retained only for legacy split deployments.
-      message-enabled: ${SAAS_JOB_ADAPTIVE_RELAY_MESSAGE_ENABLED:false}
-      file-enabled: ${SAAS_JOB_ADAPTIVE_RELAY_FILE_ENABLED:false}
-      payment-enabled: ${SAAS_JOB_ADAPTIVE_RELAY_PAYMENT_ENABLED:false}
-      plugin-enabled: ${SAAS_JOB_ADAPTIVE_RELAY_PLUGIN_ENABLED:false}
+    internal-http:
+      connect-timeout: ${LUMIRA_INTERNAL_HTTP_CONNECT_TIMEOUT:2s}
+      response-timeout: ${LUMIRA_INTERNAL_HTTP_RESPONSE_TIMEOUT:5s}
+      max-response-bytes: ${LUMIRA_INTERNAL_HTTP_MAX_RESPONSE_BYTES:1048576}
+      max-attempts: ${LUMIRA_INTERNAL_HTTP_MAX_ATTEMPTS:2}
+      retry-backoff: ${LUMIRA_INTERNAL_HTTP_RETRY_BACKOFF:100ms}
+      release-id: ${LUMIRA_RELEASE_ID:unknown}
+      schema-version: ${LUMIRA_EVENT_SCHEMA_WRITE_VERSION:1}
 xxl:
   job:
     accessToken: ${XXL_JOB_ACCESS_TOKEN:${XXL_JOB_ADMIN_ACCESS_TOKEN:}}

@@ -28,7 +28,7 @@ import com.lumira.saas.modules.system.internal.infrastructure.JdbcInternalSystem
 import com.lumira.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -73,7 +73,7 @@ class InternalSystemControllerTest {
         return new InternalSystemApplicationService(new JdbcInternalSystemRepository(database));
     }
 
-    private final UserDomainService userDomainService = mock(UserDomainService.class);
+    private final UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
     private final MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
     private final IamUserService iamUserService = mock(IamUserService.class);
     private final PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -104,10 +104,10 @@ class InternalSystemControllerTest {
 
     @Test
     void wechatAndDefaultRoleUpsertsShouldNotRewriteUserIdentity() throws Exception {
-        String controllerSource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java"));
+        String applicationSource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemInternalApplicationService.java"));
         String repositorySource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/internal/infrastructure/JdbcInternalSystemRepository.java"));
 
-        assertThat(controllerSource)
+        assertThat(applicationSource)
                 .doesNotContain("MyBatisQueryOperations")
                 .doesNotContain("SqlRow")
                 .doesNotContain("BeanPropertyRowMapper")

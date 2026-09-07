@@ -1,7 +1,7 @@
 package com.lumira.saas.modules.ai.app;
 
 import com.lumira.api.client.FileInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -220,7 +220,7 @@ class AiConversationServiceTest {
     void messageAttachmentsRejectDisabledTrustedIdentityBeforeFileLookup() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         JdbcAiConversationService service = new JdbcAiConversationService(conversationRepository(jdbcTemplate),
                 fileInternalApi,
                 systemInternalApi,
@@ -244,7 +244,7 @@ class AiConversationServiceTest {
     void messageAttachmentsRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeFileLookup() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         JdbcAiConversationService service = new JdbcAiConversationService(conversationRepository(jdbcTemplate),
                 fileInternalApi,
                 systemInternalApi,
@@ -268,7 +268,7 @@ class AiConversationServiceTest {
     void messageAttachmentsRefreshLiveUsernameBeforeFileLookup() {
         RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         JdbcAiConversationService service = new JdbcAiConversationService(conversationRepository(jdbcTemplate),
                 fileInternalApi,
                 systemInternalApi,
@@ -295,7 +295,7 @@ class AiConversationServiceTest {
     void messageAttachmentsShouldNormalizeInvalidSimulatedRoleIdBeforeFileLookup() {
         RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         JdbcAiConversationService service = new JdbcAiConversationService(conversationRepository(jdbcTemplate),
                 fileInternalApi,
                 systemInternalApi,
@@ -379,7 +379,7 @@ class AiConversationServiceTest {
     void messageAttachmentsRejectWhenLivePermissionsLoseChatPermissionBeforeFileLookup() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         JdbcAiConversationService service = new JdbcAiConversationService(conversationRepository(jdbcTemplate),
                 fileInternalApi,
                 systemInternalApi,

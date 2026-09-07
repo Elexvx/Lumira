@@ -30,6 +30,18 @@ class JobExecutorApplicationYamlTest {
         }
     }
 
+    @Test
+    void continuousAdaptiveRelayIsAbsentAndInternalHttpIsBounded() {
+        Properties properties = loadApplicationProperties();
+
+        assertThat(properties.stringPropertyNames())
+                .noneMatch(name -> name.startsWith("saas.job.adaptive-relay"));
+        assertThat(properties.getProperty("saas.job.internal-http.connect-timeout")).isNotBlank();
+        assertThat(properties.getProperty("saas.job.internal-http.response-timeout")).isNotBlank();
+        assertThat(properties.getProperty("saas.job.internal-http.max-response-bytes")).isNotBlank();
+        assertThat(properties.getProperty("saas.job.internal-http.max-attempts")).isNotBlank();
+    }
+
     private Properties loadApplicationProperties() {
         YamlPropertiesFactoryBean factory = new YamlPropertiesFactoryBean();
         factory.setResources(new ClassPathResource("application.yml"));

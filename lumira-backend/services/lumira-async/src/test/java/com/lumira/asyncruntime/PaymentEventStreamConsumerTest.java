@@ -4,12 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.competition.CompetitionPaymentEventHandler;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisStreamCommands;
+import org.springframework.data.redis.connection.Limit;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.PendingMessage;
 import org.springframework.data.redis.connection.stream.PendingMessages;
+import org.springframework.data.redis.connection.stream.PendingMessagesSummary;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StreamOperations;
@@ -160,6 +164,7 @@ class PaymentEventStreamConsumerTest {
     }
 
     @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
     void movesPoisonMessageToDeadLetterAndAcknowledgesOriginalOnlyAfterTheWrite() {
         TestContext context = testContext();
         RecordId id = RecordId.of("4-0");
@@ -171,11 +176,19 @@ class PaymentEventStreamConsumerTest {
         context.consumer.onMessage(message);
 
         verify(context.handler, never()).handleOrderPaid(any(), any(), any(), any(), any());
-        verify(context.stream).add(argThat(record ->
-                (PaymentEventStreamConsumer.STREAM + ":dead-letter").equals(record.getStream())
-                        && id.getValue().equals(record.getValue().get("originalStreamId"))
-                        && record.getValue().containsKey("failureReason")
-        ));
+        ArgumentCaptor<MapRecord> recordCaptor = ArgumentCaptor.forClass(MapRecord.class);
+        ArgumentCaptor<RedisStreamCommands.XAddOptions> optionsCaptor =
+                ArgumentCaptor.forClass(RedisStreamCommands.XAddOptions.class);
+        verify(context.stream).add(recordCaptor.capture(), optionsCaptor.capture());
+        MapRecord<String, String, String> deadLetter =
+                (MapRecord<String, String, String>) recordCaptor.getValue();
+        assertThat(deadLetter.getStream()).isEqualTo(PaymentEventStreamConsumer.STREAM + ":dead-letter");
+        assertThat(deadLetter.getValue())
+                .containsEntry("originalStreamId", id.getValue())
+                .containsKey("failureReason");
+        assertThat(optionsCaptor.getValue().getMaxlen())
+                .isEqualTo(PaymentEventStreamConsumer.DEFAULT_DEAD_LETTER_MAX_LENGTH);
+        assertThat(optionsCaptor.getValue().isApproximateTrimming()).isTrue();
         verify(context.stream).acknowledge(
                 PaymentEventStreamConsumer.STREAM,
                 PaymentEventStreamConsumer.GROUP,
@@ -197,7 +210,7 @@ class PaymentEventStreamConsumerTest {
         ).withId(id);
         doThrow(new IllegalStateException("dead letter stream unavailable"))
                 .when(context.stream)
-                .add(any(MapRecord.class));
+                .add(any(MapRecord.class), any(RedisStreamCommands.XAddOptions.class));
 
         context.consumer.onMessage(message);
 
@@ -234,7 +247,7 @@ class PaymentEventStreamConsumerTest {
         verify(context.stream).add(argThat(record ->
                 (PaymentEventStreamConsumer.STREAM + ":dead-letter").equals(record.getStream())
                         && String.valueOf(record.getValue().get("failureReason")).contains("8 attempts")
-        ));
+        ), any(RedisStreamCommands.XAddOptions.class));
         verify(context.stream).acknowledge(
                 PaymentEventStreamConsumer.STREAM,
                 PaymentEventStreamConsumer.GROUP,
@@ -304,7 +317,7 @@ class PaymentEventStreamConsumerTest {
         context.consumer.onMessage(message);
 
         verify(context.handler, never()).handleOrderPaid(any(), any(), any(), any(), any());
-        verify(context.stream, never()).add(any(MapRecord.class));
+        verify(context.stream, never()).add(any(MapRecord.class), any(RedisStreamCommands.XAddOptions.class));
         verify(context.stream).acknowledge(
                 PaymentEventStreamConsumer.STREAM,
                 PaymentEventStreamConsumer.GROUP,
@@ -312,6 +325,77 @@ class PaymentEventStreamConsumerTest {
         );
         assertThat(context.meters.get("lumira.payment.consumer.events.non-target").counter().count())
                 .isEqualTo(1.0d);
+    }
+
+    @Test
+    void reportsPendingOldestAgeAndDeadLetterCount() {
+        TestContext context = testContext();
+        long fiveMinutesAgo = System.currentTimeMillis() - Duration.ofMinutes(5).toMillis();
+        when(context.stream.pending(PaymentEventStreamConsumer.STREAM, PaymentEventStreamConsumer.GROUP))
+                .thenReturn(new PendingMessagesSummary(
+                        PaymentEventStreamConsumer.GROUP,
+                        3L,
+                        org.springframework.data.domain.Range.closed(fiveMinutesAgo + "-0", fiveMinutesAgo + "-2"),
+                        Map.of("consumer-1", 3L)
+                ));
+        when(context.stream.size(PaymentEventStreamConsumer.STREAM)).thenReturn(25L);
+        when(context.stream.size(PaymentEventStreamConsumer.STREAM + ":dead-letter")).thenReturn(4L);
+
+        PaymentEventStreamConsumer.StreamStats stats = context.consumer.streamStats();
+
+        assertThat(stats.streamLength()).isEqualTo(25L);
+        assertThat(stats.pendingCount()).isEqualTo(3L);
+        assertThat(stats.oldestPendingAgeSeconds()).isBetween(299L, 301L);
+        assertThat(stats.deadLetterCount()).isEqualTo(4L);
+        assertThat(context.meters.get("lumira.payment.consumer.pending.count").gauge().value()).isEqualTo(3.0d);
+        assertThat(context.meters.get("lumira.payment.consumer.dead-letter.count").gauge().value()).isEqualTo(4.0d);
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void replaysDeadLetterWithSourceMaxLengthBeforeDeletingDlqRecord() {
+        TestContext context = testContext();
+        RecordId id = RecordId.of("1700000000000-1");
+        MapRecord<String, String, String> dlq = MapRecord.create(
+                PaymentEventStreamConsumer.STREAM + ":dead-letter",
+                Map.of(
+                        "eventType", "PAYMENT_ORDER_PAID",
+                        "payload", "{}",
+                        "failureReason", "poison",
+                        "originalStreamId", "1-0"
+                )
+        ).withId(id);
+        when(context.stream.range(
+                eq(PaymentEventStreamConsumer.STREAM + ":dead-letter"),
+                any(),
+                any(Limit.class)
+        )).thenReturn(List.of(dlq));
+        when(context.stream.delete(PaymentEventStreamConsumer.STREAM + ":dead-letter", id)).thenReturn(1L);
+        when(context.stream.add(
+                any(MapRecord.class),
+                any(RedisStreamCommands.XAddOptions.class)
+        )).thenReturn(RecordId.of("1700000000001-0"));
+
+        PaymentEventStreamConsumer.ReplayResult result = context.consumer.replayDeadLetter(id.getValue());
+        assertThat(result.found()).isTrue();
+        assertThat(result.replayedStreamId()).isEqualTo("1700000000001-0");
+        assertThat(result.dlqDeleted()).isTrue();
+        assertThat(result.originalStreamId()).isEqualTo("1-0");
+        assertThat(result.failureReason()).isEqualTo("poison");
+
+        ArgumentCaptor<MapRecord> recordCaptor = ArgumentCaptor.forClass(MapRecord.class);
+        ArgumentCaptor<RedisStreamCommands.XAddOptions> optionsCaptor =
+                ArgumentCaptor.forClass(RedisStreamCommands.XAddOptions.class);
+        verify(context.stream).add(recordCaptor.capture(), optionsCaptor.capture());
+        MapRecord<String, String, String> replayed =
+                (MapRecord<String, String, String>) recordCaptor.getValue();
+        assertThat(replayed.getStream()).isEqualTo(PaymentEventStreamConsumer.STREAM);
+        assertThat(replayed.getValue())
+                .doesNotContainKeys("failureReason", "originalStreamId");
+        assertThat(optionsCaptor.getValue().getMaxlen())
+                .isEqualTo(PaymentEventStreamConsumer.DEFAULT_STREAM_MAX_LENGTH);
+        assertThat(optionsCaptor.getValue().isApproximateTrimming()).isTrue();
+        verify(context.stream).delete(PaymentEventStreamConsumer.STREAM + ":dead-letter", id);
     }
 
     @SuppressWarnings("unchecked")

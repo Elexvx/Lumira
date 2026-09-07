@@ -1,7 +1,7 @@
 package com.lumira.auth.config;
 
-import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.auth.model.AuthSession;
 import com.lumira.auth.service.AuthSessionIdlePolicy;
 import com.lumira.auth.service.AuthSessionStore;
@@ -53,7 +53,7 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
 
     private final JwtTokenService jwtTokenService;
     private final AuthSessionStore authSessionStore;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort userIdentityQueryPort;
     private final SecuritySettingsService securitySettingsService;
     private final AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier;
     private final MeterRegistry meterRegistry;
@@ -61,14 +61,14 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
     public AuthJwtAuthFilter(
             JwtTokenService jwtTokenService,
             AuthSessionStore authSessionStore,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort userIdentityQueryPort,
             SecuritySettingsService securitySettingsService,
             AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier
     ) {
         this(
                 jwtTokenService,
                 authSessionStore,
-                systemInternalApi,
+                userIdentityQueryPort,
                 securitySettingsService,
                 authorizationSnapshotVersionVerifier,
                 (MeterRegistry) null
@@ -79,7 +79,7 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
     public AuthJwtAuthFilter(
             JwtTokenService jwtTokenService,
             AuthSessionStore authSessionStore,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort userIdentityQueryPort,
             SecuritySettingsService securitySettingsService,
             AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier,
             ObjectProvider<MeterRegistry> meterRegistry
@@ -87,7 +87,7 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
         this(
                 jwtTokenService,
                 authSessionStore,
-                systemInternalApi,
+                userIdentityQueryPort,
                 securitySettingsService,
                 authorizationSnapshotVersionVerifier,
                 meterRegistry.getIfAvailable()
@@ -97,14 +97,14 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
     AuthJwtAuthFilter(
             JwtTokenService jwtTokenService,
             AuthSessionStore authSessionStore,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort userIdentityQueryPort,
             SecuritySettingsService securitySettingsService,
             AuthorizationSnapshotVersionVerifier authorizationSnapshotVersionVerifier,
             MeterRegistry meterRegistry
     ) {
         this.jwtTokenService = jwtTokenService;
         this.authSessionStore = authSessionStore;
-        this.systemInternalApi = systemInternalApi;
+        this.userIdentityQueryPort = userIdentityQueryPort;
         this.securitySettingsService = securitySettingsService;
         this.authorizationSnapshotVersionVerifier = authorizationSnapshotVersionVerifier;
         this.meterRegistry = meterRegistry;
@@ -298,7 +298,7 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
         }
         SystemUserSnapshotDTO user;
         try {
-            user = systemInternalApi.findUserById(session.getUserId());
+            user = userIdentityQueryPort.findUserById(session.getUserId());
         } catch (RuntimeException exception) {
             throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "User trust service is unavailable");
         }

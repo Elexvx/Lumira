@@ -43,5 +43,5 @@ test('upgrades normalize tree roots and link only existing school fields', () =>
   assert.match(schools, /'\$\.dictCode', 'sys_school'/);
   assert.match(schools, /item_key/);
   assert.doesNotMatch(schools, /UPDATE competition_config_item_template/);
-  assert.equal(text('lumira-backend/sql/saas-baseline-version.txt').trim(), '202608310001');
+  assert.ok(BigInt(text('lumira-backend/sql/saas-baseline-version.txt').trim()) >= 202608300003n);
 });

@@ -21,7 +21,7 @@ import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -50,7 +50,7 @@ class SystemManagementAppServicePasswordTest {
         RecordingOperationAuditService operationAuditService = new RecordingOperationAuditService();
         SystemManagementAppService service = new SystemManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
-                new StubUserDomainService(user),
+                new StubUserAccountQueryService(user),
                 null,
                 null,
                 null,
@@ -101,7 +101,7 @@ class SystemManagementAppServicePasswordTest {
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
         SystemManagementAppService service = new SystemManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
-                new StubUserDomainService(user),
+                new StubUserAccountQueryService(user),
                 null,
                 null,
                 null,
@@ -135,7 +135,7 @@ class SystemManagementAppServicePasswordTest {
         RecordingOperationAuditService operationAuditService = new RecordingOperationAuditService();
         SystemManagementAppService service = new SystemManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
-                new StubUserDomainService(user),
+                new StubUserAccountQueryService(user),
                 null,
                 null,
                 null,
@@ -169,7 +169,7 @@ class SystemManagementAppServicePasswordTest {
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
         SystemManagementAppService service = new SystemManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
-                new StubUserDomainService(user),
+                new StubUserAccountQueryService(user),
                 null,
                 null,
                 null,
@@ -201,7 +201,7 @@ class SystemManagementAppServicePasswordTest {
         RecordingOperationAuditService operationAuditService = new RecordingOperationAuditService();
         SystemManagementAppService service = new SystemManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
-                new StubUserDomainService(user),
+                new StubUserAccountQueryService(user),
                 null,
                 null,
                 null,
@@ -235,7 +235,7 @@ class SystemManagementAppServicePasswordTest {
     @Test
     void shouldRejectUnauthenticatedUserBeforeUserLookup() {
         SysUserEntity user = buildUser("OldPass1!");
-        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        StubUserAccountQueryService userDomainService = new StubUserAccountQueryService(user);
         RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
@@ -272,7 +272,7 @@ class SystemManagementAppServicePasswordTest {
     @Test
     void shouldRejectUserWithoutSessionVersionBeforeUserLookup() {
         SysUserEntity user = buildUser("OldPass1!");
-        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        StubUserAccountQueryService userDomainService = new StubUserAccountQueryService(user);
         RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
@@ -309,7 +309,7 @@ class SystemManagementAppServicePasswordTest {
     @Test
     void shouldRejectMismatchedSessionUserUuidBeforePasswordUpdate() {
         SysUserEntity user = buildUser("OldPass1!");
-        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        StubUserAccountQueryService userDomainService = new StubUserAccountQueryService(user);
         RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
@@ -346,7 +346,7 @@ class SystemManagementAppServicePasswordTest {
     @Test
     void shouldRejectNullPasswordRequestBeforeUserLookup() {
         SysUserEntity user = buildUser("OldPass1!");
-        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        StubUserAccountQueryService userDomainService = new StubUserAccountQueryService(user);
         RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
@@ -380,7 +380,7 @@ class SystemManagementAppServicePasswordTest {
     @Test
     void shouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
         SysUserEntity user = buildUser("OldPass1!");
-        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        StubUserAccountQueryService userDomainService = new StubUserAccountQueryService(user);
         RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
@@ -419,7 +419,7 @@ class SystemManagementAppServicePasswordTest {
 
     private static SystemManagementAppService strictService(
             MyBatisQueryOperations jdbcTemplate,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
@@ -493,11 +493,11 @@ class SystemManagementAppServicePasswordTest {
         return request;
     }
 
-    private static final class StubUserDomainService extends UserDomainService {
+    private static final class StubUserAccountQueryService extends UserAccountQueryService {
         private final SysUserEntity user;
         private int findByIdCalls;
 
-        private StubUserDomainService(SysUserEntity user) {
+        private StubUserAccountQueryService(SysUserEntity user) {
             super(null);
             this.user = user;
         }

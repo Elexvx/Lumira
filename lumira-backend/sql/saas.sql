@@ -506,6 +506,42 @@ CREATE TABLE `file_processing_task` (
   KEY `idx_file_processing_claim_token` (`claim_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `file_event_receipt` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `event_id` varchar(128) NOT NULL,
+  `event_type` varchar(128) NOT NULL,
+  `aggregate_id` varchar(128) NOT NULL,
+  `aggregate_version` bigint unsigned NOT NULL,
+  `payload_digest` varchar(71) NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'PROCESSING',
+  `processed_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_file_event_receipt_event` (`event_id`),
+  KEY `idx_file_event_receipt_aggregate` (`aggregate_id`,`aggregate_version`),
+  KEY `idx_file_event_receipt_status_created` (`status`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `file_event_projection` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `event_id` varchar(128) NOT NULL,
+  `file_id` bigint unsigned NOT NULL,
+  `aggregate_version` bigint unsigned NOT NULL,
+  `event_type` varchar(128) NOT NULL,
+  `metadata` json NOT NULL,
+  `projection_status` varchar(32) NOT NULL DEFAULT 'PROJECTED',
+  `is_current` tinyint(1) NOT NULL DEFAULT '1',
+  `last_event_at` datetime(6) NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_file_event_projection_event` (`event_id`),
+  UNIQUE KEY `uk_file_event_projection_file_version` (`file_id`,`aggregate_version`),
+  KEY `idx_file_event_projection_current` (`file_id`,`is_current`,`aggregate_version`),
+  KEY `idx_file_event_projection_file_version` (`file_id`,`aggregate_version`,`last_event_at`),
+  KEY `idx_file_event_projection_status_updated` (`projection_status`,`updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `file_storage_space` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL,
@@ -1452,6 +1488,110 @@ CREATE TABLE `sys_plugin_schema_history` (
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_sys_plugin_schema_history_plugin_created` (`plugin_code`,`plugin_version`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Durable hand-off between the application control plane and the separately
+-- privileged central Migrator. The application account only performs DML here;
+-- script_payload is executed exclusively by the migrator after approval.
+CREATE TABLE `sys_plugin_migration_request` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `plugin_code` varchar(64) NOT NULL,
+  `plugin_version` varchar(32) NOT NULL,
+  `schema_version` varchar(64) NOT NULL,
+  `expected_schema_digest` char(64) DEFAULT NULL,
+  `phase` varchar(16) NOT NULL,
+  `rollback_mode` varchar(32) NOT NULL,
+  `compatible_readers` varchar(1024) NOT NULL,
+  `table_namespace` varchar(128) NOT NULL,
+  `operation_epoch` bigint NOT NULL,
+  `package_digest` char(64) NOT NULL,
+  `migration_digest` char(64) NOT NULL,
+  `release_id` varchar(128) NOT NULL,
+  `request_status` varchar(32) NOT NULL DEFAULT 'PENDING_APPROVAL',
+  `lifecycle_status` varchar(32) NOT NULL DEFAULT 'MIGRATION_PENDING',
+  `script_payload` longtext NOT NULL,
+  `failure_reason` varchar(1024) DEFAULT NULL,
+  `recovery_action` varchar(1024) DEFAULT NULL,
+  `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `approved_by` varchar(128) DEFAULT NULL,
+  `approval_reason` varchar(512) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `approved_at` datetime DEFAULT NULL,
+  `started_at` datetime DEFAULT NULL,
+  `finished_at` datetime DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_sys_plugin_migration_request_digest` (`plugin_code`,`plugin_version`,`migration_digest`),
+  UNIQUE KEY `uk_sys_plugin_migration_request_epoch` (`plugin_code`,`operation_epoch`),
+  KEY `idx_sys_plugin_migration_request_status_id` (`request_status`,`phase`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `sys_plugin_migration_audit` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `request_id` bigint NOT NULL,
+  `plugin_code` varchar(64) NOT NULL,
+  `plugin_version` varchar(32) NOT NULL,
+  `event_type` varchar(32) NOT NULL,
+  `operation_epoch` bigint NOT NULL,
+  `package_digest` char(64) NOT NULL,
+  `migration_digest` char(64) NOT NULL,
+  `release_id` varchar(128) NOT NULL,
+  `actor` varchar(128) NOT NULL,
+  `detail_message` varchar(1024) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_sys_plugin_migration_audit_request` (`request_id`,`id`),
+  KEY `idx_sys_plugin_migration_audit_plugin` (`plugin_code`,`plugin_version`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- The central Migrator records execution facts separately from the mutable
+-- request state. A generated nullable key enforces one active execution per
+-- request while allowing a later, fenced recovery attempt after failure.
+CREATE TABLE `plugin_migration_execution_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `migration_request_id` bigint NOT NULL,
+  `plugin_code` varchar(64) NOT NULL,
+  `release_id` varchar(128) NOT NULL,
+  `migration_digest` char(64) NOT NULL,
+  `schema_version` varchar(64) NOT NULL,
+  `executor_type` varchar(32) NOT NULL,
+  `executor_id` varchar(128) NOT NULL,
+  `fence_token` varchar(128) NOT NULL,
+  `lease_until` datetime DEFAULT NULL,
+  `status` varchar(32) NOT NULL,
+  `active_request_id` bigint GENERATED ALWAYS AS (
+    CASE WHEN `status` = 'STARTED' THEN `migration_request_id` ELSE NULL END
+  ) STORED,
+  `actual_schema_digest` char(64) DEFAULT NULL,
+  `started_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `finished_at` datetime DEFAULT NULL,
+  `error_code` varchar(64) DEFAULT NULL,
+  `error_message` varchar(1024) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_plugin_migration_execution_active` (`active_request_id`),
+  KEY `idx_plugin_migration_execution_request` (`migration_request_id`,`id`),
+  KEY `idx_plugin_migration_execution_release` (`release_id`,`created_at`),
+  KEY `idx_plugin_migration_execution_lease` (`status`,`lease_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Schema snapshots contain hashes rather than full DDL. The object-level rows
+-- make drift reviewable without turning the control plane into a schema dump.
+CREATE TABLE `plugin_schema_snapshot` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `migration_request_id` bigint NOT NULL,
+  `plugin_code` varchar(64) NOT NULL,
+  `schema_version` varchar(64) NOT NULL,
+  `object_type` varchar(16) NOT NULL,
+  `object_name` varchar(255) NOT NULL,
+  `definition_hash` char(64) NOT NULL,
+  `captured_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `release_id` varchar(128) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_plugin_schema_snapshot_object` (`migration_request_id`,`object_type`,`object_name`),
+  KEY `idx_plugin_schema_snapshot_plugin` (`plugin_code`,`schema_version`,`captured_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_plugin_version` (
@@ -4972,7 +5112,7 @@ INSERT INTO `sys_plugin_version` (
 )
 VALUES (
     'builtin-mock-payment', '1.0.0', '1.0.0', 'INSTALLED', 'LOADED', 'HEALTHY',
-    'DISABLED', 'READY', 1, 0,
+    'RUNTIME_VERIFIED', 'READY', 1, 0,
     JSON_OBJECT(
         'pluginCode', 'builtin-mock-payment',
         'pluginName', '内置模拟支付',
@@ -5026,7 +5166,7 @@ INSERT INTO `sys_plugin_version` (
 )
 VALUES (
     'builtin-mock-sms', '1.0.0', '1.0.0', 'INSTALLED', 'LOADED', 'HEALTHY',
-    'DISABLED', 'READY', 1, 0,
+    'RUNTIME_VERIFIED', 'READY', 1, 0,
     JSON_OBJECT(
         'pluginCode', 'builtin-mock-sms',
         'pluginName', '内置模拟短信验证码',
@@ -5255,7 +5395,7 @@ INSERT INTO `sys_plugin_version` (
 )
 VALUES (
     'builtin-alerting', '1.0.0', '1.0.0', 'INSTALLED', 'LOADED', 'HEALTHY',
-    'DISABLED', 'READY', 1, 0,
+    'RUNTIME_VERIFIED', 'READY', 1, 0,
     JSON_OBJECT(
         'pluginCode', 'builtin-alerting',
         'pluginName', '内置告警中心',

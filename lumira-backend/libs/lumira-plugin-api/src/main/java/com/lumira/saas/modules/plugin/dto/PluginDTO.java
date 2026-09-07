@@ -143,6 +143,11 @@ public final class PluginDTO {
         private List<PluginMenuDeclaration> menuDeclarations;
         private String configSchema;
         private String migrationStrategy;
+        private String migrationSchemaVersion;
+        private String migrationSchemaDigest;
+        private String migrationPhase;
+        private String rollbackMode;
+        private List<String> compatibleReaders;
         private String schemaMode;
         private Boolean supportsHotDisable;
         private Boolean supportsDataPurge;
@@ -269,6 +274,17 @@ public final class PluginDTO {
         public void setMigrationStrategy(String migrationStrategy) {
             this.migrationStrategy = migrationStrategy;
         }
+
+        public String getMigrationSchemaVersion() { return migrationSchemaVersion; }
+        public void setMigrationSchemaVersion(String migrationSchemaVersion) { this.migrationSchemaVersion = migrationSchemaVersion; }
+        public String getMigrationSchemaDigest() { return migrationSchemaDigest; }
+        public void setMigrationSchemaDigest(String migrationSchemaDigest) { this.migrationSchemaDigest = migrationSchemaDigest; }
+        public String getMigrationPhase() { return migrationPhase; }
+        public void setMigrationPhase(String migrationPhase) { this.migrationPhase = migrationPhase; }
+        public String getRollbackMode() { return rollbackMode; }
+        public void setRollbackMode(String rollbackMode) { this.rollbackMode = rollbackMode; }
+        public List<String> getCompatibleReaders() { return compatibleReaders; }
+        public void setCompatibleReaders(List<String> compatibleReaders) { this.compatibleReaders = compatibleReaders; }
 
         public String getSchemaMode() {
             return schemaMode;

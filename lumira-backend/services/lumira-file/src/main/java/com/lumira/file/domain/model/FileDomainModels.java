@@ -33,7 +33,11 @@ public final class FileDomainModels {
                     "file.object",
                     String.valueOf(id().value()),
                     actorAttributes(
-                            Map.of("sizeBytes", sizeBytes, "contentType", contentType == null ? "" : contentType),
+                            Map.of(
+                                    "aggregateVersion", 1L,
+                                    "sizeBytes", sizeBytes,
+                                    "contentType", contentType == null ? "" : contentType
+                            ),
                             userId,
                             userUuid
                     )
@@ -53,7 +57,7 @@ public final class FileDomainModels {
                     "FILE_OBJECT_DELETED",
                     "file.object",
                     String.valueOf(id().value()),
-                    actorAttributes(Map.of("sizeBytes", sizeBytes), userId, userUuid)
+                    actorAttributes(Map.of("aggregateVersion", 2L, "sizeBytes", sizeBytes), userId, userUuid)
             ));
         }
 

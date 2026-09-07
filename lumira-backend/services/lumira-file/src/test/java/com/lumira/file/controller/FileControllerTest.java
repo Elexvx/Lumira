@@ -1,6 +1,6 @@
 package com.lumira.file.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.StorageSpaceOptionDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -76,7 +76,7 @@ class FileControllerTest {
         FileManagementAppService fileManagementAppService = mock(FileManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionGuard permissionGuard = mock(PermissionGuard.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         FileController controller = new FileController(
                 fileManagementAppService,
                 securityContextFacade,
@@ -102,7 +102,7 @@ class FileControllerTest {
         FileManagementAppService fileManagementAppService = mock(FileManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionGuard permissionGuard = mock(PermissionGuard.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         FileController controller = new FileController(
                 fileManagementAppService,
                 securityContextFacade,

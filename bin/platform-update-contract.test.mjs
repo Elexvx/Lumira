@@ -41,6 +41,44 @@ test('manifest v2 requires digest-pinned runtime images', () => {
   assert.throws(() => normalizeReleaseManifest(manifestV2({ images: { server: 'server:latest' } })), /sha256 digest/);
 });
 
+test('release manifest carries normalized plugin migration metadata', () => {
+  const normalized = normalizeReleaseManifest(manifestV2({
+    schemaVersion: 3,
+    commit: 'abcdef0123456789abcdef0123456789abcdef01',
+    releaseId: 'v2026.09.07',
+    plugins: [{
+      pluginCode: 'payment-extension',
+      pluginVersion: '1.3.0',
+      migrationVersion: '5',
+      schemaDigest: 'A'.repeat(64),
+      migrationDigest: `sha256:${'b'.repeat(64)}`,
+      compatibleReaders: ['1.2.x', '1.3.x', '1.3.x'],
+      phase: 'EXPAND',
+      rollbackMode: 'application_only',
+    }],
+  }));
+  assert.deepEqual(normalized.plugins, [{
+    pluginCode: 'payment-extension',
+    pluginVersion: '1.3.0',
+    migrationVersion: '5',
+    schemaDigest: `sha256:${'a'.repeat(64)}`,
+    migrationDigest: `sha256:${'b'.repeat(64)}`,
+    compatibleReaders: ['1.2.x', '1.3.x'],
+    phase: 'expand',
+    rollbackMode: 'APPLICATION_ONLY',
+  }]);
+});
+
+test('release manifest rejects duplicate or non-expand plugin migrations', () => {
+  const base = manifestV2({ plugins: [{
+    pluginCode: 'payment-extension', pluginVersion: '1.3.0', migrationVersion: '5',
+    schemaDigest: 'a'.repeat(64), migrationDigest: 'b'.repeat(64), compatibleReaders: ['1.3.x'],
+    phase: 'expand', rollbackMode: 'APPLICATION_ONLY',
+  }] });
+  assert.throws(() => normalizeReleaseManifest({ ...base, plugins: [base.plugins[0], base.plugins[0]] }), /duplicates/);
+  assert.throws(() => normalizeReleaseManifest({ ...base, plugins: [{ ...base.plugins[0], phase: 'contract' }] }), /phase/);
+});
+
 test('manifest v2 rejects service roles that resolve to the same image digest', () => {
   const repeatedDigest = `sha256:${'a'.repeat(64)}`;
   const manifest = manifestV2();

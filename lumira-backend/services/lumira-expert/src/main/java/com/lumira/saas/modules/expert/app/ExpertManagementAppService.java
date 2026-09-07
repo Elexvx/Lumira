@@ -2,6 +2,7 @@ package com.lumira.saas.modules.expert.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.dictionary.DictionaryValueNormalizer;
+import com.lumira.api.competition.CompetitionExpertApplicationQueryPort;
 import com.lumira.api.workflow.WorkflowStartPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -63,6 +64,7 @@ public class ExpertManagementAppService {
     private final ExpertRepository expertRepository;
     private final WorkflowStartPort workflowStartPort;
     private final DictionaryValueNormalizer dictionaryValueNormalizer;
+    private final CompetitionExpertApplicationQueryPort competitionApplicationQueryPort;
     private final TrustedCurrentUserResolver trustedCurrentUserResolver;
     private final boolean enforceTrustedUserResolution;
 
@@ -71,9 +73,19 @@ public class ExpertManagementAppService {
             ExpertRepository expertRepository,
             WorkflowStartPort workflowStartPort,
             DictionaryValueNormalizer dictionaryValueNormalizer,
+            CompetitionExpertApplicationQueryPort competitionApplicationQueryPort,
             TrustedCurrentUserResolver trustedCurrentUserResolver
     ) {
-        this(expertRepository, workflowStartPort, dictionaryValueNormalizer, trustedCurrentUserResolver, true);
+        this(expertRepository, workflowStartPort, dictionaryValueNormalizer, competitionApplicationQueryPort, trustedCurrentUserResolver, true);
+    }
+
+    public ExpertManagementAppService(
+            ExpertRepository expertRepository,
+            WorkflowStartPort workflowStartPort,
+            DictionaryValueNormalizer dictionaryValueNormalizer,
+            TrustedCurrentUserResolver trustedCurrentUserResolver
+    ) {
+        this(expertRepository, workflowStartPort, dictionaryValueNormalizer, null, trustedCurrentUserResolver, true);
     }
 
     public ExpertManagementAppService(
@@ -81,19 +93,30 @@ public class ExpertManagementAppService {
             WorkflowStartPort workflowStartPort,
             DictionaryValueNormalizer dictionaryValueNormalizer
     ) {
-        this(expertRepository, workflowStartPort, dictionaryValueNormalizer, null, false);
+        this(expertRepository, workflowStartPort, dictionaryValueNormalizer, null, null, false);
+    }
+
+    public ExpertManagementAppService(
+            ExpertRepository expertRepository,
+            WorkflowStartPort workflowStartPort,
+            DictionaryValueNormalizer dictionaryValueNormalizer,
+            CompetitionExpertApplicationQueryPort competitionApplicationQueryPort
+    ) {
+        this(expertRepository, workflowStartPort, dictionaryValueNormalizer, competitionApplicationQueryPort, null, false);
     }
 
     private ExpertManagementAppService(
             ExpertRepository expertRepository,
             WorkflowStartPort workflowStartPort,
             DictionaryValueNormalizer dictionaryValueNormalizer,
+            CompetitionExpertApplicationQueryPort competitionApplicationQueryPort,
             TrustedCurrentUserResolver trustedCurrentUserResolver,
             boolean enforceTrustedUserResolution
     ) {
         this.expertRepository = expertRepository;
         this.workflowStartPort = workflowStartPort;
         this.dictionaryValueNormalizer = dictionaryValueNormalizer;
+        this.competitionApplicationQueryPort = competitionApplicationQueryPort;
         this.trustedCurrentUserResolver = trustedCurrentUserResolver;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
@@ -268,12 +291,13 @@ public class ExpertManagementAppService {
         if (!StringUtils.hasText(request.getCompetitionUuid())) {
             return;
         }
-        if (!expertRepository.isPublishedCompetition(request.getCompetitionUuid())) {
+        if (competitionApplicationQueryPort == null) {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found or not open for expert applications");
         }
-        List<ExpertRepository.ExpertApplicationField> fields = expertRepository
-                .findPublishedCompetitionExpertFields(request.getCompetitionUuid());
-        for (ExpertRepository.ExpertApplicationField field : fields) {
+        CompetitionExpertApplicationQueryPort.PublishedApplication application = competitionApplicationQueryPort
+                .findPublishedApplication(request.getCompetitionUuid())
+                .orElseThrow(() -> biz(ErrorCode.NOT_FOUND, "Competition not found or not open for expert applications"));
+        for (CompetitionExpertApplicationQueryPort.Field field : application.fields()) {
             if (!field.enabled() || !field.required()) {
                 continue;
             }

@@ -1,7 +1,7 @@
 package com.lumira.saas.modules.ai.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.lumira.saas.modules.ai.domain.AiEntities.AiMessageEntity;
+import com.lumira.saas.modules.ai.infrastructure.persistence.AiEntities.AiMessageEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

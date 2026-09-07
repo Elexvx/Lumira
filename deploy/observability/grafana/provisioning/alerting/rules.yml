@@ -1492,7 +1492,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: prometheus }
               editorMode: code
-              expr: max(redis_up{job="redis"}) < 1
+              expr: min(redis_up{job=~"redis-cache|redis-runtime"}) < 1
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -1526,6 +1526,52 @@ groups:
         annotations:
           summary: "Redis is unavailable to Lumira."
           description: "This rule is evaluated by Grafana independently of the built-in alerting plugin."
+        labels: { severity: critical, service_namespace: lumira }
+
+      - uid: lumira-redis-evictions
+        title: Lumira Redis evictions detected
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              editorMode: code
+              expr: sum(increase(redis_evicted_keys_total{job=~"redis-cache|redis-runtime"}[5m])) > 0
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              type: reduce
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              type: threshold
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: "Redis evicted keys in the last five minutes."
+          description: "Runtime eviction is a critical contract violation; cache eviction requires capacity review when sustained."
         labels: { severity: critical, service_namespace: lumira }
 
       - uid: lumira-alert-worker-stale

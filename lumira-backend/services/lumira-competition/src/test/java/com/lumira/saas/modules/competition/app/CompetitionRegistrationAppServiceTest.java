@@ -3,7 +3,7 @@ package com.lumira.saas.modules.competition.app;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.PaymentInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
@@ -447,7 +447,7 @@ class CompetitionRegistrationAppServiceTest {
                 objectMapper,
                 objectProvider(teamApiRejectingLookup()),
                 objectProvider((PaymentInternalApi) null),
-                objectProvider((SystemInternalApi) null),
+                objectProvider((UserIdentityQueryPort) null),
                 null,
                 new JdbcRegistrationDatasetRepository(sql),
                 new JdbcRegistrationPersistenceAdapter(sql),
@@ -471,7 +471,7 @@ class CompetitionRegistrationAppServiceTest {
                 objectMapper,
                 objectProvider(teamApiRejectingLookup()),
                 objectProvider((PaymentInternalApi) null),
-                objectProvider((SystemInternalApi) null),
+                objectProvider((UserIdentityQueryPort) null),
                 CompetitionTrustTestFixtures.resolver(permissionSnapshotService, null, null),
                 new JdbcRegistrationDatasetRepository(sql),
                 new JdbcRegistrationPersistenceAdapter(sql),
@@ -491,7 +491,7 @@ class CompetitionRegistrationAppServiceTest {
     void createRegistrationShouldRejectWhenLiveIdentityUserUuidMismatchesTrustedUser() {
         CompetitionSqlOperations sql = mock(CompetitionSqlOperations.class);
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(new SystemUserSnapshotDTO(
                 1001L,
                 "user-uuid-mismatch",
@@ -525,7 +525,7 @@ class CompetitionRegistrationAppServiceTest {
         RegistrationSql sql = new RegistrationSql();
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
         CompetitionPermissionSnapshotFixture.PermissionSnapshot snapshot = mock(CompetitionPermissionSnapshotFixture.PermissionSnapshot.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(new SystemUserSnapshotDTO(
                 1001L,
                 "user-uuid-1001",
@@ -568,7 +568,7 @@ class CompetitionRegistrationAppServiceTest {
     void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
         CompetitionSqlOperations sql = mock(CompetitionSqlOperations.class);
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(new SystemUserSnapshotDTO(
                         1001L,
@@ -976,7 +976,7 @@ class CompetitionRegistrationAppServiceTest {
         RegistrationSql sql = new RegistrationSql();
         sql.seedRegistration(1L, "PENDING_PAYMENT", "REG-1-ABCD", 8_800L);
         PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(new SystemUserSnapshotDTO(
                 1001L,
                 "user-uuid-1001",
@@ -1752,7 +1752,7 @@ class CompetitionRegistrationAppServiceTest {
                 objectMapper,
                 objectProvider(teamApiWithMembers(1001L, 1)),
                 objectProvider(paymentInternalApi),
-                objectProvider((SystemInternalApi) null),
+                objectProvider((UserIdentityQueryPort) null),
                 null,
                 new JdbcRegistrationDatasetRepository(sql),
                 new JdbcRegistrationPersistenceAdapter(sql),
@@ -2020,7 +2020,7 @@ class CompetitionRegistrationAppServiceTest {
         row.put("paymentStatus", "CONFIRMED");
         sql.paymentRecordRows = List.of(row);
         PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(new SystemUserSnapshotDTO(
                 1001L,
                 "user-uuid-1001",
@@ -2130,7 +2130,7 @@ class CompetitionRegistrationAppServiceTest {
             PaymentInternalApi paymentInternalApi,
             CompetitionPermissionSnapshotFixture permissionSnapshotService,
             CompetitionSessionAuthenticationFixture sessionAuthenticationService,
-        SystemInternalApi systemInternalApi
+        UserIdentityQueryPort systemInternalApi
     ) {
         CompetitionRegistrationAppService service = new CompetitionRegistrationAppService(
                 objectMapper,
@@ -2399,15 +2399,15 @@ class CompetitionRegistrationAppServiceTest {
         };
     }
 
-    private ObjectProvider<SystemInternalApi> objectProvider(SystemInternalApi systemInternalApi) {
+    private ObjectProvider<UserIdentityQueryPort> objectProvider(UserIdentityQueryPort systemInternalApi) {
         return new ObjectProvider<>() {
-            @Override public SystemInternalApi getObject(Object... args) { return systemInternalApi; }
-            @Override public SystemInternalApi getIfAvailable() { return systemInternalApi; }
-            @Override public SystemInternalApi getIfUnique() { return systemInternalApi; }
-            @Override public SystemInternalApi getObject() { return systemInternalApi; }
-            @Override public Iterator<SystemInternalApi> iterator() { return systemInternalApi == null ? List.<SystemInternalApi>of().iterator() : List.of(systemInternalApi).iterator(); }
-            @Override public Stream<SystemInternalApi> stream() { return systemInternalApi == null ? Stream.empty() : Stream.of(systemInternalApi); }
-            @Override public Stream<SystemInternalApi> orderedStream() { return stream(); }
+            @Override public UserIdentityQueryPort getObject(Object... args) { return systemInternalApi; }
+            @Override public UserIdentityQueryPort getIfAvailable() { return systemInternalApi; }
+            @Override public UserIdentityQueryPort getIfUnique() { return systemInternalApi; }
+            @Override public UserIdentityQueryPort getObject() { return systemInternalApi; }
+            @Override public Iterator<UserIdentityQueryPort> iterator() { return systemInternalApi == null ? List.<UserIdentityQueryPort>of().iterator() : List.of(systemInternalApi).iterator(); }
+            @Override public Stream<UserIdentityQueryPort> stream() { return systemInternalApi == null ? Stream.empty() : Stream.of(systemInternalApi); }
+            @Override public Stream<UserIdentityQueryPort> orderedStream() { return stream(); }
         };
     }
 
@@ -2432,8 +2432,8 @@ class CompetitionRegistrationAppServiceTest {
                 : null;
     }
 
-    private SystemInternalApi systemInternalApi(Long userId) {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private UserIdentityQueryPort systemInternalApi(Long userId) {
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(userId)).thenReturn(new SystemUserSnapshotDTO(
                 userId,
                 "user-uuid-" + userId,

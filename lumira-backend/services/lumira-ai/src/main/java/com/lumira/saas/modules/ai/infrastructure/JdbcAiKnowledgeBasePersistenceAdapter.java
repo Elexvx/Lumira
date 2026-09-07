@@ -1,7 +1,7 @@
 package com.lumira.saas.modules.ai.infrastructure;
 
 import com.lumira.api.client.FileInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.FileProcessingArtifactDTO;
@@ -86,7 +86,7 @@ public class JdbcAiKnowledgeBasePersistenceAdapter implements AiKnowledgeBasePer
     private final TransactionalEventOutboxPort platformEventPublisher;
     private final AiKnowledgeVectorService vectorService;
     private final AiPermissionSnapshotResolver permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final AiTrustedSessionResolver sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -129,7 +129,7 @@ public class JdbcAiKnowledgeBasePersistenceAdapter implements AiKnowledgeBasePer
             DomainEventPublisher ignoredDomainEventPublisher,
             AiKnowledgeVectorService vectorService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         this(
@@ -155,7 +155,7 @@ public class JdbcAiKnowledgeBasePersistenceAdapter implements AiKnowledgeBasePer
             TransactionalEventOutboxPort platformEventPublisher,
             AiKnowledgeVectorService vectorService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         this(
@@ -180,7 +180,7 @@ public class JdbcAiKnowledgeBasePersistenceAdapter implements AiKnowledgeBasePer
             TransactionalEventOutboxPort platformEventPublisher,
             AiKnowledgeVectorService vectorService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

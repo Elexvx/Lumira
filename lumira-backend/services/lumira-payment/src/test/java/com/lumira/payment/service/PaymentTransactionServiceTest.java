@@ -1,7 +1,7 @@
 package com.lumira.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
@@ -237,7 +237,7 @@ class PaymentTransactionServiceTest {
     @Test
     void getOrderForUserShouldRejectUserUuidMismatchBeforeOrderLookup() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = enabledSystemInternalApi();
+        UserIdentityQueryPort systemInternalApi = enabledUserIdentityQueryPort();
         PaymentTransactionService service = service(jdbcTemplate, systemInternalApi);
 
         assertThatThrownBy(() -> service.getOrderForUser(1001L, "other-uuid", "ORD-1"))
@@ -252,7 +252,7 @@ class PaymentTransactionServiceTest {
     @Test
     void getOrderForUserShouldRejectDisabledLookupUserBeforeOrderQuery() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         PaymentTransactionService service = service(jdbcTemplate, systemInternalApi);
 
         assertThatThrownBy(() -> service.getOrderForUser(1001L, "user-uuid-1001", "ORD-1"))
@@ -331,7 +331,7 @@ class PaymentTransactionServiceTest {
     void createOrderShouldRejectUntrustedRequestContextBeforeProviderLookup() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "tester", "DISABLED"));
         PaymentTransactionService service = service(jdbcTemplate, managementAppService, mock(PaymentOutboxService.class), mock(DomainEventPublisher.class), provider(systemInternalApi));
 
@@ -353,7 +353,7 @@ class PaymentTransactionServiceTest {
                 managementAppService,
                 mock(PaymentOutboxService.class),
                 mock(DomainEventPublisher.class),
-                provider(enabledSystemInternalApi(), "payment:refund:create")
+                provider(enabledUserIdentityQueryPort(), "payment:refund:create")
         );
 
         assertThatThrownBy(() -> service.createOrder(currentUser("payment:refund:create"), orderRequest("ORD-1", "idem-1")))
@@ -810,7 +810,7 @@ class PaymentTransactionServiceTest {
                 mock(PaymentManagementAppService.class),
                 mock(PaymentOutboxService.class),
                 mock(DomainEventPublisher.class),
-                provider(enabledSystemInternalApi(), "payment:order:view")
+                provider(enabledUserIdentityQueryPort(), "payment:order:view")
         );
 
         assertThatThrownBy(() -> service.createRefund(
@@ -916,7 +916,7 @@ class PaymentTransactionServiceTest {
     @Test
     void getRefundForUserShouldRejectDisabledLookupUserBeforeRefundQuery() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         PaymentTransactionService service = service(jdbcTemplate, systemInternalApi);
 
         assertThatThrownBy(() -> service.getRefundForUser(1001L, "user-uuid-1001", "REF-1"))
@@ -936,7 +936,7 @@ class PaymentTransactionServiceTest {
                 mock(PaymentManagementAppService.class),
                 mock(PaymentOutboxService.class),
                 mock(DomainEventPublisher.class),
-                provider(enabledSystemInternalApi(), "payment:refund:create")
+                provider(enabledUserIdentityQueryPort(), "payment:refund:create")
         );
 
         assertThatThrownBy(() -> service.getOrderForUser(currentUser("payment:refund:create"), "ORD-1"))
@@ -955,7 +955,7 @@ class PaymentTransactionServiceTest {
                 mock(PaymentManagementAppService.class),
                 mock(PaymentOutboxService.class),
                 mock(DomainEventPublisher.class),
-                provider(enabledSystemInternalApi(), "payment:refund:create")
+                provider(enabledUserIdentityQueryPort(), "payment:refund:create")
         );
 
         assertThatThrownBy(() -> service.getRefundForUser(currentUser("payment:refund:create"), "REF-1"))
@@ -1027,7 +1027,7 @@ class PaymentTransactionServiceTest {
         return service(jdbcTemplate, mock(PaymentManagementAppService.class));
     }
 
-    private PaymentTransactionService service(JdbcTemplate jdbcTemplate, SystemInternalApi systemInternalApi) {
+    private PaymentTransactionService service(JdbcTemplate jdbcTemplate, UserIdentityQueryPort systemInternalApi) {
         return service(
                 jdbcTemplate,
                 mock(PaymentManagementAppService.class),
@@ -1046,7 +1046,7 @@ class PaymentTransactionServiceTest {
     }
 
     private PaymentTransactionService service(JdbcTemplate jdbcTemplate, PaymentManagementAppService managementAppService, PaymentOutboxService outboxService, DomainEventPublisher domainEventPublisher) {
-        return service(jdbcTemplate, managementAppService, outboxService, domainEventPublisher, provider(enabledSystemInternalApi()));
+        return service(jdbcTemplate, managementAppService, outboxService, domainEventPublisher, provider(enabledUserIdentityQueryPort()));
     }
 
     private PaymentTransactionService service(
@@ -1054,7 +1054,7 @@ class PaymentTransactionServiceTest {
             PaymentManagementAppService managementAppService,
             PaymentOutboxService outboxService,
             DomainEventPublisher domainEventPublisher,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider
     ) {
         return new PaymentTransactionService(
                 jdbcTemplate,
@@ -1085,8 +1085,8 @@ class PaymentTransactionServiceTest {
         return currentUser;
     }
 
-    private SystemInternalApi enabledSystemInternalApi() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private UserIdentityQueryPort enabledUserIdentityQueryPort() {
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "tester", "ENABLED"));
         when(systemInternalApi.findTargetUserUuidById(1001L)).thenReturn("user-uuid-1001");
         return systemInternalApi;
@@ -1238,12 +1238,8 @@ class PaymentTransactionServiceTest {
         return any();
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi, String... permissions) {
-        if (systemInternalApi != null) {
-            when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
-                    .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class), permissions));
-        }
-        ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
+    private ObjectProvider<UserIdentityQueryPort> provider(UserIdentityQueryPort systemInternalApi, String... permissions) {
+        ObjectProvider<UserIdentityQueryPort> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(systemInternalApi);
         return provider;
     }

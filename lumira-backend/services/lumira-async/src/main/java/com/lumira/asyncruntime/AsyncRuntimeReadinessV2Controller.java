@@ -29,6 +29,10 @@ public class AsyncRuntimeReadinessV2Controller {
     private final List<String> scopedTokens;
     private final BooleanSupplier redisAvailable;
     private final BooleanSupplier paymentConsumerRunning;
+    private final BooleanSupplier notificationConsumerRunning;
+    private final BooleanSupplier iamConsumerRunning;
+    private final BooleanSupplier fileConsumerRunning;
+    private final BooleanSupplier recoveryFenceDurable;
 
     public AsyncRuntimeReadinessV2Controller(
             @Value("${lumira.async.owner-relay.control-plane-base-url:${LUMIRA_ASYNC_CONTROL_PLANE_BASE_URL:http://api-proxy:80}}")
@@ -47,6 +51,9 @@ public class AsyncRuntimeReadinessV2Controller {
                 pluginToken,
                 jobToken,
                 () -> true,
+                () -> true,
+                () -> true,
+                () -> true,
                 () -> true
         );
     }
@@ -61,7 +68,11 @@ public class AsyncRuntimeReadinessV2Controller {
             @Value("${saas.internal.plugin-token:${SAAS_INTERNAL_PLUGIN_TOKEN:}}") String pluginToken,
             @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobToken,
             RedisConnectionFactory redisConnectionFactory,
-            ObjectProvider<PaymentEventStreamConsumer> paymentConsumerProvider
+            ObjectProvider<PaymentEventStreamConsumer> paymentConsumerProvider,
+            ObjectProvider<PaymentNotificationConsumer> notificationConsumerProvider,
+            ObjectProvider<IamAuthorizationInvalidationConsumer> iamConsumerProvider,
+            ObjectProvider<FileLifecycleConsumer> fileConsumerProvider,
+            RecoveryFenceRegistry recoveryFenceRegistry
     ) {
         this(
                 controlPlaneBaseUrl,
@@ -74,7 +85,20 @@ public class AsyncRuntimeReadinessV2Controller {
                 () -> {
                     PaymentEventStreamConsumer consumer = paymentConsumerProvider.getIfAvailable();
                     return consumer != null && consumer.isRunning();
-                }
+                },
+                () -> {
+                    PaymentNotificationConsumer consumer = notificationConsumerProvider.getIfAvailable();
+                    return consumer != null && consumer.isRunning();
+                },
+                () -> {
+                    IamAuthorizationInvalidationConsumer consumer = iamConsumerProvider.getIfAvailable();
+                    return consumer != null && consumer.isRunning();
+                },
+                () -> {
+                    FileLifecycleConsumer consumer = fileConsumerProvider.getIfAvailable();
+                    return consumer != null && consumer.isRunning();
+                },
+                recoveryFenceRegistry::isDurable
         );
     }
 
@@ -88,10 +112,98 @@ public class AsyncRuntimeReadinessV2Controller {
             BooleanSupplier redisAvailable,
             BooleanSupplier paymentConsumerRunning
     ) {
+        this(
+                controlPlaneBaseUrl,
+                fileToken,
+                messageToken,
+                paymentToken,
+                pluginToken,
+                jobToken,
+                redisAvailable,
+                paymentConsumerRunning,
+                () -> true,
+                () -> true,
+                () -> true
+        );
+    }
+
+    AsyncRuntimeReadinessV2Controller(
+            String controlPlaneBaseUrl,
+            String fileToken,
+            String messageToken,
+            String paymentToken,
+            String pluginToken,
+            String jobToken,
+            BooleanSupplier redisAvailable,
+            BooleanSupplier paymentConsumerRunning,
+            BooleanSupplier recoveryFenceDurable
+    ) {
+        this(
+                controlPlaneBaseUrl,
+                fileToken,
+                messageToken,
+                paymentToken,
+                pluginToken,
+                jobToken,
+                redisAvailable,
+                paymentConsumerRunning,
+                () -> true,
+                () -> true,
+                recoveryFenceDurable
+        );
+    }
+
+    AsyncRuntimeReadinessV2Controller(
+            String controlPlaneBaseUrl,
+            String fileToken,
+            String messageToken,
+            String paymentToken,
+            String pluginToken,
+            String jobToken,
+            BooleanSupplier redisAvailable,
+            BooleanSupplier paymentConsumerRunning,
+            BooleanSupplier notificationConsumerRunning,
+            BooleanSupplier iamConsumerRunning,
+            BooleanSupplier recoveryFenceDurable
+    ) {
+        this(
+                controlPlaneBaseUrl,
+                fileToken,
+                messageToken,
+                paymentToken,
+                pluginToken,
+                jobToken,
+                redisAvailable,
+                paymentConsumerRunning,
+                notificationConsumerRunning,
+                iamConsumerRunning,
+                () -> true,
+                recoveryFenceDurable
+        );
+    }
+
+    AsyncRuntimeReadinessV2Controller(
+            String controlPlaneBaseUrl,
+            String fileToken,
+            String messageToken,
+            String paymentToken,
+            String pluginToken,
+            String jobToken,
+            BooleanSupplier redisAvailable,
+            BooleanSupplier paymentConsumerRunning,
+            BooleanSupplier notificationConsumerRunning,
+            BooleanSupplier iamConsumerRunning,
+            BooleanSupplier fileConsumerRunning,
+            BooleanSupplier recoveryFenceDurable
+    ) {
         this.controlPlaneBaseUrl = controlPlaneBaseUrl;
         this.scopedTokens = List.of(fileToken, messageToken, paymentToken, pluginToken, jobToken);
         this.redisAvailable = redisAvailable;
         this.paymentConsumerRunning = paymentConsumerRunning;
+        this.notificationConsumerRunning = notificationConsumerRunning;
+        this.iamConsumerRunning = iamConsumerRunning;
+        this.fileConsumerRunning = fileConsumerRunning;
+        this.recoveryFenceDurable = recoveryFenceDurable;
     }
 
     @GetMapping("/readiness")
@@ -107,21 +219,64 @@ public class AsyncRuntimeReadinessV2Controller {
                         "/api/v2/async/health",
                         "/api/v2/async/metrics",
                         "/api/v1/async/version",
-                        "/internal/jobs/outbox/relay"
+                        "/internal/jobs/outbox/recovery/{mode}/{owner}",
+                        "/internal/jobs/payment-events/dead-letter",
+                        "/internal/jobs/payment-events/dead-letter/stats",
+                        "/internal/jobs/payment-events/dead-letter/{recordId}/replay",
+                        "/internal/jobs/payment-notifications/dead-letter",
+                        "/internal/jobs/payment-notifications/dead-letter/stats",
+                        "/internal/jobs/payment-notifications/dead-letter/{recordId}/replay",
+                        "/internal/jobs/iam-authz/dead-letter",
+                        "/internal/jobs/file-lifecycle/dead-letter",
+                        "/internal/jobs/file-lifecycle/dead-letter/stats",
+                        "/internal/jobs/file-lifecycle/dead-letter/{recordId}/replay"
                 ),
-                List.of("Redis Stream payment consumer", "owner Outbox relay requests"),
+                List.of("Redis Stream payment consumer", "Redis Stream notification consumer", "Redis Stream IAM authorization consumer", "Redis Stream file lifecycle consumer", "owner Outbox relay requests"),
                 List.of(
                         "async.control-plane-base-url.configured",
                         "async.scoped-internal-tokens.configured",
                         "async.redis.connected",
+                        "async.recovery-fence.durable",
                         "async.payment-consumer.running",
+                        "async.notification-consumer.running",
+                        "async.iam-consumer.running",
+                        "async.file-consumer.running",
                         "async.no-datasource-or-owner-beans"
                 ),
                 List.of(
                         "lumira.event.relay.published",
                         "lumira.event.relay.failure",
                         "lumira.payment.consumer.events.consumed",
-                        "lumira.payment.consumer.events.failed"
+                        "lumira.payment.consumer.events.failed",
+                        "lumira.payment.consumer.stream.length",
+                        "lumira.payment.consumer.pending.count",
+                        "lumira.payment.consumer.pending.oldest.age.seconds",
+                        "redis_runtime_stream_pending",
+                        "redis_runtime_stream_oldest_pending_age",
+                        "lumira.payment.consumer.dead-letter.count",
+                        "lumira.notification.consumer.pending.count",
+                        "lumira.notification.consumer.pending.oldest.age.seconds",
+                        "redis_runtime_notification_stream_pending",
+                        "redis_runtime_notification_stream_oldest_pending_age",
+                        "lumira.notification.consumer.dead-letter.count",
+                        "lumira.iam.authz.consumer.events.consumed",
+                        "lumira.iam.authz.consumer.events.failed",
+                        "lumira.iam.authz.consumer.pending.count",
+                        "lumira.iam.authz.consumer.pending.oldest.age.seconds",
+                        "lumira.iam.authz.consumer.dead-letter.count",
+                        "iam_event_invalidation_success_total",
+                        "iam_event_duplicate_total",
+                        "iam_event_dlq_total",
+                        "iam_event_schema_reject_total",
+                        "lumira.file.consumer.events.consumed",
+                        "lumira.file.consumer.events.failed",
+                        "lumira.file.consumer.pending.count",
+                        "lumira.file.consumer.pending.oldest.age.seconds",
+                        "lumira.file.consumer.dead-letter.count",
+                        "file_event_projection_success_total",
+                        "file_event_duplicate_total",
+                        "file_event_dlq_total",
+                        "file_event_schema_reject_total"
                 ),
                 List.of("Redis", "active control-plane slot through api-proxy", "owner-scoped internal tokens"),
                 List.of(
@@ -166,9 +321,29 @@ public class AsyncRuntimeReadinessV2Controller {
                                 "Redis must accept commands before event relay and consumption are ready."
                         ),
                         healthCheck(
+                                "async.recovery-fence.durable",
+                                isRecoveryFenceDurable() ? "DURABLE" : "IN_MEMORY_FALLBACK",
+                                "Recovery fencing must use the durable runtime Redis in production."
+                        ),
+                        healthCheck(
                                 "async.payment-consumer.running",
                                 isPaymentConsumerRunning() ? "RUNNING" : "STOPPED",
                                 "The competition payment Redis Stream consumer must be actively polling."
+                        ),
+                        healthCheck(
+                                "async.notification-consumer.running",
+                                isNotificationConsumerRunning() ? "RUNNING" : "STOPPED",
+                                "The payment notification Redis Stream consumer must be actively polling."
+                        ),
+                        healthCheck(
+                                "async.iam-consumer.running",
+                                isIamConsumerRunning() ? "RUNNING" : "STOPPED",
+                                "The IAM authorization Redis Stream consumer must be actively polling."
+                        ),
+                        healthCheck(
+                                "async.file-consumer.running",
+                                isFileConsumerRunning() ? "RUNNING" : "STOPPED",
+                                "The File lifecycle Redis Stream consumer must be actively polling."
                         ),
                         healthCheck(
                                 "async.no-datasource-or-owner-beans",
@@ -180,7 +355,36 @@ public class AsyncRuntimeReadinessV2Controller {
                         metric("lumira.event.relay.published", "counter", "events", "Owner relay events published by the async worker."),
                         metric("lumira.event.relay.failure", "counter", "failures", "Owner relay call failures."),
                         metric("lumira.payment.consumer.events.consumed", "counter", "events", "Competition payment events consumed from Redis Streams."),
-                        metric("lumira.payment.consumer.events.failed", "counter", "failures", "Payment consumer failures retained for retry or dead-letter handling.")
+                        metric("lumira.payment.consumer.events.failed", "counter", "failures", "Payment consumer failures retained for retry or dead-letter handling."),
+                        metric("lumira.payment.consumer.stream.length", "gauge", "messages", "Current payment source Stream length."),
+                        metric("lumira.payment.consumer.pending.count", "gauge", "messages", "Current payment Stream pending count."),
+                        metric("lumira.payment.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending payment Stream entry."),
+                        metric("redis_runtime_stream_pending", "gauge", "messages", "Current pending entries in the runtime Redis payment Stream."),
+                        metric("redis_runtime_stream_oldest_pending_age", "gauge", "seconds", "Age of the oldest pending runtime Redis Stream entry."),
+                        metric("lumira.payment.consumer.dead-letter.count", "gauge", "messages", "Current payment DLQ count."),
+                        metric("lumira.notification.consumer.pending.count", "gauge", "messages", "Current pending notification Stream entries."),
+                        metric("lumira.notification.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending notification Stream entry."),
+                        metric("redis_runtime_notification_stream_pending", "gauge", "messages", "Current pending entries in the runtime Redis notification group."),
+                        metric("redis_runtime_notification_stream_oldest_pending_age", "gauge", "seconds", "Age of the oldest pending notification entry."),
+                        metric("lumira.notification.consumer.dead-letter.count", "gauge", "messages", "Current notification DLQ count."),
+                        metric("lumira.iam.authz.consumer.events.consumed", "counter", "events", "IAM authorization invalidation events applied."),
+                        metric("lumira.iam.authz.consumer.events.failed", "counter", "failures", "IAM authorization consumer failures retained for retry or dead letter."),
+                        metric("lumira.iam.authz.consumer.pending.count", "gauge", "messages", "Current pending IAM authorization Stream entries."),
+                        metric("lumira.iam.authz.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending IAM authorization entry."),
+                        metric("lumira.iam.authz.consumer.dead-letter.count", "gauge", "messages", "Current IAM authorization DLQ count."),
+                        metric("iam_event_invalidation_success_total", "counter", "events", "IAM authorization invalidations successfully applied."),
+                        metric("iam_event_duplicate_total", "counter", "events", "IAM events skipped because an event receipt already exists."),
+                        metric("iam_event_dlq_total", "counter", "events", "IAM events copied to the consumer dead-letter stream."),
+                        metric("iam_event_schema_reject_total", "counter", "events", "IAM events rejected for unsupported or invalid schema."),
+                        metric("lumira.file.consumer.events.consumed", "counter", "events", "File lifecycle events accepted by the File owner."),
+                        metric("lumira.file.consumer.events.failed", "counter", "failures", "File lifecycle failures retained for retry or dead letter."),
+                        metric("lumira.file.consumer.pending.count", "gauge", "messages", "Current pending File lifecycle Stream entries."),
+                        metric("lumira.file.consumer.pending.oldest.age.seconds", "gauge", "seconds", "Age of the oldest pending File lifecycle entry."),
+                        metric("lumira.file.consumer.dead-letter.count", "gauge", "messages", "Current File lifecycle dead-letter Stream size."),
+                        metric("file_event_projection_success_total", "counter", "events", "File lifecycle commands accepted by the File owner."),
+                        metric("file_event_duplicate_total", "counter", "events", "File lifecycle events acknowledged by owner idempotency."),
+                        metric("file_event_dlq_total", "counter", "events", "File lifecycle events copied to the consumer dead-letter stream."),
+                        metric("file_event_schema_reject_total", "counter", "events", "File lifecycle events rejected for invalid or unsupported schema.")
                 )
         );
     }
@@ -189,7 +393,11 @@ public class AsyncRuntimeReadinessV2Controller {
         return StringUtils.hasText(controlPlaneBaseUrl)
                 && scopedTokensConfigured()
                 && isRedisAvailable()
-                && isPaymentConsumerRunning();
+                && isRecoveryFenceDurable()
+                && isPaymentConsumerRunning()
+                && isNotificationConsumerRunning()
+                && isIamConsumerRunning()
+                && isFileConsumerRunning();
     }
 
     private boolean scopedTokensConfigured() {
@@ -202,6 +410,22 @@ public class AsyncRuntimeReadinessV2Controller {
 
     private boolean isPaymentConsumerRunning() {
         return safeBoolean(paymentConsumerRunning);
+    }
+
+    private boolean isNotificationConsumerRunning() {
+        return safeBoolean(notificationConsumerRunning);
+    }
+
+    private boolean isIamConsumerRunning() {
+        return safeBoolean(iamConsumerRunning);
+    }
+
+    private boolean isFileConsumerRunning() {
+        return safeBoolean(fileConsumerRunning);
+    }
+
+    private boolean isRecoveryFenceDurable() {
+        return safeBoolean(recoveryFenceDurable);
     }
 
     private boolean safeBoolean(BooleanSupplier supplier) {

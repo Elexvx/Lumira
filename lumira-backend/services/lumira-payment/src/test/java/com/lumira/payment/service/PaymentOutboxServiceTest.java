@@ -1,7 +1,7 @@
 package com.lumira.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -148,7 +148,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectUserUuidMismatchWhenDatabaseCanResolveUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = trustedSystemApi();
+        UserIdentityQueryPort systemInternalApi = trustedSystemApi();
         PaymentOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -162,7 +162,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectUserUuidWhenDatabaseCannotVerifyUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         PaymentOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -176,7 +176,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectDisabledUserEvenWhenUserUuidMatches() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         PaymentOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -678,12 +678,12 @@ class PaymentOutboxServiceTest {
         return service(jdbcTemplate, trustedSystemApi());
     }
 
-    private PaymentOutboxService service(JdbcTemplate jdbcTemplate, SystemInternalApi systemInternalApi) {
+    private PaymentOutboxService service(JdbcTemplate jdbcTemplate, UserIdentityQueryPort systemInternalApi) {
         return new PaymentOutboxService(jdbcTemplate, new ObjectMapper(), systemInternalApi);
     }
 
-    private SystemInternalApi trustedSystemApi() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private UserIdentityQueryPort trustedSystemApi() {
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findTargetUserUuidById(9L)).thenReturn("user-uuid-9");
         when(systemInternalApi.findUserIdentityById(9L)).thenReturn(new SystemUserSnapshotDTO(
                 9L,

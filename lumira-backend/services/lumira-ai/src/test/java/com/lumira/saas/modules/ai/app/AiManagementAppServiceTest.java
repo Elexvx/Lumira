@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -235,7 +235,7 @@ class AiManagementAppServiceTest {
     void listEmployeesShouldRejectDisabledTrustedUserBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "admin", "DISABLED"));
         JdbcAiManagementPersistenceAdapter service = new JdbcAiManagementPersistenceAdapter(
                 jdbcTemplate,
@@ -259,7 +259,7 @@ class AiManagementAppServiceTest {
     void listEmployeesShouldRejectTrustedUserWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, " ", "ENABLED"));
         JdbcAiManagementPersistenceAdapter service = new JdbcAiManagementPersistenceAdapter(
                 jdbcTemplate,
@@ -284,7 +284,7 @@ class AiManagementAppServiceTest {
     void listEmployeesShouldRefreshTrustedUsernameFromLiveIdentityBeforeQuery() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "live-admin", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100"))

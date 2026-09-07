@@ -1,6 +1,6 @@
 package com.lumira.auth.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemSecurityConfigurationPort;
 import com.lumira.api.system.SecuritySettingsDTO;
 import com.lumira.auth.config.AuthSecurityProperties;
 import com.lumira.common.runtime.ReadModelVersionCache;
@@ -22,18 +22,18 @@ public class SecuritySettingsService {
     private static final String READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP = "public-bootstrap";
 
     private final AuthSecurityProperties securityProperties;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemSecurityConfigurationPort systemInternalApi;
     private final ReadModelVersionCache readModelVersionCache;
     private volatile CachedSecuritySettings cachedSettings;
 
-    public SecuritySettingsService(AuthSecurityProperties securityProperties, SystemInternalApi systemInternalApi) {
+    public SecuritySettingsService(AuthSecurityProperties securityProperties, SystemSecurityConfigurationPort systemInternalApi) {
         this(securityProperties, systemInternalApi, new ReadModelVersionCache(READ_MODEL_VERSION_CACHE_TTL_MS));
     }
 
     @Autowired
     public SecuritySettingsService(
             AuthSecurityProperties securityProperties,
-            SystemInternalApi systemInternalApi,
+            SystemSecurityConfigurationPort systemInternalApi,
             ReadModelVersionCache readModelVersionCache
     ) {
         this.securityProperties = securityProperties;

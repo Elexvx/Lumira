@@ -222,19 +222,16 @@ test('deploy-container generates every scoped internal token used by production 
   }
 });
 
-test('deploy-container generates and migrates the production Redis credential', () => {
-  assert.match(deployScript, /REDIS_PASSWORD:\s*randomSecret\('redis'\)/);
-  assert.match(
-    deployScript,
-    /\['REDIS_PASSWORD', 'change-me-at-least-24-characters-redis-password'\]/,
-  );
+test('deploy-container generates independent production Redis credentials', () => {
+  assert.match(deployScript, /REDIS_CACHE_PASSWORD:\s*randomSecret\('redis-cache'\)/);
+  assert.match(deployScript, /REDIS_RUNTIME_PASSWORD:\s*randomSecret\('redis-runtime'\)/);
 });
 
 test('Windows WSL Docker deployments forward migration credentials without putting them in argv', () => {
   assert.match(
     deployScript,
-    /WSLENV:\s*wslForwardedEnvironment\(\['DB_URL', 'DB_USERNAME', 'DB_PASSWORD'\]\)/,
-    'database credentials must cross the docker.cmd-to-WSL boundary through WSLENV'
+    /WSLENV:\s*wslForwardedEnvironment\(\[[\s\S]*?'DB_URL', 'DB_USERNAME', 'DB_PASSWORD'[\s\S]*?'PLUGIN_MIGRATION_RELEASE_ID', 'PLUGIN_MIGRATION_EXECUTOR_ID'[\s\S]*?\]\)/,
+    'database credentials and plugin migration fences must cross the docker.cmd-to-WSL boundary through WSLENV'
   );
   assert.doesNotMatch(
     deployScript,
@@ -296,7 +293,8 @@ test('observability materializes exporter credentials without exposing the passw
   assert.match(deployScript, /mysqlAuthenticated/);
   assert.match(deployScript, /mysql_up%7Bjob%3D%22mysql%22%7D/);
   assert.doesNotMatch(deployScript, /'-e',\s*`?MYSQLD_EXPORTER_PASSWORD=/);
-  assert.doesNotMatch(composeProd, /\$\{MYSQLD_EXPORTER_PASSWORD(?::[^}]*)?\}/);
+  const exporterBlock = composeProd.match(/  mysqld-exporter:[\s\S]*?\n  redis-exporter:/)?.[0] || '';
+  assert.doesNotMatch(exporterBlock, /\$\{MYSQLD_EXPORTER_PASSWORD(?::[^}]*)?\}/);
   assert.match(deployScript, /External MYSQLD_EXPORTER_ADDRESS must exactly match the DB_URL target/);
   assert.match(installScript, /External MYSQLD_EXPORTER_ADDRESS must exactly match the DB_URL target/);
   assert.match(deployScript, /directives\.length !== 3/);
@@ -316,7 +314,7 @@ test('local MySQL exporter provisioning converges privileges and is part of inst
 
   assert.match(deployScript, /await ensureLocalMysqlExporterAccount\(\);\s*await runDatabaseMigrations\(\);/);
   assert.match(installScript, /composeUp\(options, 'infrastructure',[\s\S]*?await provisionLocalMysqlExporterAccount\(options\);/);
-  assert.match(installScript, /\['mysqld-exporter', 'backup-metrics-exporter', 'prometheus'/);
+  assert.match(installScript, /\['mysqld-exporter', 'redis-exporter', 'redis-runtime-exporter', 'backup-metrics-exporter', 'prometheus'/);
   assert.match(installScript, /mysql_up%7Bjob%3D%22mysql%22%7D/);
   assert.match(installScript, /MySQL observability is not ready/);
 });
@@ -443,7 +441,7 @@ test('install-platform starts the supported async and job runtime topology', () 
   assert.doesNotMatch(installScript, /NACOS|nacos|useNacos|--nacos/, 'install-platform must not expose an unsupported config/discovery toggle');
   assert.match(
     installScript,
-    /waitForComposeServicesRunning\(\s*options,\s*\[\s*'redis',\s*'xxl-job-admin',\s*'lumira-server-blue',\s*'lumira-async',\s*'lumira-job-executor',/m,
+    /waitForComposeServicesRunning\(\s*options,\s*\[\s*'redis-cache',\s*'redis-runtime',\s*'xxl-job-admin',\s*'lumira-server-blue',\s*'lumira-async',\s*'lumira-job-executor',/m,
     'install-platform must verify that the core runtime services are actually running after startup'
   );
   assert.match(
@@ -534,7 +532,8 @@ test('deploy-container allows selected deploys for every compose runtime service
     'edge-proxy',
     'lumira-ui',
     'mysql',
-    'redis',
+    'redis-cache',
+    'redis-runtime',
     'xxl-job-admin',
     'prometheus',
     'loki',
@@ -761,14 +760,14 @@ test('api proxy routes control-plane jobs to the active control plane slot', () 
 });
 
 test('online migrator joins the configurable database network used by production', () => {
-  assert.match(envExample, /^DB_MIGRATION_NETWORK=deploy_default$/m);
-  assert.match(updater, /env\.DB_MIGRATION_NETWORK \|\| env\.DB_BACKUP_NETWORK \|\| 'deploy_default'/);
+  assert.match(envExample, /^DB_MIGRATION_NETWORK=deploy_data-network$/m);
+  assert.match(updater, /env\.DB_MIGRATION_NETWORK \|\| env\.DB_BACKUP_NETWORK \|\| 'deploy_data-network'/);
   assert.match(updater, /'--force-recreate', `lumira-server-\$\{targetSlot\}`/);
   assert.match(updater, /composeArgs\(\.\.\.args\), \{ env: parseEnvFile\(envPath\) \}/);
   assert.match(updater, /The migration network cannot resolve the configured database host\./);
   assert.match(
     composeProd,
-    /mysql:[\s\S]*?networks:\s*\n\s*- default\s*\n\s*- 1panel-network/,
+    /mysql:[\s\S]*?networks:\s*\n\s*- data-network/,
     'bundled MySQL must be reachable through the same database network as production migrations'
   );
 });

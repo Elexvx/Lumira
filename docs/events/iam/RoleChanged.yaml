@@ -1,0 +1,18 @@
+name: RoleChanged
+eventType: RoleChanged
+sourceModule: iam
+producer: iam
+schemaVersion: 1
+aggregate:
+  type: iam.role
+  id: role id
+payload:
+  roleId: changed role id
+  changeType: CREATED, UPDATED or DELETED
+  roleCode: changed role code
+  producer: iam
+  owner: lumira-system
+consumer:
+  runtime: lumira-async
+  purpose: delete role and role-data-policy authorization-version keys
+  rule: must not be required by AuthJwtAuthFilter before fail-closed session validation

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.ai.AiSystemManagementToolPort;
 import com.lumira.api.client.FileInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -88,7 +88,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private final AiSkillPermissionChecker aiSkillPermissionChecker;
     private final ObjectMapper objectMapper;
     private final AiPermissionSnapshotResolver permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final AiTrustedSessionResolver sessionAuthenticationService;
     private final AiSystemManagementToolPort systemManagementToolPort;
     private final AiPlatformQueryFacade platformQueryFacade;
@@ -171,7 +171,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             AiPlatformQueryFacade platformQueryFacade,
             AiIamQueryFacade iamQueryFacade,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             AiSystemManagementToolPort systemManagementToolPort,
             FileInternalApi fileInternalApi,
@@ -204,7 +204,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             AiPlatformQueryFacade platformQueryFacade,
             AiIamQueryFacade iamQueryFacade,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             AiSystemManagementToolPort systemManagementToolPort,
             FileInternalApi fileInternalApi,

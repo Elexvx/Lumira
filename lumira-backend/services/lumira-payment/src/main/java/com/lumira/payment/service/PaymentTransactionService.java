@@ -3,7 +3,7 @@ package com.lumira.payment.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
@@ -52,7 +52,7 @@ public class PaymentTransactionService {
     private final PaymentProviderCatalog providerCatalog;
     private final PaymentOutboxService outboxService;
     private final DomainEventPublisher domainEventPublisher;
-    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider;
     private final PaymentActorResolver actorResolver;
     private final AlipayPagePayService alipayPagePayService;
     private final WechatPayV3Service wechatPayV3Service;
@@ -66,7 +66,7 @@ public class PaymentTransactionService {
             PaymentProviderCatalog providerCatalog,
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider,
             WechatPayV3Service wechatPayV3Service
     ) {
         this.jdbcTemplate = jdbcTemplate;
@@ -88,7 +88,7 @@ public class PaymentTransactionService {
             PaymentProviderCatalog providerCatalog,
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider
     ) {
         this(
                 jdbcTemplate,
@@ -718,7 +718,7 @@ public class PaymentTransactionService {
 
     private String resolveUserUuid(Long userId) {
         try {
-            SystemInternalApi systemInternalApi = systemInternalApiProvider == null
+            UserIdentityQueryPort systemInternalApi = systemInternalApiProvider == null
                     ? null
                     : systemInternalApiProvider.getIfAvailable();
             if (systemInternalApi == null) {

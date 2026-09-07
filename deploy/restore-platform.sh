@@ -256,9 +256,9 @@ command -v sha256sum >/dev/null 2>&1 || die "sha256sum is required to validate t
 
 COMPOSE_FILE="${ROOT_DIR}/deploy/docker-compose.prod.yml"
 MYSQL_SERVICE="${MYSQL_SERVICE:-mysql}"
-REDIS_SERVICE="${REDIS_SERVICE:-redis}"
+REDIS_SERVICE="${REDIS_SERVICE:-redis-runtime}"
 MYSQL_CLIENT_IMAGE="${MYSQL_CLIENT_IMAGE:-mysql:8.4}"
-DB_BACKUP_NETWORK="${DB_BACKUP_NETWORK:-1panel-network}"
+DB_BACKUP_NETWORK="${DB_BACKUP_NETWORK:-deploy_data-network}"
 DB_URL="${DB_URL:-}"
 DB_HOST="${DB_HOST:-}"
 DB_PORT="${DB_PORT:-}"
@@ -283,8 +283,8 @@ APPLICATION_DATABASE="${APPLICATION_DATABASE:-saas}"
 if [[ "${RESTORE_MODE}" == "production" && "${RESTORE_TARGET_DATABASE}" != "${APPLICATION_DATABASE}" ]]; then
   die "Production restore target ${RESTORE_TARGET_DATABASE} does not match the application database ${APPLICATION_DATABASE}; use isolated mode for a side database."
 fi
-MYSQL_USER="${MYSQL_RESTORE_USERNAME:-${MYSQL_USER:-${DB_USERNAME:-${DB_USER:-root}}}}"
-MYSQL_PASSWORD="${MYSQL_RESTORE_PASSWORD:-${MYSQL_PASSWORD:-${DB_PASSWORD:-}}}"
+MYSQL_USER="${MYSQL_RESTORE_USERNAME:-}"
+MYSQL_PASSWORD="${MYSQL_RESTORE_PASSWORD:-}"
 MYSQL_SSL_MODE="${MYSQL_SSL_MODE:-}"
 MYSQL_SSL_CA_FILE="${MYSQL_SSL_CA_FILE:-}"
 if [[ -z "${MYSQL_SSL_MODE}" ]]; then
@@ -300,6 +300,9 @@ if [[ -z "${MYSQL_SSL_MODE}" ]]; then
 fi
 MYSQL_SSL_MODE="${MYSQL_SSL_MODE^^}"
 [[ -n "${MYSQL_USER}" ]] || die "MySQL restore username is required."
+[[ -n "${MYSQL_PASSWORD}" ]] || die "MYSQL_RESTORE_PASSWORD is required; restore never falls back to the application account."
+[[ "${MYSQL_USER,,}" != "root" ]] || die "MYSQL_RESTORE_USERNAME must not be root."
+[[ "${MYSQL_USER}" != "${DB_USERNAME:-}" ]] || die "MYSQL_RESTORE_USERNAME must not share the application account."
 [[ "${DB_PORT}" =~ ^[0-9]+$ ]] || die "MySQL port must be numeric."
 [[ "${MYSQL_SSL_MODE}" =~ ^(DISABLED|PREFERRED|REQUIRED|VERIFY_CA|VERIFY_IDENTITY)$ ]] || die "MYSQL_SSL_MODE must be DISABLED, PREFERRED, REQUIRED, VERIFY_CA, or VERIFY_IDENTITY."
 if [[ -n "${MYSQL_SSL_CA_FILE}" ]]; then

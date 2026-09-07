@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -38,7 +38,7 @@ class DefaultAiToolRegistry implements AiToolRegistry {
     private final AuthorizationService authorizationService;
     private final SecurityContextFacade securityContextFacade;
     private final AiPermissionSnapshotResolver permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final AiTrustedSessionResolver sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -75,7 +75,7 @@ class DefaultAiToolRegistry implements AiToolRegistry {
             AuthorizationService authorizationService,
             SecurityContextFacade securityContextFacade,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         this(
@@ -94,7 +94,7 @@ class DefaultAiToolRegistry implements AiToolRegistry {
             AuthorizationService authorizationService,
             SecurityContextFacade securityContextFacade,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

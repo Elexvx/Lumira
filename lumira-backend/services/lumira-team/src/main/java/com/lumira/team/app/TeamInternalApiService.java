@@ -1,6 +1,6 @@
 package com.lumira.team.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -22,13 +22,13 @@ public class TeamInternalApiService implements TeamInternalApi {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository memberRepository;
     private final TeamPermissionService permissionService;
-    private final ObjectProvider<SystemInternalApi> systemInternalApi;
+    private final ObjectProvider<UserIdentityQueryPort> systemInternalApi;
 
     public TeamInternalApiService(
             TeamRepository teamRepository,
             TeamMemberRepository memberRepository,
             TeamPermissionService permissionService,
-            ObjectProvider<SystemInternalApi> systemInternalApi
+            ObjectProvider<UserIdentityQueryPort> systemInternalApi
     ) {
         this.teamRepository = teamRepository;
         this.memberRepository = memberRepository;
@@ -115,7 +115,7 @@ public class TeamInternalApiService implements TeamInternalApi {
         if (!StringUtils.hasText(userUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, label + " user uuid is required", label + " user uuid is required");
         }
-        SystemInternalApi internalApi = systemInternalApi == null ? null : systemInternalApi.getIfAvailable();
+        UserIdentityQueryPort internalApi = systemInternalApi == null ? null : systemInternalApi.getIfAvailable();
         if (internalApi == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable", "Trusted user resolver is unavailable");
         }

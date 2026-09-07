@@ -1,6 +1,6 @@
 package com.lumira.team.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -54,7 +54,7 @@ class TeamV2ControllerTest {
         TeamInviteService teamInviteService = mock(TeamInviteService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionGuard permissionGuard = mock(PermissionGuard.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         TeamV2Controller controller = new TeamV2Controller(
                 teamAppService,
                 teamInviteService,
@@ -83,7 +83,7 @@ class TeamV2ControllerTest {
         TeamInviteService teamInviteService = mock(TeamInviteService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionGuard permissionGuard = mock(PermissionGuard.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         TeamV2Controller controller = new TeamV2Controller(
                 teamAppService,
                 teamInviteService,

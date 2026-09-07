@@ -3,7 +3,7 @@ package com.lumira.saas.modules.competition.app;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.PaymentInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.dictionary.DictionaryItemLookupPort;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
@@ -100,7 +100,7 @@ public class CompetitionRegistrationAppService {
     private final ObjectMapper objectMapper;
     private final ObjectProvider<TeamInternalApi> teamInternalApiProvider;
     private final ObjectProvider<PaymentInternalApi> paymentInternalApiProvider;
-    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider;
     private ObjectProvider<ProjectSnapshotPort> projectSnapshotPortProvider;
     private ObjectProvider<DictionaryItemLookupPort> dictionaryItemLookupPortProvider;
     private final TrustedCurrentUserResolver trustedCurrentUserResolver;
@@ -116,7 +116,7 @@ public class CompetitionRegistrationAppService {
             ObjectMapper objectMapper,
             ObjectProvider<TeamInternalApi> teamInternalApiProvider,
             ObjectProvider<PaymentInternalApi> paymentInternalApiProvider,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider,
             TrustedCurrentUserResolver trustedCurrentUserResolver,
             RegistrationDatasetRepository registrationDatasetRepository,
             RegistrationQueryRepository registrationQueryRepository,
@@ -147,7 +147,7 @@ public class CompetitionRegistrationAppService {
             ObjectMapper objectMapper,
             ObjectProvider<TeamInternalApi> teamInternalApiProvider,
             ObjectProvider<PaymentInternalApi> paymentInternalApiProvider,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider,
             TrustedCurrentUserResolver trustedCurrentUserResolver,
             RegistrationDatasetRepository registrationDatasetRepository,
             RegistrationQueryRepository registrationQueryRepository,
@@ -1228,7 +1228,7 @@ public class CompetitionRegistrationAppService {
     private String resolvePaymentOwnerUserUuid(Long ownerUserId, String expectedOwnerUserUuid) {
         Long normalizedOwnerUserId = requirePositiveUserId(ownerUserId, "Registration owner is missing");
         String normalizedExpectedOwnerUserUuid = requireTrustedOwnerUserUuid(expectedOwnerUserUuid);
-        SystemInternalApi systemInternalApi = systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable();
+        UserIdentityQueryPort systemInternalApi = systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable();
         if (systemInternalApi == null) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted payment owner resolver is unavailable");
         }

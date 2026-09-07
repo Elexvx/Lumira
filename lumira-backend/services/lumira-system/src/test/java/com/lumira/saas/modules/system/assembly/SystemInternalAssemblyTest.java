@@ -5,6 +5,7 @@ import java.util.Arrays;
 import com.lumira.api.export.ExportTaskQueuePort;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
@@ -17,6 +18,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.SystemInternalApiService;
+import com.lumira.saas.modules.system.app.SystemInternalApplicationService;
 import com.lumira.saas.modules.system.SystemAsyncAssemblyConfiguration;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
@@ -28,7 +30,7 @@ import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceServic
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
 import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -50,6 +52,8 @@ class SystemInternalAssemblyTest {
         contextRunner.withPropertyValues("lumira.monolith=true").run(context -> {
             assertThat(context.getBeansOfType(SystemInternalApi.class)).hasSize(1);
             assertThat(context.getBeansOfType(SystemInternalApiService.class)).hasSize(1);
+            assertThat(context.getBeansOfType(SystemInternalApplicationService.class))
+                    .containsKey("systemInternalApplicationPort");
             assertThat(context.getBeansOfType(InternalSystemController.class)).hasSize(1);
         });
     }
@@ -59,6 +63,8 @@ class SystemInternalAssemblyTest {
         contextRunner.withPropertyValues("lumira.monolith=false").run(context -> {
             assertThat(context.getBeansOfType(SystemInternalApi.class)).hasSize(1);
             assertThat(context.getBeansOfType(SystemInternalApiService.class)).hasSize(1);
+            assertThat(context.getBeansOfType(SystemInternalApplicationService.class))
+                    .containsKey("systemInternalApplicationPort");
             assertThat(context.getBeansOfType(InternalSystemController.class)).hasSize(1);
         });
     }
@@ -80,7 +86,7 @@ class SystemInternalAssemblyTest {
                 .toList();
         assertThat(autowiredConstructors).hasSize(1);
         assertThat(autowiredConstructors.getFirst().getParameterTypes()).contains(
-                SystemInternalApi.class,
+                UserIdentityQueryPort.class,
                 SessionAuthenticationService.class
         );
         assertThat(Arrays.stream(autowiredConstructors.getFirst().getGenericParameterTypes())
@@ -97,13 +103,14 @@ class SystemInternalAssemblyTest {
             SystemInternalApiService.class,
             JdbcInternalSystemRepository.class,
             InternalSystemApplicationService.class,
+            SystemInternalApplicationService.class,
             InternalSystemController.class
     })
     static class TestConfiguration {
 
         @Bean
-        UserDomainService userDomainService() {
-            return mock(UserDomainService.class);
+        UserAccountQueryService userDomainService() {
+            return mock(UserAccountQueryService.class);
         }
 
         @Bean

@@ -54,7 +54,7 @@ class JobReadinessV2ControllerTest {
         });
         assertThat(metrics.metrics()).anySatisfy(metric -> {
             assertThat(metric.name()).isEqualTo("job.owner_handler.declared_count");
-            assertThat(metric.value()).isEqualTo(10.0);
+            assertThat(metric.value()).isEqualTo(12.0);
         });
     }
 

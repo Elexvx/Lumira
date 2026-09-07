@@ -1,7 +1,7 @@
 package com.lumira.file.event;
 
 import com.lumira.api.file.FileObjectDTO;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -145,7 +145,7 @@ class FilePlatformEventPublisherTest {
     @Test
     void publishUploadedShouldRejectDisabledTrustedUserBeforeOutboxWrite() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "DISABLED"));
         FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService, provider(systemInternalApi));
@@ -161,7 +161,7 @@ class FilePlatformEventPublisherTest {
     @Test
     void publishUploadedShouldRejectTrustedUserUuidMismatchBeforeOutboxWrite() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "another-uuid", "ENABLED"));
         FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService, provider(systemInternalApi));
@@ -201,16 +201,16 @@ class FilePlatformEventPublisherTest {
         return new FilePlatformEventPublisher(outboxService, provider(enabledSystemInternalApi()));
     }
 
-    private SystemInternalApi enabledSystemInternalApi() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private UserIdentityQueryPort enabledSystemInternalApi() {
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(eq(2001L)))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "ENABLED"));
         return systemInternalApi;
     }
 
     @SuppressWarnings("unchecked")
-    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
-        ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
+    private ObjectProvider<UserIdentityQueryPort> provider(UserIdentityQueryPort systemInternalApi) {
+        ObjectProvider<UserIdentityQueryPort> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(systemInternalApi);
         return provider;
     }

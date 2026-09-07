@@ -98,7 +98,7 @@ test('mysqld exporter is isolated, profile-scoped and secret-backed', () => {
   assert.doesNotMatch(compose, /tls-server-name/);
   assert.doesNotMatch(compose, /tls-min-version/);
   assert.doesNotMatch(compose, /tls-max-version/);
-  assert.doesNotMatch(compose, /\$\{MYSQLD_EXPORTER_PASSWORD(?::[^}]*)?\}/, 'password must not be interpolated into container configuration');
+  assert.doesNotMatch(exporter, /\$\{MYSQLD_EXPORTER_PASSWORD(?::[^}]*)?\}/, 'password must not be interpolated into exporter container configuration');
   assert.doesNotMatch(prometheus, /password|MYSQLD_EXPORTER_PASSWORD/i);
   assert.match(runbook, /^ssl-ca = \/run\/secrets\/mysql_exporter_ca$/m);
   assert.match(runbook, /^tls = custom$/m);

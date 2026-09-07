@@ -1,6 +1,6 @@
 package com.lumira.auth.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemSecurityConfigurationPort;
 import com.lumira.api.system.SecuritySettingsDTO;
 import com.lumira.auth.config.AuthSecurityProperties;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ class SecuritySettingsServiceTest {
 
     @Test
     void snapshotReusesCachedSettingsWhenBootstrapVersionStable() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemSecurityConfigurationPort systemInternalApi = mock(SystemSecurityConfigurationPort.class);
         AuthSecurityProperties securityProperties = new AuthSecurityProperties();
         SecuritySettingsDTO settings = new SecuritySettingsDTO(
                 1800L,
@@ -46,7 +46,7 @@ class SecuritySettingsServiceTest {
 
     @Test
     void snapshotReloadsWhenBootstrapVersionChanges() throws Exception {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemSecurityConfigurationPort systemInternalApi = mock(SystemSecurityConfigurationPort.class);
         AuthSecurityProperties securityProperties = new AuthSecurityProperties();
         SecuritySettingsDTO firstSettings = new SecuritySettingsDTO(
                 1800L,
@@ -91,7 +91,7 @@ class SecuritySettingsServiceTest {
 
     @Test
     void snapshotFallsBackToTtlCacheWhenReadModelVersionUnavailable() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemSecurityConfigurationPort systemInternalApi = mock(SystemSecurityConfigurationPort.class);
         AuthSecurityProperties securityProperties = new AuthSecurityProperties();
         SecuritySettingsDTO settings = new SecuritySettingsDTO(
                 1800L,

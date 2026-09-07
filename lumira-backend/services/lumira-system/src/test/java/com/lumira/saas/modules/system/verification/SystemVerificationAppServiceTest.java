@@ -1,8 +1,8 @@
 package com.lumira.saas.modules.system.verification;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -16,7 +16,7 @@ import com.lumira.saas.modules.auth.dto.LoginCodeCompleteRequest;
 import com.lumira.saas.modules.auth.dto.SecondFactorCompleteRequest;
 import com.lumira.saas.modules.system.support.SmsVerificationSender;
 import com.lumira.saas.modules.system.support.SmtpMailService;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -100,7 +100,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void totpRecoveryCodesShouldBeConsumedAfterSuccessfulVerification() throws Exception {
-        SystemVerificationAppService service = service(mock(UserDomainService.class));
+        SystemVerificationAppService service = service(mock(UserAccountQueryService.class));
         Object binding = bindingRecord(null, List.of("RECOVER1", "RECOVER2"));
 
         Object result = invokeDeclared(service, "verifyTotpLoginCode", new Class<?>[]{binding.getClass(), String.class}, binding, "recover1");
@@ -114,7 +114,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void totpEnrollmentShouldRejectRecoveryCodes() throws Exception {
-        SystemVerificationAppService service = service(mock(UserDomainService.class));
+        SystemVerificationAppService service = service(mock(UserAccountQueryService.class));
         Object binding = bindingRecord(null, List.of("RECOVER1"));
 
         BizException exception = assertThrows(
@@ -140,7 +140,7 @@ class SystemVerificationAppServiceTest {
     @Test
     void startBindChallengeShouldRejectAlreadyBoundFactorBeforePersistingReplacementSecret() {
         BindingJdbcOperations jdbcTemplate = new BindingJdbcOperations(bindingRow(1001L, "user-uuid-1001", true, true));
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(1001L)).thenReturn(Optional.of(user(1001L, "user-uuid-1001")));
         SystemVerificationAppService service = service(jdbcTemplate, userDomainService, mock(SystemVerificationSettingsAppService.class));
 
@@ -156,7 +156,7 @@ class SystemVerificationAppServiceTest {
     @Test
     void startContactBindChallengeShouldRequireCurrentBoundVerificationBeforeSendingNewCode() {
         BindingJdbcOperations jdbcTemplate = new BindingJdbcOperations(bindingRow(1001L, "user-uuid-1001", true, true));
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(1001L)).thenReturn(Optional.of(user(1001L, "user-uuid-1001")));
         SystemVerificationAppService service = service(jdbcTemplate, userDomainService, mock(SystemVerificationSettingsAppService.class));
 
@@ -172,7 +172,7 @@ class SystemVerificationAppServiceTest {
     @Test
     void startBindChallengeShouldRequireCurrentPasswordWhenNoBoundVerificationFactorExists() {
         BindingJdbcOperations jdbcTemplate = new BindingJdbcOperations(null);
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         IamUserService iamUserService = mock(IamUserService.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         SysUserEntity user = user(1001L, "user-uuid-1001");
@@ -204,7 +204,7 @@ class SystemVerificationAppServiceTest {
                         Map.of("configKey", "verification.email-login.enabled", "configValue", "true")
                 )
         );
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SmtpMailService smtpMailService = mock(SmtpMailService.class);
         SysUserEntity user = user(1001L, "user-uuid-1001");
         user.setEmail("alice@example.com");
@@ -230,7 +230,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void numericOnlyUserIdOverloadsShouldNotBeExposed() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationAppService service = service(userDomainService);
 
         assertEquals(List.of(), Arrays.stream(SystemVerificationAppService.class.getMethods())
@@ -252,7 +252,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserProviderShouldRejectUnauthenticatedUserBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationAppService service = service(userDomainService);
         CurrentUser currentUser = currentUser();
         currentUser.setAuthenticated(false);
@@ -268,7 +268,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserListProvidersShouldRequireViewPermissionBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationAppService service = service(userDomainService);
         CurrentUser currentUser = currentUser();
         currentUser.setPermissions(java.util.Set.of("system:user:view"));
@@ -284,7 +284,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserProviderShouldRequireViewPermissionBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationAppService service = service(userDomainService);
         CurrentUser currentUser = currentUser();
         currentUser.setPermissions(java.util.Set.of("system:user:view"));
@@ -300,7 +300,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserProviderShouldRejectWhenLiveSnapshotRevokesViewPermissionBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
@@ -327,7 +327,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserBindShouldRejectMissingUserBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationAppService service = service(userDomainService);
         CurrentUser currentUser = currentUser();
         currentUser.setUserId(null);
@@ -343,7 +343,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserChallengeShouldRejectBlankUsernameBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationAppService service = service(userDomainService);
         CurrentUser currentUser = currentUser();
         currentUser.setUsername(" ");
@@ -359,7 +359,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserProviderShouldRejectMissingSessionVersionBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationAppService service = service(userDomainService);
         CurrentUser currentUser = currentUser();
         currentUser.setSessionVersion(null);
@@ -375,7 +375,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void getSmsSettingsShouldRequireViewPermissionBeforeReadingSettings() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationSettingsAppService settingsAppService = mock(SystemVerificationSettingsAppService.class);
         SystemVerificationAppService service = service(userDomainService, settingsAppService);
         CurrentUser currentUser = currentUser();
@@ -392,7 +392,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserBindShouldRequireManagePermissionBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationAppService service = service(userDomainService);
         CurrentUser currentUser = currentUser();
         currentUser.setPermissions(java.util.Set.of("system:verification:view"));
@@ -408,7 +408,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserBindShouldRejectWhenLiveSnapshotRevokesManagePermissionBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
@@ -434,9 +434,9 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserBindShouldRejectDisabledTrustedUserIdentityBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "tester-live", "DISABLED"));
         SystemVerificationAppService service = service(
@@ -463,9 +463,9 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserBindShouldRejectBlankLiveUsernameBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
         SystemVerificationAppService service = service(
@@ -493,9 +493,9 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserProviderShouldRefreshLiveUsernameFromTrustedIdentity() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  tester-live  ", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
@@ -528,7 +528,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserBindShouldRejectRevokedSessionTicketBeforeLookup() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
         when(sessionAuthenticationService.authenticateSessionTicket("session-1", 1001L, "user-uuid-1001", null, 1, "permissions-1"))
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Login required"));
@@ -560,7 +560,7 @@ class SystemVerificationAppServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:verification:view")));
         SystemVerificationAppService service = service(
                 new MyBatisQueryOperations(mock(JdbcTemplate.class)),
-                mock(UserDomainService.class),
+                mock(UserAccountQueryService.class),
                 mock(SystemVerificationSettingsAppService.class),
                 mock(SmtpMailService.class),
                 mock(IamUserService.class),
@@ -585,7 +585,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserBindShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SystemVerificationAppService service = new SystemVerificationAppService(
                 new MyBatisQueryOperations(mock(JdbcTemplate.class)),
                 new ObjectMapper(),
@@ -616,7 +616,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void currentUserBindShouldRejectWhenTrustedPermissionSnapshotIsUnavailableInStrictMode() {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemVerificationAppService service = new SystemVerificationAppService(
                 new MyBatisQueryOperations(mock(JdbcTemplate.class)),
@@ -699,7 +699,7 @@ class SystemVerificationAppServiceTest {
 
     @Test
     void startLoginCodeChallengeShouldRejectDisabledUserBeforeChallengePersistence() {
-        SystemVerificationAppService service = service(mock(UserDomainService.class));
+        SystemVerificationAppService service = service(mock(UserAccountQueryService.class));
 
         BizException exception = assertThrows(
                 BizException.class,
@@ -712,7 +712,7 @@ class SystemVerificationAppServiceTest {
     @Test
     void completeLoginCodeLoginShouldRejectDisabledChallengeUserBeforeConsuming() {
         ChallengeJdbcOperations jdbcTemplate = new ChallengeJdbcOperations(challengeRow(1001L, "sms", "LOGIN"));
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(1001L)).thenReturn(Optional.of(disabledUser(1001L, "user-uuid-1001")));
         SystemVerificationAppService service = service(jdbcTemplate, userDomainService, mock(SystemVerificationSettingsAppService.class));
         LoginCodeCompleteRequest request = new LoginCodeCompleteRequest();
@@ -731,7 +731,7 @@ class SystemVerificationAppServiceTest {
     @Test
     void completeSecondFactorLoginShouldRejectDisabledChallengeUserBeforeConsuming() {
         ChallengeJdbcOperations jdbcTemplate = new ChallengeJdbcOperations(challengeRow(1001L, "sms", "LOGIN"));
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(1001L)).thenReturn(Optional.of(disabledUser(1001L, "user-uuid-1001")));
         SystemVerificationAppService service = service(jdbcTemplate, userDomainService, mock(SystemVerificationSettingsAppService.class));
         SecondFactorCompleteRequest request = new SecondFactorCompleteRequest();
@@ -751,7 +751,7 @@ class SystemVerificationAppServiceTest {
     @Test
     void completeContactBindShouldRejectChallengeOwnedByAnotherUserBeforeConsuming() {
         ChallengeJdbcOperations jdbcTemplate = new ChallengeJdbcOperations(challengeRow(2002L, "email", "BIND"));
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(1001L)).thenReturn(Optional.of(user(1001L, "user-uuid-1001")));
         SystemVerificationAppService service = service(jdbcTemplate, userDomainService, mock(SystemVerificationSettingsAppService.class));
 
@@ -767,7 +767,7 @@ class SystemVerificationAppServiceTest {
     @Test
     void verifyLoginShouldRejectChallengeOwnedByAnotherUserBeforeCodeCheck() {
         ChallengeJdbcOperations jdbcTemplate = new ChallengeJdbcOperations(challengeRow(2002L, "sms", "LOGIN"));
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(1001L)).thenReturn(Optional.of(user(1001L, "user-uuid-1001")));
         SystemVerificationAppService service = service(jdbcTemplate, userDomainService, mock(SystemVerificationSettingsAppService.class));
 
@@ -783,7 +783,7 @@ class SystemVerificationAppServiceTest {
     @Test
     void verifyLoginShouldRejectChallengeOwnedBySameIdWithDifferentUuidBeforeCodeCheck() {
         ChallengeJdbcOperations jdbcTemplate = new ChallengeJdbcOperations(challengeRow(1001L, "other-user-uuid", "sms", "LOGIN"));
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(1001L)).thenReturn(Optional.of(user(1001L, "user-uuid-1001")));
         SystemVerificationAppService service = service(jdbcTemplate, userDomainService, mock(SystemVerificationSettingsAppService.class));
 
@@ -796,24 +796,24 @@ class SystemVerificationAppServiceTest {
         assertEquals(0, jdbcTemplate.updateCount);
     }
 
-    private static SystemVerificationAppService service(UserDomainService userDomainService) {
+    private static SystemVerificationAppService service(UserAccountQueryService userDomainService) {
         return service(userDomainService, mock(SystemVerificationSettingsAppService.class));
     }
 
     private static SystemVerificationAppService service(
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             SystemVerificationSettingsAppService settingsAppService
     ) {
         return service(new MyBatisQueryOperations(mock(JdbcTemplate.class)), userDomainService, settingsAppService);
     }
 
     private static SystemVerificationAppService service(MyBatisQueryOperations jdbcTemplate) {
-        return service(jdbcTemplate, mock(UserDomainService.class), mock(SystemVerificationSettingsAppService.class));
+        return service(jdbcTemplate, mock(UserAccountQueryService.class), mock(SystemVerificationSettingsAppService.class));
     }
 
     private static SystemVerificationAppService service(
             MyBatisQueryOperations jdbcTemplate,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             SystemVerificationSettingsAppService settingsAppService
     ) {
         return service(
@@ -828,7 +828,7 @@ class SystemVerificationAppServiceTest {
 
     private static SystemVerificationAppService service(
             MyBatisQueryOperations jdbcTemplate,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             SystemVerificationSettingsAppService settingsAppService,
             SmtpMailService smtpMailService,
             IamUserService iamUserService,
@@ -839,7 +839,7 @@ class SystemVerificationAppServiceTest {
 
     private static SystemVerificationAppService service(
             MyBatisQueryOperations jdbcTemplate,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             SystemVerificationSettingsAppService settingsAppService,
             SmtpMailService smtpMailService,
             IamUserService iamUserService,
@@ -851,7 +851,7 @@ class SystemVerificationAppServiceTest {
 
     private static SystemVerificationAppService service(
             MyBatisQueryOperations jdbcTemplate,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             SystemVerificationSettingsAppService settingsAppService,
             SmtpMailService smtpMailService,
             IamUserService iamUserService,
@@ -864,20 +864,20 @@ class SystemVerificationAppServiceTest {
 
     private static SystemVerificationAppService service(
             MyBatisQueryOperations jdbcTemplate,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             SystemVerificationSettingsAppService settingsAppService,
             SmtpMailService smtpMailService,
             IamUserService iamUserService,
             PasswordEncoder passwordEncoder,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         try {
             Constructor<SystemVerificationAppService> constructor = SystemVerificationAppService.class.getDeclaredConstructor(
                     MyBatisQueryOperations.class,
                     ObjectMapper.class,
-                    UserDomainService.class,
+                    UserAccountQueryService.class,
                     SystemVerificationProperties.class,
                     SmtpMailService.class,
                     SmsVerificationSender.class,
@@ -888,7 +888,7 @@ class SystemVerificationAppServiceTest {
                     PasswordEncoder.class,
                     FieldCryptoService.class,
                     PermissionSnapshotService.class,
-                    SystemInternalApi.class,
+                    UserIdentityQueryPort.class,
                     SessionAuthenticationService.class,
                     boolean.class
             );

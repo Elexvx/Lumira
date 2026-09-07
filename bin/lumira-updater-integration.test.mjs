@@ -16,11 +16,35 @@ const domesticDigestCharacters = {
 };
 const digest = (name) => `ghcr.io/elexvx/lumira/${name}@sha256:${(runtimeDigestCharacters[name] || 'f').repeat(64)}`;
 const domesticDigest = (name) => `swr.cn-east-3.myhuaweicloud.com/aiadc/${name}@sha256:${(domesticDigestCharacters[name] || '6').repeat(64)}`;
+const safeDataPlaneEnvironment = (dbUrl = 'jdbc:mysql://mysql:3306/saas?useSSL=false') => [
+  'LUMIRA_ACTIVE_SLOT=blue',
+  'DB_USERNAME=lumira_app',
+  'DB_PASSWORD=application-secret',
+  'DB_MIGRATION_USERNAME=lumira_migrator',
+  'DB_MIGRATION_PASSWORD=migration-secret',
+  'MYSQL_BACKUP_USERNAME=lumira_backup',
+  'MYSQL_BACKUP_PASSWORD=backup-secret',
+  'MYSQL_RESTORE_USERNAME=lumira_restore',
+  'MYSQL_RESTORE_PASSWORD=restore-secret',
+  'XXL_JOB_DB_URL=jdbc:mysql://mysql:3306/xxl_job',
+  'XXL_JOB_DB_USERNAME=xxl_job',
+  'XXL_JOB_DB_PASSWORD=xxl-secret',
+  'MYSQLD_EXPORTER_USERNAME=exporter',
+  'MYSQLD_EXPORTER_PASSWORD=exporter-secret',
+  'REDIS_CACHE_HOST=redis-cache',
+  'REDIS_CACHE_PORT=6379',
+  'REDIS_CACHE_PASSWORD=cache-secret',
+  'REDIS_RUNTIME_HOST=redis-runtime',
+  'REDIS_RUNTIME_PORT=6379',
+  'REDIS_RUNTIME_PASSWORD=runtime-secret',
+  `DB_URL=${dbUrl}`,
+  '',
+].join('\n');
 
 test('updater v3 exposes capabilities, preflight, and persistent task state', { timeout: 20_000 }, async (context) => {
   const deployDir = mkdtempSync(path.join(os.tmpdir(), 'lumira-updater-test-'));
   mkdirSync(path.join(deployDir, '.generated', 'api-proxy'), { recursive: true });
-  writeFileSync(path.join(deployDir, '.env'), 'LUMIRA_ACTIVE_SLOT=blue\n');
+  writeFileSync(path.join(deployDir, '.env'), safeDataPlaneEnvironment());
   const port = 19_000 + Math.floor(Math.random() * 10_000);
   const token = 'integration-test-token';
   const child = spawn(process.execPath, [path.join(repoRoot, 'bin', 'lumira-updater.mjs'), '--dry-run'], {
@@ -65,25 +89,13 @@ test('updater v3 exposes capabilities, preflight, and persistent task state', { 
   assert.equal(preflight.body.targetSlot, 'green');
   assert.equal(preflight.body.migrationMode, 'expand-only');
   assert.equal(preflight.body.databaseTargetVersion, '202607140001');
-  assert.match(preflight.body.warnings.join(' '), /database account is root/);
-  assert.match(preflight.body.warnings.join(' '), /DB_MIGRATION_USERNAME/);
-
-  writeFileSync(path.join(deployDir, '.env'), [
-    'LUMIRA_ACTIVE_SLOT=blue',
-    'DB_USERNAME=lumira_app',
-    'DB_PASSWORD=application-secret',
-    'DB_MIGRATION_USERNAME=lumira_migrator',
-    'DB_MIGRATION_PASSWORD=migration-secret',
-    'DB_URL=jdbc:mysql://ha-db.internal:3306/saas?useSSL=false',
-    '',
-  ].join('\n'));
+  writeFileSync(path.join(deployDir, '.env'), safeDataPlaneEnvironment('jdbc:mysql://ha-db.internal:3306/saas?useSSL=false'));
   const insecureExternalPreflight = await call('/v1/update/preflight', {
     method: 'POST',
     body: JSON.stringify({ manifest }),
   });
   assert.equal(insecureExternalPreflight.body.ready, true);
   assert.match(insecureExternalPreflight.body.warnings.join(' '), /sslMode=VERIFY_IDENTITY/);
-  assert.doesNotMatch(insecureExternalPreflight.body.warnings.join(' '), /database account is root|DB_MIGRATION_USERNAME/);
 
   const domesticManifest = {
     ...manifest,

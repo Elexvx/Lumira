@@ -12,7 +12,7 @@ public class JobExecutorProperties {
     private String paymentServiceBaseUrl;
     private String pluginServiceBaseUrl;
     private Internal internal = new Internal();
-    private AdaptiveRelay adaptiveRelay = new AdaptiveRelay();
+    private InternalHttp internalHttp = new InternalHttp();
 
     public String getBackendBaseUrl() {
         return backendBaseUrl;
@@ -70,106 +70,32 @@ public class JobExecutorProperties {
         this.internal = internal == null ? new Internal() : internal;
     }
 
-    public AdaptiveRelay getAdaptiveRelay() {
-        return adaptiveRelay;
-    }
+    public InternalHttp getInternalHttp() { return internalHttp; }
+    public void setInternalHttp(InternalHttp internalHttp) { this.internalHttp = internalHttp == null ? new InternalHttp() : internalHttp; }
 
-    public void setAdaptiveRelay(AdaptiveRelay adaptiveRelay) {
-        this.adaptiveRelay = adaptiveRelay;
-    }
+    public static class InternalHttp {
+        private java.time.Duration connectTimeout = java.time.Duration.ofSeconds(2);
+        private java.time.Duration responseTimeout = java.time.Duration.ofSeconds(5);
+        private java.time.Duration retryBackoff = java.time.Duration.ofMillis(100);
+        private int maxResponseBytes = 1024 * 1024;
+        private int maxAttempts = 2;
+        private String releaseId = "unknown";
+        private int schemaVersion = 1;
 
-    public static class AdaptiveRelay {
-
-        private boolean enabled;
-        private long initialDelayMs = 5_000L;
-        private long minDelayMs = 1_000L;
-        private long maxDelayMs = 30_000L;
-        private long failureDelayMs = 10_000L;
-        private boolean platformEnabled = true;
-        private boolean messageEnabled;
-        private boolean fileEnabled;
-        private boolean paymentEnabled;
-        private boolean pluginEnabled;
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public long getInitialDelayMs() {
-            return initialDelayMs;
-        }
-
-        public void setInitialDelayMs(long initialDelayMs) {
-            this.initialDelayMs = initialDelayMs;
-        }
-
-        public long getMinDelayMs() {
-            return minDelayMs;
-        }
-
-        public void setMinDelayMs(long minDelayMs) {
-            this.minDelayMs = minDelayMs;
-        }
-
-        public long getMaxDelayMs() {
-            return maxDelayMs;
-        }
-
-        public void setMaxDelayMs(long maxDelayMs) {
-            this.maxDelayMs = maxDelayMs;
-        }
-
-        public long getFailureDelayMs() {
-            return failureDelayMs;
-        }
-
-        public void setFailureDelayMs(long failureDelayMs) {
-            this.failureDelayMs = failureDelayMs;
-        }
-
-        public boolean isPlatformEnabled() {
-            return platformEnabled;
-        }
-
-        public void setPlatformEnabled(boolean platformEnabled) {
-            this.platformEnabled = platformEnabled;
-        }
-
-        public boolean isMessageEnabled() {
-            return messageEnabled;
-        }
-
-        public void setMessageEnabled(boolean messageEnabled) {
-            this.messageEnabled = messageEnabled;
-        }
-
-        public boolean isFileEnabled() {
-            return fileEnabled;
-        }
-
-        public void setFileEnabled(boolean fileEnabled) {
-            this.fileEnabled = fileEnabled;
-        }
-
-        public boolean isPaymentEnabled() {
-            return paymentEnabled;
-        }
-
-        public void setPaymentEnabled(boolean paymentEnabled) {
-            this.paymentEnabled = paymentEnabled;
-        }
-
-        public boolean isPluginEnabled() {
-            return pluginEnabled;
-        }
-
-        public void setPluginEnabled(boolean pluginEnabled) {
-            this.pluginEnabled = pluginEnabled;
-        }
+        public java.time.Duration getConnectTimeout() { return connectTimeout; }
+        public void setConnectTimeout(java.time.Duration connectTimeout) { this.connectTimeout = connectTimeout; }
+        public java.time.Duration getResponseTimeout() { return responseTimeout; }
+        public void setResponseTimeout(java.time.Duration responseTimeout) { this.responseTimeout = responseTimeout; }
+        public java.time.Duration getRetryBackoff() { return retryBackoff; }
+        public void setRetryBackoff(java.time.Duration retryBackoff) { this.retryBackoff = retryBackoff; }
+        public int getMaxResponseBytes() { return maxResponseBytes; }
+        public void setMaxResponseBytes(int maxResponseBytes) { this.maxResponseBytes = maxResponseBytes; }
+        public int getMaxAttempts() { return maxAttempts; }
+        public void setMaxAttempts(int maxAttempts) { this.maxAttempts = maxAttempts; }
+        public String getReleaseId() { return releaseId; }
+        public void setReleaseId(String releaseId) { this.releaseId = releaseId; }
+        public int getSchemaVersion() { return schemaVersion; }
+        public void setSchemaVersion(int schemaVersion) { this.schemaVersion = schemaVersion; }
     }
 
     public static class Internal {

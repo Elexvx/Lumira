@@ -1,7 +1,7 @@
 package com.lumira.auth.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemAuthenticationPort;
 import com.lumira.api.system.WechatLoginSettingsDTO;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ReadModelVersionCache;
@@ -27,7 +27,7 @@ class WechatLoginServiceTest {
 
     @Test
     void createAuthorizeUrlShouldReuseCachedSettingsSnapshot() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemAuthenticationPort systemInternalApi = mock(SystemAuthenticationPort.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -58,7 +58,7 @@ class WechatLoginServiceTest {
 
     @Test
     void createAuthorizeUrlShouldRefreshWhenPublicBootstrapVersionChanges() throws Exception {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemAuthenticationPort systemInternalApi = mock(SystemAuthenticationPort.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -99,7 +99,7 @@ class WechatLoginServiceTest {
 
     @Test
     void createAuthorizeUrlShouldRejectConfiguredButDisabledSettings() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemAuthenticationPort systemInternalApi = mock(SystemAuthenticationPort.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L);
         when(systemInternalApi.wechatLoginSettings()).thenReturn(
@@ -123,7 +123,7 @@ class WechatLoginServiceTest {
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
     void exchangeCodeShouldFollowWebsiteLoginFlowAndLoadProfile() throws Exception {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemAuthenticationPort systemInternalApi = mock(SystemAuthenticationPort.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         HttpClient httpClient = mock(HttpClient.class);
@@ -180,7 +180,7 @@ class WechatLoginServiceTest {
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
     void exchangeCodeShouldContinueWhenOptionalWechatProfileIsUnavailable() throws Exception {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemAuthenticationPort systemInternalApi = mock(SystemAuthenticationPort.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         HttpClient httpClient = mock(HttpClient.class);
@@ -235,7 +235,7 @@ class WechatLoginServiceTest {
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
     void exchangeCodeShouldRejectUnexpectedOAuthScope() throws Exception {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemAuthenticationPort systemInternalApi = mock(SystemAuthenticationPort.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         HttpClient httpClient = mock(HttpClient.class);
@@ -275,7 +275,7 @@ class WechatLoginServiceTest {
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
     void exchangeCodeShouldStillRejectWechatTokenExchangeFailure() throws Exception {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemAuthenticationPort systemInternalApi = mock(SystemAuthenticationPort.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         HttpClient httpClient = mock(HttpClient.class);
@@ -316,7 +316,7 @@ class WechatLoginServiceTest {
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
     void exchangeCodeShouldExplainInvalidWechatAppSecret() throws Exception {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemAuthenticationPort systemInternalApi = mock(SystemAuthenticationPort.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         HttpClient httpClient = mock(HttpClient.class);

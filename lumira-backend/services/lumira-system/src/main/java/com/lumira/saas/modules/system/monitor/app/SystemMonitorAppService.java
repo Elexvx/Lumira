@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.monitor.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -66,7 +66,7 @@ public class SystemMonitorAppService {
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();
@@ -85,7 +85,7 @@ public class SystemMonitorAppService {
             StringRedisTemplate stringRedisTemplate,
             ObjectMapper objectMapper,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(stringRedisTemplate, objectMapper, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
@@ -95,7 +95,7 @@ public class SystemMonitorAppService {
             StringRedisTemplate stringRedisTemplate,
             ObjectMapper objectMapper,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

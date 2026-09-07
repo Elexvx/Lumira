@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationReadModelPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -95,7 +95,7 @@ public class LocalizationManagementAppService {
     private final LocalizationManagementMapper localizationManagementMapper;
     private final ObjectMapper objectMapper;
     private final LocalizationRuntimeBundleCache runtimeBundleCache = new LocalizationRuntimeBundleCache();
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationReadModelPort systemInternalApi;
     private final Map<String, CachedRuntimeBundle> runtimeBundleFastCache = new ConcurrentHashMap<>();
     private final Map<String, CachedReadModelVersion> readModelVersionCache = new ConcurrentHashMap<>();
     private final LongAdder readModelVersionCacheHits = new LongAdder();
@@ -111,7 +111,7 @@ public class LocalizationManagementAppService {
             LocalizationReleaseMapper releaseMapper,
             LocalizationManagementMapper localizationManagementMapper,
             ObjectMapper objectMapper,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationReadModelPort systemInternalApi
     ) {
         this.languageMapper = languageMapper;
         this.namespaceMapper = namespaceMapper;

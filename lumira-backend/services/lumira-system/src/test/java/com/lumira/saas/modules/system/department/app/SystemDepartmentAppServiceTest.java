@@ -81,7 +81,7 @@ class SystemDepartmentAppServiceTest {
         assertThat(queryOperations.existsCallCount).isEqualTo(2);
         assertThat(queryOperations.countQueryCalled).isFalse();
         assertThat(queryOperations.updateCalled).isTrue();
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidateDataPolicies();
     }
 
     @Test

@@ -15,6 +15,8 @@ import java.util.List;
 public interface IamUserRepository {
     SysUserEntity findActiveSysUserById(Long userId);
 
+    int activateAccount(Long userId, String userUuid, String passwordHash, LocalDateTime now);
+
     IamUserAccount findActiveAccountById(Long userId);
 
     List<IamUserAccount.IdentityView> findActiveIdentities(Long userId, String userUuid);

@@ -1,6 +1,6 @@
 package com.lumira.ai.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.ai.compat.AiV2CompatibilityFacade;
@@ -52,7 +52,7 @@ public class AiV2Controller {
     private final AiV2CompatibilityFacade compatibilityFacade;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     public AiV2Controller(
@@ -68,7 +68,7 @@ public class AiV2Controller {
             AiV2CompatibilityFacade compatibilityFacade,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationPort systemInternalApi
     ) {
         this(
                 compatibilityFacade,
@@ -83,7 +83,7 @@ public class AiV2Controller {
             AiV2CompatibilityFacade compatibilityFacade,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
         this.compatibilityFacade = compatibilityFacade;

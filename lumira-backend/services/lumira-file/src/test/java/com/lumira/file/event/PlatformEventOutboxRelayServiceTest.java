@@ -1,7 +1,7 @@
 package com.lumira.file.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.file.mapper.FilePlatformEventOutboxMapper;
 import org.junit.jupiter.api.Test;
@@ -383,7 +383,7 @@ class PlatformEventOutboxRelayServiceTest {
 
 
     private PlatformEventOutboxService service(JdbcTemplate jdbcTemplate) {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(9L)).thenReturn(new SystemUserSnapshotDTO(
                 9L, "user-uuid-9", "relay-user", null, "ENABLED", null, null, null,
                 null, null, null, null, null, null, null, null

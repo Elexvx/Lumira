@@ -1,7 +1,7 @@
 package com.lumira.message.app;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationReadModelPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemRoleSnapshotDTO;
 import com.lumira.api.system.SystemUserEmailRecipientDTO;
@@ -102,7 +102,7 @@ public class MessageAppService {
     private final MessagePushService messagePushService;
     private final SmtpNotificationMailService smtpNotificationMailService;
     private final WechatOfficialAccountNotificationService wechatOfficialAccountNotificationService;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationReadModelPort systemInternalApi;
     private final CacheTemplate cacheTemplate;
     private final MessageProperties messageProperties;
     private final Timer messageListTimer;
@@ -135,7 +135,7 @@ public class MessageAppService {
             MessagePushService messagePushService,
             SmtpNotificationMailService smtpNotificationMailService,
             WechatOfficialAccountNotificationService wechatOfficialAccountNotificationService,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationReadModelPort systemInternalApi,
             CacheTemplate cacheTemplate,
             MessageProperties messageProperties
     ) {
@@ -161,7 +161,7 @@ public class MessageAppService {
             MessagePushService messagePushService,
             SmtpNotificationMailService smtpNotificationMailService,
             WechatOfficialAccountNotificationService wechatOfficialAccountNotificationService,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationReadModelPort systemInternalApi,
             CacheTemplate cacheTemplate,
             MessageProperties messageProperties,
             ObjectProvider<MeterRegistry> meterRegistry
@@ -187,7 +187,7 @@ public class MessageAppService {
             MessagePushService messagePushService,
             SmtpNotificationMailService smtpNotificationMailService,
             WechatOfficialAccountNotificationService wechatOfficialAccountNotificationService,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationReadModelPort systemInternalApi,
             CacheTemplate cacheTemplate,
             MessageProperties messageProperties,
             MeterRegistry meterRegistry

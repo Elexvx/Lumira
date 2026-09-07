@@ -1,7 +1,5 @@
 package com.lumira.file.domain;
 
-import org.springframework.util.StringUtils;
-
 /** Security-gated lifecycle states for stored file content. */
 public final class FileObjectSecurityStatus {
 
@@ -16,7 +14,7 @@ public final class FileObjectSecurityStatus {
 
     /** Existing ENABLED rows predate the scan gate and remain readable for compatibility. */
     public static boolean isContentAccessible(String status) {
-        return StringUtils.hasText(status)
+        return status != null && !status.isBlank()
                 && (CLEAN.equalsIgnoreCase(status) || LEGACY_ENABLED.equalsIgnoreCase(status));
     }
 }

@@ -1,0 +1,32 @@
+name: PaymentSucceeded
+eventType: PAYMENT_ORDER_PAID
+sourceModule: payment
+producer: payment
+schemaVersion: 1
+aggregate:
+  type: payment.order
+  id: event.aggregateId
+identity:
+  eventId: event.eventId
+  compatibilityOutboxId: stream.eventId
+occurredAt: event.occurredAt
+payload:
+  attributes:
+    userId: target user id when an inbox notification is required
+    userUuid: target user uuid when an inbox notification is required
+    amount: payment amount
+    providerTxnId: provider transaction identity
+    registrationId: competition registration identity when applicable
+    bizType: competition_registration when applicable
+delivery:
+  stream: lumira.events.payment.v1
+  notificationConsumerGroup: notification-payment-v1
+  competitionConsumerGroup: competition-payment-v1
+compatibility:
+  outboxFields:
+    id: eventId
+    event_type: eventType
+    source_type: sourceModule
+    event_key: aggregateId
+    payload_json: payload
+  note: Keep PAYMENT_ORDER_PAID while existing outbox rows and consumers migrate to EventEnvelope metadata.

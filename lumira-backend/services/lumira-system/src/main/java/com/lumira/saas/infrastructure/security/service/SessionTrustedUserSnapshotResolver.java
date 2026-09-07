@@ -1,6 +1,6 @@
 package com.lumira.saas.infrastructure.security.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -19,11 +19,11 @@ public class SessionTrustedUserSnapshotResolver implements TrustedUserSnapshotRe
     private static final String STATUS_ENABLED = "ENABLED";
 
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
 
     public SessionTrustedUserSnapshotResolver(
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi
+            UserIdentityQueryPort systemInternalApi
     ) {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;

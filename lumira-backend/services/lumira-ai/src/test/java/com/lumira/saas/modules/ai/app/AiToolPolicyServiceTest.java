@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -185,7 +185,7 @@ class AiToolPolicyServiceTest {
     void listPoliciesShouldRejectDisabledTrustedIdentityBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", "admin-live", "DISABLED"));
         DefaultAiToolPolicyService service =
@@ -204,7 +204,7 @@ class AiToolPolicyServiceTest {
     void listPoliciesShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", " ", "ENABLED"));
         DefaultAiToolPolicyService service =
@@ -223,7 +223,7 @@ class AiToolPolicyServiceTest {
     void listPoliciesShouldRefreshLiveUsernameBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         CurrentUser currentUser = currentUser();
         currentUser.setUsername("admin-stale");
         when(systemInternalApi.findUserIdentityById(100L))

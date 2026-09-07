@@ -1,0 +1,45 @@
+eventType: FILE_OBJECT_UPLOADED
+schemaVersion: 1
+sourceModule: file
+producer: file
+owner: lumira-file
+consumerCapabilities:
+  - file-lifecycle-projection
+schemaDigest: sha256:e35b213c0d63d44993faf9ca082e4f1693ae669527b1497aaec152c5a153f867
+compatibility:
+  mode: backward
+  requiredFields:
+    - eventId
+    - eventType
+    - sourceModule
+    - producer
+    - owner
+    - aggregateId
+    - aggregateVersion
+    - schemaVersion
+    - occurredAt
+    - releaseId
+    - payloadDigest
+    - payload
+  payloadTypes:
+    eventId: string
+    eventType: string
+    sourceModule: string
+    producer: string
+    owner: string
+    aggregateId: string
+    aggregateVersion: integer
+    schemaVersion: integer
+    occurredAt: timestamp
+    releaseId: string
+    payloadDigest: string
+    payload: object
+delivery:
+  transport: redis-stream
+  stream: lumira.events.file.v1
+  guarantee: at-least-once
+  consumerStatus: implemented-by-lumira-async
+  consumer:
+    name: file-lifecycle-projection
+    supportedSchemaVersions:
+      - 1

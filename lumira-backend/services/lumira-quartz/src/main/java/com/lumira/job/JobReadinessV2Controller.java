@@ -36,12 +36,11 @@ public class JobReadinessV2Controller {
                         "/api/v2/job/health",
                         "/api/v2/job/metrics",
                         "/api/v1/job/version",
-                        "platformOutboxRelayJob",
-                        "messageOutboxRelayJob",
-                        "fileOutboxRelayJob",
+                        "outboxEventReplayJob",
+                        "staleOutboxRecoveryJob",
+                        "manualOutboxRecoveryJob",
+                        "fencedOutboxTakeoverJob",
                         "fileProcessingTaskJob",
-                        "paymentOutboxRelayJob",
-                        "pluginOutboxRelayJob",
                         "aiKnowledgeIndexJob",
                         "messageHeartbeatJob",
                         "onlineSessionHeartbeatJob",
@@ -50,7 +49,7 @@ public class JobReadinessV2Controller {
                 ),
                 List.of(
                         "no business events",
-                        "owner relay and processing job dispatch only"
+                        "cron, compensation, manual recovery and fenced replay dispatch only"
                 ),
                 List.of(
                         "job.xxl-executor.config",
@@ -98,7 +97,7 @@ public class JobReadinessV2Controller {
                         healthCheck("job.lumira-backend-targets.config", configuredTargetCount() > 0 ? "CONFIGURED" : "MISSING", "BackendJobClient has at least one owner target URL configured."),
                         healthCheck("job.internal-token.configured", internalJobTokenConfigured() ? "CONFIGURED" : "MISSING", "Scoped job token is present for owner internal job API calls."),
                         healthCheck("job.scoped-internal-tokens.configured", scopedInternalTokensConfigured() ? "CONFIGURED" : "MISSING", "Owner-scoped internal tokens are present so job calls do not fall back to a shared token."),
-                        healthCheck("job.owner-handler.registration", "CONFIGURED", "Relay and processing handlers call owner APIs without reading owner tables.")
+                        healthCheck("job.owner-handler.registration", "CONFIGURED", "Recovery and processing handlers call owner APIs without reading owner tables; normal relay is absent.")
                 ),
                 jobMetrics()
         ), null);
@@ -123,7 +122,7 @@ public class JobReadinessV2Controller {
                 metric("job.lumira-backend_target.configured_count", "gauge", "targets", "Configured BackendJobClient target URLs.", configuredTargetCount()),
                 metric("job.internal_token.configured", "gauge", "boolean", "1 when the scoped job token is configured.", internalJobTokenConfigured() ? 1L : 0L),
                 metric("job.scoped_internal_tokens.configured", "gauge", "boolean", "1 when all owner-scoped internal tokens are configured.", scopedInternalTokensConfigured() ? 1L : 0L),
-                metric("job.owner_handler.declared_count", "gauge", "handlers", "Declared owner relay/processing/rebuild handlers.", 10L)
+                metric("job.owner_handler.declared_count", "gauge", "handlers", "Declared recovery/processing/rebuild handlers.", 12L)
         );
     }
 

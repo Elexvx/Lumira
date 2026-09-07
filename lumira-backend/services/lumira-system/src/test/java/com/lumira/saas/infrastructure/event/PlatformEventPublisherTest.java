@@ -82,6 +82,35 @@ class PlatformEventPublisherTest {
     }
 
     @Test
+    void recordShouldPromoteEventOwnershipMetadataIntoTheEnvelope() {
+        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
+        PlatformEventPublisher publisher = new PlatformEventPublisher(outboxService);
+        ArgumentCaptor<Object> payloadCaptor = forClass(Object.class);
+
+        publisher.record(
+                PlatformEventTypes.SOURCE_SYSTEM,
+                PlatformEventTypes.IAM_ROLE_CHANGED,
+                null,
+                "iam.role",
+                3001L,
+                Map.of("sourceModule", "iam", "producer", "iam", "owner", "lumira-system")
+        );
+
+        verify(outboxService).record(
+                eq(PlatformEventTypes.SOURCE_SYSTEM),
+                eq(PlatformEventTypes.IAM_ROLE_CHANGED),
+                eq(null),
+                eq("RoleChanged:iam.role:3001"),
+                payloadCaptor.capture()
+        );
+        assertThat(payloadCaptor.getValue())
+                .isInstanceOfSatisfying(Map.class, payload -> assertThat(payload)
+                        .containsEntry("sourceModule", "iam")
+                        .containsEntry("producer", "iam")
+                        .containsEntry("owner", "lumira-system"));
+    }
+
+    @Test
     void recordInCurrentTransactionWritesOutboxImmediately() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         PlatformEventPublisher publisher = new PlatformEventPublisher(outboxService);

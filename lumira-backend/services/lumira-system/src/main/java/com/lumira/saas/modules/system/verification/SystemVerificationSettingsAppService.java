@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.verification;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -103,7 +103,7 @@ public class SystemVerificationSettingsAppService {
     private final FieldCryptoService fieldCryptoService;
     private final ReadModelVersionService readModelVersionService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private final Cache<String, Map<String, String>> configSnapshotCache;
@@ -145,7 +145,7 @@ public class SystemVerificationSettingsAppService {
             ReadModelVersionService readModelVersionService,
             PermissionSnapshotService permissionSnapshotService,
             @Lazy
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
@@ -170,7 +170,7 @@ public class SystemVerificationSettingsAppService {
             FieldCryptoService fieldCryptoService,
             ReadModelVersionService readModelVersionService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

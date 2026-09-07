@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginDependencyEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginDefinitionEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginMenuRelEntity;
+import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginMigrationRequestEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginPermissionRelEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginRuntimeLogEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
@@ -45,6 +46,12 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
             @Param("operatorId") Long operatorId,
             @Param("operatorUuid") String operatorUuid
     );
+
+    int recordInstalledArtifacts(@Param("pluginCode") String pluginCode, @Param("version") String version,
+                                 @Param("artifactPath") String artifactPath,
+                                 @Param("frontendManifestPath") String frontendManifestPath,
+                                 @Param("backendJarPath") String backendJarPath,
+                                 @Param("operatorId") Long operatorId, @Param("operatorUuid") String operatorUuid);
 
     int updateVersionStatus(
             @Param("pluginCode") String pluginCode,
@@ -138,5 +145,19 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
     void insertSchemaHistory(@Param("entity") com.lumira.saas.modules.plugin.entity.PluginEntities.PluginSchemaHistoryEntity entity);
 
     void insertRuntimeLog(@Param("entity") PluginRuntimeLogEntity entity);
+
+    long nextMigrationOperationEpoch(@Param("pluginCode") String pluginCode);
+
+    void insertMigrationRequest(@Param("entity") PluginMigrationRequestEntity entity);
+
+    PluginMigrationRequestEntity findMigrationRequestByDigest(
+            @Param("pluginCode") String pluginCode,
+            @Param("pluginVersion") String pluginVersion,
+            @Param("migrationDigest") String migrationDigest
+    );
+
+    int updateMigrationLifecycle(@Param("pluginCode") String pluginCode, @Param("pluginVersion") String pluginVersion,
+                                 @Param("fromStatus") String fromStatus, @Param("toStatus") String toStatus,
+                                 @Param("schemaStatus") String schemaStatus);
 
 }

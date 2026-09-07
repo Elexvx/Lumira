@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.sensitive.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.text.TextModerationPort;
 import com.lumira.common.enums.ErrorCode;
@@ -71,7 +71,7 @@ public class SensitiveWordService {
     private final SensitiveWordDictionaryCache dictionaryCache;
     private final SensitiveWordMetrics metrics;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private final Map<Class<?>, java.lang.reflect.Field[]> reflectiveFieldCache = new ConcurrentHashMap<>();
@@ -106,7 +106,7 @@ public class SensitiveWordService {
             SensitiveWordMetrics metrics,
             PermissionSnapshotService permissionSnapshotService,
             @Lazy
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
@@ -129,7 +129,7 @@ public class SensitiveWordService {
             SensitiveWordDictionaryCache dictionaryCache,
             SensitiveWordMetrics metrics,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

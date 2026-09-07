@@ -1,6 +1,6 @@
 package com.lumira.message.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.message.MessageNoticeDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import org.junit.jupiter.api.Test;
@@ -15,8 +15,8 @@ import static org.mockito.Mockito.when;
 class MessageRecipientResolverTest {
 
     @Test
-    void resolveRecipientUserIdsShouldUseSystemInternalApiWhenAvailable() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    void resolveRecipientUserIdsShouldUseUserIdentityQueryPortWhenAvailable() {
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.roleUserIdentities(3001L))
                 .thenReturn(List.of(
                         user(2001L, "user-uuid-2001"),
@@ -34,7 +34,7 @@ class MessageRecipientResolverTest {
 
     @Test
     void resolveRecipientsShouldUseTrustedUserIdentityForUserScope() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.userIdentitiesByIds(List.of(2001L))).thenReturn(List.of(user(2001L, "user-uuid-2001")));
         MessageRecipientResolver resolver = new MessageRecipientResolver(available(systemInternalApi));
         MessageNoticeDTO notice = new MessageNoticeDTO();
@@ -48,7 +48,7 @@ class MessageRecipientResolverTest {
 
     @Test
     void resolveRecipientsShouldRejectUserScopeWhenTrustedIdentityUuidDiffers() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.userIdentitiesByIds(List.of(2001L))).thenReturn(List.of(user(2001L, "rotated-user-uuid")));
         MessageRecipientResolver resolver = new MessageRecipientResolver(available(systemInternalApi));
         MessageNoticeDTO notice = new MessageNoticeDTO();
@@ -61,7 +61,7 @@ class MessageRecipientResolverTest {
 
     @Test
     void resolveRecipientsShouldRejectDisabledUserScopeRecipient() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.userIdentitiesByIds(List.of(2001L)))
                 .thenReturn(List.of(user(2001L, "user-uuid-2001", "DISABLED")));
         MessageRecipientResolver resolver = new MessageRecipientResolver(available(systemInternalApi));
@@ -75,7 +75,7 @@ class MessageRecipientResolverTest {
 
     @Test
     void resolveRecipientUserIdsShouldFilterDisabledRoleRecipients() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.roleUserIdentities(3001L))
                 .thenReturn(List.of(
                         user(2001L, "user-uuid-2001"),
@@ -90,7 +90,7 @@ class MessageRecipientResolverTest {
 
     @Test
     void resolveRecipientsShouldRejectUserScopeWithoutTargetUserUuid() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         MessageRecipientResolver resolver = new MessageRecipientResolver(available(systemInternalApi));
         MessageNoticeDTO notice = new MessageNoticeDTO();
         notice.setTargetScope("USER");
@@ -101,7 +101,7 @@ class MessageRecipientResolverTest {
     }
 
     @Test
-    void resolveRecipientUserIdsShouldReturnEmptyWhenSystemInternalApiIsAbsent() {
+    void resolveRecipientUserIdsShouldReturnEmptyWhenUserIdentityQueryPortIsAbsent() {
         MessageRecipientResolver resolver = new MessageRecipientResolver(unavailable());
 
         assertThat(resolver.resolveRecipientUserIds(roleNotice(3001L))).isEmpty();
@@ -122,49 +122,49 @@ class MessageRecipientResolverTest {
         return new SystemUserSnapshotDTO(userId, userUuid, "user-" + userId, null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private ObjectProvider<SystemInternalApi> available(SystemInternalApi systemInternalApi) {
+    private ObjectProvider<UserIdentityQueryPort> available(UserIdentityQueryPort systemInternalApi) {
         return new ObjectProvider<>() {
             @Override
-            public SystemInternalApi getObject(Object... args) {
+            public UserIdentityQueryPort getObject(Object... args) {
                 return systemInternalApi;
             }
 
             @Override
-            public SystemInternalApi getIfAvailable() {
+            public UserIdentityQueryPort getIfAvailable() {
                 return systemInternalApi;
             }
 
             @Override
-            public SystemInternalApi getIfUnique() {
+            public UserIdentityQueryPort getIfUnique() {
                 return systemInternalApi;
             }
 
             @Override
-            public SystemInternalApi getObject() {
+            public UserIdentityQueryPort getObject() {
                 return systemInternalApi;
             }
         };
     }
 
-    private ObjectProvider<SystemInternalApi> unavailable() {
+    private ObjectProvider<UserIdentityQueryPort> unavailable() {
         return new ObjectProvider<>() {
             @Override
-            public SystemInternalApi getObject(Object... args) {
+            public UserIdentityQueryPort getObject(Object... args) {
                 return null;
             }
 
             @Override
-            public SystemInternalApi getIfAvailable() {
+            public UserIdentityQueryPort getIfAvailable() {
                 return null;
             }
 
             @Override
-            public SystemInternalApi getIfUnique() {
+            public UserIdentityQueryPort getIfUnique() {
                 return null;
             }
 
             @Override
-            public SystemInternalApi getObject() {
+            public UserIdentityQueryPort getObject() {
                 return null;
             }
         };

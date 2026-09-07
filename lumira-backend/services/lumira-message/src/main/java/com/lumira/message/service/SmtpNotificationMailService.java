@@ -1,6 +1,6 @@
 package com.lumira.message.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.RuntimeConfigurationPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import org.springframework.mail.SimpleMailMessage;
@@ -22,9 +22,9 @@ public class SmtpNotificationMailService {
     private static final String SMTP_AUTH_ENABLED_KEY = "smtp.auth-enabled";
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
     private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
-    private final SystemInternalApi systemInternalApi;
+    private final RuntimeConfigurationPort systemInternalApi;
 
-    public SmtpNotificationMailService(SystemInternalApi systemInternalApi) {
+    public SmtpNotificationMailService(RuntimeConfigurationPort systemInternalApi) {
         this.systemInternalApi = systemInternalApi;
     }
 

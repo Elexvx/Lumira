@@ -1,20 +1,12 @@
 package com.lumira.payment;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.context.annotation.Configuration;
 
-@SpringBootApplication(scanBasePackages = {
-        "com.lumira.payment",
-        "com.lumira.common"
-})
+@Configuration(proxyBeanMethods = false)
 @ConfigurationPropertiesScan(basePackages = {
         "com.lumira.payment",
         "com.lumira.common"
 })
 public class PaymentServiceApplication {
-
-    public static void main(String[] args) {
-        SpringApplication.run(PaymentServiceApplication.class, args);
-    }
 }

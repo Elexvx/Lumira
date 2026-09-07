@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -55,7 +55,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
 
     private final AiToolPolicyRepository policyRepository;
     private final AiPermissionSnapshotResolver permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final AiTrustedSessionResolver sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -78,7 +78,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
     DefaultAiToolPolicyService(
             AiToolPolicyRepository policyRepository,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         this(policyRepository, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
@@ -87,7 +87,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
     private DefaultAiToolPolicyService(
             AiToolPolicyRepository policyRepository,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

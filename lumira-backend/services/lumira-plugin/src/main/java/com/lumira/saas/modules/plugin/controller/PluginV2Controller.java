@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.plugin.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
@@ -39,7 +39,7 @@ public class PluginV2Controller {
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final PluginRuntimeSecurityPolicy runtimeSecurityPolicy;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     public PluginV2Controller(
@@ -57,7 +57,7 @@ public class PluginV2Controller {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationPort systemInternalApi
     ) {
         this(pluginManagementAppService, securityContextFacade, permissionGuard, runtimeSecurityPolicy, systemInternalApi, true);
     }
@@ -67,7 +67,7 @@ public class PluginV2Controller {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
         this.pluginManagementAppService = pluginManagementAppService;

@@ -1,6 +1,6 @@
 package com.lumira.team.infrastructure.audit;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.AuditWritePort;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -19,7 +19,7 @@ class SystemOwnerTeamAuditPortTest {
 
     @Test
     void logShouldDelegateToSystemOwnerWithTrustedIdentity() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        AuditWritePort systemInternalApi = mock(AuditWritePort.class);
         when(systemInternalApi.recordOperationAudit(any())).thenReturn(Boolean.TRUE);
         SystemOwnerTeamAuditPort auditPort = new SystemOwnerTeamAuditPort(systemInternalApi);
 
@@ -51,7 +51,7 @@ class SystemOwnerTeamAuditPortTest {
 
     @Test
     void logShouldRejectMissingTrustedUserUuidBeforeOwnerCall() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        AuditWritePort systemInternalApi = mock(AuditWritePort.class);
         SystemOwnerTeamAuditPort auditPort = new SystemOwnerTeamAuditPort(systemInternalApi);
 
         assertThatThrownBy(() -> auditPort.log(
@@ -71,7 +71,7 @@ class SystemOwnerTeamAuditPortTest {
 
     @Test
     void logShouldFailWhenSystemOwnerDoesNotConfirmPersistence() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        AuditWritePort systemInternalApi = mock(AuditWritePort.class);
         when(systemInternalApi.recordOperationAudit(any())).thenReturn(Boolean.FALSE);
         SystemOwnerTeamAuditPort auditPort = new SystemOwnerTeamAuditPort(systemInternalApi);
 

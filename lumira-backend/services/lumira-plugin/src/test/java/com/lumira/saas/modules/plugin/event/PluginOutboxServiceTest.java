@@ -15,7 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -138,7 +138,7 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectUserUuidMismatchWhenDatabaseCanResolveUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = trustedSystemApi();
+        UserIdentityQueryPort systemInternalApi = trustedSystemApi();
         PluginOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -152,7 +152,7 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectUserUuidWhenDatabaseCannotVerifyUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         PluginOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -166,7 +166,7 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectDisabledUserEvenWhenUserUuidMatches() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         PluginOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -623,12 +623,12 @@ class PluginOutboxServiceTest {
         return service(jdbcTemplate, trustedSystemApi());
     }
 
-    private PluginOutboxService service(JdbcTemplate jdbcTemplate, SystemInternalApi systemInternalApi) {
+    private PluginOutboxService service(JdbcTemplate jdbcTemplate, UserIdentityQueryPort systemInternalApi) {
         return new PluginOutboxService(jdbcTemplate, new ObjectMapper(), systemInternalApi);
     }
 
-    private SystemInternalApi trustedSystemApi() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private UserIdentityQueryPort trustedSystemApi() {
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findTargetUserUuidById(9L)).thenReturn("user-uuid-9");
         when(systemInternalApi.findUserIdentityById(9L)).thenReturn(new SystemUserSnapshotDTO(
                 9L,

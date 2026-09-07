@@ -1,6 +1,6 @@
 package com.lumira.file.processing;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -28,7 +28,7 @@ public class FileProcessingTaskRequestService {
 
     private final JdbcTemplate jdbcTemplate;
     private final PlatformEventOutboxService outboxService;
-    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider;
 
     public FileProcessingTaskRequestService(JdbcTemplate jdbcTemplate, PlatformEventOutboxService outboxService) {
         this(jdbcTemplate, outboxService, null);
@@ -38,7 +38,7 @@ public class FileProcessingTaskRequestService {
     public FileProcessingTaskRequestService(
             JdbcTemplate jdbcTemplate,
             PlatformEventOutboxService outboxService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.outboxService = outboxService;
@@ -63,7 +63,7 @@ public class FileProcessingTaskRequestService {
         if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted file owner is required");
         }
-        SystemInternalApi systemInternalApi = systemInternalApiProvider.getIfAvailable();
+        SystemUserAuthorizationPort systemInternalApi = systemInternalApiProvider.getIfAvailable();
         if (systemInternalApi == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted file owner resolver is unavailable");
         }

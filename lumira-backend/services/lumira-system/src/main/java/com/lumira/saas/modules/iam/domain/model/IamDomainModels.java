@@ -63,6 +63,23 @@ public final class IamDomainModels {
             ));
         }
 
+        public void recordRoleChanged(String changeType, String roleCode, Long userId, String userUuid) {
+            if (changeType == null || changeType.isBlank()) {
+                throw new IllegalArgumentException("role change type is required");
+            }
+            Map<String, Object> attributes = new LinkedHashMap<>();
+            attributes.put("changeType", changeType.trim());
+            if (roleCode != null && !roleCode.isBlank()) {
+                attributes.put("roleCode", roleCode.trim());
+            }
+            registerEvent(StandardDomainEvent.of(
+                    "IAM_ROLE_CHANGED",
+                    "iam.role",
+                    String.valueOf(id().value()),
+                    actorAttributes(attributes, userId, userUuid)
+            ));
+        }
+
         private Map<String, Object> actorAttributes(Map<String, Object> baseAttributes, Long userId, String userUuid) {
             Map<String, Object> attributes = new LinkedHashMap<>(baseAttributes);
             if (userId != null) {

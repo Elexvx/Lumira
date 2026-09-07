@@ -3,7 +3,7 @@ package com.lumira.saas.modules.ai.app;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.ai.AiSystemManagementToolPort;
 import com.lumira.api.client.FileInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -206,7 +206,7 @@ class AiNativeToolRuntimeServiceTest {
     void executeShouldRejectDisabledTrustedIdentityBeforeEmployeeOrToolChecks() {
         StubQueryOperations jdbcTemplate = new StubQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", "admin-live", "DISABLED"));
         DefaultAiNativeToolRuntimeService service = newService(
@@ -235,7 +235,7 @@ class AiNativeToolRuntimeServiceTest {
     void executeShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeEmployeeOrToolChecks() {
         StubQueryOperations jdbcTemplate = new StubQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", " ", "ENABLED"));
         DefaultAiNativeToolRuntimeService service = newService(
@@ -345,7 +345,7 @@ class AiNativeToolRuntimeServiceTest {
     void permissionSnapshotShouldRefreshLiveUsernameBeforeExecution() {
         StubQueryOperations jdbcTemplate = new StubQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", "admin-live", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
@@ -897,7 +897,7 @@ class AiNativeToolRuntimeServiceTest {
             FileInternalApi fileInternalApi,
             AuthorizationService authorizationService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             AiSystemManagementToolPort systemManagementToolPort,
             boolean writeToolsEnabled
     ) {
@@ -920,7 +920,7 @@ class AiNativeToolRuntimeServiceTest {
             FileInternalApi fileInternalApi,
             AuthorizationService authorizationService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             AiSystemManagementToolPort systemManagementToolPort,
             AiTrustedSessionResolver sessionAuthenticationService,
             boolean writeToolsEnabled

@@ -1,15 +1,15 @@
 package com.lumira.message.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.AuditWritePort;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import org.springframework.stereotype.Service;
 
 @Service("messageOperationAuditService")
 public class OperationAuditService {
 
-    private final SystemInternalApi systemInternalApi;
+    private final AuditWritePort systemInternalApi;
 
-    public OperationAuditService(SystemInternalApi systemInternalApi) {
+    public OperationAuditService(AuditWritePort systemInternalApi) {
         this.systemInternalApi = systemInternalApi;
     }
 

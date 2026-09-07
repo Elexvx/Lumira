@@ -1,6 +1,6 @@
 package com.lumira.localization.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
@@ -38,7 +38,7 @@ public class LocalizationV2Controller {
     private final LocalizationManagementAppService localizationManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     public LocalizationV2Controller(
@@ -54,7 +54,7 @@ public class LocalizationV2Controller {
             LocalizationManagementAppService localizationManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationPort systemInternalApi
     ) {
         this(localizationManagementAppService, securityContextFacade, permissionGuard, systemInternalApi, true);
     }
@@ -63,7 +63,7 @@ public class LocalizationV2Controller {
             LocalizationManagementAppService localizationManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
         this.localizationManagementAppService = localizationManagementAppService;

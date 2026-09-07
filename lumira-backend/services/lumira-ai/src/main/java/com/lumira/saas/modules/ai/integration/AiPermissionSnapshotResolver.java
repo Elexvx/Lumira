@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.integration;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.data.DataPermissionRule;
@@ -20,9 +20,9 @@ public class AiPermissionSnapshotResolver {
 
     private static final String STATUS_ENABLED = "ENABLED";
 
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
 
-    public AiPermissionSnapshotResolver(SystemInternalApi systemInternalApi) {
+    public AiPermissionSnapshotResolver(SystemUserAuthorizationPort systemInternalApi) {
         this.systemInternalApi = systemInternalApi;
     }
 

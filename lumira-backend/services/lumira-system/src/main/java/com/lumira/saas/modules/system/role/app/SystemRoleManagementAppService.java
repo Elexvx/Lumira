@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.role.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -79,7 +79,7 @@ public class SystemRoleManagementAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final OperationAuditService operationAuditService;
     private final DomainEventPublisher domainEventPublisher;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private SystemConfigVersioningService configVersioningService;
@@ -135,7 +135,7 @@ public class SystemRoleManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
@@ -154,7 +154,7 @@ public class SystemRoleManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
@@ -190,7 +190,7 @@ public class SystemRoleManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             DomainEventPublisher domainEventPublisher,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(SystemRoleManagementPersistenceAdapters.from(persistence), permissionSnapshotService, operationAuditService,
@@ -310,9 +310,10 @@ public class SystemRoleManagementAppService {
         requirePermission(currentUser, "system:role:create");
         validateRoleRequest(currentUser, request);
         Long roleId = upsertRole(null, request, currentUser.getUserId(), currentUser.getUserUuid());
+        publishRoleChangedEvent(roleId, "CREATED", request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceRolePermissionsWithDomainEvent(roleId, null, Set.of(), request.getPermissionKeys(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceRoleDataScopes(roleId, null, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid(), true);
-        permissionSnapshotService.invalidatePermissions();
+        // A newly created role has no assigned subjects, so no existing session is stale.
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
         return queryRoleDetail(roleId);
     }
@@ -325,9 +326,10 @@ public class SystemRoleManagementAppService {
         SystemVO.RoleDetailVO existingRole = queryRoleDetail(roleId);
         Set<String> existingPermissions = new LinkedHashSet<>(existingRole.getPermissionKeys());
         upsertRole(roleId, existingRole, request, currentUser.getUserId(), currentUser.getUserUuid());
+        publishRoleChangedEvent(roleId, "UPDATED", request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceRolePermissionsWithDomainEvent(roleId, existingRole, existingPermissions, request.getPermissionKeys(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceRoleDataScopes(roleId, existingRole, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid(), false);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateRoleAuthorization(roleId);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
         return queryRoleDetail(roleId);
     }
@@ -340,7 +342,7 @@ public class SystemRoleManagementAppService {
         SystemVO.RoleDetailVO existingRole = queryRoleDetail(roleId);
         Set<String> existingPermissions = new LinkedHashSet<>(existingRole.getPermissionKeys());
         replaceRolePermissionsWithDomainEvent(roleId, existingRole, existingPermissions, permissionKeys, currentUser.getUserId(), currentUser.getUserUuid());
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidatePermissionsForRole(roleId);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "permissions", "UPDATE", "SUCCESS", "更新角色权限: " + roleId);
         return true;
     }
@@ -370,8 +372,9 @@ public class SystemRoleManagementAppService {
                 LocalDateTime.now()
         );
         requireRoleWrite(deleted, "Role changed, please retry");
+        publishRoleChangedEvent(roleId, "DELETED", role.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid());
         roleRepository.retireDeletedRoleRelations(roleId, actor, LocalDateTime.now());
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateRoleAuthorization(roleId);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "delete", "DELETE", "SUCCESS", "删除角色: " + role.getRoleName());
         return true;
     }
@@ -678,6 +681,12 @@ public class SystemRoleManagementAppService {
         roleAggregate.replacePermissions(effectivePermissionKeys, operatorId, operatorUuid);
         domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
         replaceRolePermissions(roleId, existingRole, effectivePermissionKeys, operatorId, operatorUuid);
+    }
+
+    private void publishRoleChangedEvent(Long roleId, String changeType, String roleCode, Long operatorId, String operatorUuid) {
+        RoleAggregate roleAggregate = new RoleAggregate(roleId, Set.of());
+        roleAggregate.recordRoleChanged(changeType, roleCode, operatorId, operatorUuid);
+        domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
     }
 
     private void replaceRolePermissions(Long roleId, SystemVO.RoleDetailVO existingRole, Set<String> permissionKeys, Long operatorId, String operatorUuid) {

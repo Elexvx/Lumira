@@ -2,7 +2,11 @@ package com.lumira.api.expert;
 
 import java.time.LocalDateTime;
 
-/** Expert-owned account-state update performed after System activates credentials. */
+/**
+ * System/account outbound port for the expert-owned state update that follows
+ * credential activation. The account-activation token and user credential
+ * lifecycle remain owned by System; Expert only implements this narrow port.
+ */
 public interface ExpertAccountActivationPort {
 
     int activate(ExpertAccountActivation activation);

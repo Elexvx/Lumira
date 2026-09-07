@@ -33,6 +33,8 @@ import com.lumira.saas.modules.competition.infrastructure.JdbcCompetitionAuditRe
 import com.lumira.saas.modules.competition.infrastructure.JdbcRegistrationDatasetRepository;
 import com.lumira.saas.modules.competition.infrastructure.RegistrationReviewInternalApiAdapter;
 import com.lumira.saas.modules.competition.infrastructure.persistence.CompetitionSqlOperations;
+import com.lumira.saas.modules.competition.integration.alerting.CompetitionAlertBusinessSignalAdapter;
+import com.lumira.saas.modules.competition.integration.expert.CompetitionExpertApplicationQueryAdapter;
 import com.lumira.saas.modules.review.app.ReviewAppService;
 import com.lumira.saas.modules.review.controller.CompetitionWorkspaceReviewController;
 import com.lumira.saas.modules.review.controller.ReviewV2Controller;
@@ -48,6 +50,8 @@ import org.springframework.context.annotation.Import;
 @ConditionalOnLumiraControlPlaneEnabled
 @Import({
         CompetitionSqlOperations.class,
+        CompetitionAlertBusinessSignalAdapter.class,
+        CompetitionExpertApplicationQueryAdapter.class,
         CompetitionManagementPersistenceAssemblyConfiguration.class,
         CompetitionRegistrationPersistenceAssemblyConfiguration.class,
         CompetitionCatalogSourceSnapshotAdapter.class,

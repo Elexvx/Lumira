@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.infrastructure;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -88,7 +88,7 @@ public class JdbcAiManagementPersistenceAdapter implements AiManagementPersisten
     private final AiEmployeeRuntimeService aiEmployeeRuntimeService;
     private final AiChatModelFactory aiChatModelFactory;
     private final AiPermissionSnapshotResolver permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final AiTrustedSessionResolver sessionAuthenticationService;
     private final AiAssistantEmployeeRepository assistantEmployeeRepository;
     private final Cache<String, AiVO.GovernanceOverviewVO> governanceOverviewCache;
@@ -103,7 +103,7 @@ public class JdbcAiManagementPersistenceAdapter implements AiManagementPersisten
             AiEmployeeRuntimeService aiEmployeeRuntimeService,
             AiChatModelFactory aiChatModelFactory,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         this(
@@ -126,7 +126,7 @@ public class JdbcAiManagementPersistenceAdapter implements AiManagementPersisten
             AiEmployeeRuntimeService aiEmployeeRuntimeService,
             AiChatModelFactory aiChatModelFactory,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

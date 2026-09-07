@@ -1,6 +1,6 @@
 package com.lumira.team.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -459,17 +459,17 @@ class TeamAppServiceTest {
     }
 
     private Fixtures fixturesWithLiveSnapshot(String role, PermissionSnapshotDTO snapshot) {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(3001L))
                 .thenReturn(userSnapshot(3001L, "user3001", "ENABLED"));
         when(systemInternalApi.permissionSnapshot(eq(3001L), eq("user-uuid-3001")))
                 .thenReturn(snapshot == null ? snapshot(Set.of()) : snapshot);
-        ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
+        ObjectProvider<SystemUserAuthorizationPort> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(systemInternalApi);
         return fixtures(role, provider);
     }
 
-    private Fixtures fixtures(String role, ObjectProvider<SystemInternalApi> systemInternalApiProvider) {
+    private Fixtures fixtures(String role, ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider) {
         TeamRepository teamRepository = mock(TeamRepository.class);
         TeamMemberRepository teamMemberRepository = mock(TeamMemberRepository.class);
         TeamInviteRepository teamInviteRepository = mock(TeamInviteRepository.class);
@@ -621,6 +621,6 @@ class TeamAppServiceTest {
             TeamInviteRepository teamInviteRepository,
             TeamJoinRequestRepository teamJoinRequestRepository,
             TeamPermissionService permissionService,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationPort systemInternalApi
     ) {}
 }

@@ -80,7 +80,7 @@ public class PluginReadinessV2Controller {
                         "plugin package storage",
                         "plugin_event_outbox",
                         "IAM permission registration contract",
-                        "SystemInternalApi.bumpReadModelVersion",
+                        "SystemPluginManagementPort.bumpReadModelVersion",
                         "job-executor internal relay"
                 ),
                 List.of(

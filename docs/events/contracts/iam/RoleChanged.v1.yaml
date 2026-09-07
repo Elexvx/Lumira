@@ -1,0 +1,36 @@
+eventType: RoleChanged
+schemaVersion: 1
+sourceModule: iam
+producer: iam
+owner: lumira-system
+consumerCapabilities:
+  - async-authz-invalidation
+schemaDigest: sha256:bf65e4bbff694164015ce6002a6b7f618a551b59b32ebd1e08943f2e9bf09809
+compatibility:
+  mode: backward
+  requiredFields:
+    - eventId
+    - eventType
+    - sourceModule
+    - producer
+    - aggregateId
+    - schemaVersion
+    - occurredAt
+    - payload
+  payloadTypes:
+    eventId: string
+    eventType: string
+    sourceModule: string
+    producer: string
+    aggregateId: string
+    schemaVersion: integer
+    occurredAt: timestamp
+    payload: object
+delivery:
+  transport: redis-stream
+  guarantee: at-least-once
+  consumerStatus: implemented-by-lumira-async
+  consumer:
+    name: async-authz-invalidation
+    supportedSchemaVersions:
+      - 1

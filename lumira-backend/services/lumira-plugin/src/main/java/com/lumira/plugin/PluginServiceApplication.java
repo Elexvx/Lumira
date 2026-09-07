@@ -2,15 +2,10 @@ package com.lumira.plugin;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.context.annotation.Configuration;
 
-@SpringBootApplication(scanBasePackages = {
-        "com.lumira.plugin",
-        "com.lumira.saas.modules.plugin",
-        "com.lumira.common"
-})
+@Configuration(proxyBeanMethods = false)
 @ConfigurationPropertiesScan(basePackages = {
         "com.lumira.plugin",
         "com.lumira.saas.modules.plugin",
@@ -18,8 +13,4 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 })
 @MapperScan(basePackages = "com.lumira.saas.modules.plugin.mapper", annotationClass = Mapper.class)
 public class PluginServiceApplication {
-
-    public static void main(String[] args) {
-        SpringApplication.run(PluginServiceApplication.class, args);
-    }
 }

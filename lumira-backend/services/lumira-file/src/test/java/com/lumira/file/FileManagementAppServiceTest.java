@@ -2,7 +2,7 @@ package com.lumira.file;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.StorageSpaceOptionDTO;
@@ -120,7 +120,7 @@ class FileManagementAppServiceTest {
     private MultipartFile multipartFile;
 
     @Mock
-    private SystemInternalApi systemInternalApi;
+    private SystemUserAuthorizationPort systemInternalApi;
 
     @TempDir
     Path tempDir;
@@ -1046,8 +1046,8 @@ class FileManagementAppServiceTest {
                 .toList();
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi internalApi) {
-        ObjectProvider<SystemInternalApi> provider = org.mockito.Mockito.mock(ObjectProvider.class);
+    private ObjectProvider<SystemUserAuthorizationPort> provider(SystemUserAuthorizationPort internalApi) {
+        ObjectProvider<SystemUserAuthorizationPort> provider = org.mockito.Mockito.mock(ObjectProvider.class);
         org.mockito.Mockito.lenient().when(provider.getIfAvailable()).thenReturn(internalApi);
         return provider;
     }

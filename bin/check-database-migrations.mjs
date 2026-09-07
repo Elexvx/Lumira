@@ -48,6 +48,8 @@ const requiredDatabaseContracts = [
   "'aiadc_activity_status'",
   "'aiadc_activity_public_status'",
   'CREATE TABLE `sys_profile_field_definition`',
+  'CREATE TABLE `file_event_receipt`',
+  'CREATE TABLE `file_event_projection`',
   "'profile_settings_page_key'",
   "'branding.maintenance-end-at'",
 ];
@@ -59,6 +61,56 @@ for (const contract of requiredDatabaseContracts) {
   }
   if (!migrationChain.includes(idempotentContract)) {
     throw new Error(`Online migration chain is missing: ${contract}`);
+  }
+}
+
+const ownerManifest = readFileSync(
+  path.join(repoRoot, 'doc', '27-ddd-owner-table-manifest.csv'),
+  'utf8',
+)
+  .trim()
+  .split(/\r?\n/u)
+  .slice(1)
+  .filter(Boolean)
+  .map((line) => {
+    const [context, ownerModule, tablePatterns] = line.split(',', 3);
+    return {
+      context,
+      ownerModule,
+      patterns: tablePatterns.split('|').filter((pattern) => pattern && pattern !== '-'),
+    };
+  });
+const tableDdlPattern = /\b(?:create\s+table\s+(?:if\s+not\s+exists\s+)?|alter\s+table\s+)`?([a-zA-Z0-9_]+)`?/giu;
+const stripSqlComments = (source) => source
+  .replace(/\/\*[\s\S]*?\*\//gu, '')
+  .replace(/^\s*--.*$/gmu, '');
+const ownerPatternMatches = (pattern, table) => {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/gu, '\\$&').replaceAll('*', '.*');
+  return new RegExp(`^${escaped}$`, 'iu').test(table);
+};
+const ownersForTable = (table) => ownerManifest.filter((rule) =>
+  rule.patterns.some((pattern) => ownerPatternMatches(pattern, table))
+);
+
+for (const migration of migrations) {
+  const source = stripSqlComments(migration.source);
+  for (const match of source.matchAll(tableDdlPattern)) {
+    const table = match[1];
+    if (ownersForTable(table).length === 0) {
+      throw new Error(`Migration ${migration.name} declares ${table} but no owner rule matches.`);
+    }
+  }
+}
+
+const bootstrapTables = new Set();
+for (const match of stripSqlComments(bootstrapSql).matchAll(tableDdlPattern)) {
+  bootstrapTables.add(match[1]);
+}
+for (const table of bootstrapTables) {
+  const owners = ownersForTable(table);
+  if (owners.length !== 1) {
+    const ownerSummary = owners.map((owner) => `${owner.context}:${owner.ownerModule}`).join(', ') || '<none>';
+    throw new Error(`Bootstrap table ${table} must have exactly one owner; found ${ownerSummary}.`);
   }
 }
 

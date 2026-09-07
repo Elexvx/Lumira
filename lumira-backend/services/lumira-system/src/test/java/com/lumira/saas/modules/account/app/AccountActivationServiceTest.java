@@ -19,12 +19,14 @@ import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import com.lumira.saas.modules.account.infrastructure.JdbcAccountActivationRepository;
-import com.lumira.saas.modules.iam.service.IamUserService;
+import com.lumira.saas.modules.account.app.port.AccountActivationConfigurationPort;
+import com.lumira.saas.modules.account.app.port.AccountIdentityActivationPort;
 import com.lumira.saas.modules.account.vo.AccountActivationVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -33,7 +35,7 @@ class AccountActivationServiceTest {
     @Test
     void createActivationTokenShouldRejectMissingOperatorBeforeDatabaseWrite() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
-        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(IamUserService.class));
+        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(AccountIdentityActivationPort.class));
 
         assertThatThrownBy(() -> service.createActivationToken(9001L, 1001L, null, "operator-uuid-42"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -45,7 +47,7 @@ class AccountActivationServiceTest {
     @Test
     void createActivationTokenShouldRejectInvalidUserBeforeDatabaseWrite() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
-        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(IamUserService.class));
+        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(AccountIdentityActivationPort.class));
 
         assertThatThrownBy(() -> service.createActivationToken(0L, 1001L, 42L, "operator-uuid-42"))
                 .hasMessageContaining("activation user is required");
@@ -56,7 +58,7 @@ class AccountActivationServiceTest {
     @Test
     void verifyShouldRejectMalformedTokenBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
-        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(IamUserService.class));
+        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(AccountIdentityActivationPort.class));
 
         AccountActivationVO.TokenInfo info = service.verify("x".repeat(1024));
 
@@ -67,9 +69,7 @@ class AccountActivationServiceTest {
     @Test
     void createActivationTokenShouldRequireUserUuidBeforeTokenInsert() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(9001L))).thenReturn("user-uuid-9001");
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(42L))).thenReturn("operator-uuid-42");
-        when(jdbcTemplate.queryForObject(contains("select status from sys_user"), eq(String.class), eq(42L), eq("operator-uuid-42"))).thenReturn("ENABLED");
+        AccountIdentityActivationPort identityPort = identityPort("user-uuid-9001", "operator-uuid-42", "ENABLED");
         when(jdbcTemplate.update(
                 contains("insert into sys_account_activation_token"),
                 org.mockito.ArgumentMatchers.anyString(),
@@ -82,7 +82,7 @@ class AccountActivationServiceTest {
                 eq(42L),
                 eq("operator-uuid-42")
         )).thenReturn(1);
-        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(IamUserService.class));
+        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), identityPort);
 
         String token = service.createActivationToken(9001L, 1001L, 42L, "operator-uuid-42");
 
@@ -113,9 +113,7 @@ class AccountActivationServiceTest {
     @Test
     void createActivationTokenShouldRejectWhenTokenInsertMisses() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(9001L))).thenReturn("user-uuid-9001");
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(42L))).thenReturn("operator-uuid-42");
-        when(jdbcTemplate.queryForObject(contains("select status from sys_user"), eq(String.class), eq(42L), eq("operator-uuid-42"))).thenReturn("ENABLED");
+        AccountIdentityActivationPort identityPort = identityPort("user-uuid-9001", "operator-uuid-42", "ENABLED");
         when(jdbcTemplate.update(
                 contains("insert into sys_account_activation_token"),
                 org.mockito.ArgumentMatchers.anyString(),
@@ -128,7 +126,7 @@ class AccountActivationServiceTest {
                 eq(42L),
                 eq("operator-uuid-42")
         )).thenReturn(0);
-        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(IamUserService.class));
+        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), identityPort);
 
         assertThatThrownBy(() -> service.createActivationToken(9001L, 1001L, 42L, "operator-uuid-42"))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -140,9 +138,8 @@ class AccountActivationServiceTest {
     @Test
     void createActivationTokenShouldRejectMismatchedOperatorUuidBeforeTokenInsert() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(9001L))).thenReturn("user-uuid-9001");
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(42L))).thenReturn("operator-uuid-42");
-        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(IamUserService.class));
+        AccountIdentityActivationPort identityPort = identityPort("user-uuid-9001", "operator-uuid-42", "ENABLED");
+        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), identityPort);
 
         assertThatThrownBy(() -> service.createActivationToken(9001L, 1001L, 42L, "other-uuid"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -154,10 +151,8 @@ class AccountActivationServiceTest {
     @Test
     void createActivationTokenShouldRejectDisabledOperatorBeforeTokenInsert() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(9001L))).thenReturn("user-uuid-9001");
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(42L))).thenReturn("operator-uuid-42");
-        when(jdbcTemplate.queryForObject(contains("select status from sys_user"), eq(String.class), eq(42L), eq("operator-uuid-42"))).thenReturn("DISABLED");
-        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(IamUserService.class));
+        AccountIdentityActivationPort identityPort = identityPort("user-uuid-9001", "operator-uuid-42", "DISABLED");
+        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), identityPort);
 
         assertThatThrownBy(() -> service.createActivationToken(9001L, 1001L, 42L, "operator-uuid-42"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -169,10 +164,8 @@ class AccountActivationServiceTest {
     @Test
     void createActivationTokenShouldRejectOperatorWithoutTrustedStatusBeforeTokenInsert() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(9001L))).thenReturn("user-uuid-9001");
-        when(jdbcTemplate.queryForObject(contains("select uuid from sys_user"), eq(String.class), eq(42L))).thenReturn("operator-uuid-42");
-        when(jdbcTemplate.queryForObject(contains("select status from sys_user"), eq(String.class), eq(42L), eq("operator-uuid-42"))).thenReturn(" ");
-        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(IamUserService.class));
+        AccountIdentityActivationPort identityPort = identityPort("user-uuid-9001", "operator-uuid-42", " ");
+        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), identityPort);
 
         assertThatThrownBy(() -> service.createActivationToken(9001L, 1001L, 42L, "operator-uuid-42"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -185,19 +178,19 @@ class AccountActivationServiceTest {
     void verifyShouldBindTokenUserByUuid() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         when(jdbcTemplate.query(
-                contains("u.uuid = t.user_uuid"),
+                contains("token_hash = ?"),
                 org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(LocalDateTime.class)
         )).thenReturn(List.of());
-        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(IamUserService.class));
+        AccountActivationService service = service(jdbcTemplate, mock(PasswordPolicyService.class), mock(AccountIdentityActivationPort.class));
 
         AccountActivationVO.TokenInfo info = service.verify("A".repeat(43));
 
         assertThat(info.isValid()).isFalse();
         assertThat(info.getReason()).isEqualTo("激活链接无效、已过期或已使用");
         verify(jdbcTemplate).query(
-                contains("u.uuid = t.user_uuid"),
+                contains("token_hash = ?"),
                 org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(LocalDateTime.class)
@@ -208,22 +201,22 @@ class AccountActivationServiceTest {
     void completeShouldRejectMalformedTokenBeforePasswordPolicyOrDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         PasswordPolicyService passwordPolicyService = mock(PasswordPolicyService.class);
-        IamUserService iamUserService = mock(IamUserService.class);
-        AccountActivationService service = service(jdbcTemplate, passwordPolicyService, iamUserService);
+        AccountIdentityActivationPort identityPort = mock(AccountIdentityActivationPort.class);
+        AccountActivationService service = service(jdbcTemplate, passwordPolicyService, identityPort);
 
         assertThatThrownBy(() -> service.complete("x".repeat(1024), "Weak"))
                 .hasMessageContaining("激活链接无效");
 
         verifyNoInteractions(jdbcTemplate);
         verifyNoInteractions(passwordPolicyService);
-        verifyNoInteractions(iamUserService);
+        verifyNoInteractions(identityPort);
     }
 
     @Test
     void completeShouldConsumeTokenWithHashAndUserUuidBoundary() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         PasswordPolicyService passwordPolicyService = mock(PasswordPolicyService.class);
-        IamUserService iamUserService = mock(IamUserService.class);
+        AccountIdentityActivationPort identityPort = identityPort("user-uuid-9001", "operator-uuid-42", "ENABLED");
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         ExpertAccountActivationPort expertAccountActivationPort = mock(ExpertAccountActivationPort.class);
         when(passwordEncoder.encode("StrongerPassword1!")).thenReturn("encoded-password");
@@ -231,13 +224,11 @@ class AccountActivationServiceTest {
                 contains("update sys_account_activation_token"),
                 org.mockito.ArgumentMatchers.any(Object[].class)
         )).thenReturn(1);
-        when(jdbcTemplate.update(
-                contains("update sys_user"),
-                org.mockito.ArgumentMatchers.any(Object[].class)
-        )).thenReturn(1);
+        when(identityPort.activateIdentity(eq(9001L), eq("user-uuid-9001"), eq("encoded-password"), org.mockito.ArgumentMatchers.any(LocalDateTime.class)))
+                .thenReturn(1);
         when(expertAccountActivationPort.activate(org.mockito.ArgumentMatchers.any())).thenReturn(1);
         when(jdbcTemplate.query(
-                contains("t.token_hash = ?"),
+                contains("token_hash = ?"),
                 org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(LocalDateTime.class)
@@ -251,15 +242,15 @@ class AccountActivationServiceTest {
                     "userId", 9001L,
                     "userUuid", "user-uuid-9001",
                     "expertId", 1001L,
-                    "username", "expert",
-                    "email", "expert@example.com"
+                    "unused", "unused"
             )), 0));
         });
         AccountActivationService service = new AccountActivationService(
                 new JdbcAccountActivationRepository(jdbcTemplate),
                 passwordEncoder,
                 passwordPolicyService,
-                iamUserService,
+                identityPort,
+                mock(AccountActivationConfigurationPort.class),
                 mock(SmtpMailService.class),
                 expertAccountActivationPort
         );
@@ -267,16 +258,12 @@ class AccountActivationServiceTest {
         boolean completed = service.complete("A".repeat(43), "StrongerPassword1!");
 
         assertThat(completed).isTrue();
-        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(jdbcTemplate, iamUserService, expertAccountActivationPort);
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(jdbcTemplate, identityPort, expertAccountActivationPort);
         inOrder.verify(jdbcTemplate).update(
                 contains("update sys_account_activation_token"),
                 org.mockito.ArgumentMatchers.any(Object[].class)
         );
-        inOrder.verify(jdbcTemplate).update(
-                contains("update sys_user"),
-                org.mockito.ArgumentMatchers.any(Object[].class)
-        );
-        inOrder.verify(iamUserService).upsertPasswordCredential(9001L, "user-uuid-9001", "encoded-password");
+        inOrder.verify(identityPort).activateIdentity(eq(9001L), eq("user-uuid-9001"), eq("encoded-password"), org.mockito.ArgumentMatchers.any(LocalDateTime.class));
         verify(jdbcTemplate).update(
                 contains("and token_hash = ?"),
                 org.mockito.ArgumentMatchers.any(LocalDateTime.class),
@@ -288,34 +275,22 @@ class AccountActivationServiceTest {
                 eq(9001L),
                 eq("user-uuid-9001")
         );
-        verify(jdbcTemplate).update(
-                contains("from sys_account_activation_token t"),
-                eq("encoded-password"),
-                eq(9001L),
-                eq("user-uuid-9001"),
-                org.mockito.ArgumentMatchers.any(LocalDateTime.class),
-                eq(9001L),
-                eq("user-uuid-9001"),
-                eq(501L),
-                org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.any(LocalDateTime.class)
-        );
         verify(expertAccountActivationPort).activate(org.mockito.ArgumentMatchers.argThat(activation ->
                 activation.expertId().equals(1001L)
                         && activation.userId().equals(9001L)
                         && activation.userUuid().equals("user-uuid-9001")));
-        verify(iamUserService).upsertPasswordCredential(9001L, "user-uuid-9001", "encoded-password");
+        verify(identityPort).activateIdentity(eq(9001L), eq("user-uuid-9001"), eq("encoded-password"), org.mockito.ArgumentMatchers.any(LocalDateTime.class));
     }
 
     @Test
     void completeShouldNotWritePasswordWhenTokenWasAlreadyConsumedConcurrently() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         PasswordPolicyService passwordPolicyService = mock(PasswordPolicyService.class);
-        IamUserService iamUserService = mock(IamUserService.class);
+        AccountIdentityActivationPort identityPort = identityPort("user-uuid-9001", "operator-uuid-42", "ENABLED");
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         when(passwordEncoder.encode("StrongerPassword1!")).thenReturn("encoded-password");
         when(jdbcTemplate.query(
-                contains("t.token_hash = ?"),
+                contains("token_hash = ?"),
                 org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(LocalDateTime.class)
@@ -341,26 +316,29 @@ class AccountActivationServiceTest {
                 new JdbcAccountActivationRepository(jdbcTemplate),
                 passwordEncoder,
                 passwordPolicyService,
-                iamUserService,
+                identityPort,
+                mock(AccountActivationConfigurationPort.class),
                 mock(SmtpMailService.class)
         );
 
         assertThatThrownBy(() -> service.complete("A".repeat(43), "StrongerPassword1!"))
                 .hasMessageContaining("激活链接无效");
 
-        verify(jdbcTemplate, never()).update(contains("update sys_user"), org.mockito.ArgumentMatchers.any(Object[].class));
-        verifyNoInteractions(iamUserService);
+        verify(identityPort, never()).activateIdentity(
+                org.mockito.ArgumentMatchers.anyLong(), anyString(), anyString(),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class)
+        );
     }
 
     @Test
     void completeShouldNotWriteIamCredentialWhenActivationUserChangedConcurrently() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         PasswordPolicyService passwordPolicyService = mock(PasswordPolicyService.class);
-        IamUserService iamUserService = mock(IamUserService.class);
+        AccountIdentityActivationPort identityPort = identityPort("user-uuid-9001", "operator-uuid-42", "ENABLED");
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         when(passwordEncoder.encode("StrongerPassword1!")).thenReturn("encoded-password");
         when(jdbcTemplate.query(
-                contains("t.token_hash = ?"),
+                contains("token_hash = ?"),
                 org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(LocalDateTime.class)
@@ -382,34 +360,33 @@ class AccountActivationServiceTest {
                 contains("update sys_account_activation_token"),
                 org.mockito.ArgumentMatchers.any(Object[].class)
         )).thenReturn(1);
-        when(jdbcTemplate.update(
-                contains("update sys_user"),
-                org.mockito.ArgumentMatchers.any(Object[].class)
-        )).thenReturn(0);
+        when(identityPort.activateIdentity(eq(9001L), eq("user-uuid-9001"), eq("encoded-password"), org.mockito.ArgumentMatchers.any(LocalDateTime.class)))
+                .thenReturn(0);
         AccountActivationService service = new AccountActivationService(
                 new JdbcAccountActivationRepository(jdbcTemplate),
                 passwordEncoder,
                 passwordPolicyService,
-                iamUserService,
+                identityPort,
+                mock(AccountActivationConfigurationPort.class),
                 mock(SmtpMailService.class)
         );
 
         assertThatThrownBy(() -> service.complete("A".repeat(43), "StrongerPassword1!"))
                 .hasMessageContaining("Activation user changed");
 
-        verifyNoInteractions(iamUserService);
+        verify(identityPort).activateIdentity(eq(9001L), eq("user-uuid-9001"), eq("encoded-password"), org.mockito.ArgumentMatchers.any(LocalDateTime.class));
     }
 
     @Test
     void completeShouldRejectWhenActivationExpertChangedConcurrently() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         PasswordPolicyService passwordPolicyService = mock(PasswordPolicyService.class);
-        IamUserService iamUserService = mock(IamUserService.class);
+        AccountIdentityActivationPort identityPort = identityPort("user-uuid-9001", "operator-uuid-42", "ENABLED");
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         ExpertAccountActivationPort expertAccountActivationPort = mock(ExpertAccountActivationPort.class);
         when(passwordEncoder.encode("StrongerPassword1!")).thenReturn("encoded-password");
         when(jdbcTemplate.query(
-                contains("t.token_hash = ?"),
+                contains("token_hash = ?"),
                 org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(LocalDateTime.class)
@@ -431,16 +408,15 @@ class AccountActivationServiceTest {
                 contains("update sys_account_activation_token"),
                 org.mockito.ArgumentMatchers.any(Object[].class)
         )).thenReturn(1);
-        when(jdbcTemplate.update(
-                contains("update sys_user"),
-                org.mockito.ArgumentMatchers.any(Object[].class)
-        )).thenReturn(1);
+        when(identityPort.activateIdentity(eq(9001L), eq("user-uuid-9001"), eq("encoded-password"), org.mockito.ArgumentMatchers.any(LocalDateTime.class)))
+                .thenReturn(1);
         when(expertAccountActivationPort.activate(org.mockito.ArgumentMatchers.any())).thenReturn(0);
         AccountActivationService service = new AccountActivationService(
                 new JdbcAccountActivationRepository(jdbcTemplate),
                 passwordEncoder,
                 passwordPolicyService,
-                iamUserService,
+                identityPort,
+                mock(AccountActivationConfigurationPort.class),
                 mock(SmtpMailService.class),
                 expertAccountActivationPort
         );
@@ -452,14 +428,26 @@ class AccountActivationServiceTest {
     private AccountActivationService service(
             MyBatisQueryOperations jdbcTemplate,
             PasswordPolicyService passwordPolicyService,
-            IamUserService iamUserService
+            AccountIdentityActivationPort identityPort
     ) {
         return new AccountActivationService(
                 new JdbcAccountActivationRepository(jdbcTemplate),
                 mock(PasswordEncoder.class),
                 passwordPolicyService,
-                iamUserService,
+                identityPort,
+                mock(AccountActivationConfigurationPort.class),
                 mock(SmtpMailService.class)
         );
+    }
+
+    private AccountIdentityActivationPort identityPort(String userUuid, String operatorUuid, String operatorStatus) {
+        AccountIdentityActivationPort port = mock(AccountIdentityActivationPort.class);
+        when(port.findIdentity(9001L)).thenReturn(Optional.of(new AccountIdentityActivationPort.Identity(
+                9001L, userUuid, "expert", "expert@example.com", "DISABLED"
+        )));
+        when(port.findIdentity(42L)).thenReturn(Optional.of(new AccountIdentityActivationPort.Identity(
+                42L, operatorUuid, "operator", "operator@example.com", operatorStatus
+        )));
+        return port;
     }
 }

@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.architecture.interfaces.rest;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
@@ -28,7 +28,7 @@ public class DddArchitectureCatalogController {
 
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     public DddArchitectureCatalogController(SecurityContextFacade securityContextFacade, PermissionGuard permissionGuard) {
@@ -39,7 +39,7 @@ public class DddArchitectureCatalogController {
     public DddArchitectureCatalogController(
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationPort systemInternalApi
     ) {
         this(securityContextFacade, permissionGuard, systemInternalApi, true);
     }
@@ -47,7 +47,7 @@ public class DddArchitectureCatalogController {
     private DddArchitectureCatalogController(
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
         this.securityContextFacade = securityContextFacade;

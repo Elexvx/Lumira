@@ -54,3 +54,6 @@ saas:
       - /error
   web:
     cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:}
+  plugin:
+    allow-in-process-backend-plugins: ${PLUGIN_ALLOW_IN_PROCESS_BACKEND_PLUGINS:false}
+    release-id: ${LUMIRA_RELEASE_ID:local}

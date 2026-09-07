@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
 class PasskeyCredentialAppServiceTest {
 
     private final PasskeyCredentialMapper mapper = mock(PasskeyCredentialMapper.class);
-    private final UserDomainService userDomainService = mock(UserDomainService.class);
+    private final UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
     private final PasskeyCredentialAppService service = new PasskeyCredentialAppService(mapper, userDomainService);
 
     @BeforeAll

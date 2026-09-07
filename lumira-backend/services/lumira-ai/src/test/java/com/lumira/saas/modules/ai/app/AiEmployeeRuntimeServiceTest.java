@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -260,7 +260,7 @@ class AiEmployeeRuntimeServiceTest {
                 mock(AiKnowledgeBaseAppService.class),
                 mock(AiToolOrchestrationService.class),
                 permissionSnapshotService,
-                (SystemInternalApi) null,
+                (UserIdentityQueryPort) null,
                 (AiTrustedSessionResolver) null
         );
 
@@ -278,7 +278,7 @@ class AiEmployeeRuntimeServiceTest {
         StubQueryOperations jdbcTemplate = new StubQueryOperations();
         AiConversationService conversationService = mock(AiConversationService.class);
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", "admin-live", "DISABLED"));
         DefaultAiEmployeeRuntimeService service = newService(
@@ -310,7 +310,7 @@ class AiEmployeeRuntimeServiceTest {
         StubQueryOperations jdbcTemplate = new StubQueryOperations();
         AiConversationService conversationService = mock(AiConversationService.class);
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", " ", "ENABLED"));
         DefaultAiEmployeeRuntimeService service = newService(
@@ -348,7 +348,7 @@ class AiEmployeeRuntimeServiceTest {
         AiSkillPermissionChecker permissionChecker = mock(AiSkillPermissionChecker.class);
         AiKnowledgeBaseAppService knowledgeBaseAppService = mock(AiKnowledgeBaseAppService.class);
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", "admin-live", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
@@ -797,7 +797,7 @@ class AiEmployeeRuntimeServiceTest {
             AiKnowledgeBaseAppService knowledgeBaseAppService,
             AiToolOrchestrationService orchestrationService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         try {
@@ -811,7 +811,7 @@ class AiEmployeeRuntimeServiceTest {
                     AiKnowledgeBaseAppService.class,
                     AiToolOrchestrationService.class,
                     AiPermissionSnapshotResolver.class,
-                    SystemInternalApi.class,
+                    UserIdentityQueryPort.class,
                     AiTrustedSessionResolver.class,
                     AiAssistantEmployeeRepository.class,
                     boolean.class

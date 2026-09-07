@@ -1,7 +1,7 @@
 package com.lumira.payment.service;
 
 import com.lumira.api.client.PaymentInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
@@ -28,14 +28,14 @@ public class PaymentInternalApiService implements PaymentInternalApi {
 
     private final PaymentTransactionService paymentTransactionService;
     private final PaymentManagementAppService paymentManagementAppService;
-    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider;
     private final ObjectProvider<PaymentOutboxRelay> paymentOutboxRelayProvider;
 
     @Autowired
     public PaymentInternalApiService(
             PaymentTransactionService paymentTransactionService,
             PaymentManagementAppService paymentManagementAppService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider,
             ObjectProvider<PaymentOutboxRelay> paymentOutboxRelayProvider
     ) {
         this.paymentTransactionService = paymentTransactionService;
@@ -46,7 +46,7 @@ public class PaymentInternalApiService implements PaymentInternalApi {
 
     public PaymentInternalApiService(
             PaymentTransactionService paymentTransactionService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider
     ) {
         this(paymentTransactionService, null, systemInternalApiProvider, null);
     }
@@ -103,7 +103,7 @@ public class PaymentInternalApiService implements PaymentInternalApi {
 
     private CurrentUser resolveTrustedOperator(Long operatorId, String operatorUuid, Long simulatedRoleId) {
         SystemUserSnapshotDTO snapshot = resolveKnownOperatorIdentity(operatorId, operatorUuid);
-        SystemInternalApi systemInternalApi = requireSystemInternalApi();
+        SystemUserAuthorizationPort systemInternalApi = requireSystemInternalApi();
         if (!StringUtils.hasText(snapshot.username())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator username is required");
         }
@@ -147,7 +147,7 @@ public class PaymentInternalApiService implements PaymentInternalApi {
         if (!StringUtils.hasText(operatorUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator userUuid is required");
         }
-        SystemInternalApi systemInternalApi = requireSystemInternalApi();
+        SystemUserAuthorizationPort systemInternalApi = requireSystemInternalApi();
         SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(operatorId);
         if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(operatorId)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator does not exist");
@@ -161,8 +161,8 @@ public class PaymentInternalApiService implements PaymentInternalApi {
         return snapshot;
     }
 
-    private SystemInternalApi requireSystemInternalApi() {
-        SystemInternalApi systemInternalApi = systemInternalApiProvider == null
+    private SystemUserAuthorizationPort requireSystemInternalApi() {
+        SystemUserAuthorizationPort systemInternalApi = systemInternalApiProvider == null
                 ? null : systemInternalApiProvider.getIfAvailable();
         if (systemInternalApi == null) {
             throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Trusted operator resolver is unavailable");

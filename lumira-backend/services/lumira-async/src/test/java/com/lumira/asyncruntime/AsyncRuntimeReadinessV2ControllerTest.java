@@ -19,7 +19,9 @@ class AsyncRuntimeReadinessV2ControllerTest {
         assertThat(readiness.apiContracts()).contains(
                 "/api/v2/async/readiness",
                 "/api/v1/async/version",
-                "/internal/jobs/outbox/relay"
+                "/internal/jobs/outbox/recovery/{mode}/{owner}",
+                "/internal/jobs/payment-events/dead-letter/{recordId}/replay",
+                "/internal/jobs/payment-notifications/dead-letter/{recordId}/replay"
         );
         assertThat(readiness.blockers()).anySatisfy(blocker -> assertThat(blocker).contains("no datasource"));
 
@@ -31,7 +33,10 @@ class AsyncRuntimeReadinessV2ControllerTest {
                         "async.control-plane-base-url.configured",
                         "async.scoped-internal-tokens.configured",
                         "async.redis.connected",
-                        "async.payment-consumer.running"
+                        "async.recovery-fence.durable",
+                        "async.payment-consumer.running",
+                        "async.notification-consumer.running",
+                        "async.iam-consumer.running"
                 );
     }
 
@@ -56,6 +61,27 @@ class AsyncRuntimeReadinessV2ControllerTest {
         assertThat(controller.health().getData().healthChecks()).anySatisfy(check -> {
             assertThat(check.name()).isEqualTo("async.payment-consumer.running");
             assertThat(check.status()).isEqualTo("STOPPED");
+        });
+    }
+
+    @Test
+    void healthDegradesWhenRecoveryFencingFallsBackToMemory() {
+        AsyncRuntimeReadinessV2Controller controller = new AsyncRuntimeReadinessV2Controller(
+                "http://api-proxy:80",
+                "file-token",
+                "message-token",
+                "payment-token",
+                "plugin-token",
+                "job-token",
+                () -> true,
+                () -> true,
+                () -> false
+        );
+
+        assertThat(controller.health().getData().status()).isEqualTo("DEGRADED");
+        assertThat(controller.health().getData().healthChecks()).anySatisfy(check -> {
+            assertThat(check.name()).isEqualTo("async.recovery-fence.durable");
+            assertThat(check.status()).isEqualTo("IN_MEMORY_FALLBACK");
         });
     }
 

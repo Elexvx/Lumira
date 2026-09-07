@@ -1,7 +1,7 @@
 package com.lumira.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -50,7 +50,7 @@ class PaymentManagementAppServiceTest {
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("first-secret"));
@@ -80,7 +80,7 @@ class PaymentManagementAppServiceTest {
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret"));
@@ -102,7 +102,7 @@ class PaymentManagementAppServiceTest {
     void updateProviderSettingsShouldRejectUntrustedRequestContextBeforePersisting() {
         InsertSuccessJdbcTemplate jdbcTemplate = new InsertSuccessJdbcTemplate();
         PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "admin", "DISABLED"));
         PaymentManagementAppService service = new PaymentManagementAppService(
                 jdbcTemplate,
@@ -131,7 +131,7 @@ class PaymentManagementAppServiceTest {
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi(), "payment:config:update")
+                provider(enabledSystemUserAuthorizationPort(), "payment:config:update")
         );
 
         assertThatThrownBy(() -> service.listProviderSettings(currentUser("payment:config:update")))
@@ -148,7 +148,7 @@ class PaymentManagementAppServiceTest {
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi(), "payment:config:update")
+                provider(enabledSystemUserAuthorizationPort(), "payment:config:update")
         );
 
         assertThatThrownBy(() -> service.paymentProviderSettings(currentUser("payment:config:update"), "stripe"))
@@ -167,7 +167,7 @@ class PaymentManagementAppServiceTest {
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi(), "payment:config:view")
+                provider(enabledSystemUserAuthorizationPort(), "payment:config:view")
         );
 
         assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser("payment:config:view"), "stripe", stripeSettings("secret")))
@@ -187,7 +187,7 @@ class PaymentManagementAppServiceTest {
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi(), "payment:config:update")
+                provider(enabledSystemUserAuthorizationPort(), "payment:config:update")
         );
 
         assertThatThrownBy(() -> service.testPaymentProvider(currentUser("payment:config:update"), "stripe"))
@@ -204,7 +204,7 @@ class PaymentManagementAppServiceTest {
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi(), "payment:settings:view")
+                provider(enabledSystemUserAuthorizationPort(), "payment:settings:view")
         );
 
         assertThatThrownBy(() -> service.listProviderSettings(currentUser("payment:settings:view")))
@@ -221,7 +221,7 @@ class PaymentManagementAppServiceTest {
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi(), "payment:settings:manage")
+                provider(enabledSystemUserAuthorizationPort(), "payment:settings:manage")
         );
 
         assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser("payment:settings:manage"), "stripe", stripeSettings("secret")))
@@ -242,7 +242,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret"));
@@ -291,7 +291,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("new-secret")))
@@ -330,7 +330,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("new-secret")))
@@ -356,7 +356,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
         PaymentProviderSettingsDTO request = stripeSettings("********");
         request.setSecretKey("********");
@@ -383,7 +383,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         service.provisionBuiltinMockProvider(1001L, "user-uuid-1001");
@@ -429,7 +429,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
         BuiltinMockPaymentAvailability availability = mock(BuiltinMockPaymentAvailability.class);
         when(availability.isEnabled()).thenReturn(true);
@@ -473,7 +473,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
         BuiltinMockPaymentAvailability availability = mock(BuiltinMockPaymentAvailability.class);
         service.setBuiltinMockPaymentAvailability(availability);
@@ -522,7 +522,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         var result = service.testPaymentProvider(currentUser(), "stripe");
@@ -560,7 +560,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         assertThatThrownBy(() -> service.testPaymentProvider(currentUser(), "stripe"))
@@ -596,7 +596,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         assertThatThrownBy(() -> service.testPaymentProvider(currentUser(), "stripe"))
@@ -628,7 +628,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
         PaymentProviderSettingsDTO request = stripeSettings("secret");
         request.setApiBaseUrl("http://127.0.0.1:8080");
@@ -654,7 +654,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
         PaymentProviderSettingsDTO request = stripeSettings("secret");
         request.setApiBaseUrl("http://metadata.google.internal/computeMetadata/v1");
@@ -680,7 +680,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 outboxService,
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
         PaymentProviderSettingsDTO request = stripeSettings("secret");
         request.setSuccessUrl("https://token@example.com/payment/success");
@@ -719,7 +719,7 @@ class PaymentManagementAppServiceTest {
                 cryptoService,
                 new PaymentProviderCatalog(),
                 mock(PaymentOutboxService.class),
-                provider(enabledSystemInternalApi())
+                provider(enabledSystemUserAuthorizationPort())
         );
 
         PaymentProviderSettingsDTO publicSettings = service.paymentProviderSettings(currentUser(), "stripe");
@@ -766,8 +766,8 @@ class PaymentManagementAppServiceTest {
         return currentUser;
     }
 
-    private SystemInternalApi enabledSystemInternalApi() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private SystemUserAuthorizationPort enabledSystemUserAuthorizationPort() {
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "admin", "ENABLED"));
         return systemInternalApi;
     }
@@ -776,12 +776,12 @@ class PaymentManagementAppServiceTest {
         return any();
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi, String... permissions) {
+    private ObjectProvider<SystemUserAuthorizationPort> provider(SystemUserAuthorizationPort systemInternalApi, String... permissions) {
         if (systemInternalApi != null) {
             when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class), permissions));
         }
-        ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
+        ObjectProvider<SystemUserAuthorizationPort> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(systemInternalApi);
         return provider;
     }

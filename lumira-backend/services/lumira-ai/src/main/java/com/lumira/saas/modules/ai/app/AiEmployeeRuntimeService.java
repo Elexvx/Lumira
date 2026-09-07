@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -52,7 +52,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     private final AiToolOrchestrationService aiToolOrchestrationService;
     private final AiAssistantEmployeeResolver aiAssistantEmployeeResolver;
     private final AiPermissionSnapshotResolver permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final AiTrustedSessionResolver sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -153,7 +153,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             AiKnowledgeBaseAppService aiKnowledgeBaseAppService,
             AiToolOrchestrationService aiToolOrchestrationService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         this(
@@ -183,7 +183,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             AiKnowledgeBaseAppService aiKnowledgeBaseAppService,
             AiToolOrchestrationService aiToolOrchestrationService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
@@ -214,7 +214,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             AiKnowledgeBaseAppService aiKnowledgeBaseAppService,
             AiToolOrchestrationService aiToolOrchestrationService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             AiAssistantEmployeeRepository assistantEmployeeRepository,
             boolean enforceTrustedUserResolution

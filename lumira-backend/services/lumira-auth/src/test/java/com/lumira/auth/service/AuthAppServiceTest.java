@@ -13,7 +13,7 @@ import com.lumira.api.auth.SimulatedRoleSwitchRequest;
 import com.lumira.api.auth.WechatLoginRequest;
 import com.lumira.api.auth.SimulatedRoleSwitchResponseDTO;
 import com.lumira.api.auth.VerificationBindRequest;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemAuthenticationPort;
 import com.lumira.api.system.LoginCapabilitiesDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.MaintenanceLoginPolicyDTO;
@@ -94,7 +94,7 @@ class AuthAppServiceTest {
         assertTrue(Arrays.stream(LoginResponseDTO.SecondFactorOptionDTO.class.getDeclaredFields()).map(Field::getName).toList().contains("mockSmsDelivery"));
     }
 
-    private SystemInternalApi systemInternalApi;
+    private SystemAuthenticationPort systemInternalApi;
     private LoginEncryptionService loginEncryptionService;
     private LoginProtectionService loginProtectionService;
     private AuthSessionStore authSessionStore;
@@ -108,7 +108,7 @@ class AuthAppServiceTest {
 
     @BeforeEach
     void setUp() {
-        systemInternalApi = mock(SystemInternalApi.class);
+        systemInternalApi = mock(SystemAuthenticationPort.class);
         loginEncryptionService = mock(LoginEncryptionService.class);
         loginProtectionService = mock(LoginProtectionService.class);
         authSessionStore = mock(AuthSessionStore.class);
@@ -2462,7 +2462,7 @@ class AuthAppServiceTest {
     private AuthAppService createAuthAppService(AuthPostLoginBootstrapProvider authPostLoginBootstrapProvider) {
         try {
             Constructor<AuthAppService> constructor = AuthAppService.class.getDeclaredConstructor(
-                    SystemInternalApi.class,
+                    SystemAuthenticationPort.class,
                     LoginEncryptionService.class,
                     LoginProtectionService.class,
                     AuthSessionStore.class,
@@ -2503,7 +2503,7 @@ class AuthAppServiceTest {
     ) {
         try {
             Constructor<AuthAppService> constructor = AuthAppService.class.getDeclaredConstructor(
-                    SystemInternalApi.class,
+                    SystemAuthenticationPort.class,
                     LoginEncryptionService.class,
                     LoginProtectionService.class,
                     AuthSessionStore.class,

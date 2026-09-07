@@ -60,6 +60,50 @@ class LumiraAsyncApplicationYamlTest {
                 .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:30s}");
         assertThat(properties.getProperty("lumira.event.payment-consumer.max-delivery-count"))
                 .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}");
+        assertThat(properties.getProperty("lumira.event.payment-consumer.stream-max-length"))
+                .isEqualTo("${REDIS_RUNTIME_STREAM_MAXLEN:100000}");
+        assertThat(properties.getProperty("lumira.event.payment-consumer.dead-letter-max-length"))
+                .isEqualTo("${REDIS_RUNTIME_DLQ_MAXLEN:50000}");
+    }
+
+    @Test
+    void iamAuthorizationConsumerUsesThePlatformStreamAndBoundedRecoveryDefaults() {
+        Properties properties = loadApplicationProperties();
+
+        assertThat(properties.getProperty("lumira.event.iam-consumer.enabled"))
+                .isEqualTo("${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_ENABLED:true}");
+        assertThat(properties.getProperty("lumira.event.iam-consumer.stream-key"))
+                .isEqualTo("${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_STREAM_KEY:saas:platform-events}");
+        assertThat(properties.getProperty("lumira.event.iam-consumer.group-name"))
+                .isEqualTo("${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_GROUP_NAME:iam-authz-invalidation-v1}");
+        assertThat(properties.getProperty("lumira.event.iam-consumer.pending-recovery-minimum-idle"))
+                .isEqualTo("${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_PENDING_RECOVERY_MINIMUM_IDLE:30s}");
+        assertThat(properties.getProperty("lumira.event.iam-consumer.pending-recovery-interval"))
+                .isEqualTo("${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:30s}");
+        assertThat(properties.getProperty("lumira.event.iam-consumer.max-delivery-count"))
+                .isEqualTo("${LUMIRA_IAM_AUTHZ_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}");
+        assertThat(properties.getProperty("lumira.event.iam-consumer.dead-letter-max-length"))
+                .isEqualTo("${REDIS_RUNTIME_IAM_AUTHZ_DLQ_MAXLEN:50000}");
+    }
+
+    @Test
+    void fileLifecycleConsumerUsesTheFileStreamAndBoundedRecoveryDefaults() {
+        Properties properties = loadApplicationProperties();
+
+        assertThat(properties.getProperty("lumira.event.file-consumer.enabled"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_ENABLED:true}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.stream-key"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_STREAM_KEY:lumira.events.file.v1}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.group-name"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_GROUP_NAME:file-lifecycle-v1}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.pending-recovery-minimum-idle"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_PENDING_RECOVERY_MINIMUM_IDLE:30s}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.pending-recovery-interval"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:30s}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.max-delivery-count"))
+                .isEqualTo("${LUMIRA_FILE_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}");
+        assertThat(properties.getProperty("lumira.event.file-consumer.dead-letter-max-length"))
+                .isEqualTo("${REDIS_RUNTIME_FILE_LIFECYCLE_DLQ_MAXLEN:50000}");
     }
 
     @Test
@@ -76,6 +120,19 @@ class LumiraAsyncApplicationYamlTest {
                 "PLUGIN_SERVICE_BASE_URL",
                 "COMPETITION_SERVICE_BASE_URL"
         );
+    }
+
+    @Test
+    void ownerRelayAndInternalHttpHaveBoundedDefaults() {
+        Properties properties = loadApplicationProperties();
+
+        assertThat(properties.getProperty("lumira.event.relay-loop.queue-capacity")).isNotBlank();
+        assertThat(properties.getProperty("lumira.event.relay-loop.max-concurrency")).isNotBlank();
+        assertThat(properties.getProperty("lumira.event.relay-loop.retry-budget")).isNotBlank();
+        assertThat(properties.getProperty("lumira.event.relay-loop.circuit-failure-threshold")).isNotBlank();
+        assertThat(properties.getProperty("lumira.internal-http.connect-timeout")).isNotBlank();
+        assertThat(properties.getProperty("lumira.internal-http.response-timeout")).isNotBlank();
+        assertThat(properties.getProperty("lumira.internal-http.max-response-bytes")).isNotBlank();
     }
 
     private Properties loadApplicationProperties() {

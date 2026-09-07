@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -59,7 +59,7 @@ public class OnlineSessionManagementAppService {
     private final OperationAuditService operationAuditService;
     private final OnlineSessionStreamService onlineSessionStreamService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -92,7 +92,7 @@ public class OnlineSessionManagementAppService {
             OperationAuditService operationAuditService,
             OnlineSessionStreamService onlineSessionStreamService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(userRepository, authSessionStore, securitySettingsService, operationAuditService, onlineSessionStreamService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
@@ -105,7 +105,7 @@ public class OnlineSessionManagementAppService {
             OperationAuditService operationAuditService,
             OnlineSessionStreamService onlineSessionStreamService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

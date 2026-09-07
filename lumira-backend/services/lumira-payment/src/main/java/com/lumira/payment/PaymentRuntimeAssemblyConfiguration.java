@@ -1,7 +1,7 @@
 package com.lumira.payment;
 
 import com.lumira.domain.event.DomainEventPublisher;
-import com.lumira.payment.event.domain.PaymentDomainEventPublisher;
+import com.lumira.payment.event.PaymentDomainEventPublisher;
 import com.lumira.payment.service.PaymentConfigCryptoService;
 import com.lumira.payment.service.BuiltinMockPaymentAvailability;
 import com.lumira.payment.service.BuiltinMockPaymentLifecycleHook;
@@ -12,6 +12,7 @@ import com.lumira.payment.service.PaymentProviderCatalog;
 import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
 import com.lumira.payment.service.WechatPayV3Service;
+import com.lumira.payment.integration.alerting.PaymentAlertBusinessSignalAdapter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -27,7 +28,8 @@ import org.springframework.context.annotation.Import;
         PaymentProviderCatalog.class,
         PaymentTransactionService.class,
         PaymentWebhookService.class,
-        WechatPayV3Service.class
+        WechatPayV3Service.class,
+        PaymentAlertBusinessSignalAdapter.class
 })
 public class PaymentRuntimeAssemblyConfiguration {
 

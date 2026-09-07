@@ -1,6 +1,6 @@
 package com.lumira.team.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -105,14 +105,14 @@ class TeamInternalApiServiceTest {
         return new SystemUserSnapshotDTO(3001L, "user-uuid-3001", "user3001", null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemUserSnapshotDTO snapshot) {
-        SystemInternalApi api = mock(SystemInternalApi.class);
+    private ObjectProvider<UserIdentityQueryPort> provider(SystemUserSnapshotDTO snapshot) {
+        UserIdentityQueryPort api = mock(UserIdentityQueryPort.class);
         when(api.findUserIdentityById(snapshot.userId())).thenReturn(snapshot);
         return new ObjectProvider<>() {
-            public SystemInternalApi getObject(Object... args) { return api; }
-            public SystemInternalApi getIfAvailable() { return api; }
-            public SystemInternalApi getIfUnique() { return api; }
-            public SystemInternalApi getObject() { return api; }
+            public UserIdentityQueryPort getObject(Object... args) { return api; }
+            public UserIdentityQueryPort getIfAvailable() { return api; }
+            public UserIdentityQueryPort getIfUnique() { return api; }
+            public UserIdentityQueryPort getObject() { return api; }
         };
     }
 }

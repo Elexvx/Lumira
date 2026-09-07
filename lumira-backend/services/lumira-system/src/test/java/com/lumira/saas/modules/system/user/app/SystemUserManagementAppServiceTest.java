@@ -18,7 +18,7 @@ import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.user.repository.SystemUserManagementRepository;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -175,7 +175,7 @@ class SystemUserManagementAppServiceTest {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         SystemUserManagementAppService service = new SystemUserManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
-                mock(UserDomainService.class),
+                mock(UserAccountQueryService.class),
                 defaultIamUserService(),
                 null,
                 null,
@@ -200,7 +200,7 @@ class SystemUserManagementAppServiceTest {
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
         SystemUserManagementAppService service = new SystemUserManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
-                mock(UserDomainService.class),
+                mock(UserAccountQueryService.class),
                 defaultIamUserService(),
                 permissionSnapshotService,
                 null,
@@ -273,7 +273,7 @@ class SystemUserManagementAppServiceTest {
                 null,
                 systemInternalApi,
                 null,
-                mock(UserDomainService.class),
+                mock(UserAccountQueryService.class),
                 defaultIamUserService()
         );
         CurrentUser currentUser = currentUser();
@@ -394,7 +394,7 @@ class SystemUserManagementAppServiceTest {
         assertTrue(jdbcTemplate.deletedUserRoles);
         assertEquals(0, jdbcTemplate.roleExistenceChecks);
         assertEquals(0, jdbcTemplate.insertedUserRoles);
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidateSubjectAuthorization("user-uuid-2001");
     }
 
     @Test
@@ -428,7 +428,7 @@ class SystemUserManagementAppServiceTest {
                 1,
                 "permissions-1"
         );
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidateSubjectAuthorization("user-uuid-2001");
     }
 
     @Test
@@ -643,13 +643,13 @@ class SystemUserManagementAppServiceTest {
 
         assertTrue(service.updateUserStatus(currentUser(), 2001L, "DISABLED"));
 
-        verify(permissionSnapshotService).invalidatePermissions();
+        verify(permissionSnapshotService).invalidatePermissionsForSubject("user-uuid-2001");
     }
 
     @Test
     void createUserShouldUseLastInsertIdAfterInsert() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SysUserEntity createdUser = new SysUserEntity();
         createdUser.setId(2001L);
         createdUser.setUuid("user-uuid-2001");
@@ -680,7 +680,7 @@ class SystemUserManagementAppServiceTest {
     void createUserShouldRejectWhenMainInsertMissesBeforeIdentitySync() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         jdbcTemplate.updateResults.add(0);
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         IamUserService iamUserService = mock(IamUserService.class);
         when(iamUserService.listIdentities(anyLong(), org.mockito.ArgumentMatchers.anyString())).thenReturn(List.of());
         when(iamUserService.listRecentDevices(anyLong(), org.mockito.ArgumentMatchers.anyString(), anyInt())).thenReturn(List.of());
@@ -727,7 +727,7 @@ class SystemUserManagementAppServiceTest {
         SystemUserManagementAppService service = buildService(
                 jdbcTemplate,
                 mock(PermissionSnapshotService.class),
-                mock(UserDomainService.class),
+                mock(UserAccountQueryService.class),
                 iamUserService
         );
 
@@ -763,7 +763,7 @@ class SystemUserManagementAppServiceTest {
         when(iamUserService.listIdentities(anyLong(), org.mockito.ArgumentMatchers.anyString())).thenReturn(List.of());
         when(iamUserService.listRecentDevices(anyLong(), org.mockito.ArgumentMatchers.anyString(), anyInt())).thenReturn(List.of());
         when(iamUserService.findSecuritySetting(anyLong(), org.mockito.ArgumentMatchers.anyString())).thenReturn(Optional.empty());
-        SystemUserManagementAppService service = buildService(jdbcTemplate, mock(PermissionSnapshotService.class), mock(UserDomainService.class), iamUserService);
+        SystemUserManagementAppService service = buildService(jdbcTemplate, mock(PermissionSnapshotService.class), mock(UserAccountQueryService.class), iamUserService);
         SystemDTO.UserUpsertRequest request = userRequest(List.of());
         request.setPassword("DemoPass1!");
 
@@ -800,7 +800,7 @@ class SystemUserManagementAppServiceTest {
                 null,
                 systemInternalApi,
                 null,
-                mock(UserDomainService.class),
+                mock(UserAccountQueryService.class),
                 defaultIamUserService()
         );
 
@@ -838,7 +838,7 @@ class SystemUserManagementAppServiceTest {
                 null,
                 systemInternalApi,
                 null,
-                mock(UserDomainService.class),
+                mock(UserAccountQueryService.class),
                 defaultIamUserService()
         );
 
@@ -856,7 +856,7 @@ class SystemUserManagementAppServiceTest {
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         SysUserEntity createdUser = new SysUserEntity();
         createdUser.setId(2001L);
         createdUser.setUuid("user-uuid-2001");
@@ -910,7 +910,7 @@ class SystemUserManagementAppServiceTest {
                 .thenReturn(permissionSnapshot(Set.of("system:user:export")));
         when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent("permissions-2"))
                 .thenReturn(true);
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
         SystemUserManagementAppService service = buildService(
                 jdbcTemplate,
@@ -969,7 +969,7 @@ class SystemUserManagementAppServiceTest {
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(staleSnapshot);
         when(permissionSnapshotService.isAuthoritativeSessionPermissionSnapshotCurrent(staleSnapshot.getVersion()))
                 .thenReturn(false);
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
         SystemUserManagementAppService service = buildService(
                 jdbcTemplate,
@@ -1056,7 +1056,7 @@ class SystemUserManagementAppServiceTest {
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
         OperationAuditService operationAuditService = mock(OperationAuditService.class);
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
 
         SystemUserManagementAppService service = buildService(
@@ -1087,7 +1087,7 @@ class SystemUserManagementAppServiceTest {
     }
 
     private SystemUserManagementAppService buildService(RecordingJdbcTemplate jdbcTemplate) {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
 
         IamUserService iamUserService = defaultIamUserService();
@@ -1096,7 +1096,7 @@ class SystemUserManagementAppServiceTest {
     }
 
     private SystemUserManagementAppService buildService(RecordingJdbcTemplate jdbcTemplate, PermissionSnapshotService permissionSnapshotService) {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
 
         IamUserService iamUserService = defaultIamUserService();
@@ -1109,7 +1109,7 @@ class SystemUserManagementAppServiceTest {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        UserDomainService userDomainService = mock(UserDomainService.class);
+        UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
 
         IamUserService iamUserService = defaultIamUserService();
@@ -1120,7 +1120,7 @@ class SystemUserManagementAppServiceTest {
     private SystemUserManagementAppService buildService(
             RecordingJdbcTemplate jdbcTemplate,
             PermissionSnapshotService permissionSnapshotService,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService
     ) {
         return buildService(jdbcTemplate, permissionSnapshotService, null, null, null, userDomainService, iamUserService);
@@ -1130,7 +1130,7 @@ class SystemUserManagementAppServiceTest {
             RecordingJdbcTemplate jdbcTemplate,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService
     ) {
         return buildService(jdbcTemplate, permissionSnapshotService, sessionAuthenticationService, null, null, userDomainService, iamUserService);
@@ -1142,7 +1142,7 @@ class SystemUserManagementAppServiceTest {
             SessionAuthenticationService sessionAuthenticationService,
             SystemInternalApi systemInternalApi,
             OperationAuditService operationAuditService,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService
     ) {
         when(permissionSnapshotService.isTrustedActiveUser(anyLong(), org.mockito.ArgumentMatchers.anyString())).thenReturn(true);

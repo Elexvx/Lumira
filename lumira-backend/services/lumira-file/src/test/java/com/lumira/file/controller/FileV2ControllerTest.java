@@ -1,6 +1,6 @@
 package com.lumira.file.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -104,7 +104,7 @@ class FileV2ControllerTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionGuard permissionGuard = mock(PermissionGuard.class);
         FileUploadMetrics fileUploadMetrics = mock(FileUploadMetrics.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         FileV2Controller controller = new FileV2Controller(
                 fileManagementAppService,
                 securityContextFacade,

@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.monitor.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
@@ -41,7 +41,7 @@ public class SystemMonitorController {
     private final PermissionGuard permissionGuard;
     private final ObjectProvider<OpenApiWebMvcResource> openApiWebMvcResourceProvider;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -82,7 +82,7 @@ public class SystemMonitorController {
             PermissionGuard permissionGuard,
             ObjectProvider<OpenApiWebMvcResource> openApiWebMvcResourceProvider,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(systemMonitorAppService, securityContextFacade, permissionGuard, openApiWebMvcResourceProvider, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
@@ -94,7 +94,7 @@ public class SystemMonitorController {
             PermissionGuard permissionGuard,
             ObjectProvider<OpenApiWebMvcResource> openApiWebMvcResourceProvider,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

@@ -3,7 +3,7 @@ package com.lumira.saas.modules.system.user.app;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -32,7 +32,7 @@ import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.user.support.UserAvatarDefaults;
 import com.lumira.saas.modules.system.user.vo.UserDetailVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,10 +69,10 @@ public class SystemUserManagementAppService {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final SystemUserManagementRepository userRepository;
-    private final UserDomainService userDomainService;
+    private final UserAccountQueryService userDomainService;
     private final IamUserService iamUserService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
     private final OperationAuditService operationAuditService;
@@ -84,7 +84,7 @@ public class SystemUserManagementAppService {
 
     public SystemUserManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
@@ -112,10 +112,10 @@ public class SystemUserManagementAppService {
     @Autowired
     public SystemUserManagementAppService(
             SystemUserManagementRepository userRepository,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             OperationAuditService operationAuditService,
@@ -144,10 +144,10 @@ public class SystemUserManagementAppService {
     /** Compatibility constructor for tests still providing the legacy persistence facade. */
     public SystemUserManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             OperationAuditService operationAuditService,
@@ -173,10 +173,10 @@ public class SystemUserManagementAppService {
 
     private SystemUserManagementAppService(
             SystemUserManagementRepository userRepository,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             OperationAuditService operationAuditService,
@@ -429,7 +429,7 @@ public class SystemUserManagementAppService {
         replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), false);
         updateExtraProfileValues(currentUser, userId, userUuid, request.getExtraProfileValues());
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidateSubjectAuthorization(userUuid);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
         return buildUserDetail(currentUser, userId);
     }
@@ -461,7 +461,7 @@ public class SystemUserManagementAppService {
         // Session-index cleanup is best effort under a Redis race. Advancing
         // the authoritative authorization version on either status transition
         // ensures a missed stale payload cannot become valid after re-enable.
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidatePermissionsForSubject(userUuid);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + normalizedStatus);
         return true;
     }
@@ -494,7 +494,7 @@ public class SystemUserManagementAppService {
         iamUserService.softDeleteUser(userId, userUuid);
 
         onlineSessionManagementAppService.revokeUserSessions(userId, userUuid);
-        permissionSnapshotService.invalidatePermissions();
+        permissionSnapshotService.invalidatePermissionsForSubject(userUuid);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "删除用户: " + user.getUsername());
         return true;
     }

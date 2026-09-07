@@ -86,6 +86,7 @@ public class PermissionSnapshotService {
     private final AuthSessionStore authSessionStore;
     private final ReadModelVersionService readModelVersionService;
     private final OwnerRuntimeMetrics ownerRuntimeMetrics;
+    private final AuthorizationVersionStore authorizationVersionStore;
     private final Cache<String, PermissionSnapshot> localPermissionSnapshotCache;
     private final Cache<String, PermissionSnapshot> localRolePermissionSnapshotCache;
     private final Cache<String, Boolean> protectedAdminUserCache;
@@ -95,11 +96,22 @@ public class PermissionSnapshotService {
     private final Cache<String, CompletableFuture<String>> permissionSnapshotVersionLoadInFlight;
 
     public PermissionSnapshotService(MyBatisQueryOperations jdbcTemplate, CacheTemplate cacheTemplate, ObjectMapper objectMapper) {
-        this(jdbcTemplate, cacheTemplate, objectMapper, null, null, null);
+        this(jdbcTemplate, cacheTemplate, objectMapper, null, null, null, null);
     }
 
     public PermissionSnapshotService(MyBatisQueryOperations jdbcTemplate, CacheTemplate cacheTemplate, ObjectMapper objectMapper, AuthSessionStore authSessionStore) {
-        this(jdbcTemplate, cacheTemplate, objectMapper, authSessionStore, null, null);
+        this(jdbcTemplate, cacheTemplate, objectMapper, authSessionStore, null, null, null);
+    }
+
+    public PermissionSnapshotService(
+            MyBatisQueryOperations jdbcTemplate,
+            CacheTemplate cacheTemplate,
+            ObjectMapper objectMapper,
+            AuthSessionStore authSessionStore,
+            ReadModelVersionService readModelVersionService,
+            OwnerRuntimeMetrics ownerRuntimeMetrics
+    ) {
+        this(jdbcTemplate, cacheTemplate, objectMapper, authSessionStore, readModelVersionService, ownerRuntimeMetrics, null);
     }
 
     @Autowired
@@ -109,7 +121,8 @@ public class PermissionSnapshotService {
             ObjectMapper objectMapper,
             AuthSessionStore authSessionStore,
             ReadModelVersionService readModelVersionService,
-            OwnerRuntimeMetrics ownerRuntimeMetrics
+            OwnerRuntimeMetrics ownerRuntimeMetrics,
+            AuthorizationVersionStore authorizationVersionStore
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.cacheTemplate = cacheTemplate;
@@ -117,6 +130,7 @@ public class PermissionSnapshotService {
         this.authSessionStore = authSessionStore;
         this.readModelVersionService = readModelVersionService;
         this.ownerRuntimeMetrics = ownerRuntimeMetrics;
+        this.authorizationVersionStore = authorizationVersionStore;
         this.localPermissionSnapshotCache = CacheBuilder.newBuilder()
                 .maximumSize(LOCAL_PERMISSION_SNAPSHOT_MAX_ENTRIES)
                 .expireAfterWrite(LOCAL_PERMISSION_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
@@ -158,7 +172,12 @@ public class PermissionSnapshotService {
             if (!StringUtils.hasText(normalizedUserUuid)) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user uuid is required");
             }
-            String version = getOrCreateVersion();
+            Set<Long> authorizationRoleIds = authorizationVersionStore == null
+                    ? null
+                    : queryRoleIds(userId, normalizedUserUuid);
+            String version = authorizationVersionStore == null
+                    ? getOrCreateVersion()
+                    : authorizationVersionStore.currentVector(normalizedUserUuid, authorizationRoleIds);
             String cacheKey = permissionSnapshotCacheKey(userId, normalizedUserUuid, version);
             PermissionSnapshot localSnapshot = getLocalPermissionSnapshot(localPermissionSnapshotCache, cacheKey);
             if (localSnapshot != null) {
@@ -178,7 +197,9 @@ public class PermissionSnapshotService {
             }
 
             return loadPermissionSnapshotWithSingleFlight(cacheKey, () -> {
-                CompletableFuture<Set<Long>> roleIdsFuture = asyncRoleIds(userId, normalizedUserUuid);
+                CompletableFuture<Set<Long>> roleIdsFuture = authorizationRoleIds == null
+                        ? asyncRoleIds(userId, normalizedUserUuid)
+                        : CompletableFuture.completedFuture(authorizationRoleIds);
                 CompletableFuture<DepartmentSnapshot> departmentsFuture = asyncDepartments(userId, normalizedUserUuid);
 
                 Set<Long> roleIds = roleIdsFuture.join();
@@ -277,6 +298,9 @@ public class PermissionSnapshotService {
             throw new BizException(ErrorCode.FORBIDDEN, "Trusted simulated role is no longer granted");
         }
         PermissionSnapshot snapshot = loadRoleSnapshot(roleId);
+        if (authorizationVersionStore != null) {
+            snapshot.setVersion(authorizationVersionStore.currentVector(normalizedUserUuid, Set.of(roleId)));
+        }
         if (PROTECTED_ADMIN_ID.equals(userId)
                 && PROTECTED_ADMIN_ROLE_ID.equals(roleId)
                 && isProtectedAdminAccount(userId, normalizedUserUuid)) {
@@ -469,12 +493,76 @@ public class PermissionSnapshotService {
         }
     }
 
+    public void invalidatePermissionsForSubject(String userUuid) {
+        invalidateTargeted(() -> authorizationVersionStore.bumpSubject(userUuid));
+    }
+
+    public void invalidateSubjectAuthorization(String userUuid) {
+        invalidateTargeted(() -> {
+            authorizationVersionStore.bumpSubject(userUuid);
+            authorizationVersionStore.bumpBinding(userUuid);
+        });
+    }
+
+    public void invalidateRoleBindingsForSubject(String userUuid) {
+        invalidateTargeted(() -> authorizationVersionStore.bumpBinding(userUuid));
+    }
+
+    public void invalidatePermissionsForRole(Long roleId) {
+        if (roleId == null || roleId <= 0) {
+            throw new IllegalArgumentException("roleId must be positive");
+        }
+        invalidateTargeted(() -> authorizationVersionStore.bumpRole(roleId));
+    }
+
+    public void invalidateRoleAuthorization(Long roleId) {
+        if (roleId == null || roleId <= 0) {
+            throw new IllegalArgumentException("roleId must be positive");
+        }
+        invalidateTargeted(() -> {
+            authorizationVersionStore.bumpRole(roleId);
+            authorizationVersionStore.bumpRoleDataPolicy(roleId);
+        });
+    }
+
+    public void invalidateDataPoliciesForRole(Long roleId) {
+        if (roleId == null || roleId <= 0) {
+            throw new IllegalArgumentException("roleId must be positive");
+        }
+        invalidateTargeted(() -> authorizationVersionStore.bumpRoleDataPolicy(roleId));
+    }
+
+    public void invalidateDataPolicies() {
+        invalidateTargeted(authorizationVersionStore::bumpDataPolicy);
+    }
+
+    private void invalidateTargeted(Runnable invalidation) {
+        long started = System.nanoTime();
+        try {
+            if (authorizationVersionStore == null) {
+                advanceAuthoritativePermissionSnapshotVersion();
+            } else {
+                invalidation.run();
+            }
+            updateCompatibilityPermissionVersionBestEffort();
+            clearLocalPermissionSnapshotStateBestEffort();
+        } finally {
+            if (ownerRuntimeMetrics != null) {
+                ownerRuntimeMetrics.recordIamPermissionSnapshotInvalidation(Duration.ofNanos(System.nanoTime() - started));
+            }
+        }
+    }
+
     /**
      * Security boundary: this write participates in the caller's IAM database
      * transaction. Any failure must escape so the role, role-binding or data
      * scope mutation is rolled back with the version update.
      */
     private void advanceAuthoritativePermissionSnapshotVersion() {
+        if (authorizationVersionStore != null) {
+            authorizationVersionStore.bumpDataPolicy();
+            return;
+        }
         if (readModelVersionService == null) {
             // Legacy isolated tests use the compatibility-only constructor. The
             // production Spring constructor requires this dependency.
@@ -555,6 +643,9 @@ public class PermissionSnapshotService {
     public boolean isAuthoritativeSessionPermissionSnapshotCurrent(String sessionPermissionsVersion) {
         if (!StringUtils.hasText(sessionPermissionsVersion)) {
             return false;
+        }
+        if (authorizationVersionStore != null) {
+            return authorizationVersionStore.isCurrent(sessionPermissionsVersion.trim());
         }
         if (readModelVersionService == null) {
             log.warn("IAM authorization snapshot version service is not configured");

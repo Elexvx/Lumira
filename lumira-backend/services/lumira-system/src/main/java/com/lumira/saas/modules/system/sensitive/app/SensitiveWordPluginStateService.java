@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.sensitive.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -22,7 +22,7 @@ public class SensitiveWordPluginStateService {
 
     private final SensitiveWordPluginStateRepository repository;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final boolean enforceTrustedUserResolution;
     private volatile Boolean sensitiveWordSchemaReady;
 
@@ -35,7 +35,7 @@ public class SensitiveWordPluginStateService {
             SensitiveWordPluginStateRepository repository,
             PermissionSnapshotService permissionSnapshotService,
             @Lazy
-            SystemInternalApi systemInternalApi
+            UserIdentityQueryPort systemInternalApi
     ) {
         this(repository, permissionSnapshotService, systemInternalApi, true);
     }
@@ -43,7 +43,7 @@ public class SensitiveWordPluginStateService {
     private SensitiveWordPluginStateService(
             SensitiveWordPluginStateRepository repository,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
         this.repository = repository;

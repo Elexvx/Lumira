@@ -28,6 +28,7 @@ const manifest = (overrides = {}) => ({
     session: { readVersions: [2, 3], writeVersion: 3 },
     permissionSnapshot: { readVersions: [3, 4], writeVersion: 4 },
     pluginApi: { readVersions: [5, 6], writeVersion: 6 },
+    redisTopology: { identity: 'redis-split-cache-runtime-v1', cachePolicy: 'allkeys-lru', runtimePolicy: 'noeviction-aof-everysec' },
   },
   frontend: { mode: 'local-blue-green' },
   update: { strategy: 'single-host-release-set-blue-green', minUpdaterProtocol: 3, drainTimeoutSeconds: 120, rollbackWindowSeconds: 1800, databaseRequiredRuntimeMode: 'NORMAL' },
@@ -53,6 +54,7 @@ test('schemaVersion 3 validates full Release Set and release policy', () => {
   assert.equal(normalized.releaseId, 'v2026.08.31.1');
   assert.equal(normalized.database.mode, 'expand-only');
   assert.equal(normalized.compatibility.permissionSnapshot.writeVersion, 4);
+  assert.equal(normalized.compatibility.redisTopology.identity, 'redis-split-cache-runtime-v1');
   assert.throws(() => normalizeReleaseManifest(manifest({ commit: 'abc1234' })), /exactly 40/);
   assert.throws(() => normalizeReleaseManifest(manifest({ releaseId: '../escape' })), /releaseId/);
   assert.throws(() => normalizeReleaseManifest(manifest({ images: { ...manifest().images, frontend: 'ui:latest' } })), /sha256/);

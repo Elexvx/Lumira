@@ -7,7 +7,6 @@ import com.lumira.saas.infrastructure.adapter.SystemEventCatalogProjectionBridge
 import com.lumira.saas.infrastructure.adapter.SystemExpertApprovalEventBridgeConfiguration;
 import com.lumira.saas.infrastructure.adapter.SystemPlatformEventPort;
 import com.lumira.saas.infrastructure.adapter.SystemTransactionalEventOutboxPort;
-import com.lumira.saas.infrastructure.config.JacksonCompatibilityConfig;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxService;
 import com.lumira.saas.infrastructure.event.PlatformEventProperties;
 import com.lumira.saas.infrastructure.event.PlatformEventPublisher;
@@ -15,7 +14,7 @@ import com.lumira.saas.infrastructure.event.EventConsumptionGuard;
 import com.lumira.saas.infrastructure.event.LoggingPlatformEventDispatcher;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxRelay;
 import com.lumira.saas.infrastructure.event.RedisStreamPlatformEventDispatcher;
-import com.lumira.saas.infrastructure.event.domain.SystemDomainEventPublisher;
+import com.lumira.saas.infrastructure.event.SystemDomainEventPublisher;
 import com.lumira.saas.infrastructure.pagination.KeysetCursorCodec;
 import com.lumira.saas.infrastructure.persistence.BatchJdbcHelper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -73,7 +72,6 @@ import org.springframework.context.annotation.Import;
         SystemExpertApprovalEventBridgeConfiguration.class,
         InitialPasswordChangeGuard.class,
         com.lumira.saas.infrastructure.job.InternalJobController.class,
-        JacksonCompatibilityConfig.class,
         JwtAuthFilter.class,
         JwtTokenService.class,
         KeysetCursorCodec.class,

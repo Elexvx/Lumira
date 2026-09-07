@@ -2,7 +2,7 @@ package com.lumira.saas.modules.platform.controller;
 
 import com.lumira.api.architecture.OwnerObservabilityDTO;
 import com.lumira.api.architecture.OwnerReadinessDTO;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
@@ -33,7 +33,7 @@ public class PlatformReadinessV2Controller {
     private final OwnerReadModelMetricsService ownerReadModelMetricsService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     public PlatformReadinessV2Controller(
@@ -49,7 +49,7 @@ public class PlatformReadinessV2Controller {
             OwnerReadModelMetricsService ownerReadModelMetricsService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationPort systemInternalApi
     ) {
         this(
                 ownerReadModelMetricsService,
@@ -64,7 +64,7 @@ public class PlatformReadinessV2Controller {
             OwnerReadModelMetricsService ownerReadModelMetricsService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
         this.ownerReadModelMetricsService = ownerReadModelMetricsService;
