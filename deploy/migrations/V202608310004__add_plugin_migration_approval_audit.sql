@@ -4,9 +4,37 @@
 -- lumira:compatible-readers=202608310002..202608319999
 -- lumira:cleanup-after=two-stable-releases
 
-ALTER TABLE `sys_plugin_migration_request`
-  ADD COLUMN `approved_by` varchar(128) DEFAULT NULL AFTER `created_by_uuid`,
-  ADD COLUMN `approval_reason` varchar(512) DEFAULT NULL AFTER `approved_by`;
+SET @schema_name = DATABASE();
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = @schema_name
+      AND table_name = 'sys_plugin_migration_request'
+      AND column_name = 'approved_by'
+  ),
+  'SELECT 1',
+  'ALTER TABLE sys_plugin_migration_request ADD COLUMN approved_by varchar(128) DEFAULT NULL AFTER created_by_uuid'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = @schema_name
+      AND table_name = 'sys_plugin_migration_request'
+      AND column_name = 'approval_reason'
+  ),
+  'SELECT 1',
+  'ALTER TABLE sys_plugin_migration_request ADD COLUMN approval_reason varchar(512) DEFAULT NULL AFTER approved_by'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 CREATE TABLE IF NOT EXISTS `sys_plugin_migration_audit` (
   `id` bigint NOT NULL AUTO_INCREMENT,

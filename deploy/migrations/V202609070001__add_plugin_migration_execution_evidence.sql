@@ -4,8 +4,22 @@
 -- lumira:compatible-readers=202608310004..202609079999
 -- lumira:cleanup-after=two-stable-releases
 
-ALTER TABLE `sys_plugin_migration_request`
-  ADD COLUMN `expected_schema_digest` char(64) DEFAULT NULL AFTER `schema_version`;
+SET @schema_name = DATABASE();
+
+SET @ddl = IF(
+  EXISTS(
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = @schema_name
+      AND table_name = 'sys_plugin_migration_request'
+      AND column_name = 'expected_schema_digest'
+  ),
+  'SELECT 1',
+  'ALTER TABLE sys_plugin_migration_request ADD COLUMN expected_schema_digest char(64) DEFAULT NULL AFTER schema_version'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 CREATE TABLE IF NOT EXISTS `plugin_migration_execution_log` (
   `id` bigint NOT NULL AUTO_INCREMENT,
