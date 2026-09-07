@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.enums.ErrorCode;
@@ -211,7 +211,7 @@ public class SystemManagementAppService {
     );
     private final UserAccountQueryService userDomainService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final SystemPluginViewService systemPluginViewService;
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
@@ -253,7 +253,7 @@ public class SystemManagementAppService {
             SystemManagementPersistenceDependencies persistence,
             UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
@@ -328,7 +328,7 @@ public class SystemManagementAppService {
             Object persistence,
             UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,

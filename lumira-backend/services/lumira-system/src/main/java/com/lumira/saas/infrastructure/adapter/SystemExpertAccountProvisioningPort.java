@@ -1,6 +1,6 @@
 package com.lumira.saas.infrastructure.adapter;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.expert.ExpertAccountProvisioningPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
@@ -17,14 +17,14 @@ import org.springframework.util.StringUtils;
 public class SystemExpertAccountProvisioningPort implements ExpertAccountProvisioningPort {
     private static final String EXPERT_ROLE_CODE = "EXPERT";
 
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SystemUserManagementAppService userManagementAppService;
     private final SystemRoleManagementRepository roleRepository;
     private final SystemUserManagementRepository userRepository;
     private final AccountActivationService accountActivationService;
 
     public SystemExpertAccountProvisioningPort(
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SystemUserManagementAppService userManagementAppService,
             SystemRoleManagementRepository roleRepository,
             SystemUserManagementRepository userRepository,

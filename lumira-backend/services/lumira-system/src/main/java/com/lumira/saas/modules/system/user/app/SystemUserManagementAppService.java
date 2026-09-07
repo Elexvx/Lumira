@@ -3,7 +3,7 @@ package com.lumira.saas.modules.system.user.app;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -72,7 +72,7 @@ public class SystemUserManagementAppService {
     private final UserAccountQueryService userDomainService;
     private final IamUserService iamUserService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
     private final OperationAuditService operationAuditService;
@@ -115,7 +115,7 @@ public class SystemUserManagementAppService {
             UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             OperationAuditService operationAuditService,
@@ -147,7 +147,7 @@ public class SystemUserManagementAppService {
             UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             OperationAuditService operationAuditService,
@@ -176,7 +176,7 @@ public class SystemUserManagementAppService {
             UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             OperationAuditService operationAuditService,

@@ -273,6 +273,28 @@ class DddArchitectureBoundaryTest {
     }
 
     @Test
+    void systemModuleConsumersMustUseFocusedSystemPorts() throws IOException {
+        Path root = repositoryRoot();
+        List<String> violations = javaFiles(root)
+                .filter(path -> normalized(path).contains("/services/lumira-system/src/main/java/"))
+                .filter(path -> !normalized(path).endsWith("/modules/system/app/SystemInternalApiService.java"))
+                .filter(path -> {
+                    try {
+                        return Files.readString(path).contains("import com.lumira.api.client.SystemInternalApi;");
+                    } catch (IOException exception) {
+                        throw new IllegalStateException("Unable to inspect " + path, exception);
+                    }
+                })
+                .map(root::relativize)
+                .map(Path::toString)
+                .toList();
+
+        assertThat(violations)
+                .as("System application and transport code must depend on focused capability ports; only the compatibility adapter may import SystemInternalApi")
+                .isEmpty();
+    }
+
+    @Test
     void allBackendBoundedContextsHaveDomainModelAnchors() {
         Path root = repositoryRoot();
         List<String> anchors = List.of(

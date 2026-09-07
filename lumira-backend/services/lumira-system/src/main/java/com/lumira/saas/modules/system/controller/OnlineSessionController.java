@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
@@ -40,7 +40,7 @@ public class OnlineSessionController {
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -77,7 +77,7 @@ public class OnlineSessionController {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(onlineSessionManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
@@ -88,7 +88,7 @@ public class OnlineSessionController {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

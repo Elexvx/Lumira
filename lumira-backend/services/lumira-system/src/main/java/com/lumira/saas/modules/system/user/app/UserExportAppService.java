@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.user.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.export.ExcelExportPort;
 import com.lumira.api.export.ExportColumn;
 import com.lumira.api.export.ExportDTO;
@@ -60,7 +60,7 @@ public class UserExportAppService {
     private final ExcelExportPort excelExportService;
     private final ExportTaskPort exportTaskService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final ExecutorService executorService;
     private final ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider;
@@ -110,7 +110,7 @@ public class UserExportAppService {
             ExcelExportPort excelExportService,
             ExportTaskPort exportTaskService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             ObjectProvider<ExecutorService> executorServiceProvider
     ) {
@@ -133,7 +133,7 @@ public class UserExportAppService {
             ExcelExportPort excelExportService,
             ExportTaskPort exportTaskService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             ObjectProvider<ExecutorService> executorServiceProvider,
             ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider
@@ -156,7 +156,7 @@ public class UserExportAppService {
             ExcelExportPort excelExportService,
             ExportTaskPort exportTaskService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             ObjectProvider<ExecutorService> executorServiceProvider,
             ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider,

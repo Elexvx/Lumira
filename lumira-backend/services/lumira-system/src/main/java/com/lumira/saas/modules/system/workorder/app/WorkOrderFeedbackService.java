@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.workorder.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -44,7 +44,7 @@ public class WorkOrderFeedbackService {
     private final WorkOrderFeedbackPluginStateService pluginStateService;
     private final FileInternalApi fileInternalApi;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -63,7 +63,7 @@ public class WorkOrderFeedbackService {
             WorkOrderFeedbackPluginStateService pluginStateService,
             FileInternalApi fileInternalApi,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
@@ -82,7 +82,7 @@ public class WorkOrderFeedbackService {
             WorkOrderFeedbackPluginStateService pluginStateService,
             FileInternalApi fileInternalApi,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

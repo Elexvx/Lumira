@@ -21,7 +21,7 @@ package com.lumira.saas.modules.system.verification;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.MockSmsDeliveryDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -124,7 +124,7 @@ public class SystemVerificationAppService {
     private final PasswordEncoder passwordEncoder;
     private final FieldCryptoService fieldCryptoService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private final TotpService totpService = new TotpService();
@@ -138,11 +138,11 @@ public class SystemVerificationAppService {
     }
 
     @Autowired
-    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserAccountQueryService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, @Lazy SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService) {
+    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserAccountQueryService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, @Lazy UserIdentityQueryPort systemInternalApi, SessionAuthenticationService sessionAuthenticationService) {
         this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
     }
 
-    private SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserAccountQueryService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService, boolean enforceTrustedUserResolution) {
+    private SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserAccountQueryService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, UserIdentityQueryPort systemInternalApi, SessionAuthenticationService sessionAuthenticationService, boolean enforceTrustedUserResolution) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.userDomainService = userDomainService;

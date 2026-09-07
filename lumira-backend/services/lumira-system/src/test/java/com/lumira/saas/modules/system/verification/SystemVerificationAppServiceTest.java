@@ -1,8 +1,8 @@
 package com.lumira.saas.modules.system.verification;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -436,7 +436,7 @@ class SystemVerificationAppServiceTest {
     void currentUserBindShouldRejectDisabledTrustedUserIdentityBeforeLookup() {
         UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "tester-live", "DISABLED"));
         SystemVerificationAppService service = service(
@@ -465,7 +465,7 @@ class SystemVerificationAppServiceTest {
     void currentUserBindShouldRejectBlankLiveUsernameBeforeLookup() {
         UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
         SystemVerificationAppService service = service(
@@ -495,7 +495,7 @@ class SystemVerificationAppServiceTest {
     void currentUserProviderShouldRefreshLiveUsernameFromTrustedIdentity() {
         UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  tester-live  ", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
@@ -870,7 +870,7 @@ class SystemVerificationAppServiceTest {
             IamUserService iamUserService,
             PasswordEncoder passwordEncoder,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         try {
@@ -888,7 +888,7 @@ class SystemVerificationAppServiceTest {
                     PasswordEncoder.class,
                     FieldCryptoService.class,
                     PermissionSnapshotService.class,
-                    SystemInternalApi.class,
+                    UserIdentityQueryPort.class,
                     SessionAuthenticationService.class,
                     boolean.class
             );

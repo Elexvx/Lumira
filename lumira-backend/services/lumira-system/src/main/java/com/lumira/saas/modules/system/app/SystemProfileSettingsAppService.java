@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -58,7 +58,7 @@ public class SystemProfileSettingsAppService {
     private final SystemProfileSettingsRepository repository;
     private final OperationAuditService operationAuditService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private SystemConfigVersioningService configVersioningService;
@@ -76,7 +76,7 @@ public class SystemProfileSettingsAppService {
             SystemProfileSettingsRepository repository,
             OperationAuditService operationAuditService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(repository, operationAuditService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
@@ -86,7 +86,7 @@ public class SystemProfileSettingsAppService {
             SystemProfileSettingsRepository repository,
             OperationAuditService operationAuditService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

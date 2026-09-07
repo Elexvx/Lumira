@@ -5,6 +5,7 @@ import java.util.Arrays;
 import com.lumira.api.export.ExportTaskQueuePort;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
@@ -85,7 +86,7 @@ class SystemInternalAssemblyTest {
                 .toList();
         assertThat(autowiredConstructors).hasSize(1);
         assertThat(autowiredConstructors.getFirst().getParameterTypes()).contains(
-                SystemInternalApi.class,
+                UserIdentityQueryPort.class,
                 SessionAuthenticationService.class
         );
         assertThat(Arrays.stream(autowiredConstructors.getFirst().getGenericParameterTypes())

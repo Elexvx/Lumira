@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.update.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -87,7 +87,7 @@ public class PlatformUpdateAppService {
     private final ObjectMapper objectMapper;
     private final PlatformUpdateTaskMapper taskMapper;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private final HttpClient httpClient;
@@ -120,7 +120,7 @@ public class PlatformUpdateAppService {
             ObjectMapper objectMapper,
             PlatformUpdateTaskMapper taskMapper,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
@@ -141,7 +141,7 @@ public class PlatformUpdateAppService {
             ObjectMapper objectMapper,
             PlatformUpdateTaskMapper taskMapper,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

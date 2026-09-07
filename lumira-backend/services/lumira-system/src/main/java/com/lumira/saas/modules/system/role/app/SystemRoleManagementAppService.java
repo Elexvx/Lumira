@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.system.role.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -79,7 +79,7 @@ public class SystemRoleManagementAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final OperationAuditService operationAuditService;
     private final DomainEventPublisher domainEventPublisher;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private SystemConfigVersioningService configVersioningService;
@@ -135,7 +135,7 @@ public class SystemRoleManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
@@ -154,7 +154,7 @@ public class SystemRoleManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
@@ -190,7 +190,7 @@ public class SystemRoleManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             DomainEventPublisher domainEventPublisher,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(SystemRoleManagementPersistenceAdapters.from(persistence), permissionSnapshotService, operationAuditService,

@@ -4,7 +4,7 @@ import com.lumira.common.api.ApiResponse;
 import com.lumira.saas.common.annotation.RepeatSubmit;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.api.client.FileInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.export.ExportDTO;
 import com.lumira.api.export.ExportFieldVO;
 import com.lumira.api.export.ExportTaskPort;
@@ -64,7 +64,7 @@ public class SystemController {
     private final DictRuntimeService dictRuntimeService;
     private final DictionaryImportService dictionaryImportService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -155,7 +155,7 @@ public class SystemController {
             ExportTaskPort exportTaskService,
             DictRuntimeService dictRuntimeService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
@@ -184,7 +184,7 @@ public class SystemController {
             ExportTaskPort exportTaskService,
             DictRuntimeService dictRuntimeService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             DictionaryImportService dictionaryImportService
     ) {
@@ -213,7 +213,7 @@ public class SystemController {
             ExportTaskPort exportTaskService,
             DictRuntimeService dictRuntimeService,
             PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             DictionaryImportService dictionaryImportService,
             boolean enforceTrustedUserResolution
