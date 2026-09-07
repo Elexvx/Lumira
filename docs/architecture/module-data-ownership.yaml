@@ -11,14 +11,23 @@ metadata:
   normalRollback: application-only
 sharedTables:
   platform_event_outbox:
-    owner: message
-    allowedProducers: [message, file]
+    owner: platform
+    storageOwnerModule: system
+    allowedWriterModules: [system, message, file]
+    allowedProducers: [system, message, file]
+    writeRule: source_type must be owned by the writer lane; domain modules use TransactionalEventOutboxPort or PlatformEventPort and never access the table directly
 modules:
   - module: auth
     ownedTables: [sys_user_passkey_credential, sys_user_wechat_binding, sys_verification_binding, sys_verification_challenge]
     readModels: []
     outboxTable: null
     allowedCrossModulePorts: [UserIdentityQueryPort, VerificationPort, PasskeyPort]
+    migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
+  - module: account
+    ownedTables: [sys_account_activation_token]
+    readModels: []
+    outboxTable: null
+    allowedCrossModulePorts: [ExpertAccountActivationPort]
     migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
   - module: iam
     ownedTables: [iam_user*, iam_subject*, iam_permission, iam_delegation_grant, sys_user, sys_role, sys_role_permission, sys_menu, sys_permission, sys_user_role, sys_department, sys_department_closure, sys_user_department, sys_role_data_scope]
@@ -27,7 +36,7 @@ modules:
     allowedCrossModulePorts: [UserIdentityQueryPort, PermissionSnapshotPort, AuthorizationVersionPort, MenuCatalogPort]
     migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
   - module: platform
-    ownedTables: [sys_config, sys_config_metadata, sys_config_version_head, sys_config_version, sys_config_version_item, sys_dict_*, sys_platform_*, audit_*, security_audit_event, event_consumer_receipt, async_task, ddd_read_model_version, sys_user_draft, sys_sensitive_word, sys_work_order_feedback, sys_account_activation_token, platform_update_task]
+    ownedTables: [sys_config, sys_config_metadata, sys_config_version_head, sys_config_version, sys_config_version_item, sys_dict_*, sys_platform_*, audit_*, security_audit_event, event_consumer_receipt, async_task, ddd_read_model_version, sys_user_draft, sys_sensitive_word, sys_work_order_feedback, platform_update_task]
     readModels: [ddd_read_model_version:PLATFORM/*]
     outboxTable: null
     allowedCrossModulePorts: [RuntimeConfigurationPort, AuditWritePort, ReadModelVersionPort]
@@ -75,7 +84,7 @@ modules:
     allowedCrossModulePorts: [FilePort]
     migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
   - module: message
-    ownedTables: [msg_*, platform_event_outbox]
+    ownedTables: [msg_*]
     readModels: []
     outboxTable: platform_event_outbox
     allowedCrossModulePorts: [UserIdentityQueryPort, RuntimeConfigurationPort, AuditWritePort]

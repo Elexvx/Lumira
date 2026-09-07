@@ -44,7 +44,7 @@ class DddArchitectureBoundaryTest {
             "lumira-event-catalog"
     );
     private static final Map<String, Set<String>> EXPLICIT_RUNTIME_TABLE_ACCESS_MODULES = Map.of(
-            "platform_event_outbox", Set.of("lumira-system", "lumira-file"),
+            "platform_event_outbox", Set.of("lumira-system", "lumira-file", "lumira-message"),
             "event_consumer_receipt", Set.of("lumira-message")
     );
     private static final Pattern TABLE_NAME_ENTITY_PATTERN = Pattern.compile(
@@ -65,6 +65,7 @@ class DddArchitectureBoundaryTest {
     );
     private static final Set<String> EXPECTED_CONTEXTS = Set.of(
             "AUTH",
+            "ACCOUNT",
             "IAM",
             "PLATFORM",
             "MESSAGE",
@@ -604,6 +605,114 @@ class DddArchitectureBoundaryTest {
         assertThat(violations)
                 .as("ai-service must use shared contracts and System adapters rather than System implementation packages")
                 .isEmpty();
+    }
+
+    @Test
+    void accountActivationOwnershipMustMatchSystemAccountImplementation() throws IOException {
+        Path root = repositoryRoot();
+        List<OwnerTableRule> rules = ownerTableRules(root);
+        Optional<OwnerTableRule> accountRule = rules.stream()
+                .filter(rule -> rule.context().equals("ACCOUNT"))
+                .findFirst();
+
+        assertThat(accountRule).isPresent();
+        assertThat(accountRule.get().ownerModule()).isEqualTo("lumira-system");
+        assertThat(accountRule.get().bootstrapSchemaPaths()).containsExactly("sql/saas.sql");
+        assertThat(accountRule.get().runtimeWriterModules()).isEmpty();
+        assertThat(accountRule.get().tablePatterns()).containsExactly("sys_account_activation_token");
+
+        Path accountPackage = root.resolve(
+                "services/lumira-system/src/main/java/com/lumira/saas/modules/account"
+        );
+        assertThat(accountPackage).exists();
+        assertThat(accountPackage.resolve("app/AccountActivationService.java")).exists();
+        assertThat(accountPackage.resolve("infrastructure/JdbcAccountActivationRepository.java")).exists();
+
+        List<Path> tokenWriterSources = javaFiles(root)
+                .filter(path -> normalized(path).contains("/src/main/java/"))
+                .filter(path -> {
+                    try {
+                        return Files.readString(path).contains("sys_account_activation_token");
+                    } catch (IOException exception) {
+                        throw new IllegalStateException("Unable to inspect " + path, exception);
+                    }
+                })
+                .toList();
+        assertThat(tokenWriterSources)
+                .as("account activation token persistence must remain inside the System account owner")
+                .allSatisfy(path -> assertThat(normalized(path)).contains(
+                        "/services/lumira-system/src/main/java/com/lumira/saas/modules/account/"
+                ));
+
+        Path expertAdapter = root.resolve(
+                "services/lumira-expert/src/main/java/com/lumira/saas/modules/expert/integration/account/"
+                        + "ExpertAccountActivationAdapter.java"
+        );
+        assertThat(expertAdapter).exists();
+        String expertSource = Files.readString(expertAdapter);
+        assertThat(expertSource).contains("ExpertAccountActivationPort");
+        assertThat(expertSource).doesNotContain("com.lumira.saas.modules.account.");
+    }
+
+    @Test
+    void platformEventInfrastructureMustBeAccessedThroughSharedPortsAcrossModules() throws IOException {
+        Path root = repositoryRoot();
+        List<String> violations = new ArrayList<>();
+        for (Path sourceFile : javaFiles(root)
+                .filter(path -> normalized(path).contains("/src/main/java/"))
+                .filter(path -> !normalized(path).contains("/services/lumira-system/"))
+                .toList()) {
+            Matcher matcher = IMPORT_PATTERN.matcher(Files.readString(sourceFile));
+            while (matcher.find()) {
+                String imported = matcher.group(1);
+                if (imported.startsWith("com.lumira.saas.infrastructure.event.")) {
+                    violations.add(root.relativize(sourceFile) + " imports " + imported
+                            + "; use com.lumira.api.event ports");
+                }
+            }
+        }
+
+        assertThat(violations)
+                .as("bounded contexts must not depend on System event infrastructure implementations")
+                .isEmpty();
+
+        assertThat(root.resolve("libs/lumira-common-api/src/main/java/com/lumira/api/event/"
+                + "TransactionalEventOutboxPort.java")).exists();
+        assertThat(root.resolve("libs/lumira-common-api/src/main/java/com/lumira/api/event/"
+                + "PlatformEventPort.java")).exists();
+    }
+
+    @Test
+    void sharedContractLibrariesMustNotLeakPersistenceOrFrameworkTypes() throws IOException {
+        Path root = repositoryRoot();
+        List<Path> contractFiles = List.of(
+                root.resolve("libs/lumira-registration-api/src/main/java"),
+                root.resolve("libs/lumira-review-api/src/main/java")
+        ).stream()
+                .flatMap(path -> {
+                    try {
+                        return Files.walk(path);
+                    } catch (IOException exception) {
+                        throw new IllegalStateException("Unable to inspect " + path, exception);
+                    }
+                })
+                .filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".java"))
+                .toList();
+
+        assertThat(contractFiles).isNotEmpty();
+        for (Path contractFile : contractFiles) {
+            String source = Files.readString(contractFile);
+            assertThat(source)
+                    .as("%s must remain a transport/port contract, not an implementation module", root.relativize(contractFile))
+                    .doesNotContain("org.springframework.")
+                    .doesNotContain("com.baomidou.")
+                    .doesNotContain("JdbcTemplate")
+                    .doesNotContain(".mapper.")
+                    .doesNotContain("@TableName")
+                    .doesNotContain("@Service")
+                    .doesNotContain("@Component");
+        }
     }
 
     @Test
@@ -1152,7 +1261,7 @@ class DddArchitectureBoundaryTest {
     @Test
     void runtimeSharedTableExceptionsMustStayTableScoped() {
         assertThat(EXPLICIT_RUNTIME_TABLE_ACCESS_MODULES)
-                .containsEntry("platform_event_outbox", Set.of("lumira-system", "lumira-file"))
+                .containsEntry("platform_event_outbox", Set.of("lumira-system", "lumira-file", "lumira-message"))
                 .containsEntry("event_consumer_receipt", Set.of("lumira-message"));
         assertThat(EXPLICIT_RUNTIME_TABLE_ACCESS_MODULES.values())
                 .allSatisfy(modules -> assertThat(modules).doesNotContain("lumira-admin", "lumira-async", "lumira-quartz"));
