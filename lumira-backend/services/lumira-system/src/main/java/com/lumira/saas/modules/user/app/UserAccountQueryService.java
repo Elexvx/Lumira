@@ -1,4 +1,4 @@
-package com.lumira.saas.modules.user.domain;
+package com.lumira.saas.modules.user.app;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lumira.saas.modules.iam.service.IamUserService;
@@ -10,19 +10,26 @@ import org.springframework.util.StringUtils;
 
 import java.util.Optional;
 
+/**
+ * Application-level user identity query service.
+ *
+ * <p>This class intentionally owns the persistence orchestration for the
+ * System/IAM user store. It is not a domain service: the domain model must
+ * remain independent of MyBatis and Spring.</p>
+ */
 @Service
-public class UserDomainService {
+public class UserAccountQueryService {
 
     private final SysUserMapper sysUserMapper;
     private final IamUserService iamUserService;
 
     @Autowired
-    public UserDomainService(SysUserMapper sysUserMapper, IamUserService iamUserService) {
+    public UserAccountQueryService(SysUserMapper sysUserMapper, IamUserService iamUserService) {
         this.sysUserMapper = sysUserMapper;
         this.iamUserService = iamUserService;
     }
 
-    public UserDomainService(SysUserMapper sysUserMapper) {
+    public UserAccountQueryService(SysUserMapper sysUserMapper) {
         this.sysUserMapper = sysUserMapper;
         this.iamUserService = null;
     }

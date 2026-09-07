@@ -9,7 +9,7 @@ import com.lumira.api.auth.PasskeyCredentialRenameRequest;
 import com.lumira.api.auth.PasskeyOperationVerificationRequest;
 import com.lumira.api.auth.PasskeyOptionsDTO;
 import com.lumira.api.auth.PasskeyRegistrationCompleteRequest;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemPasskeyAuthenticationPort;
 import com.lumira.api.system.LoginCapabilitiesDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.PasskeyCredentialAssertionDTO;
@@ -65,7 +65,7 @@ public class PasskeyAuthService {
     private static final int FLAG_BS = 0x10;
     private static final int FLAG_AT = 0x40;
 
-    private final SystemInternalApi systemInternalApi;
+    private final SystemPasskeyAuthenticationPort systemInternalApi;
     private final AuthAppService authAppService;
     private final SecurityContextFacade securityContextFacade;
     private final StringRedisTemplate redisTemplate;
@@ -73,7 +73,7 @@ public class PasskeyAuthService {
     private final ObjectMapper cborMapper = new ObjectMapper(new CBORFactory());
 
     public PasskeyAuthService(
-            SystemInternalApi systemInternalApi,
+            SystemPasskeyAuthenticationPort systemInternalApi,
             AuthAppService authAppService,
             SecurityContextFacade securityContextFacade,
             StringRedisTemplate redisTemplate,

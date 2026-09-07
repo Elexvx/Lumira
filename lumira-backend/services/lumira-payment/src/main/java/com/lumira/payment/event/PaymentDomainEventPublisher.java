@@ -1,4 +1,4 @@
-package com.lumira.payment.event.domain;
+package com.lumira.payment.event;
 
 import com.lumira.domain.event.DomainEvent;
 import com.lumira.domain.event.DomainEventPublisher;

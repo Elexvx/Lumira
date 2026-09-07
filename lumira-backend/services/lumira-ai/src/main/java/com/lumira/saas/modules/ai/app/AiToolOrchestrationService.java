@@ -3,7 +3,7 @@ package com.lumira.saas.modules.ai.app;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -69,7 +69,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
     private final PermissionGuard permissionGuard;
     private final AuthorizationService authorizationService;
     private final AiPermissionSnapshotResolver permissionSnapshotService;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final AiTrustedSessionResolver sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -111,7 +111,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
             PermissionGuard permissionGuard,
             AuthorizationService authorizationService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         this(
@@ -140,7 +140,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
             PermissionGuard permissionGuard,
             AuthorizationService authorizationService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {

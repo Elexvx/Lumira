@@ -1,7 +1,7 @@
 package com.lumira.payment;
 
 import com.lumira.domain.event.DomainEventPublisher;
-import com.lumira.payment.event.domain.PaymentDomainEventPublisher;
+import com.lumira.payment.event.PaymentDomainEventPublisher;
 import com.lumira.payment.service.PaymentConfigCryptoService;
 import com.lumira.payment.service.BuiltinMockPaymentAvailability;
 import com.lumira.payment.service.BuiltinMockPaymentLifecycleHook;

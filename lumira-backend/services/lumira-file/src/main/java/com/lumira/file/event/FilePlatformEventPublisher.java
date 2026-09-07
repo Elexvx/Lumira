@@ -3,7 +3,7 @@ package com.lumira.file.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.file.FileObjectDTO;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.event.EventPayloadDigests;
 import com.lumira.common.enums.ErrorCode;
@@ -29,7 +29,7 @@ public class FilePlatformEventPublisher {
     private static final String STATUS_ENABLED = "ENABLED";
 
     private final PlatformEventOutboxService platformEventOutboxService;
-    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider;
     private final ObjectMapper objectMapper;
     private final String releaseId;
 
@@ -39,7 +39,7 @@ public class FilePlatformEventPublisher {
 
     public FilePlatformEventPublisher(
             PlatformEventOutboxService platformEventOutboxService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider
     ) {
         this(platformEventOutboxService, systemInternalApiProvider, new ObjectMapper(), "unknown");
     }
@@ -47,7 +47,7 @@ public class FilePlatformEventPublisher {
     @Autowired
     public FilePlatformEventPublisher(
             PlatformEventOutboxService platformEventOutboxService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider,
             ObjectMapper objectMapper,
             @Value("${lumira.release-id:${LUMIRA_RELEASE_ID:unknown}}") String releaseId
     ) {
@@ -164,7 +164,7 @@ public class FilePlatformEventPublisher {
         if (systemInternalApiProvider == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
         }
-        SystemInternalApi internalApi = systemInternalApiProvider.getIfAvailable();
+        UserIdentityQueryPort internalApi = systemInternalApiProvider.getIfAvailable();
         if (internalApi == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
         }

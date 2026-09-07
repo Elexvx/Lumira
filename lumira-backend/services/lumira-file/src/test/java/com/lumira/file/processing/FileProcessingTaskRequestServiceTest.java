@@ -15,7 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -115,7 +115,7 @@ class FileProcessingTaskRequestServiceTest {
     void requestTasksForUploadShouldUseSimulatedRolePermissionSnapshotWhenPresent() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        SystemInternalApi systemInternalApi = enabledSystemInternalApi();
+        SystemUserAuthorizationPort systemInternalApi = enabledSystemInternalApi();
         when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), eq(3001L), eq(2001L), eq("user-uuid-2001")))
                 .thenReturn(2001L);
         when(jdbcTemplate.update(anyString(), any(Object[].class)))
@@ -175,7 +175,7 @@ class FileProcessingTaskRequestServiceTest {
     void requestTasksForUploadShouldRejectDisabledTrustedOwnerBeforeQueueWrite() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(2001L)).thenReturn(userSnapshot(2001L, "tester", "DISABLED"));
         FileProcessingTaskRequestService service = new FileProcessingTaskRequestService(jdbcTemplate, outboxService, provider(systemInternalApi));
 
@@ -283,8 +283,8 @@ class FileProcessingTaskRequestServiceTest {
         return new FileProcessingTaskRequestService(jdbcTemplate, outboxService, provider(enabledSystemInternalApi()));
     }
 
-    private SystemInternalApi enabledSystemInternalApi() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private SystemUserAuthorizationPort enabledSystemInternalApi() {
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(ArgumentMatchers.anyLong()))
                 .thenAnswer(invocation -> {
                     Long userId = invocation.getArgument(0, Long.class);
@@ -293,14 +293,14 @@ class FileProcessingTaskRequestServiceTest {
         return systemInternalApi;
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
+    private ObjectProvider<SystemUserAuthorizationPort> provider(SystemUserAuthorizationPort systemInternalApi) {
         if (systemInternalApi != null) {
             when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
             when(systemInternalApi.simulatedRolePermissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString(), ArgumentMatchers.anyLong()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
         }
-        ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
+        ObjectProvider<SystemUserAuthorizationPort> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(systemInternalApi);
         return provider;
     }

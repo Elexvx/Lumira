@@ -1,7 +1,7 @@
 package com.lumira.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.payment.PaymentProviderTestResultDTO;
@@ -70,7 +70,7 @@ public class PaymentManagementAppService {
             PaymentConfigCryptoService cryptoService,
             PaymentProviderCatalog providerCatalog,
             PaymentOutboxService outboxService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;

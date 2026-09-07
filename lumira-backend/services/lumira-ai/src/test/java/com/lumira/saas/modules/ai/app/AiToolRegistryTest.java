@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -200,7 +200,7 @@ class AiToolRegistryTest {
         AuthorizationService authorizationService = mock(AuthorizationService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         RecordingSkillQueryOperations queryOperations = new RecordingSkillQueryOperations(skill("execute"));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser());
         when(systemInternalApi.findUserIdentityById(2001L))
@@ -227,7 +227,7 @@ class AiToolRegistryTest {
         AuthorizationService authorizationService = mock(AuthorizationService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         RecordingSkillQueryOperations queryOperations = new RecordingSkillQueryOperations(skill("execute"));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser());
         when(systemInternalApi.findUserIdentityById(2001L))
@@ -254,7 +254,7 @@ class AiToolRegistryTest {
         AuthorizationService authorizationService = mock(AuthorizationService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         CurrentUser currentUser = currentUser();
         currentUser.setUsername("alice-stale");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);

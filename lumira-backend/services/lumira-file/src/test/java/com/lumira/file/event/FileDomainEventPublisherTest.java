@@ -1,4 +1,4 @@
-package com.lumira.file.event.domain;
+package com.lumira.file.event;
 
 import com.lumira.domain.event.StandardDomainEvent;
 import com.lumira.file.event.FilePlatformEventTypes;

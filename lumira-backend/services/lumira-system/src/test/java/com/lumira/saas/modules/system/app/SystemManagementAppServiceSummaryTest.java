@@ -33,7 +33,7 @@ import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -335,7 +335,7 @@ class SystemManagementAppServiceSummaryTest {
 
     private static SystemManagementAppService strictService(
             MyBatisQueryOperations jdbcTemplate,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
@@ -871,7 +871,7 @@ class SystemManagementAppServiceSummaryTest {
                 return List.of();
             }
         };
-        private final UserDomainService userDomainService = mock(UserDomainService.class);
+        private final UserAccountQueryService userDomainService = mock(UserAccountQueryService.class);
         private final PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         private final SystemPluginViewService systemPluginViewService = mock(SystemPluginViewService.class);
         private final OnlineSessionManagementAppService onlineSessionManagementAppService = mock(OnlineSessionManagementAppService.class);

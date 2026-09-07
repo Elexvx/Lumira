@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.integration;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.AuditWritePort;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import org.springframework.stereotype.Component;
 
@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class AiOperationAuditLogger {
 
-    private final SystemInternalApi systemInternalApi;
+    private final AuditWritePort systemInternalApi;
 
-    public AiOperationAuditLogger(SystemInternalApi systemInternalApi) {
+    public AiOperationAuditLogger(AuditWritePort systemInternalApi) {
         this.systemInternalApi = systemInternalApi;
     }
 

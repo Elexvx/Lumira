@@ -32,6 +32,8 @@ modules:
     migrationLocations: [deploy/migrations, lumira-backend/sql/saas.sql]
   - module: iam
     ownedTables: [iam_user*, iam_subject*, iam_permission, iam_delegation_grant, sys_user, sys_role, sys_role_permission, sys_menu, sys_permission, sys_user_role, sys_department, sys_department_closure, sys_user_department, sys_role_data_scope]
+    canonicalIdentityMasterTables: [sys_user, iam_user*, iam_subject*]
+    ownershipRule: IAM is the only canonical identity-master writer; Account and Auth use identity ports and never write sys_user directly
     readModels: [ddd_read_model_version:IAM/*]
     outboxTable: null
     allowedCrossModulePorts: [UserIdentityQueryPort, PermissionSnapshotPort, AuthorizationVersionPort, MenuCatalogPort]

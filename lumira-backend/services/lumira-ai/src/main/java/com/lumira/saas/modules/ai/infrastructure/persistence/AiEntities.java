@@ -1,4 +1,4 @@
-package com.lumira.saas.modules.ai.domain;
+package com.lumira.saas.modules.ai.infrastructure.persistence;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;

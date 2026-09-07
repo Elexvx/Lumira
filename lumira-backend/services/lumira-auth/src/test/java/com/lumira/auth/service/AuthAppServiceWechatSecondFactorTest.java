@@ -2,7 +2,8 @@ package com.lumira.auth.service;
 
 import com.lumira.api.auth.LoginResponseDTO;
 import com.lumira.api.auth.WechatLoginRequest;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemAuthenticationPort;
+import com.lumira.api.system.port.SystemSecurityConfigurationPort;
 import com.lumira.api.system.MaintenanceLoginPolicyDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -29,14 +30,15 @@ class AuthAppServiceWechatSecondFactorTest {
 
     @Test
     void wechatLoginShouldReturnPendingSecondFactorBeforeIssuingTokens() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemAuthenticationPort systemInternalApi = mock(SystemAuthenticationPort.class);
+        SystemSecurityConfigurationPort securityConfigurationPort = mock(SystemSecurityConfigurationPort.class);
         AuthSessionStore authSessionStore = mock(AuthSessionStore.class);
         JwtTokenService jwtTokenService = mock(JwtTokenService.class);
         WechatLoginService wechatLoginService = mock(WechatLoginService.class);
         ClientIpResolver clientIpResolver = mock(ClientIpResolver.class);
         HttpServletRequest request = mock(HttpServletRequest.class);
         AuthSecurityProperties securityProperties = new AuthSecurityProperties();
-        SecuritySettingsService securitySettingsService = new SecuritySettingsService(securityProperties, systemInternalApi);
+        SecuritySettingsService securitySettingsService = new SecuritySettingsService(securityProperties, securityConfigurationPort);
         AuthAppService service = new AuthAppService(
                 systemInternalApi,
                 mock(LoginEncryptionService.class),

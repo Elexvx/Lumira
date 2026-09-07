@@ -210,10 +210,11 @@ class DddArchitectureBoundaryTest {
                 .filter(path -> normalized(path).contains("/src/main/java/"))
                 .filter(path -> {
                     String normalized = normalized(path);
-                    return normalized.contains("/domain/model/")
-                            || normalized.contains("/domain/event/")
-                            || normalized.contains("/domain/repository/")
-                            || normalized.contains("/domain/valueobject/");
+                    // Scan every semantic domain package. Infrastructure adapters
+                    // may use a technical subpackage named "domain" for legacy
+                    // compatibility, but must not be mistaken for the domain model.
+                    return normalized.contains("/domain/")
+                            && !normalized.contains("/infrastructure/");
                 })
                 .toList();
 
@@ -226,6 +227,49 @@ class DddArchitectureBoundaryTest {
                         .doesNotContain(forbidden);
             }
         }
+    }
+
+    @Test
+    void userPersistenceServicesMustNotLiveInTheDomainPackage() throws IOException {
+        Path root = repositoryRoot();
+        List<Path> userDomainSources = javaFiles(root)
+                .filter(path -> normalized(path).contains("/src/main/java/"))
+                .filter(path -> normalized(path).contains("/modules/user/domain/"))
+                .toList();
+
+        assertThat(userDomainSources)
+                .as("user persistence orchestration must stay in the application layer")
+                .isEmpty();
+        assertThat(root.resolve(
+                "services/lumira-system/src/main/java/com/lumira/saas/modules/user/app/UserAccountQueryService.java"
+        )).exists();
+    }
+
+    @Test
+    void legacySystemInternalApiMustStayInsideCompatibilityAndSystemAssembly() throws IOException {
+        Path root = repositoryRoot();
+        List<String> violations = javaFiles(root)
+                .filter(path -> normalized(path).contains("/src/main/java/"))
+                .filter(path -> {
+                    String normalized = normalized(path);
+                    return !normalized.contains("/services/lumira-system/")
+                            && !normalized.contains("/libs/lumira-common-api/")
+                            && !normalized.contains("/libs/lumira-common-web/");
+                })
+                .filter(path -> {
+                    try {
+                        return Files.readString(path).contains("import com.lumira.api.client.SystemInternalApi;");
+                    } catch (IOException exception) {
+                        throw new IllegalStateException("Unable to inspect " + path, exception);
+                    }
+                })
+                .map(root::relativize)
+                .map(Path::toString)
+                .toList();
+
+        assertThat(violations)
+                .as("business modules must use focused System capability ports, not the legacy God interface")
+                .isEmpty();
     }
 
     @Test
@@ -589,6 +633,42 @@ class DddArchitectureBoundaryTest {
     }
 
     @Test
+    void exportFileBoundaryMustUseFileOwnerApi() throws IOException {
+        Path root = repositoryRoot();
+        Path exportService = root.resolve(
+                "services/lumira-export/src/main/java/com/lumira/saas/modules/export/ExportTaskService.java"
+        );
+        assertThat(exportService).exists();
+        String source = Files.readString(exportService);
+        assertThat(source)
+                .contains("import com.lumira.api.client.FileInternalApi;")
+                .contains("fileInternalApi.uploadDocumentForUser")
+                .contains("fileInternalApi.ensureFileContentReadyForUser")
+                .doesNotContain("com.lumira.file.mapper.")
+                .doesNotContain("com.lumira.file.entity.")
+                .doesNotContain("file_object")
+                .doesNotContain("file_processing_task")
+                .doesNotContain("file_processing_artifact");
+
+        List<String> directFileImplementationImports = javaFiles(
+                root.resolve("services/lumira-export/src/main/java")
+        ).filter(path -> {
+            try {
+                String sourceText = Files.readString(path);
+                return sourceText.contains("com.lumira.file.mapper.")
+                        || sourceText.contains("com.lumira.file.entity.")
+                        || sourceText.contains("com.lumira.file.repository.");
+            } catch (IOException exception) {
+                throw new IllegalStateException("Unable to inspect " + path, exception);
+            }
+        }).map(root::relativize).map(Path::toString).toList();
+
+        assertThat(directFileImplementationImports)
+                .as("export-service must call the File owner port instead of importing File persistence")
+                .isEmpty();
+    }
+
+    @Test
     void aiModuleMustNotImportSystemServiceImplementations() throws IOException {
         Path root = repositoryRoot();
         List<String> violations = new ArrayList<>();
@@ -726,6 +806,67 @@ class DddArchitectureBoundaryTest {
                     .as("lumira-auth must orchestrate through SystemInternalApi instead of owning SQL")
                     .isEmpty();
         }
+    }
+
+    @Test
+    void sysUserCanonicalIdentityOwnerMustBeIam() throws IOException {
+        Path root = repositoryRoot();
+        Map<String, OwnerTableRule> rules = new LinkedHashMap<>();
+        for (OwnerTableRule rule : ownerTableRules(root)) {
+            rules.put(rule.context(), rule);
+        }
+
+        OwnerTableRule iamRule = rules.get("IAM");
+        OwnerTableRule accountRule = rules.get("ACCOUNT");
+        OwnerTableRule authRule = rules.get("AUTH");
+        assertThat(iamRule).isNotNull();
+        assertThat(accountRule).isNotNull();
+        assertThat(authRule).isNotNull();
+        assertThat(iamRule.tablePatterns()).contains("sys_user");
+        assertThat(accountRule.tablePatterns()).doesNotContain("sys_user");
+        assertThat(authRule.tablePatterns()).doesNotContain("sys_user");
+
+        Set<String> identityTables = Set.of("sys_user");
+        List<Path> persistenceReferences = javaFiles(root)
+                .filter(path -> normalized(path).contains("/src/main/java/"))
+                .filter(path -> {
+                    try {
+                        String source = Files.readString(path);
+                        return source.contains("sys_user")
+                                && containsSqlPersistenceReference(source, identityTables);
+                    } catch (IOException exception) {
+                        throw new IllegalStateException("Unable to inspect " + path, exception);
+                    }
+                })
+                .toList();
+
+        assertThat(persistenceReferences)
+                .as("sys_user persistence must remain in the System runtime under the IAM owner")
+                .isNotEmpty()
+                .allSatisfy(path -> assertThat(normalized(path)).contains(
+                        "/services/lumira-system/src/main/java/"
+                ));
+
+        Path authRoot = root.resolve("services/lumira-auth/src/main/java");
+        Path accountRoot = root.resolve("services/lumira-system/src/main/java/com/lumira/saas/modules/account");
+        assertThat(javaFiles(authRoot)
+                .filter(path -> {
+                    try {
+                        return containsSqlPersistenceReference(Files.readString(path), identityTables);
+                    } catch (IOException exception) {
+                        throw new IllegalStateException("Unable to inspect " + path, exception);
+                    }
+                })
+                .toList()).isEmpty();
+        assertThat(javaFiles(accountRoot)
+                .filter(path -> {
+                    try {
+                        return containsSqlPersistenceReference(Files.readString(path), identityTables);
+                    } catch (IOException exception) {
+                        throw new IllegalStateException("Unable to inspect " + path, exception);
+                    }
+                })
+                .toList()).isEmpty();
     }
 
     @Test

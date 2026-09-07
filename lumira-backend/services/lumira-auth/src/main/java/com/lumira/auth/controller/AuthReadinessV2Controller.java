@@ -119,7 +119,7 @@ public class AuthReadinessV2Controller {
                         healthCheck("auth.redis.session-store", "CONFIGURED", "AuthSessionStore owns Redis-backed session payloads and online session indexes."),
                         healthCheck("auth.jwt.signing", "CONFIGURED", "JWT access and refresh token signing is configured by Auth."),
                         healthCheck("auth.login-encryption-key", "CONFIGURED", "Login encryption key endpoint is available before password login."),
-                        healthCheck("auth.iam-user-snapshot", "CONFIGURED", "Auth reads user identity through the IAM/SystemInternalApi snapshot contract; user and credential storage remains System-owned."),
+                        healthCheck("auth.iam-user-snapshot", "CONFIGURED", "Auth reads user identity through the IAM/UserIdentityQueryPort snapshot contract; user and credential storage remains System-owned."),
                         healthCheck("auth.iam-permission-snapshot", "CONFIGURED", "Auth embeds IAM permission snapshots into session bootstrap payloads.")
                 ),
                 authMetrics()

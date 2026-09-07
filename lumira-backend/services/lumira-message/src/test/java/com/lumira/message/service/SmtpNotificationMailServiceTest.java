@@ -1,6 +1,6 @@
 package com.lumira.message.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.RuntimeConfigurationPort;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -14,7 +14,7 @@ class SmtpNotificationMailServiceTest {
 
     @Test
     void isConfiguredReadsSmtpRuntimeConfigInsteadOfGenericPlatformConfig() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        RuntimeConfigurationPort systemInternalApi = mock(RuntimeConfigurationPort.class);
         when(systemInternalApi.smtpRuntimeConfigValues())
                 .thenReturn(Map.of(
                         "smtp.host", "smtp.example.com",

@@ -42,7 +42,7 @@ public class SystemAuthorizationSnapshotVersionVerifier implements Authorization
             throw exception;
         } catch (RuntimeException exception) {
             log.warn(
-                    "Failed to verify IAM authorization snapshot version through SystemInternalApi reason={}",
+                    "Failed to verify IAM authorization snapshot version through AuthorizationVersionPort reason={}",
                     exception.getClass().getSimpleName()
             );
             throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "IAM authorization version is unavailable");

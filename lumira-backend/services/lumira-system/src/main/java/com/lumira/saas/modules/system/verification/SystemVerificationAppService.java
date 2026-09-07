@@ -50,7 +50,7 @@ import com.lumira.saas.modules.system.verification.SystemVerificationSettingsApp
 import com.lumira.saas.modules.system.verification.TotpService;
 import com.lumira.saas.modules.system.verification.VerificationDeliveryAuditService;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -113,7 +113,7 @@ public class SystemVerificationAppService {
     private static final int MAX_VERIFICATION_CODE_LENGTH = 32;
     private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
-    private final UserDomainService userDomainService;
+    private final UserAccountQueryService userDomainService;
     private final SystemVerificationProperties properties;
     private final SmtpMailService smtpMailService;
     private final SmsVerificationSender smsVerificationSender;
@@ -129,20 +129,20 @@ public class SystemVerificationAppService {
     private final boolean enforceTrustedUserResolution;
     private final TotpService totpService = new TotpService();
 
-    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService) {
+    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserAccountQueryService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService) {
         this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, null, null, false);
     }
 
-    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, SessionAuthenticationService sessionAuthenticationService) {
+    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserAccountQueryService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, SessionAuthenticationService sessionAuthenticationService) {
         this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
     @Autowired
-    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, @Lazy SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService) {
+    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserAccountQueryService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, @Lazy SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService) {
         this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
     }
 
-    private SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService, boolean enforceTrustedUserResolution) {
+    private SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserAccountQueryService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService, boolean enforceTrustedUserResolution) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.userDomainService = userDomainService;
@@ -161,7 +161,7 @@ public class SystemVerificationAppService {
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
-    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService) {
+    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserAccountQueryService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService) {
         this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, null, null, null, false);
     }
 

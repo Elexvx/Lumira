@@ -13,7 +13,7 @@ import com.lumira.file.event.FilePlatformEventPublisher;
 import com.lumira.file.event.LoggingFileOutboxDispatcher;
 import com.lumira.file.event.PlatformEventOutboxService;
 import com.lumira.file.event.RedisStreamFileOutboxDispatcher;
-import com.lumira.file.event.domain.FileDomainEventPublisher;
+import com.lumira.file.event.FileDomainEventPublisher;
 import com.lumira.file.infrastructure.security.FileJwtAuthFilter;
 import com.lumira.file.infrastructure.JdbcFileBusinessPolicyRepository;
 import com.lumira.file.infrastructure.JdbcFileProcessingArtifactRepository;

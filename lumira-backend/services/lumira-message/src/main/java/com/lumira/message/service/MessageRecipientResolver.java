@@ -1,6 +1,6 @@
 package com.lumira.message.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.message.MessageNoticeDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import org.springframework.beans.factory.ObjectProvider;
@@ -17,9 +17,9 @@ public class MessageRecipientResolver {
 
     private static final String STATUS_ENABLED = "ENABLED";
 
-    private final ObjectProvider<SystemInternalApi> systemInternalApi;
+    private final ObjectProvider<UserIdentityQueryPort> systemInternalApi;
 
-    public MessageRecipientResolver(ObjectProvider<SystemInternalApi> systemInternalApi) {
+    public MessageRecipientResolver(ObjectProvider<UserIdentityQueryPort> systemInternalApi) {
         this.systemInternalApi = systemInternalApi;
     }
 
@@ -45,7 +45,7 @@ public class MessageRecipientResolver {
                     .toList();
         }
         if ("ROLE".equalsIgnoreCase(targetScope) && notice.getTargetRoleId() != null) {
-            SystemInternalApi internalApi = systemInternalApi.getIfAvailable();
+            UserIdentityQueryPort internalApi = systemInternalApi.getIfAvailable();
             if (internalApi == null) {
                 return List.of();
             }
@@ -58,7 +58,7 @@ public class MessageRecipientResolver {
         if (userIds == null || userIds.isEmpty()) {
             return List.of();
         }
-        SystemInternalApi internalApi = systemInternalApi.getIfAvailable();
+        UserIdentityQueryPort internalApi = systemInternalApi.getIfAvailable();
         if (internalApi == null) {
             return List.of();
         }

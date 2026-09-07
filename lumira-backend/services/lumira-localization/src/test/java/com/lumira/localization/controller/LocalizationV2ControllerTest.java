@@ -1,6 +1,6 @@
 package com.lumira.localization.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -167,7 +167,7 @@ class LocalizationV2ControllerTest {
 
     @Test
     void listLanguagesShouldRejectBlankLiveUsernameBeforePermissionCheck() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         LocalizationV2Controller strictController = new LocalizationV2Controller(
                 localizationManagementAppService,
                 securityContextFacade,

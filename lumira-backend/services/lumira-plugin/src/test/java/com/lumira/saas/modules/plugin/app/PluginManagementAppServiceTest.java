@@ -5,7 +5,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemPluginManagementPort;
 import com.lumira.api.plugin.BuiltinPluginLifecycleHook;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
@@ -87,7 +87,7 @@ class PluginManagementAppServiceTest {
     private PluginRegistry pluginRegistry;
 
     @Mock
-    private SystemInternalApi systemInternalApi;
+    private SystemPluginManagementPort systemInternalApi;
 
     @Mock
     private PlatformTransactionManager transactionManager;

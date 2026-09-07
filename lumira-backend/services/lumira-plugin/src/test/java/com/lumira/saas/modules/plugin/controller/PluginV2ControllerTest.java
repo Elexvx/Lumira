@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.plugin.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -242,7 +242,7 @@ class PluginV2ControllerTest {
 
     @Test
     void currentPermissionsShouldRejectTrustedUserWhenLiveUsernameIsUnavailable() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         PluginV2Controller strictController = new PluginV2Controller(
                 pluginManagementAppService,
                 securityContextFacade,

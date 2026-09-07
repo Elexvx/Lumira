@@ -2,7 +2,7 @@ package com.lumira.saas.modules.competition.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.FileInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.PlatformSettingDefaultsPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -340,7 +340,7 @@ class CertificateAppServiceTest {
     void createTemplateShouldRejectDisabledTrustedIdentityBeforeDatabaseAccess() {
         CompetitionSqlOperations jdbcTemplate = mock(CompetitionSqlOperations.class);
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "DISABLED"));
         CertificateAppService service =
@@ -360,7 +360,7 @@ class CertificateAppServiceTest {
     void createTemplateShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
         CompetitionSqlOperations jdbcTemplate = mock(CompetitionSqlOperations.class);
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
         CertificateAppService service =
@@ -383,7 +383,7 @@ class CertificateAppServiceTest {
                         ? 1
                         : org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation));
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
@@ -999,7 +999,7 @@ class CertificateAppServiceTest {
             CompetitionSqlOperations jdbcTemplate,
             FileInternalApi fileInternalApi,
             CompetitionPermissionSnapshotFixture permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             CompetitionSessionAuthenticationFixture sessionAuthenticationService
     ) {
         CertificateAppService service = new CertificateAppService(

@@ -5,7 +5,7 @@ import com.lumira.api.auth.PasskeyAuthenticationCompleteRequest;
 import com.lumira.api.auth.PasskeyCredentialRenameRequest;
 import com.lumira.api.auth.PasskeyOperationVerificationRequest;
 import com.lumira.api.auth.PasskeyRegistrationCompleteRequest;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemPasskeyAuthenticationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.PasskeyCredentialAssertionDTO;
 import com.lumira.api.system.PasskeyCredentialDTO;
@@ -56,7 +56,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void listCredentialsShouldRejectUnauthenticatedUserBeforeInternalLookup() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = new PasskeyAuthService(
                 systemInternalApi,
@@ -77,7 +77,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void listCredentialsShouldRejectBlankUsernameBeforeInternalLookup() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
         when(securityContextFacade.getCurrentUser()).thenReturn(
@@ -92,7 +92,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void listCredentialsShouldRejectMissingSessionVersionBeforeInternalLookup() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
         when(securityContextFacade.getCurrentUser()).thenReturn(
@@ -107,7 +107,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void listCredentialsShouldPassCurrentUserUuidToInternalLookup() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
         CurrentUser currentUser = new CurrentUser(1001L, "alice", "sid", 1, true, Set.of("*"));
@@ -123,7 +123,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void listCredentialsShouldRejectDisabledTrustedUserBeforeInternalLookup() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
         when(securityContextFacade.getCurrentUser()).thenReturn(trustedUser(1001L, "alice"));
@@ -139,7 +139,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void listCredentialsShouldUseSimulatedRolePermissionSnapshot() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
         CurrentUser currentUser = trustedUser(1001L, "alice");
@@ -159,7 +159,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void renameCredentialShouldRejectInvalidIdBeforeCurrentUserLookup() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
 
@@ -173,7 +173,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void renameCredentialShouldRequireCurrentPasswordBeforeInternalRenameWhenNoRecoveryFactorExists() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
         CurrentUser currentUser = trustedUser(1001L, "alice");
@@ -193,7 +193,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void deleteCredentialShouldRejectInvalidIdBeforeCurrentUserLookup() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
 
@@ -206,7 +206,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void registrationOptionsShouldRejectInvalidChallengeTtlBeforeWritingChallenge() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, redisTemplate);
@@ -232,7 +232,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void registrationOptionsShouldRequireCurrentPasswordBeforeWritingChallengeWhenNoRecoveryFactorExists() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, redisTemplate);
@@ -253,7 +253,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void registrationOptionsShouldAcceptVerifiedCurrentPasswordBeforeWritingChallenge() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         @SuppressWarnings("unchecked")
@@ -280,7 +280,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void deleteCredentialShouldRequireCurrentPasswordBeforeInternalDeleteWhenNoRecoveryFactorExists() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
         CurrentUser currentUser = trustedUser(1001L, "alice");
@@ -299,7 +299,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void completeAuthenticationShouldRejectBlankChallengeBeforeRedisLookup() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         PasskeyAuthService service = service(systemInternalApi, securityContextFacade, redisTemplate);
@@ -326,7 +326,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void completeRegistrationShouldRejectChallengeOwnedByAnotherCurrentUserBeforeSavingCredential() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         @SuppressWarnings("unchecked")
@@ -357,7 +357,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void completeRegistrationShouldRejectChallengeWithoutTrustedSessionSnapshotBeforeSavingCredential() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         @SuppressWarnings("unchecked")
@@ -387,7 +387,7 @@ class PasskeyAuthServiceTest {
 
     @Test
     void completeAuthenticationShouldRejectMismatchedUserHandleBeforeUpdatingUsage() throws Exception {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPasskeyAuthenticationPort systemInternalApi = mock(SystemPasskeyAuthenticationPort.class);
         AuthAppService authAppService = mock(AuthAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
@@ -438,7 +438,7 @@ class PasskeyAuthServiceTest {
     }
 
     private PasskeyAuthService service(
-            SystemInternalApi systemInternalApi,
+            SystemPasskeyAuthenticationPort systemInternalApi,
             SecurityContextFacade securityContextFacade,
             StringRedisTemplate redisTemplate
     ) {

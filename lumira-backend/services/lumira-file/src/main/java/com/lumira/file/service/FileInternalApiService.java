@@ -1,7 +1,7 @@
 package com.lumira.file.service;
 
 import com.lumira.api.client.FileInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
@@ -35,12 +35,12 @@ public class FileInternalApiService implements FileInternalApi {
 
     private final FileManagementAppService fileManagementAppService;
     private final SecurityContextFacade securityContextFacade;
-    private final ObjectProvider<SystemInternalApi> systemInternalApi;
+    private final ObjectProvider<SystemUserAuthorizationPort> systemInternalApi;
 
     public FileInternalApiService(
             @Lazy FileManagementAppService fileManagementAppService,
             SecurityContextFacade securityContextFacade,
-            ObjectProvider<SystemInternalApi> systemInternalApi
+            ObjectProvider<SystemUserAuthorizationPort> systemInternalApi
     ) {
         this.fileManagementAppService = fileManagementAppService;
         this.securityContextFacade = securityContextFacade;
@@ -325,7 +325,7 @@ public class FileInternalApiService implements FileInternalApi {
     }
 
     private SystemUserSnapshotDTO resolveTrustedUserSnapshot(Long userId) {
-        SystemInternalApi internalApi = systemInternalApi == null ? null : systemInternalApi.getIfAvailable();
+        SystemUserAuthorizationPort internalApi = systemInternalApi == null ? null : systemInternalApi.getIfAvailable();
         if (internalApi == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
         }
@@ -337,7 +337,7 @@ public class FileInternalApiService implements FileInternalApi {
     }
 
     private PermissionSnapshotDTO snapshotPermissions(Long userId, String userUuid, Long simulatedRoleId) {
-        SystemInternalApi internalApi = systemInternalApi == null ? null : systemInternalApi.getIfAvailable();
+        SystemUserAuthorizationPort internalApi = systemInternalApi == null ? null : systemInternalApi.getIfAvailable();
         if (internalApi == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
         }

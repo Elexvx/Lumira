@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.competition.support;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -17,7 +17,7 @@ public final class CompetitionTrustTestFixtures {
 
     public static TrustedCurrentUserResolver resolver(
             CompetitionPermissionSnapshotFixture permissionSnapshot,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             CompetitionSessionAuthenticationFixture sessionAuthentication
     ) {
         if (sessionAuthentication != null) {
@@ -45,7 +45,7 @@ public final class CompetitionTrustTestFixtures {
 
     private static CurrentUser refresh(
             CompetitionPermissionSnapshotFixture permissionSnapshot,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             CurrentUser currentUser
     ) {
         Long userId = currentUser.getUserId();

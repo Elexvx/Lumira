@@ -1,6 +1,6 @@
 package com.lumira.team.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
@@ -49,7 +49,7 @@ public class TeamV2Controller {
     private final TeamInviteService teamInviteService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     public TeamV2Controller(
@@ -67,7 +67,7 @@ public class TeamV2Controller {
             TeamInviteService teamInviteService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationPort systemInternalApi
     ) {
         this(teamAppService, teamInviteService, securityContextFacade, permissionGuard, systemInternalApi, true);
     }
@@ -77,7 +77,7 @@ public class TeamV2Controller {
             TeamInviteService teamInviteService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
         this.teamAppService = teamAppService;

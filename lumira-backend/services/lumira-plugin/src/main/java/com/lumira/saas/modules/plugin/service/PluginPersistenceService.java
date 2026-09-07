@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.plugin.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemPluginManagementPort;
 import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -30,9 +30,9 @@ import java.util.Optional;
 public class PluginPersistenceService {
 
     private final PluginPersistenceMapper pluginPersistenceMapper;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemPluginManagementPort systemInternalApi;
 
-    public PluginPersistenceService(PluginPersistenceMapper pluginPersistenceMapper, SystemInternalApi systemInternalApi) {
+    public PluginPersistenceService(PluginPersistenceMapper pluginPersistenceMapper, SystemPluginManagementPort systemInternalApi) {
         this.pluginPersistenceMapper = pluginPersistenceMapper;
         this.systemInternalApi = systemInternalApi;
     }

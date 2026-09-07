@@ -47,7 +47,7 @@ import com.lumira.saas.modules.system.user.vo.UserDetailVO;
 import com.lumira.saas.modules.system.user.support.UserAvatarDefaults;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -209,7 +209,7 @@ public class SystemManagementAppService {
             shortcut("Notifications", "Configure notification channels and delivery rules", "/settings/notifications", "system:notification:view"),
             shortcut("Plugin settings", "Manage installed plugins and runtime access", "/settings/plugins", "plugin:management:view")
     );
-    private final UserDomainService userDomainService;
+    private final UserAccountQueryService userDomainService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
@@ -251,7 +251,7 @@ public class SystemManagementAppService {
     @Autowired
     public SystemManagementAppService(
             SystemManagementPersistenceDependencies persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
@@ -326,7 +326,7 @@ public class SystemManagementAppService {
      */
     public SystemManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
@@ -372,7 +372,7 @@ public class SystemManagementAppService {
 
     public SystemManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService,
             SystemPluginViewService systemPluginViewService,
@@ -418,7 +418,7 @@ public class SystemManagementAppService {
 
     public SystemManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
@@ -462,7 +462,7 @@ public class SystemManagementAppService {
 
     public SystemManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
@@ -504,7 +504,7 @@ public class SystemManagementAppService {
 
     public SystemManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
@@ -547,7 +547,7 @@ public class SystemManagementAppService {
 
     public SystemManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
@@ -588,7 +588,7 @@ public class SystemManagementAppService {
 
     private static SystemUserManagementAppService defaultUserManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,

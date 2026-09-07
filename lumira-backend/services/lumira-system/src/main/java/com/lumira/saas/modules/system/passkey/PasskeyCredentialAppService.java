@@ -8,7 +8,7 @@ import com.lumira.api.system.PasskeyCredentialSaveRequestDTO;
 import com.lumira.api.system.PasskeyCredentialUsageRequestDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -21,9 +21,9 @@ public class PasskeyCredentialAppService {
     private static final String DEFAULT_LABEL = "Passkey";
 
     private final PasskeyCredentialMapper passkeyCredentialMapper;
-    private final UserDomainService userDomainService;
+    private final UserAccountQueryService userDomainService;
 
-    public PasskeyCredentialAppService(PasskeyCredentialMapper passkeyCredentialMapper, UserDomainService userDomainService) {
+    public PasskeyCredentialAppService(PasskeyCredentialMapper passkeyCredentialMapper, UserAccountQueryService userDomainService) {
         this.passkeyCredentialMapper = passkeyCredentialMapper;
         this.userDomainService = userDomainService;
     }

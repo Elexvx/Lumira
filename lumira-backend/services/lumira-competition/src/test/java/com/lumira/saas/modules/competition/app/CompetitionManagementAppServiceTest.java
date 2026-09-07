@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.competition.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.event.EventCatalogEventTypes;
@@ -149,7 +149,7 @@ class CompetitionManagementAppServiceTest {
     void createCompetitionShouldRejectDisabledTrustedIdentityBeforeDatabaseAccess() {
         CompetitionSqlOperations jdbcTemplate = mock(CompetitionSqlOperations.class);
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "DISABLED"));
         CompetitionManagementAppService service =
@@ -167,7 +167,7 @@ class CompetitionManagementAppServiceTest {
     void createCompetitionShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
         CompetitionSqlOperations jdbcTemplate = mock(CompetitionSqlOperations.class);
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
         CompetitionManagementAppService service =
@@ -185,7 +185,7 @@ class CompetitionManagementAppServiceTest {
     void createCompetitionDraftShouldRefreshLiveUsername() {
         StubOperations jdbcTemplate = new StubOperations();
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
@@ -210,7 +210,7 @@ class CompetitionManagementAppServiceTest {
     void createCompetitionDraftShouldPersistEmptyBasicPlaceholders() {
         StubOperations jdbcTemplate = new StubOperations();
         CompetitionPermissionSnapshotFixture permissionSnapshotService = mock(CompetitionPermissionSnapshotFixture.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
@@ -1519,7 +1519,7 @@ class CompetitionManagementAppServiceTest {
     private CompetitionManagementAppService strictService(
             CompetitionSqlOperations jdbcTemplate,
             CompetitionPermissionSnapshotFixture permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             CompetitionSessionAuthenticationFixture sessionAuthenticationService
     ) {
         return new CompetitionManagementAppService(

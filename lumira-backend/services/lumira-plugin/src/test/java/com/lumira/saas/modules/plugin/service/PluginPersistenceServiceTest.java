@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.plugin.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemPluginManagementPort;
 import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.exception.BizException;
@@ -23,7 +23,7 @@ class PluginPersistenceServiceTest {
     @Test
     void registerPluginPermissionsDelegatesIamWritesToSystemOwnerApi() {
         PluginPersistenceMapper mapper = mock(PluginPersistenceMapper.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPluginManagementPort systemInternalApi = mock(SystemPluginManagementPort.class);
         PluginPersistenceService service = new PluginPersistenceService(mapper, systemInternalApi);
         PluginPermissionRelEntity permission = new PluginPermissionRelEntity();
         permission.setPermissionKey("plugin:sms:view");
@@ -47,7 +47,7 @@ class PluginPersistenceServiceTest {
     @Test
     void bumpBootstrapVersionDelegatesReadModelWriteToSystemOwnerApi() {
         PluginPersistenceMapper mapper = mock(PluginPersistenceMapper.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPluginManagementPort systemInternalApi = mock(SystemPluginManagementPort.class);
         PluginPersistenceService service = new PluginPersistenceService(mapper, systemInternalApi);
 
         service.bumpBootstrapVersion("plugin.enabled");
@@ -58,7 +58,7 @@ class PluginPersistenceServiceTest {
     @Test
     void versionStateUpdatesDelegateTrustedOperatorUuidToMapper() {
         PluginPersistenceMapper mapper = mock(PluginPersistenceMapper.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPluginManagementPort systemInternalApi = mock(SystemPluginManagementPort.class);
         PluginPersistenceService service = new PluginPersistenceService(mapper, systemInternalApi);
         when(systemInternalApi.findUserById(100L)).thenReturn(userSnapshot(100L, "user-uuid-100", "ENABLED"));
         when(mapper.updateVersionStatus("sms", "1.0.0", "LOADED", "LOADED", "HEALTHY", "ENABLED", "READY", 100L, "user-uuid-100")).thenReturn(1);
@@ -75,7 +75,7 @@ class PluginPersistenceServiceTest {
     @Test
     void versionStateUpdatesRejectMissingOperatorUuidBeforeMapperWrite() {
         PluginPersistenceMapper mapper = mock(PluginPersistenceMapper.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPluginManagementPort systemInternalApi = mock(SystemPluginManagementPort.class);
         PluginPersistenceService service = new PluginPersistenceService(mapper, systemInternalApi);
 
         assertThatThrownBy(() -> service.activateVersion("sms", "1.0.0", 100L, " "))
@@ -87,7 +87,7 @@ class PluginPersistenceServiceTest {
     @Test
     void versionStateUpdatesRejectDisabledOperatorBeforeMapperWrite() {
         PluginPersistenceMapper mapper = mock(PluginPersistenceMapper.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPluginManagementPort systemInternalApi = mock(SystemPluginManagementPort.class);
         PluginPersistenceService service = new PluginPersistenceService(mapper, systemInternalApi);
         when(systemInternalApi.findUserById(100L)).thenReturn(userSnapshot(100L, "user-uuid-100", "DISABLED"));
 
@@ -100,7 +100,7 @@ class PluginPersistenceServiceTest {
     @Test
     void versionStateUpdatesRejectStaleFinalWrite() {
         PluginPersistenceMapper mapper = mock(PluginPersistenceMapper.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPluginManagementPort systemInternalApi = mock(SystemPluginManagementPort.class);
         PluginPersistenceService service = new PluginPersistenceService(mapper, systemInternalApi);
         when(systemInternalApi.findUserById(100L)).thenReturn(userSnapshot(100L, "user-uuid-100", "ENABLED"));
         when(mapper.activateVersion("sms", "1.0.0", 100L, "user-uuid-100")).thenReturn(0);
@@ -113,7 +113,7 @@ class PluginPersistenceServiceTest {
     @Test
     void uninstallRejectsStaleOrBuiltinDefinitionFinalWrite() {
         PluginPersistenceMapper mapper = mock(PluginPersistenceMapper.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemPluginManagementPort systemInternalApi = mock(SystemPluginManagementPort.class);
         PluginPersistenceService service = new PluginPersistenceService(mapper, systemInternalApi);
         when(systemInternalApi.findUserById(100L)).thenReturn(userSnapshot(100L, "user-uuid-100", "ENABLED"));
         when(mapper.markDefinitionDeletedByPlugin("sms", 100L, "user-uuid-100")).thenReturn(0);

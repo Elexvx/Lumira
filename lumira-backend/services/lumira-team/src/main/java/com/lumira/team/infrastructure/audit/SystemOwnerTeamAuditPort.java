@@ -1,6 +1,6 @@
 package com.lumira.team.infrastructure.audit;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.AuditWritePort;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -11,9 +11,9 @@ import org.springframework.util.StringUtils;
 @Component
 public class SystemOwnerTeamAuditPort implements TeamAuditPort {
 
-    private final SystemInternalApi systemInternalApi;
+    private final AuditWritePort systemInternalApi;
 
-    public SystemOwnerTeamAuditPort(SystemInternalApi systemInternalApi) {
+    public SystemOwnerTeamAuditPort(AuditWritePort systemInternalApi) {
         this.systemInternalApi = systemInternalApi;
     }
 

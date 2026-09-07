@@ -29,7 +29,7 @@ import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceServic
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
 import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -108,8 +108,8 @@ class SystemInternalAssemblyTest {
     static class TestConfiguration {
 
         @Bean
-        UserDomainService userDomainService() {
-            return mock(UserDomainService.class);
+        UserAccountQueryService userDomainService() {
+            return mock(UserAccountQueryService.class);
         }
 
         @Bean

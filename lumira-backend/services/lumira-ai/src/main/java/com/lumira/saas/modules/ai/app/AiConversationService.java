@@ -1,7 +1,7 @@
 package com.lumira.saas.modules.ai.app;
 
 import com.lumira.api.client.FileInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -44,7 +44,7 @@ class JdbcAiConversationService implements AiConversationService {
     private final AiConversationPersistenceRepository conversationRepository;
     private final FileInternalApi fileInternalApi;
     private final AiAssistantEmployeeResolver aiAssistantEmployeeResolver;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final AiTrustedSessionResolver sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -63,7 +63,7 @@ class JdbcAiConversationService implements AiConversationService {
     JdbcAiConversationService(
             AiConversationPersistenceRepository conversationRepository,
             FileInternalApi fileInternalApi,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         this(conversationRepository, fileInternalApi, systemInternalApi, sessionAuthenticationService, null, true);
@@ -73,7 +73,7 @@ class JdbcAiConversationService implements AiConversationService {
     JdbcAiConversationService(
             AiConversationPersistenceRepository conversationRepository,
             FileInternalApi fileInternalApi,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             AiAssistantEmployeeRepository assistantEmployeeRepository
     ) {
@@ -83,7 +83,7 @@ class JdbcAiConversationService implements AiConversationService {
     private JdbcAiConversationService(
             AiConversationPersistenceRepository conversationRepository,
             FileInternalApi fileInternalApi,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService,
             AiAssistantEmployeeRepository assistantEmployeeRepository,
             boolean enforceTrustedUserResolution

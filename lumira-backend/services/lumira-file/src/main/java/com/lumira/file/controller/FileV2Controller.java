@@ -1,6 +1,6 @@
 package com.lumira.file.controller;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -54,7 +54,7 @@ public class FileV2Controller {
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final FileUploadMetrics fileUploadMetrics;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     public FileV2Controller(
@@ -72,7 +72,7 @@ public class FileV2Controller {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             FileUploadMetrics fileUploadMetrics,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationPort systemInternalApi
     ) {
         this(fileManagementAppService, securityContextFacade, permissionGuard, fileUploadMetrics, systemInternalApi, true);
     }
@@ -82,7 +82,7 @@ public class FileV2Controller {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             FileUploadMetrics fileUploadMetrics,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
         this.fileManagementAppService = fileManagementAppService;

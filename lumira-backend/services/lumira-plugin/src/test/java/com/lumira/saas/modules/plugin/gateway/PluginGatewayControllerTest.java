@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.plugin.gateway;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -62,7 +62,7 @@ class PluginGatewayControllerTest {
     void dispatchShouldRejectWhenLiveUsernameIsBlank() {
         PluginManagementAppService appService = mock(PluginManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         PluginGatewayController controller = new PluginGatewayController(
                 appService,
                 securityContextFacade,

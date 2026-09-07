@@ -1,6 +1,6 @@
 package com.lumira.file.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -134,10 +134,10 @@ class FileInternalApiServiceTest {
     void internalUserFileOperationsUseSimulatedRolePermissionSnapshotWhenPresent() {
         FileManagementAppService appService = mock(FileManagementAppService.class);
         SystemUserSnapshotDTO snapshot = userSnapshot(42L, "alice", "ENABLED");
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(42L)).thenReturn(snapshot);
         when(systemInternalApi.simulatedRolePermissionSnapshot(42L, "user-uuid-42", 9L)).thenReturn(permissionSnapshot());
-        ObjectProvider<SystemInternalApi> provider = provider(systemInternalApi);
+        ObjectProvider<SystemUserAuthorizationPort> provider = provider(systemInternalApi);
         FileInternalApiService service = new FileInternalApiService(appService, mock(SecurityContextFacade.class), provider);
         MultipartFile file = mock(MultipartFile.class);
 
@@ -280,32 +280,32 @@ class FileInternalApiServiceTest {
         return new SystemUserSnapshotDTO(userId, "user-uuid-" + userId, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemUserSnapshotDTO snapshot) {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private ObjectProvider<SystemUserAuthorizationPort> provider(SystemUserSnapshotDTO snapshot) {
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(snapshot.userId())).thenReturn(snapshot);
         when(systemInternalApi.permissionSnapshot(snapshot.userId(), snapshot.userUuid())).thenReturn(permissionSnapshot());
         return provider(systemInternalApi);
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
+    private ObjectProvider<SystemUserAuthorizationPort> provider(SystemUserAuthorizationPort systemInternalApi) {
         return new ObjectProvider<>() {
             @Override
-            public SystemInternalApi getObject(Object... args) {
+            public SystemUserAuthorizationPort getObject(Object... args) {
                 return systemInternalApi;
             }
 
             @Override
-            public SystemInternalApi getIfAvailable() {
+            public SystemUserAuthorizationPort getIfAvailable() {
                 return systemInternalApi;
             }
 
             @Override
-            public SystemInternalApi getIfUnique() {
+            public SystemUserAuthorizationPort getIfUnique() {
                 return systemInternalApi;
             }
 
             @Override
-            public SystemInternalApi getObject() {
+            public SystemUserAuthorizationPort getObject() {
                 return systemInternalApi;
             }
         };
@@ -324,25 +324,25 @@ class FileInternalApiServiceTest {
         );
     }
 
-    private ObjectProvider<SystemInternalApi> unavailableProvider() {
+    private ObjectProvider<SystemUserAuthorizationPort> unavailableProvider() {
         return new ObjectProvider<>() {
             @Override
-            public SystemInternalApi getObject(Object... args) {
+            public SystemUserAuthorizationPort getObject(Object... args) {
                 return null;
             }
 
             @Override
-            public SystemInternalApi getIfAvailable() {
+            public SystemUserAuthorizationPort getIfAvailable() {
                 return null;
             }
 
             @Override
-            public SystemInternalApi getIfUnique() {
+            public SystemUserAuthorizationPort getIfUnique() {
                 return null;
             }
 
             @Override
-            public SystemInternalApi getObject() {
+            public SystemUserAuthorizationPort getObject() {
                 return null;
             }
         };

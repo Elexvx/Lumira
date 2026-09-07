@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationReadModelPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -52,7 +52,7 @@ class LocalizationManagementAppServiceTest {
     private final LocalizationUsageRefMapper usageRefMapper = mock(LocalizationUsageRefMapper.class);
     private final LocalizationReleaseMapper releaseMapper = mock(LocalizationReleaseMapper.class);
     private final LocalizationManagementMapper localizationManagementMapper = mock(LocalizationManagementMapper.class);
-    private final SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private final SystemUserAuthorizationReadModelPort systemInternalApi = mock(SystemUserAuthorizationReadModelPort.class);
     private final LocalizationManagementAppService service = new LocalizationManagementAppService(
             languageMapper,
             namespaceMapper,

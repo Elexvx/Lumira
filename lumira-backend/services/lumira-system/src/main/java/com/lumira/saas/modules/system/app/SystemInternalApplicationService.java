@@ -60,7 +60,7 @@ import com.lumira.saas.modules.system.internal.app.InternalSystemApplicationServ
 import com.lumira.saas.modules.system.internal.app.SystemInternalApplicationPort;
 import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import com.lumira.saas.modules.auth.vo.LoginCodeChallengeVO;
 import jakarta.validation.Valid;
@@ -161,7 +161,7 @@ public class SystemInternalApplicationService implements SystemInternalApplicati
             "notification.wechat-official.detail-url"
     );
 
-    private final UserDomainService userDomainService;
+    private final UserAccountQueryService userDomainService;
     private final IamUserService iamUserService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final CaptchaService captchaService;
@@ -179,7 +179,7 @@ public class SystemInternalApplicationService implements SystemInternalApplicati
     private MaintenanceLoginPolicyService maintenanceLoginPolicyService;
 
     public SystemInternalApplicationService(
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
             CaptchaService captchaService,

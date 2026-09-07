@@ -24,7 +24,7 @@ identity
 ├── auth                (authentication orchestration and authentication contracts)
 ├── system auth storage (credential, binding and challenge persistence adapters)
 ├── system/account      (account activation token lifecycle)
-└── system/iam         (users, roles, permissions and data scope)
+└── system/iam         (canonical identity master, users, roles, permissions and data scope)
 
 business
 ├── activity
@@ -35,6 +35,7 @@ business
 ├── workflow
 ├── payment
 ├── file
+├── export              (export task lifecycle; delegates file storage)
 ├── plugin
 └── ai
 
@@ -67,8 +68,12 @@ The canonical MySQL write owner for `sys_user_passkey_credential`,
 System `user`, `verification` and `internal` adapters; `lumira-auth` calls the
 focused `SystemInternalApi` ports and does not issue SQL for these tables.
 This is an ownership correction, not a move of the tables or a merge of Auth
-and IAM. IAM remains responsible for authorization users, roles, permissions
-and data scope.
+and IAM. IAM is the canonical owner of the `sys_user` identity master and all
+`iam_*` identity tables. Account owns only activation-token lifecycle state;
+Auth owns authentication orchestration and consumes `UserIdentityQueryPort`
+and `UserDirectoryQueryPort`. Neither Account nor Auth may write `sys_user`
+directly. This keeps the table in the current System runtime while making the
+logical IAM ownership explicit.
 
 ### Account activation
 
@@ -121,6 +126,14 @@ directly. Its business signals are supplied by owner adapters through
 `AlertBusinessSignalQueryPort`, and plugin state is read through
 `PluginFeatureStateApi`. Message remains the only owner of notification delivery records and
 external channel adapters.
+
+### Export and File
+
+`lumira-export` owns `sys_export_task`, task claiming and export completion
+state. It does not own file metadata, processing or object persistence.
+Exported bytes and file readiness are delegated through `FileInternalApi` to
+the `lumira-file` owner; Export may retain only the resulting file identifier
+and display name on its own task row.
 
 ## Dependency direction
 

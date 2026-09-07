@@ -2,7 +2,7 @@ package com.lumira.saas.modules.plugin.app;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemPluginManagementPort;
 import com.lumira.api.plugin.BuiltinPluginLifecycleHook;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
@@ -104,7 +104,7 @@ public class PluginManagementAppService {
     private final PluginRuntimeLoader pluginRuntimeLoader;
     private final PluginRegistry pluginRegistry;
     private final PluginSemver pluginSemver;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemPluginManagementPort systemInternalApi;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
     private final DomainEventPublisher domainEventPublisher;
@@ -142,7 +142,7 @@ public class PluginManagementAppService {
             PluginRuntimeLoader pluginRuntimeLoader,
             PluginRegistry pluginRegistry,
             PluginSemver pluginSemver,
-            SystemInternalApi systemInternalApi,
+            SystemPluginManagementPort systemInternalApi,
             PlatformTransactionManager transactionManager,
             ObjectMapper objectMapper,
             @Qualifier("pluginDomainEventPublisher") DomainEventPublisher domainEventPublisher
@@ -170,7 +170,7 @@ public class PluginManagementAppService {
             PluginRuntimeLoader pluginRuntimeLoader,
             PluginRegistry pluginRegistry,
             PluginSemver pluginSemver,
-            SystemInternalApi systemInternalApi,
+            SystemPluginManagementPort systemInternalApi,
             PlatformTransactionManager transactionManager,
             ObjectMapper objectMapper,
             @Qualifier("pluginDomainEventPublisher") DomainEventPublisher domainEventPublisher,

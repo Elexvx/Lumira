@@ -1,7 +1,7 @@
 package com.lumira.file.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.file.mapper.FilePlatformEventOutboxMapper;
 import org.junit.jupiter.api.Test;
@@ -140,7 +140,7 @@ class PlatformEventOutboxServiceTest {
         PlatformEventOutboxEntity row = outboxRow(3001L);
         row.setPayloadJson("{\"userUuid\":\"user-uuid-other\"}");
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = systemInternalApiWithUser(2001L, "user-uuid-2001");
+        UserIdentityQueryPort systemInternalApi = systemInternalApiWithUser(2001L, "user-uuid-2001");
         PlatformEventOutboxService service = new PlatformEventOutboxService(
                 new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
         );
@@ -156,7 +156,7 @@ class PlatformEventOutboxServiceTest {
     void recordShouldPersistSerializedPayload() {
         FilePlatformEventOutboxMapper mapper = mock(FilePlatformEventOutboxMapper.class);
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = systemInternalApiWithUser(2001L, "user-uuid-2001");
+        UserIdentityQueryPort systemInternalApi = systemInternalApiWithUser(2001L, "user-uuid-2001");
         when(mapper.insert(any(PlatformEventOutboxEntity.class))).thenReturn(1);
         PlatformEventOutboxService service = new PlatformEventOutboxService(
                 new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
@@ -222,7 +222,7 @@ class PlatformEventOutboxServiceTest {
     void recordShouldRejectUserUuidMismatchWhenDatabaseCanResolveUser() {
         FilePlatformEventOutboxMapper mapper = mock(FilePlatformEventOutboxMapper.class);
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = systemInternalApiWithUser(2001L, "user-uuid-2001");
+        UserIdentityQueryPort systemInternalApi = systemInternalApiWithUser(2001L, "user-uuid-2001");
         PlatformEventOutboxService service = new PlatformEventOutboxService(
                 new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
         );
@@ -242,7 +242,7 @@ class PlatformEventOutboxServiceTest {
     void recordShouldRejectUserUuidWhenDatabaseCannotVerifyUser() {
         FilePlatformEventOutboxMapper mapper = mock(FilePlatformEventOutboxMapper.class);
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         PlatformEventOutboxService service = new PlatformEventOutboxService(
                 new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
         );
@@ -263,7 +263,7 @@ class PlatformEventOutboxServiceTest {
     void recordShouldRejectDisabledUserEvenWhenUserUuidMatches() {
         FilePlatformEventOutboxMapper mapper = mock(FilePlatformEventOutboxMapper.class);
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         PlatformEventOutboxService service = new PlatformEventOutboxService(
                 new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
         );
@@ -425,8 +425,8 @@ class PlatformEventOutboxServiceTest {
         return row;
     }
 
-    private SystemInternalApi systemInternalApiWithUser(Long userId, String userUuid) {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    private UserIdentityQueryPort systemInternalApiWithUser(Long userId, String userUuid) {
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findTargetUserUuidById(userId)).thenReturn(userUuid);
         when(systemInternalApi.findUserIdentityById(userId)).thenReturn(new SystemUserSnapshotDTO(
                 userId, userUuid, "test-user", null, "ENABLED", null, null, null,

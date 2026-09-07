@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.plugin.gateway;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -47,7 +47,7 @@ public class PluginGatewayController {
     private final PluginRuntimeSecurityPolicy runtimeSecurityPolicy;
     private final SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer;
     private final SecurityAuditEventService securityAuditEventService;
-    private final SystemInternalApi systemInternalApi;
+    private final SystemUserAuthorizationPort systemInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     public PluginGatewayController(
@@ -78,7 +78,7 @@ public class PluginGatewayController {
             PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
             SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer,
             SecurityAuditEventService securityAuditEventService,
-            SystemInternalApi systemInternalApi
+            SystemUserAuthorizationPort systemInternalApi
     ) {
         this(
                 pluginManagementAppService,
@@ -99,7 +99,7 @@ public class PluginGatewayController {
             PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
             SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer,
             SecurityAuditEventService securityAuditEventService,
-            SystemInternalApi systemInternalApi,
+            SystemUserAuthorizationPort systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
         this.pluginManagementAppService = pluginManagementAppService;

@@ -1,6 +1,6 @@
 package com.lumira.file.app;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.file.CompetitionStorageSpace;
 import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.file.FileContentDTO;
@@ -110,7 +110,7 @@ public class FileManagementAppService {
     private final FileStorageMetrics storageMetrics;
     private final SafeUrlValidator safeUrlValidator;
     private final SecurityAuditEventService securityAuditEventService;
-    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider;
 
     public FileManagementAppService(
             FileObjectRepository fileObjectRepository,
@@ -145,7 +145,7 @@ public class FileManagementAppService {
             FileStorageMetrics storageMetrics,
             SafeUrlValidator safeUrlValidator,
             SecurityAuditEventService securityAuditEventService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider
     ) {
         this(fileObjectRepository, businessPolicyRepository, storageSpaceRepository, artifactRepository, uploadProperties, documentUploadService,
                 imageUploadService, domainEventPublisher, fileProcessingTaskRequestService, fieldCryptoService,
@@ -167,7 +167,7 @@ public class FileManagementAppService {
             FileStorageMetrics storageMetrics,
             SafeUrlValidator safeUrlValidator,
             SecurityAuditEventService securityAuditEventService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            ObjectProvider<SystemUserAuthorizationPort> systemInternalApiProvider,
             ObjectProvider<FileSecurityScanProcessor> securityScanProcessorProvider
     ) {
         this.fileObjectRepository = fileObjectRepository;
@@ -1583,7 +1583,7 @@ public class FileManagementAppService {
         if (systemInternalApiProvider == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
         }
-        SystemInternalApi internalApi = systemInternalApiProvider.getIfAvailable();
+        SystemUserAuthorizationPort internalApi = systemInternalApiProvider.getIfAvailable();
         if (internalApi == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
         }

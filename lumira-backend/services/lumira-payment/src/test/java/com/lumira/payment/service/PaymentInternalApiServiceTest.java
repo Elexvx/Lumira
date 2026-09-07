@@ -1,6 +1,6 @@
 package com.lumira.payment.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationPort;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
@@ -25,7 +25,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void getOrderShouldQueryWithinOperatorScope() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "ENABLED"));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
         PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po-1", "subject", 100L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
@@ -40,7 +40,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void getOrderRejectsInvalidOperatorBeforeServiceLookup() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(mock(SystemInternalApi.class)));
+        PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(mock(SystemUserAuthorizationPort.class)));
 
         assertThatThrownBy(() -> service.getOrder(0L, "user-uuid-0", "ORD-1"))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
@@ -51,7 +51,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void getOrderAllowsDisabledHistoricalOwnerWithinExactIdentityScope() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "DISABLED"));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
         PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po-1", "subject", 100L, "CNY", "PAID", null, null, null, null, Map.of(), null, null, null, null, null);
@@ -78,7 +78,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void getOrderRejectsBlankOrderNoBeforeServiceLookup() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "ENABLED"));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
 
@@ -91,7 +91,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void createOrderRejectsInvalidOperatorBeforeCreatingOrder() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(mock(SystemInternalApi.class)));
+        PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(mock(SystemUserAuthorizationPort.class)));
 
         assertThatThrownBy(() -> service.createOrder(null, "user-uuid-1001", null))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
@@ -104,7 +104,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void createOrderRejectsNullRequestBeforeCreatingOrder() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "ENABLED"));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
 
@@ -119,7 +119,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void createOrderShouldValidateTrustedOperatorSnapshotAndUseExactOwnerScope() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "ENABLED"));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
@@ -153,7 +153,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void createOrderShouldUseSimulatedRolePermissionSnapshotWhenPresent() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "ENABLED"));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
@@ -184,7 +184,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void createOrderRejectsOperatorSnapshotMissingUserUuidBeforeCreatingOrder() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(new SystemUserSnapshotDTO(1001L, null, "alice", null, "ENABLED", null, null, null, null, null, null, null, null, null, null, null));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
 
@@ -199,7 +199,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void createOrderRejectsOperatorSnapshotWithoutEnabledStatusBeforeCreatingOrder() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", null));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
 
@@ -214,7 +214,7 @@ class PaymentInternalApiServiceTest {
     @Test
     void createOrderRejectsOperatorUuidMismatchBeforeCreatingOrder() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SystemUserAuthorizationPort systemInternalApi = mock(SystemUserAuthorizationPort.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "ENABLED"));
         PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
 
@@ -233,7 +233,7 @@ class PaymentInternalApiServiceTest {
         PaymentInternalApiService service = new PaymentInternalApiService(
                 mock(PaymentTransactionService.class),
                 null,
-                provider(mock(SystemInternalApi.class)),
+                provider(mock(SystemUserAuthorizationPort.class)),
                 fixedProvider(relay)
         );
 
@@ -246,7 +246,7 @@ class PaymentInternalApiServiceTest {
         PaymentInternalApiService service = new PaymentInternalApiService(
                 mock(PaymentTransactionService.class),
                 null,
-                provider(mock(SystemInternalApi.class)),
+                provider(mock(SystemUserAuthorizationPort.class)),
                 fixedProvider(null)
         );
 
@@ -255,14 +255,14 @@ class PaymentInternalApiServiceTest {
                 .hasMessageContaining("unavailable");
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
+    private ObjectProvider<SystemUserAuthorizationPort> provider(SystemUserAuthorizationPort systemInternalApi) {
         if (systemInternalApi != null) {
             when(systemInternalApi.permissionSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
             when(systemInternalApi.simulatedRolePermissionSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
         }
-        ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
+        ObjectProvider<SystemUserAuthorizationPort> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(systemInternalApi);
         return provider;
     }

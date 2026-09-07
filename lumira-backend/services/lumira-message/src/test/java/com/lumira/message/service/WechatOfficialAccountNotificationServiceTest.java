@@ -1,7 +1,7 @@
 package com.lumira.message.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.RuntimeConfigurationPort;
 import com.lumira.message.infrastructure.redis.CacheTemplate;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +16,7 @@ class WechatOfficialAccountNotificationServiceTest {
 
     @Test
     void isConfiguredReadsWechatRuntimeConfigInsteadOfGenericPlatformConfig() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        RuntimeConfigurationPort systemInternalApi = mock(RuntimeConfigurationPort.class);
         when(systemInternalApi.wechatOfficialRuntimeConfigValues())
                 .thenReturn(Map.of(
                         "notification.wechat-official.enabled", "true",

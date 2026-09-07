@@ -3,7 +3,7 @@ package com.lumira.auth.service;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.auth.WechatAuthorizeUrlDTO;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemAuthenticationPort;
 import com.lumira.api.system.WechatLoginSettingsDTO;
 import com.lumira.common.constant.CacheKeyConstants;
 import com.lumira.common.enums.ErrorCode;
@@ -45,7 +45,7 @@ public class WechatLoginService {
     private static final String AUTHORIZE_URL = "https://open.weixin.qq.com/connect/qrconnect";
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/sns/oauth2/access_token";
     private static final String USER_INFO_URL = "https://api.weixin.qq.com/sns/userinfo";
-    private final SystemInternalApi systemInternalApi;
+    private final SystemAuthenticationPort systemInternalApi;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -54,7 +54,7 @@ public class WechatLoginService {
 
     @Autowired
     public WechatLoginService(
-            SystemInternalApi systemInternalApi,
+            SystemAuthenticationPort systemInternalApi,
             StringRedisTemplate redisTemplate,
             ObjectMapper objectMapper
     ) {
@@ -62,7 +62,7 @@ public class WechatLoginService {
     }
 
     public WechatLoginService(
-            SystemInternalApi systemInternalApi,
+            SystemAuthenticationPort systemInternalApi,
             StringRedisTemplate redisTemplate,
             ObjectMapper objectMapper,
             ReadModelVersionCache readModelVersionCache
@@ -71,7 +71,7 @@ public class WechatLoginService {
     }
 
     WechatLoginService(
-            SystemInternalApi systemInternalApi,
+            SystemAuthenticationPort systemInternalApi,
             StringRedisTemplate redisTemplate,
             ObjectMapper objectMapper,
             ReadModelVersionCache readModelVersionCache,

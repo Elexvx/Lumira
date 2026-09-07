@@ -2,7 +2,7 @@ package com.lumira.message.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.RuntimeConfigurationPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.message.infrastructure.redis.CacheTemplate;
@@ -31,13 +31,13 @@ public class WechatOfficialAccountNotificationService {
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token";
     private static final String TEMPLATE_SEND_URL = "https://api.weixin.qq.com/cgi-bin/message/template/send";
 
-    private final SystemInternalApi systemInternalApi;
+    private final RuntimeConfigurationPort systemInternalApi;
     private final CacheTemplate cacheTemplate;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
     public WechatOfficialAccountNotificationService(
-            SystemInternalApi systemInternalApi,
+            RuntimeConfigurationPort systemInternalApi,
             CacheTemplate cacheTemplate,
             ObjectMapper objectMapper
     ) {

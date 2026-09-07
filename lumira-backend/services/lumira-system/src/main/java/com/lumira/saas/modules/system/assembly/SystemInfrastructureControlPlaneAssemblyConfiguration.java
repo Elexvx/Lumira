@@ -14,7 +14,7 @@ import com.lumira.saas.infrastructure.event.EventConsumptionGuard;
 import com.lumira.saas.infrastructure.event.LoggingPlatformEventDispatcher;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxRelay;
 import com.lumira.saas.infrastructure.event.RedisStreamPlatformEventDispatcher;
-import com.lumira.saas.infrastructure.event.domain.SystemDomainEventPublisher;
+import com.lumira.saas.infrastructure.event.SystemDomainEventPublisher;
 import com.lumira.saas.infrastructure.pagination.KeysetCursorCodec;
 import com.lumira.saas.infrastructure.persistence.BatchJdbcHelper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;

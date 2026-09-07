@@ -32,7 +32,7 @@ import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.user.support.UserAvatarDefaults;
 import com.lumira.saas.modules.system.user.vo.UserDetailVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,7 +69,7 @@ public class SystemUserManagementAppService {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final SystemUserManagementRepository userRepository;
-    private final UserDomainService userDomainService;
+    private final UserAccountQueryService userDomainService;
     private final IamUserService iamUserService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
@@ -84,7 +84,7 @@ public class SystemUserManagementAppService {
 
     public SystemUserManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
@@ -112,7 +112,7 @@ public class SystemUserManagementAppService {
     @Autowired
     public SystemUserManagementAppService(
             SystemUserManagementRepository userRepository,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
@@ -144,7 +144,7 @@ public class SystemUserManagementAppService {
     /** Compatibility constructor for tests still providing the legacy persistence facade. */
     public SystemUserManagementAppService(
             Object persistence,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
@@ -173,7 +173,7 @@ public class SystemUserManagementAppService {
 
     private SystemUserManagementAppService(
             SystemUserManagementRepository userRepository,
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,

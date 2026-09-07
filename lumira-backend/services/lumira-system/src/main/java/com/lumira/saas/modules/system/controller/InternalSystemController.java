@@ -14,7 +14,7 @@ import com.lumira.saas.modules.system.internal.app.InternalSystemApplicationServ
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
-import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.app.UserAccountQueryService;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,7 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class InternalSystemController extends SystemInternalApplicationService {
 
     public InternalSystemController(
-            UserDomainService userDomainService,
+            UserAccountQueryService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
             CaptchaService captchaService,

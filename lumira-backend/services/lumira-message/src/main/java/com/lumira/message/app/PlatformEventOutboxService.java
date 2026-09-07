@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.message.MessageEventDTO;
 import com.lumira.common.web.TraceContext;
 import com.lumira.message.mapper.MessagePlatformEventOutboxMapper;
@@ -47,7 +47,7 @@ public class PlatformEventOutboxService {
 
     private final MessagePlatformEventOutboxMapper outboxMapper;
     private final ObjectMapper objectMapper;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private final Counter recordedCounter;
     private final Counter deliveredCounter;
     private final Counter failedCounter;
@@ -59,7 +59,7 @@ public class PlatformEventOutboxService {
             MessagePlatformEventOutboxMapper outboxMapper,
             ObjectMapper objectMapper,
             MeterRegistry meterRegistry,
-            SystemInternalApi systemInternalApi
+            UserIdentityQueryPort systemInternalApi
     ) {
         this.outboxMapper = outboxMapper;
         this.objectMapper = objectMapper;

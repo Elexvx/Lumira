@@ -1,7 +1,7 @@
 package com.lumira.auth.service;
 
 import com.lumira.api.auth.*;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemAuthenticationPort;
 import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.LoginCapabilitiesDTO;
@@ -82,7 +82,7 @@ public class AuthAppService {
     private static final long LAST_ACTIVITY_WRITE_THROTTLE_SECONDS = 30L;
     private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
-    private final SystemInternalApi systemInternalApi;
+    private final SystemAuthenticationPort systemInternalApi;
     private final LoginEncryptionService loginEncryptionService;
     private final LoginProtectionService loginProtectionService;
     private final AuthSessionStore authSessionStore;
@@ -123,7 +123,7 @@ public class AuthAppService {
     private final MeterRegistry meterRegistry;
 
     public AuthAppService(
-            SystemInternalApi systemInternalApi,
+            SystemAuthenticationPort systemInternalApi,
             LoginEncryptionService loginEncryptionService,
             LoginProtectionService loginProtectionService,
             AuthSessionStore authSessionStore,
@@ -157,7 +157,7 @@ public class AuthAppService {
 
     @Autowired
     public AuthAppService(
-            SystemInternalApi systemInternalApi,
+            SystemAuthenticationPort systemInternalApi,
             LoginEncryptionService loginEncryptionService,
             LoginProtectionService loginProtectionService,
             AuthSessionStore authSessionStore,
@@ -195,7 +195,7 @@ public class AuthAppService {
     }
 
     private AuthAppService(
-            SystemInternalApi systemInternalApi,
+            SystemAuthenticationPort systemInternalApi,
             LoginEncryptionService loginEncryptionService,
             LoginProtectionService loginProtectionService,
             AuthSessionStore authSessionStore,
@@ -230,7 +230,7 @@ public class AuthAppService {
     }
 
     private AuthAppService(
-            SystemInternalApi systemInternalApi,
+            SystemAuthenticationPort systemInternalApi,
             LoginEncryptionService loginEncryptionService,
             LoginProtectionService loginProtectionService,
             AuthSessionStore authSessionStore,

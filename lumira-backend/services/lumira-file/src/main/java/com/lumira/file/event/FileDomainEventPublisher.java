@@ -1,4 +1,4 @@
-package com.lumira.file.event.domain;
+package com.lumira.file.event;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

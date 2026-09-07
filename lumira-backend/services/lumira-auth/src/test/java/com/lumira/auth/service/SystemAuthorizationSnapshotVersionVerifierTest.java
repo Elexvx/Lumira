@@ -1,6 +1,6 @@
 package com.lumira.auth.service;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.AuthorizationVersionPort;
 import com.lumira.api.system.port.AuthorizationVersionPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -60,8 +60,8 @@ class SystemAuthorizationSnapshotVersionVerifierTest {
     static class TestConfiguration {
 
         @Bean
-        SystemInternalApi systemInternalApi() {
-            return mock(SystemInternalApi.class);
+        AuthorizationVersionPort systemInternalApi() {
+            return mock(AuthorizationVersionPort.class);
         }
     }
 }

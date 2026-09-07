@@ -1,6 +1,6 @@
 package com.lumira.file.processing;
 
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -12,9 +12,9 @@ import org.springframework.util.StringUtils;
 @Service
 public class FileOwnerIdentityVerifier {
 
-    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider;
 
-    public FileOwnerIdentityVerifier(ObjectProvider<SystemInternalApi> systemInternalApiProvider) {
+    public FileOwnerIdentityVerifier(ObjectProvider<UserIdentityQueryPort> systemInternalApiProvider) {
         this.systemInternalApiProvider = systemInternalApiProvider;
     }
 
@@ -22,7 +22,7 @@ public class FileOwnerIdentityVerifier {
         if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
             throw new IllegalStateException("File owner identity is required");
         }
-        SystemInternalApi systemInternalApi = systemInternalApiProvider == null
+        UserIdentityQueryPort systemInternalApi = systemInternalApiProvider == null
                 ? null
                 : systemInternalApiProvider.getIfAvailable();
         if (systemInternalApi == null) {

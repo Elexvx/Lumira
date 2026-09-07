@@ -1,4 +1,4 @@
-package com.lumira.saas.infrastructure.event.domain;
+package com.lumira.saas.infrastructure.event;
 
 import com.lumira.domain.event.StandardDomainEvent;
 import com.lumira.saas.infrastructure.event.PlatformEventPublisher;

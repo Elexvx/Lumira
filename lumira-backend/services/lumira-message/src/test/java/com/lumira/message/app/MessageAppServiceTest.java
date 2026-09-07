@@ -1,7 +1,7 @@
 package com.lumira.message.app;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.SystemUserAuthorizationReadModelPort;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemRoleSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -75,7 +75,7 @@ class MessageAppServiceTest {
     private WechatOfficialAccountNotificationService wechatOfficialAccountNotificationService;
 
     @Mock
-    private SystemInternalApi systemInternalApi;
+    private SystemUserAuthorizationReadModelPort systemInternalApi;
 
     @Mock
     private CacheTemplate cacheTemplate;

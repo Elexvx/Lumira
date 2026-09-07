@@ -1,7 +1,7 @@
 package com.lumira.saas.modules.ai.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -187,7 +187,7 @@ class AiToolOrchestrationServiceHashTest {
     void proposeShouldRejectDisabledTrustedUserBeforePlanning() {
         StubQueryOperations jdbc = new StubQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "admin", "DISABLED"));
         DefaultAiToolOrchestrationService service = service(
                 jdbc,
@@ -208,7 +208,7 @@ class AiToolOrchestrationServiceHashTest {
     void proposeShouldRejectTrustedUserWhenLiveUsernameIsUnavailableBeforePlanning() {
         StubQueryOperations jdbc = new StubQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, " ", "ENABLED"));
         DefaultAiToolOrchestrationService service = service(
                 jdbc,
@@ -230,7 +230,7 @@ class AiToolOrchestrationServiceHashTest {
     void proposeShouldRefreshTrustedUsernameFromLiveIdentityBeforePlanning() {
         StubQueryOperations jdbc = new StubQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "live-admin", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100"))
@@ -515,7 +515,7 @@ class AiToolOrchestrationServiceHashTest {
             StubQueryOperations jdbc,
             AuthorizationService authorizationService,
             AiPermissionSnapshotResolver permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
+            UserIdentityQueryPort systemInternalApi,
             AiTrustedSessionResolver sessionAuthenticationService
     ) {
         AiNativeToolRuntimeService runtimeService = mock(AiNativeToolRuntimeService.class);

@@ -3,7 +3,7 @@ package com.lumira.file.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.web.TraceContext;
 import com.lumira.file.mapper.FilePlatformEventOutboxMapper;
@@ -46,7 +46,7 @@ public class PlatformEventOutboxService {
     private final ObjectMapper objectMapper;
     private final FilePlatformEventOutboxMapper platformEventOutboxMapper;
     private final JdbcTemplate jdbcTemplate;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private volatile OutboxMetricsSnapshot cachedSnapshot;
     private volatile long cachedSnapshotUntilMillis;
 
@@ -55,7 +55,7 @@ public class PlatformEventOutboxService {
             ObjectMapper objectMapper,
             FilePlatformEventOutboxMapper platformEventOutboxMapper,
             JdbcTemplate jdbcTemplate,
-            SystemInternalApi systemInternalApi
+            UserIdentityQueryPort systemInternalApi
     ) {
         this.objectMapper = objectMapper;
         this.platformEventOutboxMapper = platformEventOutboxMapper;

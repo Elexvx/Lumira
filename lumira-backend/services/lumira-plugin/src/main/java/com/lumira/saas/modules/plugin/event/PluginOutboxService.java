@@ -2,7 +2,7 @@ package com.lumira.saas.modules.plugin.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import java.lang.management.ManagementFactory;
 import java.time.LocalDateTime;
@@ -44,7 +44,7 @@ public class PluginOutboxService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
-    private final SystemInternalApi systemInternalApi;
+    private final UserIdentityQueryPort systemInternalApi;
     private volatile OutboxMetricsSnapshot cachedSnapshot;
     private volatile long cachedSnapshotUntilMillis;
 
@@ -52,7 +52,7 @@ public class PluginOutboxService {
     public PluginOutboxService(
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
-            SystemInternalApi systemInternalApi
+            UserIdentityQueryPort systemInternalApi
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;

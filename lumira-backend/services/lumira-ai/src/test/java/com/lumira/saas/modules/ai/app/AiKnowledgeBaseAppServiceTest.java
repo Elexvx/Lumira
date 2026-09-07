@@ -1,7 +1,7 @@
 package com.lumira.saas.modules.ai.app;
 
 import com.lumira.api.client.FileInternalApi;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.FileProcessingArtifactDTO;
@@ -390,7 +390,7 @@ class AiKnowledgeBaseAppServiceTest {
     void listKnowledgeBasesShouldRejectDisabledTrustedUserBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "admin", "DISABLED"));
         JdbcAiKnowledgeBasePersistenceAdapter service = new JdbcAiKnowledgeBasePersistenceAdapter(
                 queryOperations,
@@ -423,7 +423,7 @@ class AiKnowledgeBaseAppServiceTest {
     void listKnowledgeBasesShouldRejectTrustedUserWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, " ", "ENABLED"));
         JdbcAiKnowledgeBasePersistenceAdapter service = new JdbcAiKnowledgeBasePersistenceAdapter(
                 queryOperations,
@@ -457,7 +457,7 @@ class AiKnowledgeBaseAppServiceTest {
     void listKnowledgeBasesShouldRefreshTrustedUsernameFromLiveIdentityBeforeQuery() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "live-admin", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(7L, "user-uuid-7")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(7L, "user-uuid-7"))
@@ -588,7 +588,7 @@ class AiKnowledgeBaseAppServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         InMemoryFileInternalApi fileInternalApi = new InMemoryFileInternalApi("hello knowledge world".getBytes(StandardCharsets.UTF_8));
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "live-admin", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(7L, "user-uuid-7")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(7L, "user-uuid-7"))
@@ -623,7 +623,7 @@ class AiKnowledgeBaseAppServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         InMemoryFileInternalApi fileInternalApi = new InMemoryFileInternalApi("hello knowledge world".getBytes(StandardCharsets.UTF_8));
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "live-admin", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(7L, "user-uuid-7")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(7L, "user-uuid-7"))
@@ -655,7 +655,7 @@ class AiKnowledgeBaseAppServiceTest {
         queryOperations.createdBySimulatedRoleId = 9L;
         InMemoryFileInternalApi fileInternalApi = new InMemoryFileInternalApi("hello knowledge world".getBytes(StandardCharsets.UTF_8));
         AiPermissionSnapshotResolver permissionSnapshotService = mock(AiPermissionSnapshotResolver.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserIdentityQueryPort systemInternalApi = mock(UserIdentityQueryPort.class);
         when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "live-admin", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(7L, "user-uuid-7")).thenReturn(true);
         when(permissionSnapshotService.loadGrantedRoleSnapshot(7L, "user-uuid-7", 9L))

@@ -3,7 +3,7 @@ package com.lumira.message.app;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.port.UserIdentityQueryPort;
 import com.lumira.api.message.MessageEventDTO;
 import com.lumira.api.message.MessageNoticeDTO;
 import com.lumira.message.mapper.MessagePlatformEventOutboxMapper;
@@ -44,7 +44,7 @@ class PlatformEventOutboxServiceTest {
     private MessageEventDeliveryService deliveryService;
 
     @Mock
-    private SystemInternalApi systemInternalApi;
+    private UserIdentityQueryPort systemInternalApi;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
